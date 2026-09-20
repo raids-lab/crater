@@ -106,13 +106,14 @@ crater file --help
 -- zh-CN/09-file-help/exit --
 0
 -- zh-CN/09-file-help/stdout --
-向用户、公共及当前账户存储空间上传文件。
+列出或上传用户、公共及当前账户存储空间中的文件。
 
 Usage:
   crater file [flags]
   crater file [command]
 
 Available Commands:
+  ls          列出远端文件
   upload      上传单个本地文件
 
 Global Flags:

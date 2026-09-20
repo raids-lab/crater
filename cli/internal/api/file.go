@@ -1,180 +1,52 @@
 package api
 
 import (
-	"context"
-	"encoding/json"
-	"errors"
-	"io"
-	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
-
-	"github.com/imroc/req/v3"
+	"time"
 )
 
-const maxFileErrorBody = 32 << 10
-
-// FileUploadClient exposes the ordinary-user APIs needed to upload one file.
-type FileUploadClient interface {
-	UploadFile(ctx context.Context, remotePath string, source io.Reader, overwrite bool) (FileUploadResult, error)
+// FileClient exposes the ordinary-user remote file APIs used by the CLI.
+type FileClient interface {
+	ListFiles(remotePath string) ([]FileInfo, error)
 }
 
-// NewFileUploadClient creates a typed remote-file upload client.
-func NewFileUploadClient(baseURL, token string) FileUploadClient {
+// NewFileClient creates a typed remote-file client.
+func NewFileClient(baseURL, token string) FileClient {
 	return NewClient(baseURL).SetToken(token)
 }
 
-// FileUploadResult is the server-confirmed metadata for an atomic upload.
-type FileUploadResult struct {
-	RemotePath  string `json:"remote_path"`
-	Bytes       int64  `json:"bytes"`
-	Overwritten bool   `json:"overwritten"`
+// FileInfo is the stable subset of the storage service file-list response.
+type FileInfo struct {
+	Name       string    `json:"name"`
+	Size       int64     `json:"size"`
+	IsDir      bool      `json:"isdir"`
+	ModifyTime time.Time `json:"modifytime"`
 }
 
-// SourceReadError identifies a failure reading the caller-owned upload source.
-type SourceReadError struct {
-	Cause error
-}
-
-func (e *SourceReadError) Error() string {
-	return "read upload source: " + e.Cause.Error()
-}
-
-func (e *SourceReadError) Unwrap() error {
-	if e == nil {
-		return nil
+// ListFiles lists a logical user-visible storage path. remotePath must already
+// be validated and normalized by the command layer.
+func (c *Client) ListFiles(remotePath string) ([]FileInfo, error) {
+	requestPath := FileListPath
+	if remotePath != "" {
+		requestPath += "/" + escapeRemotePath(remotePath)
 	}
-	return e.Cause
-}
 
-// UploadFile streams one source to the storage service without buffering it in
-// memory. The dedicated endpoint stages the body and atomically publishes it.
-func (c *Client) UploadFile(
-	ctx context.Context,
-	remotePath string,
-	source io.Reader,
-	overwrite bool,
-) (FileUploadResult, error) {
-	requestPath := FileUploadPath + "/" + escapeRemotePath(remotePath)
-	tracked := &uploadSourceReader{source: source}
-	request := c.httpClient.R().
-		SetContext(ctx).
-		SetContentType("application/octet-stream").
-		SetQueryParam("overwrite", strconv.FormatBool(overwrite)).
-		SetBody(tracked).
-		DisableAutoReadResponse()
-
-	resp, err := request.Post(requestPath)
+	var result Response[[]FileInfo]
+	resp, err := c.httpClient.R().
+		SetSuccessResult(&result).
+		SetErrorResult(&result).
+		Get(requestPath)
 	if err != nil {
-		if tracked.readErr != nil {
-			return FileUploadResult{}, &SourceReadError{Cause: tracked.readErr}
-		}
-		if resp != nil && resp.Response != nil {
-			return FileUploadResult{}, uploadProtocolError(resp, "failed to process upload response: "+err.Error())
-		}
-		return FileUploadResult{}, &NetworkError{Cause: err}
-	}
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
-	if tracked.readErr != nil {
-		return FileUploadResult{}, &SourceReadError{Cause: tracked.readErr}
-	}
-	if !resp.IsSuccessState() {
-		if resp.Body == nil {
-			return FileUploadResult{}, &RequestError{
-				HTTPStatus: resp.GetStatusCode(),
-				Msg:        http.StatusText(resp.GetStatusCode()),
-			}
-		}
-		return FileUploadResult{}, rawFileRequestError(resp)
-	}
-	if resp.Body == nil {
-		return FileUploadResult{}, uploadProtocolError(resp, "upload response body is empty")
-	}
-	body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxFileErrorBody+1))
-	if readErr != nil {
-		return FileUploadResult{}, uploadProtocolError(resp, "failed to read upload response: "+readErr.Error())
-	}
-	if len(body) > maxFileErrorBody {
-		return FileUploadResult{}, uploadProtocolError(resp, "upload response exceeds size limit")
-	}
-	var result Response[FileUploadResult]
-	if err := json.Unmarshal(body, &result); err != nil {
-		return FileUploadResult{}, uploadProtocolError(resp, "invalid upload response: "+err.Error())
+		return nil, &NetworkError{Cause: err}
 	}
 	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return FileUploadResult{}, err
+		return nil, err
 	}
-	if result.Data.RemotePath != remotePath {
-		return FileUploadResult{}, uploadProtocolError(resp, "upload response remote_path does not match the request")
-	}
-	if result.Data.Bytes < 0 || result.Data.Bytes != tracked.read {
-		return FileUploadResult{}, uploadProtocolError(resp, "upload response byte count does not match the streamed source")
-	}
-	if result.Data.Overwritten && !overwrite {
-		return FileUploadResult{}, uploadProtocolError(resp, "server reported an overwrite without client authorization")
+	if result.Data == nil {
+		return []FileInfo{}, nil
 	}
 	return result.Data, nil
-}
-
-func uploadProtocolError(resp *req.Response, message string) *RequestError {
-	status := 0
-	if resp != nil && resp.Response != nil {
-		status = resp.GetStatusCode()
-	}
-	return &RequestError{
-		HTTPStatus: status,
-		Msg:        message,
-	}
-}
-
-type uploadSourceReader struct {
-	source  io.Reader
-	read    int64
-	readErr error
-}
-
-func (reader *uploadSourceReader) Read(data []byte) (int, error) {
-	read, err := reader.source.Read(data)
-	reader.read += int64(read)
-	if err != nil && !errors.Is(err, io.EOF) {
-		reader.readErr = err
-	}
-	return read, err
-}
-
-func rawFileRequestError(resp *req.Response) error {
-	body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxFileErrorBody+1))
-	if readErr != nil {
-		message := http.StatusText(resp.GetStatusCode())
-		if message == "" {
-			message = "failed to read error response"
-		}
-		return &RequestError{
-			HTTPStatus: resp.GetStatusCode(),
-			Msg:        message + ": " + readErr.Error(),
-		}
-	}
-	if len(body) > maxFileErrorBody {
-		body = body[:maxFileErrorBody]
-	}
-
-	var envelope Response[json.RawMessage]
-	_ = json.Unmarshal(body, &envelope)
-	message := strings.TrimSpace(envelope.Message)
-	if message == "" {
-		message = strings.TrimSpace(strings.ToValidUTF8(string(body), "\uFFFD"))
-	}
-	if message == "" {
-		message = http.StatusText(resp.GetStatusCode())
-	}
-	return &RequestError{
-		HTTPStatus: resp.GetStatusCode(),
-		CraterCode: envelope.Code,
-		Msg:        message,
-	}
 }
 
 func escapeRemotePath(remotePath string) string {

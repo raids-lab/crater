@@ -106,13 +106,14 @@ crater file --help
 -- en/09-file-help/exit --
 0
 -- en/09-file-help/stdout --
-Upload files to user, public, and account storage spaces.
+List and upload files in user, public, and account storage spaces.
 
 Usage:
   crater file [flags]
   crater file [command]
 
 Available Commands:
+  ls          List remote files
   upload      Upload one local file
 
 Global Flags:

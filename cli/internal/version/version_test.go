@@ -53,3 +53,101 @@ func TestUserAgentUsesProductVersion(t *testing.T) {
 		t.Fatalf("UserAgent() = %q, want crater-cli/0.4.0", got)
 	}
 }
+
+func TestCurrentBuildInfoUsesInjectedFields(t *testing.T) {
+	originalProductVersion := ProductVersion
+	originalCommitSHA := CommitSHA
+	originalBuildType := BuildType
+	originalBuildTime := BuildTime
+	ProductVersion = "v1.2.3"
+	CommitSHA = "0123456789abcdef"
+	BuildType = "release"
+	BuildTime = "2026-09-07T08:30:00Z"
+	t.Cleanup(func() {
+		ProductVersion = originalProductVersion
+		CommitSHA = originalCommitSHA
+		BuildType = originalBuildType
+		BuildTime = originalBuildTime
+	})
+
+	info := CurrentBuildInfo()
+	if info.ProductVersion != "1.2.3" {
+		t.Fatalf("ProductVersion = %q, want 1.2.3", info.ProductVersion)
+	}
+	if info.CommitSHA != "0123456789abcdef" {
+		t.Fatalf("CommitSHA = %q, want 0123456789abcdef", info.CommitSHA)
+	}
+	if info.BuildType != "release" {
+		t.Fatalf("BuildType = %q, want release", info.BuildType)
+	}
+	if info.BuildTime != "2026-09-07T08:30:00Z" {
+		t.Fatalf("BuildTime = %q, want 2026-09-07T08:30:00Z", info.BuildTime)
+	}
+	if info.APIVersion != APIVersion {
+		t.Fatalf("APIVersion = %d, want %d", info.APIVersion, APIVersion)
+	}
+	if info.MinSupportedBackendAPIVersion != MinSupportedBackendAPIVersion {
+		t.Fatalf(
+			"MinSupportedBackendAPIVersion = %d, want %d",
+			info.MinSupportedBackendAPIVersion,
+			MinSupportedBackendAPIVersion,
+		)
+	}
+	if info.GoVersion == "" || info.OS == "" || info.Arch == "" {
+		t.Fatalf("runtime build fields must not be empty: %#v", info)
+	}
+}
+
+func TestEffectiveBuildFieldsUseStableDefaults(t *testing.T) {
+	originalCommitSHA := CommitSHA
+	originalBuildType := BuildType
+	originalBuildTime := BuildTime
+	CommitSHA = unknownBuildValue
+	BuildType = ""
+	BuildTime = unknownBuildValue
+	t.Cleanup(func() {
+		CommitSHA = originalCommitSHA
+		BuildType = originalBuildType
+		BuildTime = originalBuildTime
+	})
+
+	if got := EffectiveBuildType(); got != defaultDevelopmentBuildType {
+		t.Fatalf("EffectiveBuildType() = %q, want %q", got, defaultDevelopmentBuildType)
+	}
+	if got := EffectiveCommitSHA(); got == "" {
+		t.Fatal("EffectiveCommitSHA() returned an empty value")
+	}
+	if got := EffectiveBuildTime(); got != unknownBuildValue {
+		t.Fatalf("EffectiveBuildTime() = %q, want %q", got, unknownBuildValue)
+	}
+}
+
+func TestShortCommitSHA(t *testing.T) {
+	tests := []struct {
+		name      string
+		commitSHA string
+		want      string
+	}{
+		{name: "full SHA", commitSHA: "0123456789abcdef", want: "0123456"},
+		{name: "already short", commitSHA: "abc1234", want: "abc1234"},
+		{name: "unknown", commitSHA: unknownBuildValue, want: unknownBuildValue},
+		{name: "empty", commitSHA: "  ", want: unknownBuildValue},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ShortCommitSHA(tt.commitSHA); got != tt.want {
+				t.Fatalf("ShortCommitSHA(%q) = %q, want %q", tt.commitSHA, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUploadContractCompatibility(t *testing.T) {
+	if got := EvaluateCompatibility(1, 1); got != CompatibilityBackendTooOld {
+		t.Fatalf("backend without safe upload: got %s, want %s", got, CompatibilityBackendTooOld)
+	}
+	if got := EvaluateCompatibility(2, 1); got != CompatibilityCompatible {
+		t.Fatalf("backend with safe upload: got %s, want %s", got, CompatibilityCompatible)
+	}
+}

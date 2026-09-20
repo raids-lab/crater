@@ -1,20 +1,54 @@
 ---
 name: crater-cli-file
-version: 0.1.0
-description: "Use Crater CLI to stream one local regular file into ordinary-user remote storage with explicit, atomic overwrite semantics."
+version: 0.2.0
+description: "Use Crater CLI to list files and upload one regular file in user, public, and account storage spaces."
 metadata:
   requires:
     bins: ["crater"]
   cliHelp: "crater file --help"
 ---
 
-# Crater CLI File Upload
+# Crater CLI File
 
 **CRITICAL — Before doing anything else, MUST read `crater-cli-shared` (possible path: [`../crater-cli-shared/SKILL.md`](../crater-cli-shared/SKILL.md)) for global options, non-interactive use, errors, and sensitive information handling.**
 
-Use `crater file upload` when a user wants to copy one local regular file into Crater storage.
+Use `crater file` when a user needs to inspect or upload files visible through their ordinary Crater identity.
 
 ## Supported workflow
+
+- List visible storage roots: `crater file ls`
+- List a nested directory: `crater file ls <remote-path>`
+- Return structured data for a script or agent: add `--json --no-interactive`
+
+Remote paths are logical Crater paths. They must start with `user`, `public`, or `account`; do not pass local filesystem paths or construct paths containing `.` or `..`.
+
+## Safety
+
+- `file ls` is read-only.
+- Do not ask the user to provide a token or Keyring content.
+- Do not substitute `crater admin ...` endpoints for an ordinary-user request.
+- Prefer exact paths shown by a previous `file ls` result.
+
+## Examples
+
+```bash
+crater file ls --json --no-interactive
+crater file ls user/projects --json --no-interactive
+crater file ls "account/共享数据" --json --no-interactive
+```
+
+## Troubleshooting
+
+1. Run `crater auth ls --json` and confirm an active context exists.
+2. Use `crater file ls --help` to verify the local binary supports the command.
+3. A path validation error means the path is outside the ordinary-user logical roots or contains an unsafe segment.
+4. For API errors, inspect `category`, `code`, and `context.http_status` from JSON stderr without exposing credentials.
+
+## Upload a single file
+
+Use `crater file upload` when a user wants to copy one local regular file into Crater storage.
+
+### Upload workflow
 
 - Create a new remote file:
 
@@ -40,7 +74,7 @@ Use `crater file upload` when a user wants to copy one local regular file into C
   crater file upload ./train.py user/jobs/train.py --json --no-interactive
   ```
 
-## Safety
+### Upload safety
 
 - The local path must resolve to one open regular file. Directories, devices, sockets, and pipes are rejected before any API request.
 - Remote paths must start with `user`, `public`, or `account` and must name an entry below that root.
@@ -51,10 +85,10 @@ Use `crater file upload` when a user wants to copy one local regular file into C
 - JSON stdout contains metadata only; it never includes file bytes.
 - Do not ask the user to provide a token or Keyring content.
 
-## Troubleshooting
+### Upload troubleshooting
 
 1. Run `crater auth ls --json` and confirm an active context exists.
 2. Use `crater file upload --help` to verify the local binary supports the command.
 3. If the target exists, choose a new path or obtain explicit permission to add `--overwrite`.
-4. A `404` from `/api/ss/upload` means the storage service is older than this CLI feature; upgrade the server rather than falling back to unsafe WebDAV PUT.
+4. A `404` from `/api/ss/upload` can indicate an older storage service or incorrect routing. Check the deployed service and route; this command requires API contract 2 and never falls back to WebDAV PUT.
 5. For API errors, inspect `category`, `code`, and `context.http_status` from JSON stderr without exposing credentials.

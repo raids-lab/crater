@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/i18n"
+	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -139,15 +141,35 @@ func runPodLogs(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	params := map[string]string{
-		"timestamps": getBoolParam(cmd, "timestamps"),
-		"previous":   getBoolParam(cmd, "previous"),
+	tail, _ := cmd.Flags().GetInt("tail")
+	if tail < 0 {
+		return errUsageFromIssues([]usageIssue{
+			invalidIssue("tail", i18n.T("err_invalid_non_negative_int", "tail")),
+		})
 	}
-	tail := getIntParam(cmd, "tail")
-	if tail != "0" {
-		params["tailLines"] = tail
+	timestamps, _ := cmd.Flags().GetBool("timestamps")
+	previous, _ := cmd.Flags().GetBool("previous")
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
 	}
-	return runRawStringRead(cmd, fmt.Sprintf("%s/%s/pods/%s/containers/%s/log", api.NamespacesPrefix, ns, name, container), params, "logs")
+	logs, err := client.GetPodLogs(ns, name, container, api.PodLogOptions{
+		TailLines:  int64(tail),
+		Timestamps: timestamps,
+		Previous:   previous,
+	})
+	if err != nil {
+		return cliErrFromPodLog(err)
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"logs": string(logs),
+		}))
+	}
+	if err := writeJobLogs(os.Stdout, []jobLogResult{{Content: string(logs)}}, false); err != nil {
+		return cliErrFromPodLog(&api.PodLogWriteError{Cause: err})
+	}
+	return nil
 }
 
 func runPodIngresses(cmd *cobra.Command, args []string) error {

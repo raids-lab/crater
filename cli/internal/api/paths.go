@@ -27,6 +27,7 @@ const (
 	AdminQueueQuotasPfx = "/api/v1/admin/queue-quotas"
 	AdminGPUAnalysisPfx = "/api/v1/admin/gpu-analysis"
 	SystemConfigPrefix  = "/api/v1/system-config"
+	StoragePrefix       = "/api/ss"
 	AdminSysConfigPfx   = "/api/v1/admin/system-config"
 	UsersPrefix         = "/api/v1/users"
 	AdminUsersPrefix    = "/api/v1/admin/users"
@@ -34,7 +35,6 @@ const (
 	SPJobsPrefix        = "/api/v1/spjobs"
 	VCJobsPrefix        = "/api/v1/vcjobs"
 	AdminVCJobsPrefix   = "/api/v1/admin/vcjobs"
-	StoragePrefix       = "/api/ss"
 )
 
 const CompatibilityPath = CompatibilityPrefix + "/compatibility"
@@ -56,4 +56,5 @@ const (
 	VCJobBillingPath      = VCJobsPrefix + "/billing"
 	AdminVCJobBillingPath = AdminVCJobsPrefix + "/billing"
 	FileUploadPath        = StoragePrefix + "/upload"
+	FileListPath          = StoragePrefix + "/files"
 )

@@ -12,7 +12,15 @@ RESET := \033[0m
 # 变量定义
 BINARY_NAME := crater
 APP_VERSION ?= dev
-VERSION_LDFLAGS := -X github.com/raids-lab/crater/cli/internal/version.ProductVersion=$(APP_VERSION)
+COMMIT_SHA ?= unknown
+BUILD_TYPE ?= development
+BUILD_TIME ?= unknown
+VERSION_PACKAGE := github.com/raids-lab/crater/cli/internal/version
+VERSION_LDFLAGS := \
+	-X $(VERSION_PACKAGE).ProductVersion=$(APP_VERSION) \
+	-X $(VERSION_PACKAGE).CommitSHA=$(COMMIT_SHA) \
+	-X $(VERSION_PACKAGE).BuildType=$(BUILD_TYPE) \
+	-X $(VERSION_PACKAGE).BuildTime=$(BUILD_TIME)
 
 .PHONY: help
 help: ## 显示帮助信息
@@ -29,6 +37,17 @@ build: tidy ## 编译生成 crater 可执行文件
 	@echo "$(BLUE)🏗️  正在构建 $(BINARY_NAME)...$(RESET)"
 	@go build -ldflags="$(VERSION_LDFLAGS)" -o $(BINARY_NAME) .
 	@echo "$(GREEN)✅ 构建完成: ./$(BINARY_NAME)$(RESET)"
+
+.PHONY: release-build
+release-build: ## 构建指定 GOOS/GOARCH 的可发布二进制（需传入 OUTPUT）
+	@test -n "$(GOOS)" || (echo "GOOS is required" >&2; exit 1)
+	@test -n "$(GOARCH)" || (echo "GOARCH is required" >&2; exit 1)
+	@test -n "$(OUTPUT)" || (echo "OUTPUT is required" >&2; exit 1)
+	@mkdir -p "$(dir $(OUTPUT))"
+	@CGO_ENABLED=0 GOOS="$(GOOS)" GOARCH="$(GOARCH)" go build \
+		-trimpath \
+		-ldflags="$(VERSION_LDFLAGS) -w -s" \
+		-o "$(OUTPUT)" .
 
 .PHONY: clean
 clean: ## 清理构建产物
@@ -67,6 +86,7 @@ UNIT_TEST_PKGS := \
 	./internal/api \
 	./internal/completion \
 	./internal/output \
+	./internal/session \
 	./internal/state \
 	./internal/testenv \
 	./internal/version
@@ -81,8 +101,14 @@ unit-test: ## 运行 cli 的所有单元测试（排除 ./test/snapshots）
 test: unit-test snapshot-check ## 依次运行单元测试与快照校验
 	@echo "$(GREEN)✅ 全部测试通过$(RESET)"
 
+.PHONY: npm-test
+npm-test: ## 运行 npm 发布脚本单元测试
+	@echo "$(BLUE)📦 运行 npm 发布脚本单元测试...$(RESET)"
+	@cd npm && npm test
+	@echo "$(GREEN)✅ npm 发布脚本单元测试通过$(RESET)"
+
 .PHONY: pre-commit-check
-pre-commit-check: test ## 提交前检查（等价于 test）
+pre-commit-check: test npm-test ## 提交前检查（CLI 测试与 npm 发布脚本测试）
 
 # 默认目标
 .DEFAULT_GOAL := help
