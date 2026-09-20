@@ -1,0 +1,125 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-file-typo-json/argv --
+crater file get --json --no-interactive
+-- zh-CN/01-file-typo-json/exit --
+2
+-- zh-CN/01-file-typo-json/stdout --
+-- zh-CN/01-file-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"get\" for \"crater file\"\nRun \"crater file --help\" for usage."
+}
+-- zh-CN/01b-file-typo-text/argv --
+crater file get --no-interactive
+-- zh-CN/01b-file-typo-text/exit --
+2
+-- zh-CN/01b-file-typo-text/stdout --
+-- zh-CN/01b-file-typo-text/stderr --
+Error:
+  unknown command "get" for "crater file"
+  Run "crater file --help" for usage.
+-- zh-CN/02-file-download-missing-json/argv --
+crater file download --json --no-interactive
+-- zh-CN/02-file-download-missing-json/exit --
+2
+-- zh-CN/02-file-download-missing-json/stdout --
+-- zh-CN/02-file-download-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：远端路径 (\u003cremote-file\u003e)"
+}
+-- zh-CN/03-file-download-extra-arg-json/argv --
+crater file download user/a.bin local.bin extra --json --no-interactive
+-- zh-CN/03-file-download-extra-arg-json/exit --
+2
+-- zh-CN/03-file-download-extra-arg-json/stdout --
+-- zh-CN/03-file-download-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater file download 的参数过多：收到 3 个，最多允许 2 个"
+}
+-- zh-CN/04-file-download-traversal-json/argv --
+crater file download user/../public/a.bin --json --no-interactive
+-- zh-CN/04-file-download-traversal-json/exit --
+2
+-- zh-CN/04-file-download-traversal-json/stdout --
+-- zh-CN/04-file-download-traversal-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的远端路径 \"user/../public/a.bin\""
+}
+-- zh-CN/05-file-download-root-json/argv --
+crater file download user --json --no-interactive
+-- zh-CN/05-file-download-root-json/exit --
+2
+-- zh-CN/05-file-download-root-json/stdout --
+-- zh-CN/05-file-download-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "远端文件必须指向 user、public 或 account 下的具体条目：\"user\""
+}
+-- zh-CN/06-file-download-404-json/argv --
+crater file download user/实验 data/result.bin snapshot-download-zh-CN.bin --overwrite --json --no-interactive
+-- zh-CN/06-file-download-404-json/exit --
+4
+-- zh-CN/06-file-download-404-json/stdout --
+-- zh-CN/06-file-download-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/07-file-help/argv --
+crater file --help
+-- zh-CN/07-file-help/exit --
+0
+-- zh-CN/07-file-help/stdout --
+列出、传输、创建、移动和删除用户、公共及当前账户存储空间中的条目。
+
+Usage:
+  crater file [flags]
+  crater file [command]
+
+Available Commands:
+  download    下载单个远端文件
+  ls          列出远端文件
+  mkdir       创建单个远端目录
+  mv          移动单个远端文件或目录
+  rm          删除单个远端文件或目录
+  upload      上传单个本地文件
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+
+Use "crater file [command] --help" for more information about a command.
+-- zh-CN/07-file-help/stderr --
+-- zh-CN/08-file-download-help/argv --
+crater file download --help
+-- zh-CN/08-file-download-help/exit --
+0
+-- zh-CN/08-file-download-help/stdout --
+下载单个远端文件
+
+Usage:
+  crater file download <remote-file> [local-path] [flags]
+
+Flags:
+      --overwrite   替换已存在的本地文件
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/08-file-download-help/stderr --

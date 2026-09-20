@@ -58,5 +58,6 @@ const (
 	FileRemovePath        = StoragePrefix + "/files"
 	FileMovePath          = StoragePrefix + "/move"
 	FileUploadPath        = StoragePrefix + "/upload"
+	FileDownloadPath      = StoragePrefix + "/download"
 	FileListPath          = StoragePrefix + "/files"
 )

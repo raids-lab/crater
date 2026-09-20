@@ -80,13 +80,14 @@ crater file --help
 -- zh-CN/07-file-help/exit --
 0
 -- zh-CN/07-file-help/stdout --
-列出、上传、创建目录、移动或删除用户、公共及当前账户存储空间中的条目。
+列出、传输、创建、移动和删除用户、公共及当前账户存储空间中的条目。
 
 Usage:
   crater file [flags]
   crater file [command]
 
 Available Commands:
+  download    下载单个远端文件
   ls          列出远端文件
   mkdir       创建单个远端目录
   mv          移动单个远端文件或目录
