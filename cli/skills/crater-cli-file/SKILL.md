@@ -1,7 +1,7 @@
 ---
 name: crater-cli-file
-version: 0.3.0
-description: "Use Crater CLI to list files and upload one regular file in user, public, and account storage spaces."
+version: 0.4.0
+description: "Use Crater CLI to list, download, upload, create directories, and move entries in user, public, and account storage spaces."
 metadata:
   requires:
     bins: ["crater"]
@@ -12,7 +12,7 @@ metadata:
 
 **CRITICAL — Before doing anything else, MUST read `crater-cli-shared` (possible path: [`../crater-cli-shared/SKILL.md`](../crater-cli-shared/SKILL.md)) for global options, non-interactive use, errors, and sensitive information handling.**
 
-Use `crater file` when a user needs to inspect or upload files visible through their ordinary Crater identity.
+Use `crater file` when a user needs to inspect, download, upload, create, or move entries visible through their ordinary Crater identity.
 
 ## Supported workflow
 
@@ -100,3 +100,35 @@ Use `crater file upload` when a user wants to copy one local regular file into C
 - The destination must not exist. There is no overwrite mode for `mv`.
 - Do not move an entry to itself or below itself. Unsupported atomic no-clobber rename fails safely.
 - These commands require backend API contract 3. Inspect JSON error metadata for permission, missing-parent, or destination-conflict errors.
+
+## Download a single file
+
+- Download to the current directory using the remote basename:
+
+  ```bash
+  crater file download user/results/model.bin
+  ```
+
+- Choose an exact local file path:
+
+  ```bash
+  crater file download "account/共享数据/result.bin" ./downloads/result.bin
+  ```
+
+- Replace an existing local file only after the user explicitly asks for it:
+
+  ```bash
+  crater file download user/results/model.bin ./model.bin --overwrite
+  ```
+
+- Return structured metadata:
+
+  ```bash
+  crater file download user/results/model.bin ./model.bin --json --no-interactive
+  ```
+
+### Download safety
+
+- The optional local path names a file, not a directory.
+- Never add `--overwrite` unless replacing that exact local target is part of the user's request.
+- Binary content goes only to the local target; JSON stdout contains metadata.

@@ -106,13 +106,14 @@ crater file --help
 -- en/09-file-help/exit --
 0
 -- en/09-file-help/stdout --
-List, upload, create directories, and move entries in user, public, and account storage spaces.
+List, download, upload, create directories, and move entries in user, public, and account storage spaces.
 
 Usage:
   crater file [flags]
   crater file [command]
 
 Available Commands:
+  download    Download one remote file
   ls          List remote files
   mkdir       Create one remote directory
   mv          Move one remote file or directory
