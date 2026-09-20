@@ -11,10 +11,25 @@
 | `internal/clierror/` | 结构化 CLI 错误类型 `Error`（`Category` / `Code` / `Message` / `Context`），供 `cmd` 返回、`internal/output` 渲染。 |
 | `internal/output/` | 成功 JSON 信封与编码；错误写到 stderr 的渲染。不负责退出码与进程退出。 |
 | `internal/state/`、`internal/session/`、`internal/i18n/` | 本地状态（含明文 token）、session 门面、文案与语言。 |
+| `internal/version/` | CLI 产品版本、源码提交、构建类型、构建时间、Go/平台信息，以及独立的 CLI / 后端 API 兼容版本。 |
 | `internal/snaptest/` | 快照测试工具库：构建 `crater` 二进制、运行子进程、收集 `stdout/stderr/exit`、读写与比对 `txtar` golden。仅供测试包使用。 |
 | `pkg/errorcodes/` | 稳定字符串错误码、`Category` 常量、与退出码映射 `ExitCodeForCategory`。 |
 | `skills/` | 面向平台用户 AI Agent 分发的 Skills，按 `crater-cli-<domain>` 组织；用于说明如何安全调用 CLI，不参与二进制运行时。 |
 | `skill-template/` | 编写 Skills 时复用的模板材料，用于保持领域 Skill 与 references 的结构一致。 |
+| `hack/`、`npm/` | 可发布二进制的构建/聚合脚本，以及 npm 入口包、平台选择器和包生成/发布工具。 |
+
+## 构建与分发
+
+`cli/Makefile` 的 `release-build` 接收 `GOOS`、`GOARCH`、`OUTPUT` 和四个版本字段，以 `CGO_ENABLED=0` 构建原生二进制。`hack/build-release-artifact.sh` 为 Linux、macOS、Windows 的 `amd64` / `arm64` 六种目标补充 LICENSE、NOTICE 与 README，供 npm 打包使用。
+
+npm 分发采用“一个入口包 + 六个平台包”：
+
+- `@raids-lab/crater-cli` 提供 Node 启动器和 `crater` bin 映射。
+- `@raids-lab/crater-cli-<platform>-<arch>` 只包含一个原生二进制，并通过 package.json 的 `os` / `cpu` 限制安装平台。
+- 入口包把六个平台包固定为同版本 `optionalDependencies`。`npm/lib/platform.cjs` 将 Node 的 `win32` / `x64` 等命名映射到 Go 的 `windows` / `amd64` 构建产物，运行时只启动当前平台的二进制。
+- `npm/scripts/build-packages.mjs` 从 workflow 汇总的原生二进制生成七个可发布目录；`publish-packages.mjs` 先发布六个平台包，确认 registry 可见后再发布入口包，并在重跑时跳过已经存在的相同版本。
+
+`.github/workflows/cli-pr.yml` 先运行 `Check CLI`（`make test`：单元测试与快照），再运行 `Check npm packaging`（打包脚本测试、六目标交叉编译、`npm pack`，并在 Linux 上安装入口包）。`cli-release.yml` 只接受精确的 `vX.Y.Z` tag，在确认远端 tag 仍指向原始 commit 后发布 npm，不创建 GitHub Release。正式 tag 同时直接触发现有的前端、后端、Storage 与 Helm workflow；GitHub Release 若由维护者填写，只作为更新说明，不触发任何 workflow。
 
 ## AI Agent Skills
 

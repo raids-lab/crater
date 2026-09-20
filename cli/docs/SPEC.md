@@ -68,6 +68,15 @@
 - 新领域应同时补齐 `SKILL.md` 中的适用场景、安全边界、工作流参考和常用范例；涉及复杂流程时再拆出一个或多个 reference。
 - 若新增命令改变了用户可见行为，仍须先更新 [COMMANDS.md](./COMMANDS.md)；Skill 只能说明 Agent 如何调用既有契约，不能单独定义命令行为。
 
+### 构建元数据与二进制分发
+
+- CLI 构建统一注入 `ProductVersion`、`CommitSHA`、`BuildType` 与 `BuildTime`；发布 workflow 必须使用根目录 `hack/set-build-version.sh` 生成这些字段，避免与前后端产生不同的版本语义。
+- 根命令专用的 `crater -v` / `crater --version` 只输出产品版本和短 commit；`crater version` 是完整本地构建信息的权威用户入口，机器读取统一使用 `crater version --json`。字段与选项组合契约见 [COMMANDS.md](./COMMANDS.md)。构建元数据只用于版本识别与诊断，不改变 CLI / 后端 API 兼容性判断。
+- 可发布目标固定为 Linux、macOS、Windows 上的 `amd64` 与 `arm64`。交叉构建使用 `CGO_ENABLED=0`。PR 与正式发布用这些产物生成 npm 包，并在 Linux 上安装入口包后执行 `crater -v`、`crater --version`、`crater version --json` 与 `crater --help`；这只能证明打包链路和 Linux 启动器可用，不等于所有平台功能都已完整验证。
+- 正式 `vX.Y.Z` tag 发布 npm 稳定版本。`main` 上的 CLI 改动不发布二进制或 npm 包。npm 入口包为 `@raids-lab/crater-cli`，通过带 `os` / `cpu` 约束的可选平台包选择当前机器的原生二进制，对外命令保持为 `crater`。
+- GitHub Release 若存在，只用于人工撰写更新说明，不得作为 workflow 触发条件，也不再挂 CLI 二进制。
+- Windows 当前属于实验性发布目标，用户文档与可选的 GitHub Release 说明必须明确其验证程度，并指向 GitHub Issues；不得把“可交叉编译、可启动”表述为完整平台支持。
+
 ---
 
 ## API
@@ -210,6 +219,7 @@
 
 - 若引入了关键的**与进程无关的纯逻辑**（例如解析、映射、筛选、补全引擎等），应视需要补充对应的**代码单元测试**（包内 `_test.go`）。
 - 若引入了新的用户可见输出/错误分支或重要组合路径，应补充对应的**快照测试**（golden），以锁定 CLI 合约并避免回归。
+- `crater version` 的 commit、时间、Go 版本与目标平台由构建决定，不写入跨机器 golden；其完整渲染由确定性单元测试覆盖，发布二进制字段与可执行性由 Linux 上的 npm 入口包安装检查覆盖。
 
 ## 命令结果：错误与成功
 

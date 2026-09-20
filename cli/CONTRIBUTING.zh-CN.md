@@ -69,13 +69,60 @@ make snapshot-update
 make test
 ```
 
-为与其他子项目保持一致，`make pre-commit-check` 也可用，目前等价于 `make test`：
+npm 发布辅助脚本有独立的单元测试：
+
+```bash
+make npm-test
+```
+
+`make pre-commit-check` 是本地聚合检查，会同时运行 `make test` 和 `make npm-test`；CI 则将两类职责拆分到不同 job：
 
 ```bash
 make pre-commit-check
 ```
 
-## 4. 提交前检查
+## 4. 发布维护
+
+全仓库发布触发见根文档 [发布 Workflow](../docs/zh-CN/CONTRIBUTING.md#发布-workflow)。CLI 遵守同一划分：`main` 更新不发布 CLI 产物；只有精确 `vX.Y.Z` tag 才发布 npm 包。不要用 GitHub Release 挂 CLI 资产，也不要用它启动其它 workflow。
+
+CLI 发布自动化包含两个入口：
+
+- `cli-pr.yml` 先运行 `Check CLI`（`make test`），再运行 `Check npm packaging`（npm 打包脚本测试、六目标交叉编译、`npm pack`，以及在 Linux 上安装入口包）。
+- `cli-release.yml` 只接受精确的 `vX.Y.Z` tag，并按“平台包优先、入口包最后”的顺序发布 npm。它不会创建或更新 GitHub Release。
+
+精确的正式发布 tag 是唯一发布入口，同时还会启动现有的前端、后端、Storage 和 Helm workflow。只推送一次 tag，等待该次正式发布结束后再推送下一个；不要移动已经用于正式发布的 tag。若需要 GitHub Release，只用于人工撰写更新说明，不会触发任何 workflow，也不再挂 CLI 二进制。
+
+npm 分发包含入口包 `@raids-lab/crater-cli` 和以下可选原生平台包：
+
+- `@raids-lab/crater-cli-darwin-arm64`
+- `@raids-lab/crater-cli-darwin-x64`
+- `@raids-lab/crater-cli-linux-arm64`
+- `@raids-lab/crater-cli-linux-x64`
+- `@raids-lab/crater-cli-win32-arm64`
+- `@raids-lab/crater-cli-win32-x64`
+
+### npm 首次发布
+
+只有包已经存在时，才能配置 npm Trusted Publishing 或 staged publishing。因此，`cli-release.yml` 的首次发布版本采用直接发布，不会暂停等待批准。创建第一个正式 tag 前：
+
+1. 为发布所用 npm 账号启用 2FA，并确认它可以在 `@raids-lab` 下发布公开包。
+2. 创建一个短期有效、仅限 `@raids-lab` scope 和上述包发布权限的 granular npm access token。CI 直接发布所用 token 必须能够在无人交互输入 OTP 的情况下完成发布。
+3. 将它保存为仓库 Actions secret `NPM_TOKEN`。不得把 token 写入文件、命令输出、Issue、PR 或 workflow input。
+4. 人工确认目标 tag 和已经通过的 CLI PR 检查。推送匹配 tag 后会立即启动前端、后端、Storage、Helm、CLI 以及不可逆的 npm 发布 workflow。
+
+若首次发布中途只完成部分包，发布器可以安全重跑：它会查询 registry，跳过已经公开的相同 package/version，继续发布剩余平台包，并最后发布入口包。npm 一旦接受某个 package/version，该组合永远不能再次使用。
+
+### 迁移到带暂存审批的 Trusted Publishing
+
+七个包都完成首次发布后，在下一个版本前通过单独的、经过审查的改动完成迁移：
+
+1. 使用 npm CLI 11.15 或更新版本以及受 2FA 保护的 npm 登录会话，为每个包配置 GitHub Trusted Publisher。仓库填写 `raids-lab/crater`，workflow 文件填写 `cli-release.yml`，只授予 `npm stage publish`，不要授予直接 `npm publish`。
+2. 将发布器从直接 `npm publish` 调整为 `npm stage publish`，移除首发 token 检查，并把“等待 live registry 可见”的逻辑改成适用于 staged submission 的检查。使用 2FA 审批时先处理六个平台包，最后处理入口包。
+3. 完整验证一次暂存发布后，删除 GitHub secret `NPM_TOKEN`、吊销临时 npm token，并把每个包设为要求 2FA 且禁止传统 token 发布。
+
+不要只修改 npm 侧权限而继续保留 workflow 的直接发布逻辑；否则下一次发布会在构建完成后失败。
+
+## 5. 提交前检查
 
 确认以下事项：
 

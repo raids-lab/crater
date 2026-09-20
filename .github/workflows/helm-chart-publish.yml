@@ -17,10 +17,11 @@ name: Publish Helm Chart
 on:
   push:
     branches: [main]
+    # GitHub does not evaluate path filters for tag pushes.
+    tags:
+      - "v*.*.*"
     paths:
       - "charts/**"
-  release:
-    types: [published]
   workflow_dispatch: # Allow manual trigger
 
 env:
@@ -39,6 +40,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate release tag
+        id: release-version
+        if: github.ref_type == 'tag'
+        run: bash hack/set-build-version.sh
+
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
@@ -52,6 +58,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Package and Push Helm Chart
+        env:
+          RELEASE_VERSION: ${{ steps.release-version.outputs.app_version }}
         run: |
           # Navigate to charts directory
           cd charts
@@ -59,9 +67,21 @@ jobs:
           # Package the chart
           helm package crater/
 
-          # Get the chart version from Chart.yaml
-          CHART_VERSION=$(helm show chart crater/ | grep '^version:' | awk '{print $2}')
+          # Get the chart and application versions from Chart.yaml
+          CHART_METADATA=$(helm show chart crater/)
+          CHART_VERSION=$(awk '$1 == "version:" { print $2 }' <<<"$CHART_METADATA")
+          CHART_APP_VERSION=$(awk '$1 == "appVersion:" { print $2 }' <<<"$CHART_METADATA")
           echo "Chart version: $CHART_VERSION"
+          echo "Chart appVersion: $CHART_APP_VERSION"
+
+          if [[ -n "$RELEASE_VERSION" && "$CHART_VERSION" != "$RELEASE_VERSION" ]]; then
+            echo "Release tag version $RELEASE_VERSION does not match Chart version $CHART_VERSION" >&2
+            exit 1
+          fi
+          if [[ -n "$RELEASE_VERSION" && "$CHART_APP_VERSION" != "$RELEASE_VERSION" ]]; then
+            echo "Release tag version $RELEASE_VERSION does not match Chart appVersion $CHART_APP_VERSION" >&2
+            exit 1
+          fi
 
           # Push to GHCR OCI registry
           helm push crater-${CHART_VERSION}.tgz oci://${{ env.REGISTRY }}/${{ env.REPOSITORY }}
