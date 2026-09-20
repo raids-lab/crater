@@ -175,6 +175,27 @@ func (mgr *VolcanojobMgr) listWorkloads(c *gin.Context, defaultDays int, scope j
 		resputil.HandleError(c, err)
 		return
 	}
+	if !mgr.isKthenaInferenceEnabled(c.Request.Context()) ||
+		!includesWorkloadKind(request.WorkloadKinds, workloadKindKthenaInference) ||
+		!includesKthenaJobType(request.JobTypes) {
+		workloads := make([]WorkloadResp, 0)
+		var total int64
+		if includesWorkloadKind(request.WorkloadKinds, workloadKindVolcanoJob) && includesVolcanoJobType(request.JobTypes) {
+			jobRequest := request
+			jobRequest.JobTypes = regularJobTypes(request.JobTypes)
+			jobs, count, findErr := findJobs(c.Request.Context(), scope, &jobRequest, defaultDays)
+			if findErr != nil {
+				resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(findErr, "list workloads failed"))
+				return
+			}
+			total = count
+			for _, job := range jobs {
+				workloads = append(workloads, workloadFromJob(job))
+			}
+		}
+		resputil.Success(c, resputil.NewPage(workloads, total, request.Page, request.PageSize))
+		return
+	}
 	workloads, err := mgr.findWorkloads(c.Request.Context(), scope, &request, defaultDays)
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(err, "list workloads failed"))

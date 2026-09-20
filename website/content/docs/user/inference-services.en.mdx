@@ -1,0 +1,20 @@
+---
+title: Model Deployments
+description: Create, inspect, and use Kthena online inference services.
+---
+
+After installing the Kthena controllers and CRDs, an administrator can enable model deployments in the AI tab of platform settings. The feature is disabled by default. Disabling it hides the entry points and rejects inference API access; it does not delete existing deployments. Contact your administrator if the entry point is unavailable.
+
+## Create and inspect a deployment
+
+Open Model Deployments, create a deployment, and enter its name, model source, runtime image, and resource requirements. The current backend supports vLLM. A platform model must be available before deployment; an external model must be accessible from the runtime environment.
+
+Use the detail page to inspect status, Pods, resource usage, and diagnostics. Check scheduling, image-pull, and model-loading errors when a deployment is not ready. Before deleting a deployment, verify its name and the impact of stopping the service on callers.
+
+## Call the service
+
+Use the access information shown on the detail page. Through the Crater proxy, `model` is the deployment route name; omitting it selects that route automatically. It may differ from the model's own name. The proxy supports streaming responses; clients should process the returned content type.
+
+Persisted conversations use non-streaming inference. Reuse the same `clientTurnId` when retrying a turn after losing its response to retrieve the saved result. Concurrent requests to one conversation are processed in order.
+
+Ordinary users can access only deployments and conversations they are authorized to use. Do not include tokens, private model credentials, or sensitive conversation content in issue reports or screenshots.

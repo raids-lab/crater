@@ -65,6 +65,7 @@ import ListedNewJobButton from '../new-job-button'
 type JobTableRow = IWorkloadInfo
 
 function WorkloadNameCell({ workload }: { workload: IWorkloadInfo }) {
+  const { t } = useTranslation()
   if (workload.workloadKind !== WorkloadKind.KthenaInference) {
     return <JobNameCell jobInfo={workload} />
   }
@@ -75,7 +76,7 @@ function WorkloadNameCell({ workload }: { workload: IWorkloadInfo }) {
       params={{ name: workload.jobName }}
       preload="intent"
       className="text-primary hover:underline"
-      title={`查看模型部署 ${workload.name}`}
+      title={t('kthena.workloads.viewNamed', { name: workload.name })}
     >
       <span className="max-w-44 truncate">{workload.name}</span>
     </Link>
@@ -89,12 +90,13 @@ function WorkloadActions({
   workload: IWorkloadInfo
   onDelete: (name: string) => void
 }) {
+  const { t } = useTranslation()
   if (workload.workloadKind !== WorkloadKind.KthenaInference) {
     return <JobActionsMenu jobInfo={workload} onDelete={onDelete} />
   }
 
   return (
-    <Button variant="ghost" size="icon" title="查看模型部署" asChild>
+    <Button variant="ghost" size="icon" title={t('kthena.workloads.view')} asChild>
       <Link to="/portal/inference-services/$name" params={{ name: workload.jobName }}>
         <RocketIcon className="text-primary size-4" />
       </Link>
@@ -272,8 +274,8 @@ const VolcanoOverview = () => {
   return (
     <RemoteDataTable
       info={{
-        title: '作业与模型部署',
-        description: '统一查看 Volcano 作业和 Kthena 在线模型部署。',
+        title: t('kthena.workloads.title'),
+        description: t('kthena.workloads.description'),
       }}
       query={batchQuery}
       state={tableState}

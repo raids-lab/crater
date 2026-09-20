@@ -409,8 +409,6 @@ func (mgr *KthenaMgr) DeleteKthenaConversation(c *gin.Context) {
 //	@Failure		500		{object}	resputil.Response[any]
 //	@Failure		502		{object}	any
 //	@Router			/v1/kthena/inference-services/{name}/conversations/{sessionId}/turns [post]
-//
-//nolint:gocyclo // The handler keeps request validation, proxy failure passthrough, and atomic persistence visible at the API boundary.
 func (mgr *KthenaMgr) CreateKthenaConversationTurn(c *gin.Context) {
 	scope, ok := mgr.loadKthenaConversationScope(c)
 	if !ok {
@@ -448,60 +446,23 @@ func (mgr *KthenaMgr) CreateKthenaConversationTurn(c *gin.Context) {
 		return
 	}
 
-	if req.ClientTurnID != "" {
-		userMessage, assistantMessage, found, findErr := store.findTurn(
-			c.Request.Context(), conversation.ID, req.ClientTurnID,
-		)
-		if findErr != nil {
-			kthenaConversationDatabaseError(c, findErr, "find prior conversation turn failed")
+	var assistantMessage model.KthenaChatMessage
+	conversation, assistantMessage, err = store.completeTurn(c.Request.Context(), &scope, conversation.ClientSessionID, req,
+		func(body []byte) ([]byte, error) {
+			return mgr.proxyKthenaRouter(c.Request.Context(), http.MethodPost, "v1/chat/completions", body, c.Request.Header)
+		})
+	if err != nil {
+		var completionErr *kthenaCompletionError
+		if errors.As(err, &completionErr) {
+			if len(completionErr.body) > 0 {
+				c.Data(kthenaProxyHTTPStatus(completionErr.cause), "application/json", completionErr.body)
+			} else {
+				resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "proxy inference request failed"))
+			}
 			return
 		}
-		if found {
-			_ = userMessage
-			mgr.respondKthenaConversationTurn(c, store, &conversation, &assistantMessage)
-			return
-		}
-	}
-
-	history, err := store.messages(c.Request.Context(), conversation.ID, maxKthenaConversationTurnHistory)
-	if err != nil {
-		kthenaConversationDatabaseError(c, err, "load conversation context failed")
+		kthenaConversationFindOrDatabaseError(c, err, "complete conversation turn failed")
 		return
-	}
-	body, err := buildKthenaConversationTurnBody(scope.RouteModelName, history, req)
-	if err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, err.Error()))
-		return
-	}
-	rawCompletion, err := mgr.proxyKthenaRouter(
-		c.Request.Context(), http.MethodPost, "v1/chat/completions", body, c.Request.Header,
-	)
-	if err != nil {
-		klog.Errorf("proxy persisted inference conversation turn failed: %v", err)
-		if len(rawCompletion) > 0 {
-			c.Data(kthenaProxyHTTPStatus(err), "application/json", rawCompletion)
-			return
-		}
-		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "proxy inference request failed"))
-		return
-	}
-	assistant, err := kthenaAssistantMessageFromCompletion(rawCompletion)
-	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(err, "invalid inference completion response"))
-		return
-	}
-
-	conversation, assistantMessage, alreadySaved, err := store.appendTurn(
-		c.Request.Context(), &scope, conversation.ClientSessionID, req, assistant, rawCompletion,
-	)
-	if err != nil {
-		kthenaConversationFindOrDatabaseError(c, err, "persist conversation turn failed")
-		return
-	}
-	if alreadySaved {
-		klog.V(kthenaConversationLogVerbosity).Infof(
-			"Kthena conversation turn %q was concurrently persisted", req.ClientTurnID,
-		)
 	}
 	mgr.respondKthenaConversationTurn(c, store, &conversation, &assistantMessage)
 }

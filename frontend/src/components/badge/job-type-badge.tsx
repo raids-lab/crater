@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import i18n from '@/i18n'
+import { useTranslation } from 'react-i18next'
+
 import { JobType } from '@/services/api/vcjob'
 
 import { PhaseBadge } from './phase-badge'
@@ -52,7 +55,9 @@ export const jobTypes = [
   },
   {
     value: 'model-deployment',
-    label: '模型部署',
+    get label() {
+      return i18n.t('navigation.modelDeployments')
+    },
   },
 ]
 
@@ -114,9 +119,13 @@ const getJobTypeLabel = (
       }
     case JobType.ModelDeployment:
       return {
-        label: '模型部署',
+        get label() {
+          return i18n.t('navigation.modelDeployments')
+        },
         color: 'text-highlight-blue bg-highlight-blue/10',
-        description: 'Kthena 在线模型部署',
+        get description() {
+          return i18n.t('kthena.list.description')
+        },
       }
     default:
       return {
@@ -128,6 +137,7 @@ const getJobTypeLabel = (
 }
 
 const JobTypeLabel = ({ jobType }: { jobType: JobType }) => {
+  useTranslation()
   return <PhaseBadge phase={jobType} getPhaseLabel={getJobTypeLabel} />
 }
 

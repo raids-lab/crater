@@ -31,6 +31,28 @@ crater auth login --help
 
 不要把 `--help` 当成唯一信息来源；常见工作流仍应优先使用当前任务相关说明中的范例和判断规则。
 
+## 本地版本
+
+根命令提供仅限根级的短版本输出，不会被子命令继承：
+
+```bash
+crater --version
+crater -v
+```
+
+单行输出产品版本和 7 位短 commit。不能与 `--json` 同时使用，也不能带位置参数。
+
+完整本地构建信息用 `crater version`。脚本和 Agent 应读取 `crater version --json` 的 `data.version`：
+
+```bash
+crater version
+crater version --json
+```
+
+`data.version` 含产品版本、完整 commit、构建类型/时间、Go 运行时、`os` / `arch`，以及 CLI `api_version` 与 `min_supported_backend_api_version`。未注入且无法确定的值是 `unknown`；本地开发构建默认产品版本 `dev`、构建类型 `development`。
+
+这两条都不要求登录、不使用 token，也不访问 Crater 平台。它们只标识当前二进制；判断 CLI 与后端 API 是否兼容仍用 `crater compatibility`。
+
 ## `--json`
 
 `--json` 用于脚本化调用和 AI 解析输出：

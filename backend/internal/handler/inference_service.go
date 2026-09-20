@@ -594,26 +594,19 @@ func (mgr *KthenaMgr) ProxyKthenaService(c *gin.Context) {
 		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "failed to read request body"))
 		return
 	}
-	body, err = withDefaultModel(body, servedModelFromModelBooster(obj))
+	body, err = withDefaultModel(body, obj.GetName())
 	if err != nil {
 		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, err.Error()))
 		return
 	}
 
-	rawResp, err := mgr.proxyKthenaRouter(c.Request.Context(), c.Request.Method, targetPath, body, c.Request.Header)
+	response, err := mgr.openKthenaRouterResponse(c.Request.Context(), c.Request.Method, targetPath, body, c.Request.Header)
 	if err != nil {
-		klog.Errorf("proxy inference request failed: %v", err)
-		// DoRaw preserves the router response body even for non-2xx responses.
-		// Return that status and body to the caller so errors such as missing
-		// runtime pods remain actionable instead of becoming a generic 500.
-		if len(rawResp) > 0 {
-			c.Data(kthenaProxyHTTPStatus(err), "application/json", rawResp)
-			return
-		}
 		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "proxy inference request failed"))
 		return
 	}
-	c.Data(http.StatusOK, "application/json", rawResp)
+	defer func() { _ = response.Body.Close() }()
+	forwardKthenaResponse(c.Writer, response)
 }
 
 func (mgr *KthenaMgr) proxyKthenaRouter(
@@ -1166,12 +1159,18 @@ func (mgr *KthenaMgr) diagnosticsFromPod(ctx context.Context, pod *corev1.Pod) [
 	}
 	for i := range pod.Status.InitContainerStatuses {
 		status := &pod.Status.InitContainerStatuses[i]
-		logTail := mgr.containerLogTail(ctx, pod, status.Name, status.RestartCount)
+		logTail := ""
+		if status.State.Waiting != nil || (status.State.Terminated != nil && status.State.Terminated.ExitCode != 0) {
+			logTail = mgr.containerLogTail(ctx, pod, status.Name, status.RestartCount)
+		}
 		diagnostics = append(diagnostics, diagnosticsFromContainerStatus(pod, status, true, logTail)...)
 	}
 	for i := range pod.Status.ContainerStatuses {
 		status := &pod.Status.ContainerStatuses[i]
-		logTail := mgr.containerLogTail(ctx, pod, status.Name, status.RestartCount)
+		logTail := ""
+		if status.State.Waiting != nil || (status.State.Terminated != nil && status.State.Terminated.ExitCode != 0) {
+			logTail = mgr.containerLogTail(ctx, pod, status.Name, status.RestartCount)
+		}
 		diagnostics = append(diagnostics, diagnosticsFromContainerStatus(pod, status, false, logTail)...)
 	}
 	return diagnostics
@@ -1325,30 +1324,17 @@ func (mgr *KthenaMgr) diagnosticsFromPodEvents(ctx context.Context, pod *corev1.
 	return diagnostics
 }
 
-func isRelatedKthenaObject(obj, booster *unstructured.Unstructured, servedModel string) bool {
-	name := obj.GetName()
-	boosterName := booster.GetName()
-	if name == boosterName || strings.HasPrefix(name, boosterName+"-") {
-		return true
-	}
-	labels := obj.GetLabels()
-	if labels["workload.serving.volcano.sh/model-name"] == boosterName {
-		return true
+func isRelatedKthenaObject(obj, booster *unstructured.Unstructured, _ string) bool {
+	if obj == nil || booster == nil || obj.GetNamespace() != booster.GetNamespace() {
+		return false
 	}
 	for _, owner := range obj.GetOwnerReferences() {
-		if owner.Kind == kthenaKindModelBooster && owner.Name == boosterName {
+		if owner.Kind == kthenaKindModelBooster && owner.Name == booster.GetName() &&
+			owner.UID != "" && owner.UID == booster.GetUID() {
 			return true
 		}
 	}
-	if labels[inferenceServiceLabelManagedBy] == inferenceServiceManagedByValue &&
-		labels[inferenceServiceLabelUserID] == booster.GetLabels()[inferenceServiceLabelUserID] &&
-		labels[inferenceServiceLabelAccountID] == booster.GetLabels()[inferenceServiceLabelAccountID] {
-		return true
-	}
-	if servedModel != "" && (name == servedModel || strings.Contains(name, sanitizeKubeName(servedModel))) {
-		return true
-	}
-	return false
+	return booster.GetName() != "" && obj.GetLabels()["workload.serving.volcano.sh/model-name"] == booster.GetName()
 }
 
 func kthenaResourceFromObject(kind string, obj *unstructured.Unstructured) KthenaResource {
@@ -1664,29 +1650,15 @@ func withDefaultModel(body []byte, modelName string) ([]byte, error) {
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return nil, bizerr.BadRequest.InvalidRequest.New("request body must be valid JSON")
 	}
-	if strings.TrimSpace(stringValue(payload["model"])) == "" {
-		payload["model"] = modelName
+	if payload == nil {
+		return nil, bizerr.BadRequest.InvalidRequest.New("request body must be a JSON object")
 	}
+	requested := strings.TrimSpace(stringValue(payload["model"]))
+	if requested != "" && requested != modelName {
+		return nil, bizerr.BadRequest.ParameterError.New("model must match the authorized deployment route")
+	}
+	payload["model"] = modelName
 	return json.Marshal(payload)
-}
-
-func sanitizeKubeName(value string) string {
-	value = strings.ToLower(value)
-	var b strings.Builder
-	lastHyphen := false
-	for _, r := range value {
-		valid := (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
-		if valid {
-			b.WriteRune(r)
-			lastHyphen = false
-			continue
-		}
-		if !lastHyphen {
-			b.WriteByte('-')
-			lastHyphen = true
-		}
-	}
-	return strings.Trim(b.String(), "-")
 }
 
 func nodePortURL(svc *corev1.Service) string {
