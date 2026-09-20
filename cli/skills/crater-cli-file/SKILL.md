@@ -1,7 +1,7 @@
 ---
 name: crater-cli-file
-version: 0.2.0
-description: "Use Crater CLI to list files and upload one regular file in user, public, and account storage spaces."
+version: 0.3.0
+description: "Use Crater CLI to list, download, and upload files in user, public, and account storage spaces."
 metadata:
   requires:
     bins: ["crater"]
@@ -12,7 +12,7 @@ metadata:
 
 **CRITICAL — Before doing anything else, MUST read `crater-cli-shared` (possible path: [`../crater-cli-shared/SKILL.md`](../crater-cli-shared/SKILL.md)) for global options, non-interactive use, errors, and sensitive information handling.**
 
-Use `crater file` when a user needs to inspect or upload files visible through their ordinary Crater identity.
+Use `crater file` when a user needs to inspect, download, or upload files visible through their ordinary Crater identity.
 
 ## Supported workflow
 
@@ -92,3 +92,35 @@ Use `crater file upload` when a user wants to copy one local regular file into C
 3. If the target exists, choose a new path or obtain explicit permission to add `--overwrite`.
 4. A `404` from `/api/ss/upload` can indicate an older storage service or incorrect routing. Check the deployed service and route; this command requires API contract 2 and never falls back to WebDAV PUT.
 5. For API errors, inspect `category`, `code`, and `context.http_status` from JSON stderr without exposing credentials.
+
+## Download a single file
+
+- Download to the current directory using the remote basename:
+
+  ```bash
+  crater file download user/results/model.bin
+  ```
+
+- Choose an exact local file path:
+
+  ```bash
+  crater file download "account/共享数据/result.bin" ./downloads/result.bin
+  ```
+
+- Replace an existing local file only after the user explicitly asks for it:
+
+  ```bash
+  crater file download user/results/model.bin ./model.bin --overwrite
+  ```
+
+- Return structured metadata:
+
+  ```bash
+  crater file download user/results/model.bin ./model.bin --json --no-interactive
+  ```
+
+### Download safety
+
+- The optional local path names a file, not a directory.
+- Never add `--overwrite` unless replacing that exact local target is part of the user's request.
+- Binary content goes only to the local target; JSON stdout contains metadata.
