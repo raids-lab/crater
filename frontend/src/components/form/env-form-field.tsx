@@ -78,6 +78,7 @@ export function EnvFormCard<
                 render={({ field }) => (
                   <FormItem className="relative">
                     <button
+                      type="button"
                       onClick={() => envRemove(index)}
                       className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                     >

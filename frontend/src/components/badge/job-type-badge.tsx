@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import i18n from '@/i18n'
+import { useTranslation } from 'react-i18next'
+
 import { JobType } from '@/services/api/vcjob'
 
 import { PhaseBadge } from './phase-badge'
@@ -49,6 +52,12 @@ export const jobTypes = [
   {
     value: 'openmpi',
     label: 'OpenMPI',
+  },
+  {
+    value: 'model-deployment',
+    get label() {
+      return i18n.t('navigation.modelDeployments')
+    },
   },
 ]
 
@@ -108,6 +117,16 @@ const getJobTypeLabel = (
         color: 'text-highlight-green bg-highlight-green/10',
         description: 'OpenMPI 作业',
       }
+    case JobType.ModelDeployment:
+      return {
+        get label() {
+          return i18n.t('navigation.modelDeployments')
+        },
+        color: 'text-highlight-blue bg-highlight-blue/10',
+        get description() {
+          return i18n.t('kthena.list.description')
+        },
+      }
     default:
       return {
         label: 'Custom',
@@ -118,6 +137,7 @@ const getJobTypeLabel = (
 }
 
 const JobTypeLabel = ({ jobType }: { jobType: JobType }) => {
+  useTranslation()
   return <PhaseBadge phase={jobType} getPhaseLabel={getJobTypeLabel} />
 }
 

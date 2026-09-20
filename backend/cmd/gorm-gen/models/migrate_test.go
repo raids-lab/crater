@@ -126,3 +126,59 @@ func TestModelDownloadSubmissionMigrationAndRollback(t *testing.T) {
 		t.Fatal("model download submission table remains after rollback")
 	}
 }
+
+func TestKthenaChatMigrationAndRollback(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:kthena_chat_migration?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	migration := kthenaChatMigration()
+	if err := migration.Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := migration.Migrate(db); err != nil {
+		t.Fatalf("idempotent migrate: %v", err)
+	}
+	for _, table := range []any{&model.KthenaChatSession{}, &model.KthenaChatMessage{}} {
+		if !db.Migrator().HasTable(table) {
+			t.Fatalf("missing migrated table %T", table)
+		}
+	}
+	if err := migration.Rollback(db); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if err := migration.Rollback(db); err != nil {
+		t.Fatalf("idempotent rollback: %v", err)
+	}
+	for _, table := range []any{&model.KthenaChatSession{}, &model.KthenaChatMessage{}} {
+		if db.Migrator().HasTable(table) {
+			t.Fatalf("table remains after rollback: %T", table)
+		}
+	}
+}
+
+func TestKthenaInferenceTemplateMigrationAndRollback(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:kthena_inference_template_migration?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	migration := kthenaInferenceTemplateMigration()
+	if err := migration.Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := migration.Migrate(db); err != nil {
+		t.Fatalf("idempotent migrate: %v", err)
+	}
+	if !db.Migrator().HasTable(&model.KthenaInferenceTemplate{}) {
+		t.Fatal("Kthena inference template table is missing")
+	}
+	if err := migration.Rollback(db); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if err := migration.Rollback(db); err != nil {
+		t.Fatalf("idempotent rollback: %v", err)
+	}
+	if db.Migrator().HasTable(&model.KthenaInferenceTemplate{}) {
+		t.Fatal("Kthena inference template table remains after rollback")
+	}
+}

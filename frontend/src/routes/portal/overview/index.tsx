@@ -54,12 +54,13 @@ import { UserBanAlert } from '@/components/user/user-ban-alert'
 import { apiContextBillingSummary } from '@/services/api/context'
 import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
-  IJobInfo,
+  IWorkloadInfo,
   JobPhase,
   JobType,
   ScheduleType,
-  apiJobAllFacets,
-  apiJobAllList,
+  WorkloadKind,
+  apiWorkloadAllFacets,
+  apiWorkloadAllList,
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
@@ -77,7 +78,7 @@ export const Route = createFileRoute('/portal/overview/')({
   component: Overview,
 })
 
-type JobTableRow = IJobInfo
+type JobTableRow = IWorkloadInfo
 
 const overviewSummaryParams: RemoteTableParams = {
   page: 1,
@@ -193,7 +194,12 @@ function Overview() {
             {
               accessorKey: 'billedPointsTotal',
               header: ({ column }) => <DataTableColumnHeader column={column} title="累计点数" />,
-              cell: ({ row }) => <BillingPointsBadge value={row.original.billedPointsTotal ?? 0} />,
+              cell: ({ row }) =>
+                row.original.workloadKind === WorkloadKind.KthenaInference ? (
+                  <span className="text-muted-foreground">-</span>
+                ) : (
+                  <BillingPointsBadge value={row.original.billedPointsTotal ?? 0} />
+                ),
             } as ColumnDef<JobTableRow>,
           ]
         : []),
@@ -245,19 +251,19 @@ function Overview() {
   )
 
   const jobQuery = useQuery({
-    queryKey: buildRemoteQueryKey('overview-jobs', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobAllList(tableState.params, signal)).data,
+    queryKey: buildRemoteQueryKey('overview-workloads', tableState.params),
+    queryFn: async ({ signal }) => (await apiWorkloadAllList(tableState.params, signal)).data,
     placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
   const jobFacetsQuery = useQuery({
-    queryKey: buildFacetQueryKey('overview-jobs', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobAllFacets(tableState.params, signal)).data,
+    queryKey: buildFacetQueryKey('overview-workloads', tableState.params),
+    queryFn: async ({ signal }) => (await apiWorkloadAllFacets(tableState.params, signal)).data,
     refetchInterval: REFETCH_INTERVAL,
   })
   const jobSummaryFacetsQuery = useQuery({
-    queryKey: buildFacetQueryKey('overview-job-summary', overviewSummaryParams),
-    queryFn: async ({ signal }) => (await apiJobAllFacets(overviewSummaryParams, signal)).data,
+    queryKey: buildFacetQueryKey('overview-workload-summary', overviewSummaryParams),
+    queryFn: async ({ signal }) => (await apiWorkloadAllFacets(overviewSummaryParams, signal)).data,
     refetchInterval: REFETCH_INTERVAL,
   })
   const toolbarConfig = useMemo(() => {
@@ -416,12 +422,12 @@ function Overview() {
       <RemoteDataTable
         info={{
           title: '作业信息',
-          description: '查看近 7 天集群作业的运行情况',
+          description: '查看近 7 天集群作业和模型部署的运行情况',
         }}
         query={jobQuery}
         state={tableState}
         columns={jobColumns}
-        getRowId={(row) => row.jobName}
+        getRowId={(row) => row.workloadID}
         toolbarConfig={toolbarConfig}
       />
       <DataTable
