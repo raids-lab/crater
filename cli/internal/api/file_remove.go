@@ -53,26 +53,26 @@ func (c *Client) RemoveFile(
 		DisableAutoReadResponse().
 		Delete(requestPath)
 	if resp != nil && resp.Response != nil && resp.Body != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if err != nil {
 		return FileRemoveResult{}, fileRequestTransportError(resp, err)
 	}
 	if resp.GetStatusCode() != http.StatusOK {
-		return FileRemoveResult{}, rawFileRequestError(resp)
+		return FileRemoveResult{}, rawUploadRequestError(resp)
 	}
 	if resp.Body == nil {
 		return FileRemoveResult{}, fileRemoveProtocolError(resp, "remove response body is empty")
 	}
 
-	body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxFileErrorBody+1))
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxUploadErrorBody+1))
 	if readErr != nil {
 		return FileRemoveResult{}, fileRemoveProtocolError(
 			resp,
 			"failed to read remove response: "+readErr.Error(),
 		)
 	}
-	if len(body) > maxFileErrorBody {
+	if len(body) > maxUploadErrorBody {
 		return FileRemoveResult{}, fileRemoveProtocolError(resp, "remove response exceeds size limit")
 	}
 

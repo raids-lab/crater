@@ -12,21 +12,27 @@
 
 Crater 项目的 CI 流程基于 GitHub Actions 构建，主要服务于代码质量保障和构建产物发布。与传统的 CI/CD 流程不同，我们仅保留了持续集成（CI）部分，将持续部署（CD）交由用户根据自身环境自行处理。这样的设计既保证了代码质量和构建产物的标准化，又给予了用户部署的灵活性。
 
-CI 流程的输入主要包括仓库中的源代码、Dockerfile、文档文件和 Helm Chart 配置等文件；输出为构建产物，包括多平台 Docker 镜像、静态网站和 Helm Chart 包。所有 Docker 镜像和 Helm Chart 都保存在 GitHub Container Registry (GHCR) 中，文档网站部署在 GitHub Pages 上，用户可以通过相应的地址访问这些产物。
+CI 流程的输入主要包括仓库中的源代码、Dockerfile、文档文件、Helm Chart 配置和 CLI 打包脚本等文件；输出为构建产物，包括多平台 Docker 镜像、静态网站、Helm Chart 包以及 CLI 的 npm 包。所有 Docker 镜像和 Helm Chart 都保存在 GitHub Container Registry (GHCR) 中，文档网站部署在 GitHub Pages 上，CLI 发布到 npm registry。用户可以通过相应的地址访问这些产物。
 
 ### 目标
 
-Crater 的 CI 流程旨在通过自动化手段保障代码质量、标准化构建产物，并为用户提供可直接使用的镜像和 Chart。通过 PR 检查确保代码质量，通过自动化构建和发布减少人工干预，通过多平台支持满足不同环境需求，通过版本管理和清理策略保证产物的可追溯性和存储效率。
+Crater 的 CI 流程旨在通过自动化手段保障代码质量、标准化构建产物，并为用户提供可直接使用的镜像、Chart 和 CLI。通过 PR 检查确保代码质量，通过自动化构建和发布减少人工干预，通过多平台支持满足不同环境需求，通过版本管理和清理策略保证产物的可追溯性和存储效率。
 
 ### 技术栈
 
-Crater 的 CI 流程基于 GitHub Actions、Docker Buildx 和 GitHub Container Registry (GHCR) 构建。GitHub Actions 提供了与仓库深度集成的 CI 能力，无需额外配置第三方服务；Docker Buildx 通过 QEMU 模拟实现跨平台构建，能够同时构建 amd64 和 arm64 架构的镜像，满足不同硬件环境的需求；GHCR 作为容器镜像和 Helm Chart 的统一存储，与 GitHub 权限体系集成，支持 OCI 标准，并通过 `GITHUB_TOKEN` 实现自动化认证。
+Crater 的 CI 流程基于 GitHub Actions、Docker Buildx、GitHub Container Registry (GHCR) 和 npm registry 构建。GitHub Actions 提供了与仓库深度集成的 CI 能力，无需额外配置第三方服务；Docker Buildx 通过 QEMU 模拟实现跨平台构建，能够同时构建 amd64 和 arm64 架构的镜像，满足不同硬件环境的需求；GHCR 作为容器镜像和 Helm Chart 的统一存储，与 GitHub 权限体系集成，支持 OCI 标准，并通过 `GITHUB_TOKEN` 实现自动化认证。CLI 不进入 GHCR：它交叉编译原生二进制后，以 npm 入口包加平台包的形式发布到 npm registry。
+
+### 发布触发
+
+正式发布由 Git 标签启动，而不是由 GitHub Release 启动。`main` 上的推送按各 workflow 已有的 path 过滤发布开发产物；精确的 `vX.Y.Z` tag 再发布带该版本的产物。GitHub Release 若由维护者填写，只作为人工撰写的更新说明：它不触发任何 workflow，也不挂已发布的二进制、镜像或 Chart。不要把 `release.published` 一类事件加回触发条件，也不要让某一个组件的 Release 去启动其它组件。不要移动已经用于正式发布的 tag。仓库级约定见根文档 [发布 Workflow](CONTRIBUTING.md#发布-workflow)。
 
 ### CI 流程分类
 
-Crater 的 CI 流程根据构建目标的不同，划分为四个主要类别，每个类别都有独立的触发条件和构建流程：
+Crater 的 CI 流程根据构建目标的不同，划分为五个主要类别，每个类别都有独立的触发条件和构建流程：
 
 - **前端与后端** 是 CI 流程的核心，负责应用服务（Backend、Frontend、Storage）的代码质量检查和镜像构建发布。采用两阶段设计：PR 检查阶段进行代码风格检查（Lint）和构建验证，确保代码质量；构建发布阶段在代码合并后构建多平台镜像并推送到 GHCR，同时通过自动清理策略管理存储空间。
+
+- **CLI** 负责独立分发的命令行客户端检查和 npm 发布。PR 检查阶段运行 `make test`，再验证 npm 发布辅助脚本、六目标交叉编译与 npm 打包；正式发布只接受精确的 `vX.Y.Z` tag，把原生二进制打成 npm 包推送到 npm registry。`main` 更新不会发布 CLI 产物。
 
 - **依赖镜像** 负责构建和推送构建工具相关的 Docker 镜像（buildx-client、envd-client、nerdctl-client），为应用构建提供必要的运行时环境。这些镜像同样支持多平台构建，并通过 GHCR 统一管理。
 
@@ -510,7 +516,7 @@ Helm Chart 用于将 Crater 平台部署到 Kubernetes 集群，提供了一键�
 
 ### 概述
 
-Helm Chart 的 CI 流程采用两阶段设计：Chart 验证阶段在 PR 时执行，进行语法验证、模板验证和版本号检查；Chart 发布阶段在代码合并到 main 分支或创建 Release 时执行，打包 Chart 并推送到 GHCR OCI 仓库。输入为 Chart 源代码（位于 `charts/crater/` 目录），输出为打包后的 Helm Chart（`.tgz` 文件），产物保存在 GHCR 的 `ghcr.io/raids-lab/crater` OCI 仓库中。
+Helm Chart 的 CI 流程采用两阶段设计：Chart 验证阶段在 PR 时执行，进行语法验证、模板验证和版本号检查；Chart 发布阶段在 `charts/**` 合入 `main` 或推送精确的 `vX.Y.Z` tag 时执行，打包 Chart 并推送到 GHCR OCI 仓库。输入为 Chart 源代码（位于 `charts/crater/` 目录），输出为打包后的 Helm Chart（`.tgz` 文件），产物保存在 GHCR 的 `ghcr.io/raids-lab/crater` OCI 仓库中。
 
 Chart 验证确保 Chart 的正确性和完整性，包括语法检查、模板渲染验证和版本号更新检查。Chart 发布将验证通过的 Chart 打包并推送到 GHCR，用户可以通过 `helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>` 安装 Chart。
 
@@ -557,7 +563,7 @@ fi
 
 ### Chart 发布
 
-Chart 发布在代码推送到 main 分支、创建 Release 或手动触发时执行，监听 `charts/**` 目录的变更。发布流程包括打包和推送两个步骤。
+Chart 发布在代码推送到 main 分支、推送精确的 `vX.Y.Z` tag 或手动触发时执行。`main` 上的 path 过滤监听 `charts/**`；tag 推送不受 path 过滤限制，但发布 job 会要求 `Chart.yaml` 的 `version` 与 `appVersion` 都等于该 tag 版本。发布流程包括打包和推送两个步骤。
 
 打包阶段使用 `helm package` 将 Chart 打包成 `.tgz` 文件，并从 `Chart.yaml` 中读取版本号：
 
@@ -613,3 +619,50 @@ Helm Chart 使用语义化版本（Semantic Versioning）管理版本号，版�
 PR 检查阶段会强制要求更新版本号，确保每次 Chart 变更都有对应的版本号更新。这有助于用户追踪 Chart 的变更历史，并在升级时选择合适的版本。
 
 Chart 发布时，版本号会作为标签推送到 GHCR，用户可以通过版本号安装特定版本的 Chart。清理机制会保留最多 10 个版本的 Chart，确保用户可以访问历史版本，同时控制存储空间。
+
+---
+
+## CLI
+
+CLI 面向自行安装、独立升级的命令行客户端，不随平台一起部署。它的 CI 与前端、后端、Storage 的镜像发布不同：`main` 上的 CLI 改动只做检查，不发布产物；只有精确的 `vX.Y.Z` 正式发布 tag 才会把二进制发布到 npm。仓库级触发约定见根文档 [发布 Workflow](CONTRIBUTING.md#发布-workflow)。
+
+### 概述
+
+CLI 的 CI 采用两阶段设计：PR 检查由 `.github/workflows/cli-pr.yml` 执行，发布由 `.github/workflows/cli-release.yml` 执行。输入为 `cli/` 源码、`cli/npm/` 打包脚本和根目录 `hack/set-build-version.sh`；输出为 npm 上的 `@raids-lab/crater-cli` 入口包以及六个平台包：
+
+- `@raids-lab/crater-cli-darwin-arm64`
+- `@raids-lab/crater-cli-darwin-x64`
+- `@raids-lab/crater-cli-linux-arm64`
+- `@raids-lab/crater-cli-linux-x64`
+- `@raids-lab/crater-cli-win32-arm64`
+- `@raids-lab/crater-cli-win32-x64`
+
+入口包把六个平台包固定为同版本 `optionalDependencies`，安装时由 Node 启动器按当前 `os` / `cpu` 选择原生二进制。产物不进入 GHCR。
+
+版本字段与前后端共用 `hack/set-build-version.sh`。精确 tag `v1.2.3` 会得到 `AppVersion=1.2.3`、`BuildType=release`；不支持 `v1.2.3-rc.1` 这类预发布 tag。workflow 的 tag glob 是 `v*.*.*`，真正接受的版本由该脚本按 SemVer 校验，带前导零的数字段会被拒绝。
+
+### PR Check
+
+CLI PR Check 在面向 `main` 的 Pull Request 中触发，路径过滤包括 `cli/**`、`hack/set-build-version.sh` 以及两个 CLI workflow 文件本身。检查串行执行两个 job：
+
+1. **Check CLI**：在 `cli/` 下运行 `make test`（单元测试加快照校验）。
+2. **Check npm packaging**：先跑 `cli/npm` 的打包脚本测试，再以 `CGO_ENABLED=0` 交叉编译 Linux、macOS、Windows 的 `amd64` / `arm64` 六个目标，生成 npm 包并 `npm pack`。最后在 Linux runner 上离线安装入口包和 `linux-x64` 平台包，执行 `crater -v`、`crater --version`、`crater version --json` 与 `crater --help`。这只能证明打包链路和 Linux 启动器可用，不等于所有平台功能都已完整验证。
+
+PR 打包使用占位版本 `0.0.0`，不会向 npm 发布。与前端后端一样，未被路径触发的 CLI PR Check 会保持 Pending，因此不能把它配置成 GitHub 分支保护中的必过状态检查。
+
+### 正式发布
+
+CLI 发布 workflow 只监听 tag 推送：
+
+```yaml
+on:
+  push:
+    tags:
+      - "v*.*.*"
+```
+
+它不在 `main` 上运行。同一精确 tag 还会启动现有的前端、后端、Storage 和 Helm 发布 workflow。维护者应只推送一次 tag，等该次正式发布结束后再推下一个，也不要移动已经用于正式发布的 tag。
+
+发布流程先解析版本并再次运行 CLI 检查与 npm 脚本测试，再按矩阵交叉编译六个目标。发布前会确认远端 tag 仍指向构建时的 commit。随后按「平台包先于入口包」的顺序发布：先让六个平台包在 registry 上可见，再发布入口包。已经公开的相同 `name@version` 会跳过，以便从部分完成的首次发布中恢复；npm 一旦接受某个版本，该版本不可复用。
+
+首次发布时七个包尚未存在，无法配置 npm trusted publishing / staged publishing，因此 bootstrap 版本的 `cli-release.yml` 使用仓库 Actions secret `NPM_TOKEN` 直接发布。token 不得写入文件、日志、Issue、PR 或 workflow input。七个包完成首次发布后，应另开变更切到 staged trusted publishing，并删除临时 token。细节见 `cli/CONTRIBUTING.md`。

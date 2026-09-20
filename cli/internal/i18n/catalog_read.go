@@ -14,6 +14,7 @@ var catalogRead = map[Language]map[string]string{
 		"job_ls_short":     "List jobs",
 		"job_get_short":    "Get a job",
 		"job_pods_short":   "List pods for a job",
+		"job_logs_short":   "Show logs for a job",
 		"job_events_short": "List events for a job",
 		"job_yaml_short":   "Show job YAML",
 
@@ -211,6 +212,7 @@ var catalogRead = map[Language]map[string]string{
 		"job_ls_short":     "列出作业",
 		"job_get_short":    "查看作业",
 		"job_pods_short":   "列出作业 Pod",
+		"job_logs_short":   "查看作业日志",
 		"job_events_short": "列出作业事件",
 		"job_yaml_short":   "显示作业 YAML",
 

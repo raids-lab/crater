@@ -16,6 +16,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { HelpCircle } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import {
@@ -84,6 +85,8 @@ export const Route = createFileRoute('/auth/')({
 })
 
 function LoginPage() {
+  const { t } = useTranslation()
+  const currentYear = new Date().getFullYear()
   const searchParams = Route.useSearch()
   const { auth } = Route.useRouteContext()
   const [showSignup, setShowSignup] = useState(false)
@@ -164,7 +167,9 @@ function LoginPage() {
           {/* 底部版权信息 */}
           <div className="absolute bottom-10 left-10 z-20">
             <blockquote className="space-y-2">
-              <footer className="text-sm text-white/80">Copyright @ RAIDS Lab</footer>
+              <footer className="text-sm text-white/80">
+                {t('about.copyright', { year: currentYear })}
+              </footer>
             </blockquote>
           </div>
           {/* 中间文字内容 */}

@@ -149,7 +149,7 @@ func TestRemoveFileRejectsInvalidSuccessMetadata(t *testing.T) {
 			body:      `{"code":0,"data":{"remote_path":"user/file","recursive":false},"msg":""}`,
 			recursive: true,
 		},
-		{name: "oversized body", body: strings.Repeat("x", maxFileErrorBody+1)},
+		{name: "oversized body", body: strings.Repeat("x", maxUploadErrorBody+1)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(

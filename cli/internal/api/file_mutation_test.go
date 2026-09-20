@@ -164,7 +164,7 @@ func TestMoveFileRejectsInvalidSuccessResponseWithHTTPStatus(t *testing.T) {
 		"",
 		`{"code":`,
 		`{"code":40901,"data":null,"msg":"unexpected conflict"}`,
-		strings.Repeat("x", maxFileErrorBody+1),
+		strings.Repeat("x", maxUploadErrorBody+1),
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 			writer.Header().Set("Content-Type", "application/json")
@@ -208,5 +208,20 @@ func TestFileMutationNetworkErrorsHaveNoHTTPStatus(t *testing.T) {
 		if !errors.Is(networkErr, sentinel) {
 			t.Fatalf("error = %v, want sentinel", networkErr)
 		}
+	}
+}
+
+func TestMoveFileRejectsUncommittedSuccess(t *testing.T) {
+	for _, status := range []int{http.StatusAccepted, http.StatusPartialContent} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(status)
+				_, _ = io.WriteString(w, `{"code":0,"msg":""}`)
+			}))
+			defer server.Close()
+			if err := NewClient(server.URL).MoveFile(t.Context(), "user/a", "user/b"); err == nil {
+				t.Fatalf("accepted unexpected status %d", status)
+			}
+		})
 	}
 }

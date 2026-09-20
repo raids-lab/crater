@@ -1,6 +1,6 @@
 # Crater CLI Auth Login
 
-用户需要登录、重新登录，或处理 401、token 失效、Keyring 凭据不可用等问题时，按本流程操作。
+用户需要登录、重新登录，或处理 401、token 失效、本地凭据缺失等问题时，按本流程操作。
 
 **前置要求：先读取 `crater-cli-shared`（可能路径：[`../../crater-cli-shared/SKILL.md`](../../crater-cli-shared/SKILL.md)）。**
 
@@ -44,20 +44,21 @@ crater auth login --help
 ## 行为
 
 - 调用 `/api/auth/login`。
-- 登录成功后，token 存入系统 Keyring，不写入 `state.json`。
-- 本地 `state.json` 会保存 `auth_infos` 摘要，并把本次登录设为 `active_context`。
+- 登录成功后，token 明文写入 `state.json` 对应 `auth_infos` 条目。
+- 本地 `state.json` 会保存身份摘要，并把本次登录设为 `active_context`。
+- `auth login --json` 的 `user` **不含** `token`。
 - 同一 `(platform_url, username, method)` 重复登录会更新 token 和用户元数据，不会新增重复身份。
 
 ## 什么时候重新登录
 
+- `crater auth ls --json` 能看到目标身份，但后续访问平台的命令返回 `usage_error` / `ERR_NOT_FOUND`（无 `http_status`），`message` 为 `no token saved for these credentials; please log in again` 或 `当前账号未保存 token，请重新登录`。这表示身份还在、本地没有 token，不是 HTTP 404，也不是筛身份失败。`auth ls` 输出不含 `token` 字段是正常的，不能据此判断磁盘上有没有 token。
 - `crater auth ls --json` 能看到目标身份，但后续命令返回 401。
 - 用户确认密码或权限已更新，需要刷新本地 token。
-- Keyring 凭据不可用或疑似损坏。
 
-重新登录同一 `(platform_url, username, method)` 会覆盖旧 token 和用户元数据，这是刷新认证状态的推荐方式。
+重新登录同一 `(platform_url, username, method)` 会覆盖旧 token 和用户元数据，这是刷新认证状态的推荐方式。不要读取或粘贴 `state.json` 来确认 token。
 
 ## 注意
 
-- 不要让用户把密码或 token 发到聊天里，也不要展示 Keyring 内容。
+- 不要让用户把密码、token 或 `state.json` 发到聊天里。
 - `--json` 会强制非交互；如果使用 `login --json`，必须具备所有必需信息，包括安全的密码来源。
 - 403 通常不是登录损坏，而是当前账号权限不足。

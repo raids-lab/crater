@@ -34,13 +34,13 @@ func (c *Client) CreateDirectory(ctx context.Context, remotePath string) error {
 		DisableAutoReadResponse().
 		Send("MKCOL", requestPath)
 	if resp != nil && resp.Response != nil && resp.Body != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if err != nil {
 		return fileRequestTransportError(resp, err)
 	}
 	if resp.GetStatusCode() != http.StatusCreated {
-		return rawFileRequestError(resp)
+		return rawUploadRequestError(resp)
 	}
 	return nil
 }
@@ -56,22 +56,22 @@ func (c *Client) MoveFile(ctx context.Context, sourcePath, destinationPath strin
 		DisableAutoReadResponse().
 		Post(requestPath)
 	if resp != nil && resp.Response != nil && resp.Body != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 	if err != nil {
 		return fileRequestTransportError(resp, err)
 	}
-	if !resp.IsSuccessState() {
-		return rawFileRequestError(resp)
+	if resp.GetStatusCode() != http.StatusOK {
+		return rawUploadRequestError(resp)
 	}
 	if resp.Body == nil {
 		return fileProtocolError(resp, "move response body is empty")
 	}
-	body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxFileErrorBody+1))
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxUploadErrorBody+1))
 	if readErr != nil {
 		return fileProtocolError(resp, "failed to read move response: "+readErr.Error())
 	}
-	if len(body) > maxFileErrorBody {
+	if len(body) > maxUploadErrorBody {
 		return fileProtocolError(resp, "move response exceeds size limit")
 	}
 	var envelope Response[json.RawMessage]
@@ -83,7 +83,7 @@ func (c *Client) MoveFile(ctx context.Context, sourcePath, destinationPath strin
 
 func fileRequestTransportError(resp *req.Response, err error) error {
 	if resp != nil && resp.Response != nil {
-		return rawFileRequestError(resp)
+		return rawUploadRequestError(resp)
 	}
 	return &NetworkError{Cause: err}
 }

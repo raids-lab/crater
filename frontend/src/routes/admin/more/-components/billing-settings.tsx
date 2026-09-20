@@ -165,7 +165,7 @@ export function BillingSettings({
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm">
           <div className="space-y-0.5">
-            <Label className="text-base">
+            <Label htmlFor="billing-feature-enabled" className="text-base">
               {t('systemConfig.billing.featureSwitch', {
                 defaultValue: '开启计费功能',
               })}
@@ -179,6 +179,7 @@ export function BillingSettings({
           <div className="flex items-center gap-2">
             {isSaving && <Loader2Icon className="text-muted-foreground h-4 w-4 animate-spin" />}
             <Switch
+              id="billing-feature-enabled"
               checked={form.featureEnabled}
               disabled={isSaving}
               onCheckedChange={saveFeatureOnly}
@@ -193,7 +194,7 @@ export function BillingSettings({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <Label className="text-base">
+                  <Label htmlFor="billing-active" className="text-base">
                     {t('systemConfig.billing.active', {
                       defaultValue: '计费生效',
                     })}
@@ -205,6 +206,7 @@ export function BillingSettings({
                   </p>
                 </div>
                 <Switch
+                  id="billing-active"
                   checked={form.active}
                   disabled={isSaving}
                   onCheckedChange={(checked) =>
@@ -219,7 +221,7 @@ export function BillingSettings({
 
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <Label className="text-base">
+                  <Label htmlFor="billing-running-settlement-enabled" className="text-base">
                     {t('systemConfig.billing.runningSettlementEnabled', {
                       defaultValue: '开启运行中结算',
                     })}
@@ -231,6 +233,7 @@ export function BillingSettings({
                   </p>
                 </div>
                 <Switch
+                  id="billing-running-settlement-enabled"
                   checked={form.runningSettlementEnabled}
                   disabled={
                     isSaving ||
@@ -274,7 +277,7 @@ export function BillingSettings({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <Label className="text-base">
+                  <Label htmlFor="billing-account-issue-amount-override" className="text-base">
                     {t('systemConfig.billing.accountIssueAmountOverrideEnabled', {
                       defaultValue: '允许账户独立配置发放额度',
                     })}
@@ -286,6 +289,7 @@ export function BillingSettings({
                   </p>
                 </div>
                 <Switch
+                  id="billing-account-issue-amount-override"
                   checked={form.accountIssueAmountOverrideEnabled}
                   disabled={isSaving}
                   onCheckedChange={(checked) =>
@@ -295,7 +299,7 @@ export function BillingSettings({
               </div>
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <Label className="text-base">
+                  <Label htmlFor="billing-account-issue-period-override" className="text-base">
                     {t('systemConfig.billing.accountIssuePeriodOverrideEnabled', {
                       defaultValue: '允许账户独立配置发放周期',
                     })}
@@ -307,6 +311,7 @@ export function BillingSettings({
                   </p>
                 </div>
                 <Switch
+                  id="billing-account-issue-period-override"
                   checked={form.accountIssuePeriodOverrideEnabled}
                   disabled={isSaving}
                   onCheckedChange={(checked) =>

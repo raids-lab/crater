@@ -281,7 +281,7 @@ func TestFileMutationAPIFailureWritesNoSuccessOutput(t *testing.T) {
 
 func TestFileMutationRootCompletion(t *testing.T) {
 	i18n.SetLanguage("en")
-	candidates, err := fileRemoteRootCompleter(completion.Context{
+	candidates, err := fileRootCompleter(completion.Context{
 		Words:   []string{"crater", "file", "mv", "user/source", "p"},
 		Current: 5,
 	})

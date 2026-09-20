@@ -12,6 +12,7 @@ import (
 
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/clierror"
+	"github.com/raids-lab/crater/cli/internal/completion"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 )
@@ -152,4 +153,11 @@ func normalizeRemovePath(rawPath string) (string, *usageIssue) {
 		return invalid(i18n.T("err_file_remove_root", rawPath))
 	}
 	return strings.Join(segments, "/"), nil
+}
+
+func init() {
+	fileCmd.AddCommand(fileRemoveCmd)
+	fileRemoveCmd.Flags().Bool("recursive", false, "Remove a directory and all of its contents")
+	fileRemoveCmd.Flags().BoolP("yes", "y", false, "Remove without confirmation")
+	completion.RegisterPositional([]string{"file", "rm"}, 0, fileRootCompleter)
 }

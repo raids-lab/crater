@@ -100,6 +100,12 @@ func createDirectoryWithDeps(c *gin.Context, deps createDirectoryHandlerDeps) {
 }
 
 func createStorageDirectory(parent *os.Root, name string, mode os.FileMode) error {
+	return createStorageDirectoryWithChmod(parent, name, mode, chmodCreatedStorageDirectory)
+}
+
+func createStorageDirectoryWithChmod(parent *os.Root, name string, mode os.FileMode,
+	chmod func(*os.Root, string, os.FileMode) error,
+) error {
 	if parent == nil || name == "" || name == "." || name == parentPathSegment ||
 		mode.Perm() != mode {
 		return errUploadParentInvalid
@@ -107,5 +113,12 @@ func createStorageDirectory(parent *os.Root, name string, mode os.FileMode) erro
 	if err := parent.Mkdir(name, mode); err != nil {
 		return err
 	}
-	return chmodCreatedStorageDirectory(parent, name, mode)
+	if err := chmod(parent, name, mode); err != nil {
+		// Remove only the empty entry; never recursively erase concurrent writes.
+		if cleanupErr := parent.Remove(name); cleanupErr != nil {
+			return errors.Join(err, cleanupErr)
+		}
+		return err
+	}
+	return nil
 }
