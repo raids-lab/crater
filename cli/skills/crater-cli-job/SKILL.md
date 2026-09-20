@@ -1,6 +1,6 @@
 ---
 name: crater-cli-job
-version: 0.3.0
+version: 0.3.1
 description: "Use Crater CLI job commands to list, inspect, view logs, create, stop, and snapshot jobs."
 metadata:
   requires:
@@ -40,10 +40,17 @@ For Jupyter/WebIDE access commands, the returned token or password is sensitive.
 
 ## Common Workflows
 
-List running GPU jobs for a user:
+List running or pending PyTorch/TensorFlow jobs for a user:
 
 ```bash
-crater job ls --user alice --status Running --page-size 15 --json --no-interactive
+crater job ls \
+  --user alice \
+  --search experiment \
+  --status Running,Pending \
+  --type pytorch,tensorflow \
+  --schedule normal \
+  --all-pages \
+  --json --no-interactive
 ```
 
 Inspect a job:

@@ -41,6 +41,9 @@ dist-ssr
 *.so
 *.dylib
 bin
+!cli/npm/bin/
+cli/npm/bin/*
+!cli/npm/bin/crater.js
 testbin/*
 Dockerfile.cross
 

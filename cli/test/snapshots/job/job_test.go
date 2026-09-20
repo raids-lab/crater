@@ -56,13 +56,20 @@ func jobSuccessCases() []snaptest.Case {
 	}
 }
 
+func jobFilterCases() []snaptest.Case {
+	return []snaptest.Case{
+		{ID: "22-ls-invalid-multi-filters-json", Args: []string{"job", "ls", "--status", "Running,bad", "--type", "custom,nope", "--schedule", "normal,0", "--no-interactive", "--json"}},
+		{ID: "23-ls-valid-multi-filters-timeout-json", Args: []string{"job", "ls", "--search", "demo", "--status", "Running,Pending", "--type", "pytorch,tensorflow", "--schedule", "normal,backfill", "--no-interactive", "--json"}},
+	}
+}
+
 func jobLogCases() []snaptest.Case {
 	return []snaptest.Case{
-		{ID: "22-logs-missing-name-nojson", Args: []string{"job", "logs", "--no-interactive"}},
-		{ID: "23-logs-negative-tail-json", Args: []string{"job", "logs", "job-123", "--tail", "-1", "--no-interactive", "--json"}},
-		{ID: "24-logs-pod-all-pods-conflict-json", Args: []string{"job", "logs", "job-123", "--pod", "pod-1", "--all-pods", "--no-interactive", "--json"}},
-		{ID: "25-logs-follow-json-conflict", Args: []string{"job", "logs", "job-123", "--follow", "--no-interactive", "--json"}},
-		{ID: "26-logs-follow-previous-conflict-nojson", Args: []string{"job", "logs", "job-123", "--follow", "--previous", "--no-interactive"}},
+		{ID: "24-logs-missing-name-nojson", Args: []string{"job", "logs", "--no-interactive"}},
+		{ID: "25-logs-negative-tail-json", Args: []string{"job", "logs", "job-123", "--tail", "-1", "--no-interactive", "--json"}},
+		{ID: "26-logs-pod-all-pods-conflict-json", Args: []string{"job", "logs", "job-123", "--pod", "pod-1", "--all-pods", "--no-interactive", "--json"}},
+		{ID: "27-logs-follow-json-conflict", Args: []string{"job", "logs", "job-123", "--follow", "--no-interactive", "--json"}},
+		{ID: "28-logs-follow-previous-conflict-nojson", Args: []string{"job", "logs", "job-123", "--follow", "--previous", "--no-interactive"}},
 	}
 }
 
@@ -141,6 +148,11 @@ func runJobSnapshots(t *testing.T, lang string) {
 	successResults := runJobCases(t, bin, successEnv, successCases)
 	cases = append(cases, successCases...)
 	results = append(results, successResults...)
+
+	filterCases := jobFilterCases()
+	filterResults := runJobCases(t, bin, timeoutEnv, filterCases)
+	cases = append(cases, filterCases...)
+	results = append(results, filterResults...)
 
 	logCases := jobLogCases()
 	logResults := runJobCases(t, bin, timeoutEnv, logCases)

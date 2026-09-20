@@ -222,6 +222,7 @@ git checkout -b feature/your-feature-name
 - **新版权文件头使用项目统一归属**。自 2026 年 6 月起，无论贡献者来自哪里，新增或更新文件级版权头与 NOTICE 文件时，版权归属都使用 `The Crater Project Team, RAIDS-Lab`。文件头年份应使用该文件对应的正确年份：例如 2026 年首次发布的文件使用 `Copyright 2026 The Crater Project Team, RAIDS-Lab`；项目级 NOTICE 可使用项目年份范围，例如 `2023-2026`。
 - **严禁提交敏感信息**：密钥、Token、密码、内网 IP、kubeconfig、证书和生产凭据都不能提交。
 - **不确定就问**。规范或上下文缺失时主动澄清，不要盲目猜测。
+- **保持 `main` / tag 两套发布触发**。发布类 workflow 必须遵守 [发布 Workflow](#发布-workflow)：`main` 更新走一套产物，精确 `vX.Y.Z` tag 走另一套。不得使用 GitHub Release 事件作为触发条件。
 - **规范可演进**。如果现有规则在当前场景下会损害质量、架构或安全，应指出并建议更新对应文档，而不是默默违背。
 
 ## 提交或推送前验证
@@ -332,9 +333,17 @@ PR 描述必须使用**双语 Markdown**，并覆盖：
 
 PR 创建后，需要检查 workflow 状态。PR 也可能需要和 Copilot review 或人工 review 进行多轮迭代。Agent 可以自行获取 PR 链接，或要求开发者提供链接；随后阅读 review 意见，判断每条意见是否正确、是否值得修改，再提出修改方案。未经开发者讨论和确认，不要直接按 review 意见修改代码。
 
+## 发布 Workflow
+
+发布分成两条线。之后修改 workflow 必须保持这个划分。不要重新引入 `release.published` 这类 GitHub Release 事件作为触发条件，也不要让某个组件创建的 GitHub Release 去带动其它组件。不要移动已经用于正式发布的 `vX.Y.Z` tag。
+
+- **`main` 更新**（沿用各 workflow 已有的 path 过滤）：前端、后端和 Storage 向 GHCR 推送开发镜像。Helm 在 `charts/**` 变更时把 Chart 发布到 GHCR OCI。CLI 不发布。
+- **精确 `vX.Y.Z` tag**：上述镜像和 Chart workflow 再发布带该版本的产物。Helm 还要求 `charts/crater/Chart.yaml` 的 `version` 与 `appVersion` 都等于 tag 版本。CLI 只发布 npm 包。
+- **GitHub Release** 可选，只用于人工撰写更新说明。它不得触发 workflow，也不得挂发布用的二进制、镜像或 Chart。
+
 ## 应用构建版本
 
-前端、后端和存储服务的构建 workflow 统一调用 `hack/set-build-version.sh`，生成一致的构建字段。
+前端、后端、存储服务和 CLI 的构建 workflow 统一调用 `hack/set-build-version.sh`，生成一致的构建字段。
 
 - `v1.1.1` 这样的正式发布 tag 会生成 `AppVersion=1.1.1` 和 `BuildType=release`。
 - 正式发布 tag 必须严格使用 `vX.Y.Z` 格式，不支持 `v1.1.1-rc.1` 这样的预发布 tag。Crater 目前不需要预发布渠道，不值得为此引入额外的发布、版本比较和产物清理复杂度。
@@ -343,6 +352,8 @@ PR 创建后，需要检查 workflow 状态。PR 也可能需要和 Copilot revi
 - 基础版本取 first-parent 历史上最近的可达正式发布 tag；Git 会选择无歧义的提交缩写。
 - `CommitSHA` 始终保留完整提交 SHA，`BuildTime` 始终使用 UTC 构建时间戳。
 - 开发版构建元数据用于标识具体产物，不决定正式版本顺序或 API 兼容性。CLI 与后端的兼容性由下方独立的 API 版本契约决定。
+
+哪些提交会启动哪些发布 workflow、以及这些 workflow 产出什么，见 [发布 Workflow](#发布-workflow)。
 
 ## CLI / 后端 API 兼容版本
 

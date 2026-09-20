@@ -12,7 +12,7 @@ import (
 )
 
 // testSessionEnabled controls session-level fakes for snapshot/testing.
-// When enabled, session must not touch disk state or OS keyring.
+// When enabled, session must not touch disk state.
 func testSessionEnabled() bool {
 	return testenv.SandboxSessionEnabled()
 }
@@ -96,5 +96,5 @@ func fakeLanguage() string {
 }
 
 func fakeTokenFor(ac state.ActiveContext) string {
-	return fmt.Sprintf("fake-token:%s", KeyringAccountKey(ac))
+	return fmt.Sprintf("fake-token:%s", accountKey(ac))
 }

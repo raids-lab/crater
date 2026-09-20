@@ -27,6 +27,7 @@ const (
 	AdminQueueQuotasPfx = "/api/v1/admin/queue-quotas"
 	AdminGPUAnalysisPfx = "/api/v1/admin/gpu-analysis"
 	SystemConfigPrefix  = "/api/v1/system-config"
+	StoragePrefix       = "/api/ss"
 	AdminSysConfigPfx   = "/api/v1/admin/system-config"
 	UsersPrefix         = "/api/v1/users"
 	AdminUsersPrefix    = "/api/v1/admin/users"
@@ -54,4 +55,5 @@ const (
 	VCJobListPath         = VCJobsPrefix
 	VCJobBillingPath      = VCJobsPrefix + "/billing"
 	AdminVCJobBillingPath = AdminVCJobsPrefix + "/billing"
+	FileListPath          = StoragePrefix + "/files"
 )
