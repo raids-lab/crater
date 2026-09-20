@@ -224,6 +224,7 @@ These rules apply in every module:
 - **Use the project copyright owner in new license headers**. Starting from June 2026, new or updated file-level copyright headers and NOTICE files should use `The Crater Project Team, RAIDS-Lab` regardless of where the contributor comes from. Use the correct year for the file header: for example, a file first published in 2026 should use `Copyright 2026 The Crater Project Team, RAIDS-Lab`, while project-level notices may use a project year range such as `2023-2026`.
 - **Never commit secrets**: no keys, tokens, passwords, internal IPs, kubeconfigs, certificates, or production credentials.
 - **Ask when unsure**. If a rule or context is missing, clarify instead of guessing.
+- **Keep the `main` / tag publish split**. Publish workflows must follow [Publish Workflows](#publish-workflows): `main` updates one set of artifacts, exact `vX.Y.Z` tags another. Do not use GitHub Release events as triggers.
 - **Suggest rule changes openly**. If an existing rule would hurt quality, architecture, or security in a specific case, point it out and propose updating the relevant document instead of silently violating it.
 
 ## Verify Before Commit Or Push
@@ -338,9 +339,17 @@ Before opening or updating a PR, run the relevant local review path for the chan
 
 After creating the PR, check workflow status. The PR may need multiple rounds of iteration with Copilot review or human review. An Agent may fetch the PR link itself or ask the developer for it, inspect review comments, judge whether each suggestion is correct and worth changing, then propose a modification plan. Do not apply review-driven code changes until the developer has discussed and approved the plan.
 
+## Publish Workflows
+
+Publishing is split into two tracks. Later workflow changes must keep this split. Do not reintroduce GitHub Release events such as `release.published` as triggers, and do not let one component's GitHub Release start other components. Do not move a published `vX.Y.Z` tag.
+
+- **`main` updates** (with the path filters each workflow already uses): frontend, backend, and storage push development images to GHCR. Helm publishes the chart to GHCR OCI when `charts/**` changes. CLI does not publish.
+- **Exact `vX.Y.Z` tags**: the same image and chart workflows publish version-tagged artifacts. Helm also requires `charts/crater/Chart.yaml` `version` and `appVersion` to equal the tag version. CLI publishes npm packages only.
+- **GitHub Release** is optional human-written notes. It must not trigger workflows and must not carry published binaries, images, or charts.
+
 ## Application Build Versions
 
-Frontend, backend, and storage build workflows use `hack/set-build-version.sh` to derive one consistent set of build fields.
+Frontend, backend, storage, and CLI build workflows use `hack/set-build-version.sh` to derive one consistent set of build fields.
 
 - A release tag such as `v1.1.1` produces `AppVersion=1.1.1` and `BuildType=release`.
 - Release tags must use exactly `vX.Y.Z`; prerelease tags such as `v1.1.1-rc.1` are not supported. Crater does not currently need prerelease channels, and their additional release, version-comparison, and artifact-cleanup complexity is not justified.
@@ -349,6 +358,8 @@ Frontend, backend, and storage build workflows use `hack/set-build-version.sh` t
 - The base is the nearest reachable release tag on the first-parent history. Git chooses an unambiguous abbreviated commit name.
 - `CommitSHA` remains the full commit SHA, and `BuildTime` remains the UTC build timestamp.
 - Development build metadata identifies an artifact but does not determine release precedence or API compatibility. CLI/backend compatibility uses the separate API version contract below.
+
+Which commits start which publish workflows, and which artifacts those workflows produce, is defined in [Publish Workflows](#publish-workflows).
 
 ## CLI / Backend API Compatibility Versions
 

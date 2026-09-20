@@ -5,21 +5,18 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/raids-lab/crater/cli/internal/testutil"
 )
 
 func TestNewManagerDoesNotCreateConfigDirWhenStateMissing(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	configHome := testutil.IsolateUserConfigDir(t)
 
 	m, err := NewManager()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	configHome, err := os.UserConfigDir()
-	if err != nil {
-		t.Fatal(err)
-	}
 	wantPath := filepath.Join(configHome, "crater", "state.json")
 	if m.Path != wantPath {
 		t.Fatalf("Path = %q, want %q", m.Path, wantPath)
@@ -30,8 +27,7 @@ func TestNewManagerDoesNotCreateConfigDirWhenStateMissing(t *testing.T) {
 }
 
 func TestManagerSaveCreatesConfigDir(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	testutil.IsolateUserConfigDir(t)
 
 	m, err := NewManager()
 	if err != nil {
@@ -55,8 +51,7 @@ func TestManagerSaveRestrictsExistingStateFilePermissions(t *testing.T) {
 		t.Skip("Windows does not expose POSIX file permission bits")
 	}
 
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	testutil.IsolateUserConfigDir(t)
 
 	m, err := NewManager()
 	if err != nil {

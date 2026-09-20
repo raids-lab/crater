@@ -16,6 +16,12 @@
 - `--help, -h`:
   - **行为**: 显示当前命令或子命令的帮助信息。
 
+根命令另外提供以下仅限根级使用的版本选项，不会由子命令继承：
+
+- `crater --version` / `crater -v`:
+  - **行为**：不要求登录、不使用已保存 token、不访问 Crater 平台。为选择显示语言，仍可能读取本地 `state.json` 的 `language` 字段。以单行输出当前 CLI 产品版本与 7 位短 commit SHA，格式为 `Crater CLI version <product-version>, build <short-commit>`。无法确定 commit 时使用 `unknown`。
+  - **约束**：不接受位置参数，也不能与 `--json` 同时使用；脚本或 Agent 需要结构化构建信息时应使用 `crater version --json`。
+
 CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-Crater-API-Version: <api-version>`，仅供平台诊断，不代表后端会据此改变或拒绝请求。普通业务命令不自动执行 API 兼容性握手。
 
 ### 公共列表分页 (List Pagination)
@@ -50,6 +56,34 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
      ```
    - **错误码定义**: 以 `pkg/errorcodes/codes.go` 为准。**`api_error`** 的 **`code`** 通常须与 **HTTP** 显式对应，命名形如 **`ERR_NOT_FOUND_404`**、**`ERR_SERVER_INTERNAL_5XX`** 等；`crater compatibility` 对握手接口 404 的领域化映射见本命令章节。完整约定见 **[SPEC.md](./SPEC.md)**「命令结果：错误与成功」中 `api_error` 与 HTTP 小节。
    - **退出码**: 出错时非零退出；具体数值由 `Execute` 根据 `*clierror.Error` 的 `category` 映射（实现为 `pkg/errorcodes.ExitCodeForCategory`：`usage_error`→2，`cancelled`→3，`api_error`→4，`system_error`→5；非 `*clierror.Error` 的错误→1）。命令实现里不必自行 `os.Exit`。
+
+---
+
+## 本地 CLI 版本 (`version`)
+
+### `crater version`
+
+- **描述**：显示当前本地 CLI 二进制的产品版本、源码提交、构建信息、Go 运行时以及 API 兼容版本。不要求登录、不使用已保存 token，也不访问 Crater 平台；为选择显示语言，仍可能读取本地 `state.json` 的 `language` 字段。
+- **位置参数**：无；出现任何位置参数均返回 `usage_error`。
+- **选项**：仅使用全局选项。
+- **默认输出**：在 `Crater CLI:` 标题下，按固定顺序显示产品版本、CLI API 版本、CLI 最低支持的后端 API 版本、Go 版本、完整 commit SHA、UTC 构建时间、`OS/ARCH` 和构建类型。未注入且无法可靠确定的值显示为 `unknown`；本地开发构建的产品版本默认为 `dev`、构建类型默认为 `development`。
+- **`--json` 成功体的 `data`**：仅包含 `version`，其结构为：
+  ```json
+  {
+    "version": {
+      "product_version": "1.2.3",
+      "commit_sha": "0123456789abcdef0123456789abcdef01234567",
+      "build_type": "release",
+      "build_time": "2026-09-07T08:30:00Z",
+      "go_version": "go1.25.4",
+      "os": "linux",
+      "arch": "amd64",
+      "api_version": 1,
+      "min_supported_backend_api_version": 1
+    }
+  }
+  ```
+- **状态**：[x] Completed
 
 ---
 
