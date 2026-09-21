@@ -1,6 +1,6 @@
 # crater
 
-![Version: 1.1.2](https://img.shields.io/badge/Version-1.1.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.2](https://img.shields.io/badge/AppVersion-1.1.2-informational?style=flat-square)
+![Version: 1.2.0](https://img.shields.io/badge/Version-1.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0](https://img.shields.io/badge/AppVersion-1.2.0-informational?style=flat-square)
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
@@ -94,7 +94,14 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | backendConfig.smtp.password | string | `"<MASKED>"` | Password for SMTP authentication (Required if Enable is true) Must match the specified user's password |
 | backendConfig.smtp.port | int | `25` | SMTP server port number (Required if Enable is true) Typically 25, 465, or 587 |
 | backendConfig.smtp.user | string | `"example"` | Username for SMTP authentication (Required if Enable is true) Must be a valid SMTP user |
-| backendConfig.storage | object | `{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"}}` | Persistent volume claim and path prefix configurations (Required) All PVC names and prefix paths must be specified |
+| backendConfig.storage | object | `{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"},"quota":{"cephFSCSIDriver":"","cephFSName":"cephfs","enabled":false,"provider":"auto","rookNamespace":"rook-ceph","storageServerURL":"","toolboxLabelSelector":"app=rook-ceph-tools"}}` | Persistent volume claim and path prefix configurations (Required) All PVC names and prefix paths must be specified |
+| backendConfig.storage.quota.cephFSCSIDriver | string | `""` | Optional CephFS CSI driver override; empty derives `<rookNamespace>.cephfs.csi.ceph.com`. |
+| backendConfig.storage.quota.cephFSName | string | `"cephfs"` | Fallback filesystem name when the PV does not expose `volumeAttributes.fsName`. |
+| backendConfig.storage.quota.enabled | bool | `false` | Enable CephFS usage and quota management. Keep disabled for NFS and other storage backends. |
+| backendConfig.storage.quota.provider | string | `"auto"` | Select auto, storageServer, toolbox, or disabled. Auto uses a Rook Ceph toolbox only as a fallback. |
+| backendConfig.storage.quota.rookNamespace | string | `"rook-ceph"` | Namespace containing Rook Ceph resources and the optional toolbox. |
+| backendConfig.storage.quota.storageServerURL | string | `""` | Internal storage-server endpoint; empty derives the service URL from the job namespace. |
+| backendConfig.storage.quota.toolboxLabelSelector | string | `"app=rook-ceph-tools"` | Label selector for the optional toolbox fallback Pod. |
 | backendConfig.storage.prefix | object | `{"account":"accounts","public":"public","user":"users"}` | Path prefixes for different types of storage locations (Required) All prefix paths must be specified |
 | backendConfig.storage.prefix.account | string | `"accounts"` | Account prefix for account-related storage paths (Required) Must be a valid path within the storage system |
 | backendConfig.storage.prefix.public | string | `"public"` | Public prefix for publicly accessible storage paths (Required) Must be a valid path within the storage system |
@@ -226,6 +233,10 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | namespaces.job | string | `"crater-workspace"` | Namespace for running jobs |
 | nodeSelector | object | `{"node-role.kubernetes.io/control-plane":""}` | Node selector for all Deployments Prevents control components from being scheduled to GPU worker nodes |
 | protocol | string | `"http"` | Protocol for server communication ("http" or "https") |
+| quotaAgent | object | `{"enabled":false,"existingClaim":"","replicas":1,"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}}` | Dedicated CephFS quota agent that reuses `images.storage` and a pre-created static PVC with path-scoped CephX `p` capability |
+| quotaAgent.enabled | bool | `false` | Create the internal quota-agent Deployment and Service |
+| quotaAgent.existingClaim | string | `""` | Pre-created static CephFS PVC using the dedicated quota CephX identity |
+| quotaAgent.replicas | int | `1` | Number of quota-agent replicas |
 | storage | object | `{"create":true,"pvcName":"crater-rw-storage","request":"10Gi","storageClass":"nfs"}` | Persistent Volume Claim configuration |
 | storage.create | bool | `true` | Whether to create PVC or use existing pvc. |
 | storage.pvcName | string | `"crater-rw-storage"` | PVC name (existing or created, also used in backendConfig) |

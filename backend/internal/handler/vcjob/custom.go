@@ -60,6 +60,12 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
 	}
+
+	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
 	if !mgr.preCheckCreateJob(c, token, scheduleType, false) {
 		return
 	}

@@ -1,0 +1,64 @@
+{{- if .Values.quotaAgent.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crater-quota-agent
+  namespace: {{ .Values.namespaces.job }}
+  labels:
+    app: crater-quota-agent
+spec:
+  replicas: {{ .Values.quotaAgent.replicas }}
+  selector:
+    matchLabels:
+      app: crater-quota-agent
+  template:
+    metadata:
+      labels:
+        app: crater-quota-agent
+      annotations:
+        checksum/auth: {{ include (print $.Template.BasePath "/quota-agent/secret.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: default
+      automountServiceAccountToken: false
+      nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 8 }}
+      tolerations: {{ .Values.tolerations | toYaml | nindent 8 }}
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      containers:
+        - name: quota-agent
+          image: {{ .Values.images.storage.repository }}:{{ .Values.images.storage.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: CRATER_STORAGE_MODE
+              value: quota-agent
+            - name: CRATER_STORAGE_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: crater-quota-agent-auth
+                  key: internal-token
+          ports:
+            - name: http
+              containerPort: 7320
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.quotaAgent.resources | nindent 12 }}
+          volumeMounts:
+            - name: storage
+              mountPath: /crater
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: {{ required "quotaAgent.existingClaim is required when quotaAgent.enabled=true" .Values.quotaAgent.existingClaim }}
+{{- end }}
