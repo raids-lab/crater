@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { PackageIcon } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import DocsButton from '@/components/button/docs-button'
 import { getNewJobLink } from '@/components/job/new-job-button'
 import TooltipLink from '@/components/label/tooltip-link'
-import DataList from '@/components/layout/data-list'
+import DataList, { DataListRemoteQuery } from '@/components/layout/data-list'
 
 import { deleteJobTemplate, listJobTemplate } from '@/services/api/jobtemplate'
 import { JobType } from '@/services/api/vcjob'
@@ -28,6 +29,16 @@ import { JobType } from '@/services/api/vcjob'
 export const Route = createFileRoute('/portal/templates/')({
   component: RouteComponent,
 })
+
+const defaultListQuery: DataListRemoteQuery = {
+  page: 1,
+  pageSize: 10,
+  search: '',
+  owner: 'all',
+  tag: '',
+  sortField: 'createdAt',
+  sortDirection: 'descending',
+}
 
 // 新增 JSON 解析函数
 const getJobUrlFromTemplate = (template: string) => {
@@ -49,11 +60,34 @@ const getJobUrlFromTemplate = (template: string) => {
 
 function RouteComponent() {
   const queryClient = useQueryClient()
+  const [listQuery, setListQuery] = useState(defaultListQuery)
+  const [debouncedSearch, setDebouncedSearch] = useState(listQuery.search)
 
-  const { data: templateData } = useQuery({
-    queryKey: ['data', 'jobtemplate'],
-    queryFn: () => listJobTemplate(),
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(listQuery.search), 300)
+    return () => window.clearTimeout(timeout)
+  }, [listQuery.search])
+
+  const requestQuery = {
+    ...listQuery,
+    search: debouncedSearch,
+  }
+
+  const { data: templatePage, isFetching } = useQuery({
+    queryKey: ['data', 'jobtemplate', requestQuery],
+    queryFn: ({ signal }) =>
+      listJobTemplate(
+        {
+          page: requestQuery.page,
+          pageSize: requestQuery.pageSize,
+          search: requestQuery.search,
+          owner: requestQuery.owner,
+          sort: requestQuery.sortDirection,
+        },
+        signal
+      ),
     select: (res) => res.data,
+    placeholderData: keepPreviousData,
   })
 
   const { mutate: handleDelete } = useMutation({
@@ -67,7 +101,7 @@ function RouteComponent() {
   return (
     <DataList
       items={
-        templateData?.map((jobTemplate) => ({
+        templatePage?.items.map((jobTemplate) => ({
           id: jobTemplate.id,
           name: jobTemplate.name,
           desc: jobTemplate.describe,
@@ -77,6 +111,13 @@ function RouteComponent() {
           owner: jobTemplate.userInfo,
         })) || []
       }
+      remote={{
+        query: listQuery,
+        total: templatePage?.total ?? 0,
+        isLoading: isFetching,
+        availableSortFields: ['createdAt'],
+        onQueryChange: setListQuery,
+      }}
       title="作业模板"
       handleDelete={handleDelete}
       mainArea={(item) => {
