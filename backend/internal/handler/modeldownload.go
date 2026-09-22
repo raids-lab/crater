@@ -559,8 +559,8 @@ func shouldSubmitRestoredDownload(download *model.ModelDownload) bool {
 	return download.Status != model.ModelDownloadStatusReady
 }
 
-// @Summary		创建模型下载任务
-// @Description	创建一个新的模型下载任务
+// @Summary		创建或复用模型/数据集下载任务
+// @Description	按 name + category 复用已有有效公共资源，响应可能返回不同的 source/revision 且不创建 Job；否则创建下载 Job 并异步处理源站错误。
 // @Tags			ModelDownload
 // @Accept			json
 // @Produce		json
@@ -972,7 +972,7 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 				fmt.Sprintf("only failed downloads can be retried, current status: %s", d.Status),
 			)
 		}
-		if err := checkRetryLogicalConflict(c, tx, d); err != nil {
+		if err := checkLogicalDownloadConflict(c, tx, d); err != nil {
 			return err
 		}
 		if err := checkRetryRevisionConflict(c, tx, d, revision); err != nil {
@@ -1009,7 +1009,7 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 	return download, err
 }
 
-func checkRetryLogicalConflict(
+func checkLogicalDownloadConflict(
 	c *gin.Context, txQ *query.Query, download *model.ModelDownload,
 ) error {
 	q := txQ.ModelDownload
@@ -1025,11 +1025,11 @@ func checkRetryLogicalConflict(
 		First()
 	if err == nil && conflict != nil {
 		return bizerr.Conflict.ResourceStatusError.New(
-			"another active or ready download already uses this model or dataset; reuse it instead of retrying this record",
+			"another active or ready download already uses this model or dataset; reuse it instead of starting this record",
 		)
 	}
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return bizerr.Internal.DatabaseError.Wrap(err, "check retry logical download conflict")
+		return bizerr.Internal.DatabaseError.Wrap(err, "check logical download conflict")
 	}
 	return nil
 }
@@ -1213,40 +1213,7 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 		return
 	}
 
-	db := query.Use(query.GetDB())
-	err = db.Transaction(func(tx *query.Query) error {
-		txQ := tx.ModelDownload
-		locked, lockErr := txQ.WithContext(c).
-			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where(txQ.ID.Eq(download.ID)).
-			First()
-		if lockErr != nil {
-			return lockErr
-		}
-		if locked.Status != model.ModelDownloadStatusPaused {
-			return bizerr.Conflict.ResourceStatusError.New("only paused tasks can be resumed")
-		}
-		if limitErr := mgr.quotaService.Reserve(
-			c, tx.ModelDownload.WithContext(c).UnderlyingDB(), token.UserID,
-			locked.ID, model.ModelDownloadSubmissionResume,
-		); limitErr != nil {
-			return limitErr
-		}
-
-		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
-		if _, updateErr := txQ.WithContext(c).Where(txQ.ID.Eq(locked.ID)).Updates(map[string]any{
-			"status":   model.ModelDownloadStatusDownloading,
-			"message":  "",
-			"job_name": newJobName,
-		}); updateErr != nil {
-			return updateErr
-		}
-		locked.Status = model.ModelDownloadStatusDownloading
-		locked.JobName = newJobName
-		locked.Message = ""
-		download = locked
-		return nil
-	})
+	download, err = mgr.prepareResumeDownload(c, query.Use(query.GetDB()), download.ID, token)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -1271,6 +1238,59 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 	download.Message = ""
 
 	resputil.Success(c, convertDownloadToResp(download, token))
+}
+
+// prepareResumeDownload serializes resume with create and retry for the same
+// logical resource before reserving quota or changing the paused record.
+func (mgr *ModelDownloadMgr) prepareResumeDownload(
+	c *gin.Context, db *query.Query, downloadID uint, token util.JWTMessage,
+) (*model.ModelDownload, error) {
+	var download *model.ModelDownload
+	err := db.Transaction(func(tx *query.Query) error {
+		txQ := tx.ModelDownload
+		identity, err := txQ.WithContext(c).Where(txQ.ID.Eq(downloadID)).First()
+		if err != nil {
+			return bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+		}
+		if err := lockModelDownloadIdentity(c, tx, identity.Name, identity.Category); err != nil {
+			return err
+		}
+
+		locked, err := txQ.WithContext(c).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(txQ.ID.Eq(downloadID)).
+			First()
+		if err != nil {
+			return bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+		}
+		if locked.Status != model.ModelDownloadStatusPaused {
+			return bizerr.Conflict.ResourceStatusError.New("only paused tasks can be resumed")
+		}
+		if err := checkLogicalDownloadConflict(c, tx, locked); err != nil {
+			return err
+		}
+		if err := mgr.quotaService.Reserve(
+			c, txQ.WithContext(c).UnderlyingDB(), token.UserID,
+			locked.ID, model.ModelDownloadSubmissionResume,
+		); err != nil {
+			return err
+		}
+
+		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
+		if _, err := txQ.WithContext(c).Where(txQ.ID.Eq(locked.ID)).Updates(map[string]any{
+			"status":   model.ModelDownloadStatusDownloading,
+			"message":  "",
+			"job_name": newJobName,
+		}); err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "update resumed download")
+		}
+		locked.Status = model.ModelDownloadStatusDownloading
+		locked.JobName = newJobName
+		locked.Message = ""
+		download = locked
+		return nil
+	})
+	return download, err
 }
 
 // ListAllDownloads godoc

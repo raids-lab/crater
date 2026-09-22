@@ -30,6 +30,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -207,7 +208,7 @@ func TestCheckRetryRevisionConflictIncludesSoftDeletedRecords(t *testing.T) {
 	}
 }
 
-func TestCheckRetryLogicalConflictRejectsOtherReusableDownload(t *testing.T) {
+func TestCheckLogicalDownloadConflictRejectsOtherReusableDownload(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:retry_logical_conflict?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		IgnoreRelationshipsWhenMigrating:         true,
@@ -237,7 +238,7 @@ func TestCheckRetryLogicalConflictRejectsOtherReusableDownload(t *testing.T) {
 	}
 
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
-	err = checkRetryLogicalConflict(ginContext, query.Use(db), &failed)
+	err = checkLogicalDownloadConflict(ginContext, query.Use(db), &failed)
 	if !errors.Is(err, bizerr.Conflict.Base) {
 		t.Fatalf("expected a conflict for another reusable download, got %v", err)
 	}
@@ -245,9 +246,113 @@ func TestCheckRetryLogicalConflictRejectsOtherReusableDownload(t *testing.T) {
 	if err := db.Model(&ready).Update("status", model.ModelDownloadStatusFailed).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := checkRetryLogicalConflict(ginContext, query.Use(db), &failed); err != nil {
+	if err := checkLogicalDownloadConflict(ginContext, query.Use(db), &failed); err != nil {
 		t.Fatalf("failed history must not block retry: %v", err)
 	}
+}
+
+func TestPrepareResumeDownloadRejectsReusableSiblingBeforeMutation(t *testing.T) {
+	for _, siblingStatus := range []model.ModelDownloadStatus{
+		model.ModelDownloadStatusReady,
+		model.ModelDownloadStatusDownloading,
+	} {
+		t.Run(string(siblingStatus), func(t *testing.T) {
+			db, mgr := newResumePreparationTestManager(t, "resume_conflict_"+string(siblingStatus))
+			paused := createResumePreparationTestDownload(
+				t, db, model.ModelSourceModelScope, "master", model.ModelDownloadStatusPaused, "paused-job",
+			)
+			createResumePreparationTestDownload(
+				t, db, model.ModelSourceHuggingFace, "main", siblingStatus, "sibling-job",
+			)
+
+			ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+			download, err := mgr.prepareResumeDownload(
+				ginContext, query.Use(db), paused.ID, util.JWTMessage{UserID: paused.CreatorID, Username: "alice"},
+			)
+			if !errors.Is(err, bizerr.Conflict.Base) {
+				t.Fatalf("expected sibling %s to block resume, got %v", siblingStatus, err)
+			}
+			if download != nil {
+				t.Fatalf("conflicting resume returned download %#v", download)
+			}
+
+			var unchanged model.ModelDownload
+			if err := db.First(&unchanged, paused.ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			if unchanged.Status != model.ModelDownloadStatusPaused || unchanged.JobName != "paused-job" {
+				t.Fatalf("conflicting resume mutated target: status=%s job=%q", unchanged.Status, unchanged.JobName)
+			}
+			var reservations int64
+			if err := db.Model(&model.ModelDownloadSubmission{}).Count(&reservations).Error; err != nil {
+				t.Fatal(err)
+			}
+			if reservations != 0 {
+				t.Fatalf("conflicting resume created %d quota reservations, want 0", reservations)
+			}
+		})
+	}
+}
+
+func TestPrepareResumeDownloadStartsSolePausedRecord(t *testing.T) {
+	db, mgr := newResumePreparationTestManager(t, "resume_without_conflict")
+	paused := createResumePreparationTestDownload(
+		t, db, model.ModelSourceModelScope, "master", model.ModelDownloadStatusPaused, "paused-job",
+	)
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	download, err := mgr.prepareResumeDownload(
+		ginContext, query.Use(db), paused.ID, util.JWTMessage{UserID: paused.CreatorID, Username: "alice"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if download.Status != model.ModelDownloadStatusDownloading || download.JobName == "paused-job" {
+		t.Fatalf("resumed download = status %s job %q", download.Status, download.JobName)
+	}
+
+	var submission model.ModelDownloadSubmission
+	if err := db.Where("model_download_id = ?", paused.ID).First(&submission).Error; err != nil {
+		t.Fatal(err)
+	}
+	if submission.Action != model.ModelDownloadSubmissionResume ||
+		submission.Status != model.ModelDownloadSubmissionReserved {
+		t.Fatalf("resume submission = action %s status %s", submission.Action, submission.Status)
+	}
+}
+
+func newResumePreparationTestManager(t *testing.T, databaseName string) (*gorm.DB, *ModelDownloadMgr) {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open("file:"+databaseName+"?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(
+		&model.SystemConfig{}, &model.PrequeueConfig{}, &model.ModelDownload{}, &model.ModelDownloadSubmission{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	configService := service.NewConfigService(query.Use(db))
+	return db, &ModelDownloadMgr{quotaService: service.NewModelDownloadQuotaService(configService)}
+}
+
+func createResumePreparationTestDownload(
+	t *testing.T, db *gorm.DB, source model.ModelSource, revision string,
+	status model.ModelDownloadStatus, jobName string,
+) model.ModelDownload {
+	t.Helper()
+	download := model.ModelDownload{
+		Name: "owner/model", Source: source, Category: model.DownloadCategoryModel,
+		Revision: revision, Path: "public/Models/owner/model", Status: status,
+		CreatorID: 1, JobName: jobName,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+	return download
 }
 
 func TestRetryUpdateDuplicateIsConflict(t *testing.T) {
