@@ -792,7 +792,7 @@ func GetConfig() *Config {
 }
 
 func IsDebugMode() bool {
-	return gin.Mode() == gin.DebugMode
+	return gin.Mode() == gin.DebugMode || gin.Mode() == gin.TestMode
 }
 
 // initConfig initializes the configuration by reading the configuration file.

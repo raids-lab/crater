@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"gorm.io/datatypes"
@@ -13,6 +14,9 @@ import (
 
 //nolint:gochecknoinits // Operation logs need schema migration during service registration.
 func init() {
+	if os.Getenv("CRATER_SKIP_OPERATION_LOG_MIGRATION") == "1" {
+		return
+	}
 	if err := query.GetDB().AutoMigrate(&model.OperationLog{}); err != nil {
 		klog.Fatalf("auto migrate operation_logs failed: %v", err)
 	}
