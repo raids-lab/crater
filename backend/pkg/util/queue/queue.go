@@ -19,7 +19,7 @@ limitations under the License.
 package queue
 
 import (
-	"sort"
+	"container/heap"
 )
 
 // lessFunc is a function that receives two items and returns true if the first
@@ -50,10 +50,12 @@ type data struct {
 	lessFunc lessFunc
 }
 
+var _ heap.Interface = (*data)(nil)
+
 // Less compares two objects and returns true if the first one should go
 // in front of the second one in the heap.
 func (h *data) Less(i, j int) bool {
-	if i > h.Len() || j > h.Len() {
+	if i < 0 || j < 0 || i >= h.Len() || j >= h.Len() {
 		return false
 	}
 	a, ok := h.items[h.keys[i]]
@@ -81,7 +83,7 @@ func (h *data) Len() int {
 }
 
 // Push is supposed to be called by heap.Push only.
-func (h *data) push(kv any) {
+func (h *data) Push(kv any) {
 	keyValue := kv.(*itemKeyValue)
 	h.items[keyValue.key] = &queueItem{
 		obj:   keyValue.obj,
@@ -91,7 +93,7 @@ func (h *data) push(kv any) {
 }
 
 // Pop is supposed to be called by heap.Pop only.
-func (h *data) pop() any {
+func (h *data) Pop() any {
 	key := h.keys[len(h.keys)-1]
 	h.keys = h.keys[:len(h.keys)-1]
 	item, ok := h.items[key]
@@ -99,34 +101,6 @@ func (h *data) pop() any {
 		// This is an error
 		return nil
 	}
-	delete(h.items, key)
-	return item.obj
-}
-
-// Pop is supposed to be called by heap.Pop only.
-func (h *data) top() any {
-	key := h.keys[len(h.keys)-1]
-	h.keys = h.keys[:len(h.keys)-1]
-	item, ok := h.items[key]
-	if !ok {
-		// This is an error
-		return nil
-	}
-	return item.obj
-}
-
-func (h *data) delete(key string) any {
-	item, ok := h.items[key]
-	if !ok {
-		return nil
-	}
-	for i, k := range h.keys {
-		if k == key {
-			h.keys = append(h.keys[:i], h.keys[i+1:]...)
-			break
-		}
-	}
-
 	delete(h.items, key)
 	return item.obj
 }
@@ -141,10 +115,11 @@ type Queue struct {
 // The item will be updated if it already exists.
 func (q *Queue) PushOrUpdate(obj any) {
 	key := q.keyFunc(obj)
-	if _, exists := q.items[key]; exists {
-		q.items[key].obj = obj
+	if item, exists := q.items[key]; exists {
+		item.obj = obj
+		heap.Fix(&q.data, item.index)
 	} else {
-		q.push(&itemKeyValue{key, obj})
+		heap.Push(&q.data, &itemKeyValue{key, obj})
 	}
 }
 
@@ -156,28 +131,40 @@ func (q *Queue) PushIfNotPresent(obj any) (added bool) {
 		return false
 	}
 
-	q.push(&itemKeyValue{key, obj})
+	heap.Push(&q.data, &itemKeyValue{key, obj})
 	return true
 }
 
 // DeleteByKey removes an item by key
 func (q *Queue) DeleteByKey(key string) any {
-	return q.delete(key)
+	item, exists := q.items[key]
+	if !exists {
+		return nil
+	}
+	return heap.Remove(&q.data, item.index)
 }
 
-// Delete removes an item by key
+// Delete removes an item. String keys are accepted for backward compatibility.
 func (q *Queue) Delete(obj any) any {
-	key := q.keyFunc(obj)
-	return q.delete(key)
+	if key, ok := obj.(string); ok {
+		return q.DeleteByKey(key)
+	}
+	return q.DeleteByKey(q.keyFunc(obj))
 }
 
 // Pop returns the head of the heap and removes it.
 func (q *Queue) Pop() any {
-	return q.pop()
+	if q.Len() == 0 {
+		return nil
+	}
+	return heap.Pop(&q.data)
 }
 
 func (q *Queue) Top() any {
-	return q.top()
+	if q.Len() == 0 {
+		return nil
+	}
+	return q.items[q.keys[0]].obj
 }
 
 // Get returns the requested item, exists, error.
@@ -206,13 +193,13 @@ func (q *Queue) List() []any {
 
 // Reorder reorders the queue.
 func (q *Queue) Reorder() {
-	sort.Sort(&q.data)
+	heap.Init(&q.data)
 }
 
 // ReorderWithFunc reorders the queue with lessFn.
 func (q *Queue) ReorderWithFunc(lessFn lessFunc) {
 	q.lessFunc = lessFn
-	sort.Sort(&q.data)
+	heap.Init(&q.data)
 }
 
 // New returns a Queue which can be used to queue up items to process.
