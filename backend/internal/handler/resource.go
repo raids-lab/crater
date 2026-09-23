@@ -50,6 +50,7 @@ func (mgr *ResourceMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ResourceMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListResource)
+	g.GET("/page", mgr.ListResourcePage)
 	g.GET("/billing/prices", mgr.ListBillingPrices)
 	g.GET("/:id/networks", mgr.GetGPUNetworks)
 	g.GET(":id/vgpu", mgr.GetGPUVGPUResources)
@@ -159,7 +160,16 @@ func (mgr *ResourceMgr) ListResource(c *gin.Context) {
 
 func (mgr *ResourceMgr) ListBillingPrices(c *gin.Context) {
 	r := query.Resource
-	resources, err := r.WithContext(c).Order(r.Priority.Desc()).Find()
+	resourceIDs, err := bindResourcePriceIDs(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resourceQuery := r.WithContext(c)
+	if len(resourceIDs) > 0 {
+		resourceQuery = resourceQuery.Where(r.ID.In(resourceIDs...))
+	}
+	resources, err := resourceQuery.Order(r.Priority.Desc()).Find()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to list billing prices: %v", err), resputil.NotSpecified)
 		return

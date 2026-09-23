@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
 import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
-import { IResponse } from '@/services/types'
+import { IPage, IResponse } from '@/services/types'
 
 import { IUserAttributes } from './admin/user'
 import { IUserInfo } from './vcjob'
@@ -54,6 +59,15 @@ export interface IDataset {
   sourceCreatedAt?: string
   extra: Extra
   userInfo: IUserInfo
+}
+
+export interface DatasetListParams {
+  page: number
+  pageSize: number
+  search: string
+  owner: 'all' | 'mine' | 'others'
+  sort: 'createdAt' | '-createdAt' | 'updatedAt' | '-updatedAt' | 'mountCount' | '-mountCount'
+  type: IDataset['type']
 }
 
 export interface UserDataset {
@@ -102,6 +116,25 @@ export interface cancelSharedQueueResp {
 }
 export const apiGetDataset = () => apiV1Get<IResponse<IDataset[]>>('dataset/mydataset')
 
+export const apiGetDatasetPaged = (params: DatasetListParams, signal?: AbortSignal) => {
+  const searchParams = new URLSearchParams({
+    page: String(params.page),
+    page_size: String(params.pageSize),
+    owner: params.owner,
+    sort: params.sort,
+    type: params.type,
+  })
+  const search = params.search.trim()
+  if (search) {
+    searchParams.set('search', search)
+  }
+
+  return apiV1Get<IResponse<IPage<IDataset>>>('dataset/mydataset/page', {
+    searchParams,
+    signal,
+  })
+}
+
 //因为table表单的query必须要返回数组，实际上数组里只有一个数据集的数据
 export const apiGetDatasetByID = (datasetID: number) =>
   apiV1Get<IResponse<IDataset[]>>(`dataset/detail/${datasetID}`)
@@ -111,6 +144,12 @@ export const apiAdminGetDatasetByID = (datasetID: number) =>
   apiV1Get<IResponse<IDataset[]>>(`dataset/detail/${datasetID}`)
 
 export const apiAdminGetDataset = () => apiV1Get<IResponse<IDataset[]>>('admin/dataset/alldataset')
+
+export const apiAdminGetDatasetPaged = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IDataset>>>('admin/dataset/alldataset/page', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 export const apiShareDatasetwithUser = (ud: UserDataset) =>
   apiV1Post<IResponse<string>>('dataset/share/user', ud)
@@ -141,8 +180,28 @@ export const apiListQueuesNotInDataset = (datasetID: number) =>
 export const apiListUsersInDataset = (datasetID: number) =>
   apiV1Get<IResponse<UserDatasetResp[]>>(`dataset/${datasetID}/usersIn`)
 
+export const apiListUsersInDatasetPaged = (
+  datasetID: number,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IPage<UserDatasetResp>>>(`dataset/${datasetID}/usersIn/page`, {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
+
 export const apiListQueuesInDataset = (datasetID: number) =>
   apiV1Get<IResponse<QueueDatasetGetResp[]>>(`dataset/${datasetID}/queuesIn`)
+
+export const apiListQueuesInDatasetPaged = (
+  datasetID: number,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IPage<QueueDatasetGetResp>>>(`dataset/${datasetID}/queuesIn/page`, {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 export const apiCancelShareWithUser = (CSU: cancelSharedUserResp) =>
   apiV1Post<IResponse<string>>('dataset/cancelshare/user', CSU)

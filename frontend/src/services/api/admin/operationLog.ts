@@ -1,5 +1,10 @@
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
 import { apiV1Delete, apiV1Get } from '@/services/client'
-import { IResponse, IWithPagination } from '@/services/types'
+import { IPage, IResponse, IWithPagination } from '@/services/types'
 
 export type JsonPrimitive = string | number | boolean | null
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
@@ -28,6 +33,7 @@ export interface IGetOperationLogsParams {
   target?: string
   start_time?: string
   end_time?: string
+  search?: string
 }
 
 type OperationLogSearchParams = Record<string, string | number | boolean>
@@ -39,6 +45,21 @@ export const getOperationLogs = async (params: IGetOperationLogsParams) => {
 
   return await apiV1Get<IOperationLogResponse>('admin/operation-logs', {
     searchParams,
+  })
+}
+
+export const getOperationLogsPaged = async (
+  params: RemoteTableParams,
+  timeRange?: { start_time?: string; end_time?: string },
+  signal?: AbortSignal
+) => {
+  const searchParams = buildRemoteSearchParams(params)
+  if (timeRange?.start_time) searchParams.set('start_time', timeRange.start_time)
+  if (timeRange?.end_time) searchParams.set('end_time', timeRange.end_time)
+
+  return await apiV1Get<IResponse<IPage<IOperationLog>>>('admin/operation-logs/page', {
+    searchParams,
+    signal,
   })
 }
 

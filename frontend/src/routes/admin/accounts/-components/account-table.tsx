@@ -27,8 +27,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
 import ResourceBadges from '@/components/badge/resource-badges'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 import {
   AlertDialog,
@@ -43,11 +43,13 @@ import {
 } from '@/components/ui-custom/alert-dialog'
 
 import { IAccount } from '@/services/api/account'
-import { apiAdminAccountList } from '@/services/api/account'
+import { apiAdminAccountListPaged } from '@/services/api/account'
 import { apiProjectDelete } from '@/services/api/account'
 import { apiAdminGetQueueQuotas } from '@/services/api/queue-quota'
 import { handleApiErrorByCode } from '@/services/client'
 import { ERROR_DEPENDENCY_CONFLICT, ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 // Link Options for admin account navigation
 const adminAccountDetailLinkOptions = linkOptions({
@@ -81,10 +83,11 @@ export const AccountTable = ({
 }) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const tableState = useRemoteTableState('admin_account_management')
   const toolbarConfig = useMemo<DataTableToolbarConfig>(
     () => ({
-      filterInput: {
-        key: 'nickname',
+      globalSearch: {
+        enabled: true,
         placeholder: '搜索账户名称',
       },
       filterOptions: [],
@@ -94,8 +97,8 @@ export const AccountTable = ({
   )
 
   const query = useQuery({
-    queryKey: ['admin', 'accounts'],
-    queryFn: apiAdminAccountList,
+    queryKey: ['remote-list', 'admin-accounts', tableState.params],
+    queryFn: ({ signal }) => apiAdminAccountListPaged(tableState.params, signal),
     select: (res) => res.data,
   })
   const defaultQueueQuotaQuery = useQuery({
@@ -108,7 +111,7 @@ export const AccountTable = ({
     mutationFn: (account: IAccount) => apiProjectDelete(account.id),
     onSuccess: (_, account) => {
       queryClient.invalidateQueries({
-        queryKey: ['admin', 'accounts'],
+        queryKey: ['remote-list', 'admin-accounts'],
       })
       toast.success(t('toast.accountDeleted', { name: account.nickname }))
     },
@@ -256,14 +259,15 @@ export const AccountTable = ({
   }, [defaultQueueQuotaQuery.data, deleteAccount, setCurrentAccount, setIsOpen, t])
 
   return (
-    <DataTable
+    <RemoteDataTable
       info={{
         title: t('accountManagement.title'),
         description: t('accountManagement.description'),
       }}
-      storageKey="admin_account_management"
       query={query}
+      state={tableState}
       columns={columns}
+      getRowId={(row) => String(row.id)}
       toolbarConfig={toolbarConfig}
     >
       <Button
@@ -275,6 +279,6 @@ export const AccountTable = ({
         <PlusCircleIcon className="size-4" />
         {t('accountForm.createButton')}
       </Button>
-    </DataTable>
+    </RemoteDataTable>
   )
 }

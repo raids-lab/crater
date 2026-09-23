@@ -124,11 +124,22 @@ export const apiUpdateAccountBillingConfig = (
   data: { issueAmount?: number; issuePeriodMinutes?: number }
 ) => apiV1Put<IResponse<AccountBillingConfig>>(`accounts/${accountId}/billing/config`, data)
 
-export const apiAdminGetAccountBillingMembers = (accountId: number) =>
-  apiV1Get<IResponse<AccountBillingMember[]>>(`admin/accounts/${accountId}/billing/members`)
+function billingMemberSearchParams(userIds?: number[]) {
+  if (!userIds?.length) return undefined
+  const searchParams = new URLSearchParams()
+  userIds.forEach((userId) => searchParams.append('user_id', String(userId)))
+  return searchParams
+}
 
-export const apiGetAccountBillingMembers = (accountId: number) =>
-  apiV1Get<IResponse<AccountBillingMember[]>>(`accounts/${accountId}/billing/members`)
+export const apiAdminGetAccountBillingMembers = (accountId: number, userIds?: number[]) =>
+  apiV1Get<IResponse<AccountBillingMember[]>>(`admin/accounts/${accountId}/billing/members`, {
+    searchParams: billingMemberSearchParams(userIds),
+  })
+
+export const apiGetAccountBillingMembers = (accountId: number, userIds?: number[]) =>
+  apiV1Get<IResponse<AccountBillingMember[]>>(`accounts/${accountId}/billing/members`, {
+    searchParams: billingMemberSearchParams(userIds),
+  })
 
 export const apiAdminUpdateAccountBillingMemberIssueAmount = (
   accountId: number,
@@ -158,8 +169,13 @@ export const apiAdminResetAllBillingBalances = () =>
     IResponse<{ accountsAffected: number; userAccountsAffected: number; issuedAt: string }>
   >('admin/system-config/billing/reset-all')
 
-export const apiBillingPriceList = () =>
-  apiV1Get<IResponse<BillingPriceResource[]>>('resources/billing/prices')
+export const apiBillingPriceList = (resourceIds?: number[]) => {
+  const searchParams = new URLSearchParams()
+  resourceIds?.forEach((resourceId) => searchParams.append('resource_id', String(resourceId)))
+  return apiV1Get<IResponse<BillingPriceResource[]>>('resources/billing/prices', {
+    searchParams: resourceIds?.length ? searchParams : undefined,
+  })
+}
 
 export const apiAdminUpdateResourceUnitPrice = (id: number, unitPrice: number) =>
   apiV1Put<IResponse<unknown>>(`admin/resources/${id}/billing/unit-price`, { unitPrice })

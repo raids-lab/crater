@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
@@ -52,8 +52,9 @@ import { TimeDistance } from '@/components/custom/time-distance'
 import ImageLabel from '@/components/label/image-label'
 import TooltipLink from '@/components/label/tooltip-link'
 import UserLabel from '@/components/label/user-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { type RemoteTableParams, buildRemoteQueryKey } from '@/components/query-table/remote-state'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 import {
   AlertDialog,
@@ -72,13 +73,13 @@ import {
   ImagePackSource,
   ImagePackStatus,
   KanikoInfoResponse,
-  ListKanikoResponse,
   getHeader,
   imagepackStatuses,
 } from '@/services/api/imagepack'
-import { IResponse } from '@/services/types'
+import { IPage, IResponse } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { formatBytes } from '@/utils/formatter'
 import { logger } from '@/utils/loglevel'
@@ -93,22 +94,26 @@ import { PipAptSheet } from './pip-apt-sheet'
 import { ProjectDetail } from './project-detail'
 
 const toolbarConfig: DataTableToolbarConfig = {
-  filterInput: {
+  globalSearch: {
+    enabled: true,
     placeholder: '搜索镜像',
-    key: 'image',
   },
   filterOptions: [
     {
       key: 'status',
       title: '状态',
       option: imagepackStatuses,
+      remoteFacets: true,
     },
   ],
   getHeader: getHeader,
 }
 
 interface KanikoListTableProps {
-  apiListKaniko: () => Promise<IResponse<ListKanikoResponse>>
+  apiListKaniko: (
+    params: RemoteTableParams,
+    signal?: AbortSignal
+  ) => Promise<IResponse<IPage<KanikoInfoResponse>>>
   apiRemoveKanikoList: (idList: number[]) => Promise<IResponse<string>>
   isAdminMode: boolean
 }
@@ -130,20 +135,46 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const [openCheckDialog, setCheckOpenDialog] = useState(false)
   const user = useAtomValue(atomUserInfo)
   const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>([])
+  const tableState = useRemoteTableState(`image_registry_${isAdminMode ? 'admin' : 'user'}`, {
+    sorting: [{ id: 'createdAt', desc: true }],
+  })
 
-  const imageQuery = useQuery({
-    queryKey: ['imagepack', 'list'],
-    queryFn: () => apiListKaniko(),
-    select: (res) =>
-      res.data.kanikoList.map((i) => ({
-        ...i,
-        image: `${i.imageLink} (${i.description})`,
-      })),
+  const imageQuery = useQuery<IPage<KanikoInfoResponse>, Error>({
+    queryKey: buildRemoteQueryKey(`imagepack-${isAdminMode ? 'admin' : 'user'}`, tableState.params),
+    queryFn: async ({ signal }) => {
+      const response = await apiListKaniko(tableState.params, signal)
+      return {
+        ...response.data,
+        items: response.data.items.map((item) => ({
+          ...item,
+          image: `${item.imageLink} (${item.description})`,
+        })),
+      }
+    },
+    placeholderData: keepPreviousData,
+  })
+  const finishedCountQuery = useQuery<IPage<KanikoInfoResponse>, Error>({
+    queryKey: ['remote-list', 'imagepack-user', 'finished-count'],
+    queryFn: ({ signal }) =>
+      apiListKaniko(
+        {
+          page: 1,
+          page_size: 1,
+          sort: '-createdAt',
+          filters: { status: ['Finished'] },
+        },
+        signal
+      ).then((response) => response.data),
+    enabled: !isAdminMode,
   })
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
-      await Promise.all([queryClient.invalidateQueries({ queryKey: ['imagepack', 'list'] })])
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['remote-list', `imagepack-${isAdminMode ? 'admin' : 'user'}`],
+        }),
+      ])
     } catch (error) {
       logger.error('更新查询失败', error)
     }
@@ -198,6 +229,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
     {
       id: 'archs',
       accessorKey: 'archs',
+      enableSorting: false,
       header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('archs')} />,
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
@@ -379,7 +411,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   columns = columns.filter((column) => column.id !== 'nickName' || isAdminMode)
   return (
     <>
-      <DataTable
+      <RemoteDataTable
         info={
           isAdminMode
             ? {
@@ -391,8 +423,9 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                 description: '支持 Dockerfile 、低代码、快照等方式制作镜像',
               }
         }
-        storageKey="image_registry"
         query={imageQuery}
+        state={tableState}
+        getRowId={(row) => String(row.ID)}
         columns={columns}
         toolbarConfig={toolbarConfig}
         className="lg:col-span-2"
@@ -471,11 +504,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
         ]}
         briefChildren={
           !isAdminMode ? (
-            <ProjectDetail
-              successImageNumber={
-                imageQuery.data?.filter((c) => c.status == 'Finished').length ?? 0
-              }
-            />
+            <ProjectDetail successImageNumber={finishedCountQuery.data?.total ?? 0} />
           ) : null
         }
       >
@@ -527,7 +556,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             </Button>
           </div>
         )}
-      </DataTable>
+      </RemoteDataTable>
       {!isAdminMode ? (
         <div>
           <EnvdSheet

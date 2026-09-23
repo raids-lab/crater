@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
 import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
-import { IResponse } from '@/services/types'
+import { IPage, IResponse } from '@/services/types'
 
 import { IUserInfo } from './vcjob'
 
@@ -104,6 +109,21 @@ export const apiListModelDownloadsPaged = (params: ModelDownloadListParams) => {
     searchParams,
   })
 }
+
+export const apiListModelDownloadsPage = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<ModelDownload>>>('model-download/models/downloads/page', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
+
+export const apiGetModelDownloadSummary = (category?: 'model' | 'dataset', signal?: AbortSignal) =>
+  apiV1Get<IResponse<Partial<Record<ModelDownloadStatus, number>>>>(
+    'model-download/models/downloads/summary',
+    {
+      searchParams: category ? { category } : undefined,
+      signal,
+    }
+  )
 
 export const apiGetModelDownload = (id: number) =>
   apiV1Get<IResponse<ModelDownload>>(`model-download/models/downloads/${id}`)

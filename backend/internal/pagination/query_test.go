@@ -81,6 +81,32 @@ func TestSortValidationAndClauses(t *testing.T) {
 	}
 }
 
+func TestDefaultAndValidateSort(t *testing.T) {
+	fields := map[string]string{"name": "name", "createdAt": "created_at"}
+
+	got, err := DefaultAndValidateSort("", "-createdAt", fields)
+	if err != nil {
+		t.Fatalf("DefaultAndValidateSort returned error: %v", err)
+	}
+	if got != "-createdAt" {
+		t.Fatalf("unexpected default sort: %q", got)
+	}
+	for _, sortValue := range []string{"unknown", "name,-name", "name,createdAt,-name"} {
+		if _, err := DefaultAndValidateSort(sortValue, "name", fields); err == nil {
+			t.Fatalf("expected sort %q to be rejected", sortValue)
+		}
+	}
+}
+
+func TestSortClauses(t *testing.T) {
+	fields := map[string]string{"name": "name", "createdAt": "created_at"}
+	got := SortClauses("name,-createdAt", fields, "id DESC")
+	want := []string{"name ASC", "created_at DESC", "id DESC"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected clauses: got %v, want %v", got, want)
+	}
+}
+
 func TestParsePositiveUintValues(t *testing.T) {
 	got, err := ParsePositiveUintValues([]string{"3", "1", "3"}, "id")
 	if err != nil {
@@ -89,7 +115,11 @@ func TestParsePositiveUintValues(t *testing.T) {
 	if want := []uint{3, 1}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected values: got %v, want %v", got, want)
 	}
-	for _, values := range [][]string{{"0"}, {"x"}, make([]string, MaxFilterValues+1)} {
+	got, err = ParsePositiveUintValues([]string{"2", "1", "2"}, "user_id")
+	if err != nil || !reflect.DeepEqual(got, []uint{2, 1}) {
+		t.Fatalf("unexpected second values: got %v, err %v", got, err)
+	}
+	for _, values := range [][]string{{"0"}, {"x"}, {"invalid"}, make([]string, MaxFilterValues+1)} {
 		if _, err := ParsePositiveUintValues(values, "id"); err == nil {
 			t.Fatalf("expected values to be rejected (count=%d)", len(values))
 		}
@@ -103,5 +133,12 @@ func TestValidateAllowedValues(t *testing.T) {
 	}
 	if err := ValidateAllowedValues([]string{"unknown"}, allowed, "status"); err == nil {
 		t.Fatal("expected an unsupported value error")
+	}
+	typeValues := map[string]struct{}{"public": {}, "private": {}}
+	if err := ValidateAllowedValues([]string{"public", "private"}, typeValues, "type"); err != nil {
+		t.Fatalf("ValidateAllowedValues returned error: %v", err)
+	}
+	if err := ValidateAllowedValues([]string{"unknown"}, typeValues, "type"); err == nil {
+		t.Fatal("expected unsupported value to be rejected")
 	}
 }

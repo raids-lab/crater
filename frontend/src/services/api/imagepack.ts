@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 import { Visibility } from '@/components/badge/visibility-badge'
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
 
 import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
-import { IResponse } from '@/services/types'
+import { IPage, IResponse } from '@/services/types'
 
 import { IUserAttributes } from './admin/user'
 import { IUserInfo, JobType } from './vcjob'
@@ -399,6 +403,12 @@ export function parseImageLink(imageLink: string) {
 
 export const apiUserListKaniko = () => apiV1Get<IResponse<ListKanikoResponse>>('images/kaniko')
 
+export const apiUserListKanikoPage = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<KanikoInfoResponse>>>('images/kaniko/page', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
+
 export const apiUserCreateKaniko = async (imagepack: KanikoCreate) => {
   const response = await apiV1Post<IResponse<string>>('images/kaniko', imagepack)
   return response.data
@@ -423,6 +433,12 @@ export const apiUserGetKaniko = (name: string) =>
   apiV1Get<IResponse<KanikoInfoResponse>>(`images/getbyname?name=${name}`)
 
 export const apiUserListImage = () => apiV1Get<IResponse<ListImageResponse>>('images/image')
+
+export const apiUserListImagePage = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<ImageInfoResponse>>>('images/image/page', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 export const apiUserChangeImagePublicStatus = (id: number) =>
   apiV1Post<IResponse<string>>(`images/change/${id}`)

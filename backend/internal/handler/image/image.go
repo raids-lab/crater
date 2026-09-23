@@ -548,37 +548,37 @@ func (mgr *ImagePackMgr) processImageListResponse(
 			continue
 		}
 
-		archs := image.Archs.Data()
-		// TODO: remove temporary fix for empty archs
-		if image.Archs.Data() == nil {
-			archs = []string{"linux/amd64"}
-		}
-
-		// 处理用户信息为空的情况
-		userInfo := model.UserInfo{}
-		if image.User.ID != 0 {
-			userInfo.Username = image.User.Name
-			userInfo.Nickname = image.User.Nickname
-		}
-
-		imageInfo := &ImageInfo{
-			ID:               image.ID,
-			ImageLink:        image.ImageLink,
-			Description:      image.Description,
-			CreatedAt:        image.CreatedAt,
-			IsPublic:         image.IsPublic,
-			TaskType:         image.TaskType,
-			UserInfo:         userInfo,
-			Tags:             image.Tags.Data(),
-			Archs:            archs,
-			ImageBuildSource: image.ImageSource,
-			ImagePackName:    image.ImagePackName,
-			ImageShareStatus: status,
-		}
-		imageInfos = append(imageInfos, imageInfo)
+		imageInfos = append(imageInfos, mgr.imageInfoFromModel(image, status))
 	}
 	imageInfoList = append(imageInfoList, imageInfos...)
 	return imageInfoList
+}
+
+func (mgr *ImagePackMgr) imageInfoFromModel(image *model.Image, status model.ImageShareType) *ImageInfo {
+	archs := image.Archs.Data()
+	// TODO: remove temporary fix for empty archs
+	if archs == nil {
+		archs = []string{"linux/amd64"}
+	}
+	userInfo := model.UserInfo{}
+	if image.User.ID != 0 {
+		userInfo.Username = image.User.Name
+		userInfo.Nickname = image.User.Nickname
+	}
+	return &ImageInfo{
+		ID:               image.ID,
+		ImageLink:        image.ImageLink,
+		Description:      image.Description,
+		CreatedAt:        image.CreatedAt,
+		IsPublic:         image.IsPublic,
+		TaskType:         image.TaskType,
+		UserInfo:         userInfo,
+		Tags:             image.Tags.Data(),
+		Archs:            archs,
+		ImageBuildSource: image.ImageSource,
+		ImagePackName:    image.ImagePackName,
+		ImageShareStatus: status,
+	}
 }
 
 // UserChangeImageTagsType godoc

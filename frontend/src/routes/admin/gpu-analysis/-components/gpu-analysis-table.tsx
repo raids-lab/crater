@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 // This is the implementation for the GPU Analysis Overview page.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import {
   AlertTriangleIcon,
@@ -54,8 +54,9 @@ import { TimeDistance } from '@/components/custom/time-distance'
 import { MarkdownRenderer } from '@/components/form/markdown-renderer'
 import { JobNameCell } from '@/components/label/job-name-label'
 import UserLabel from '@/components/label/user-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 import {
   AlertDialog,
@@ -73,11 +74,14 @@ import {
   IGpuAnalysis,
   ReviewStatus,
   apiAdminConfirmAndStopJob,
-  apiAdminListGpuAnalyses,
+  apiAdminListGpuAnalysesPaged,
   apiAdminTriggerAllJobsAnalysis,
   apiAdminUpdateGpuAnalysisReviewStatus,
 } from '@/services/api/gpu-analysis'
 import { IJobInfo, JobType } from '@/services/api/vcjob'
+import type { IPage } from '@/services/types'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { logger } from '@/utils/loglevel'
 import { showErrorToast } from '@/utils/toast'
@@ -251,6 +255,12 @@ const DetailsHoverCard = ({
 const GpuAnalysisOverview = () => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const tableState = useRemoteTableState('admin_gpu_analysis', {
+    sorting: [
+      { id: 'Phase2Score', desc: true },
+      { id: 'CreatedAt', desc: true },
+    ],
+  })
 
   const toolbarConfig: DataTableToolbarConfig = useMemo(
     () => ({
@@ -268,6 +278,7 @@ const GpuAnalysisOverview = () => {
               label: t(`gpuAnalysis.status.${ReviewStatus[value as number].toLowerCase()}`),
               value: value as unknown as string, // 保持为数字，匹配原始数据类型
             })),
+          remoteFacets: true,
         },
         {
           key: 'Phase2Score',
@@ -278,6 +289,7 @@ const GpuAnalysisOverview = () => {
             { label: t('gpuAnalysis.riskLevel.medium'), value: 'medium' },
             { label: t('gpuAnalysis.riskLevel.low'), value: 'low' },
           ],
+          remoteFacets: true,
         },
       ],
       getHeader: (key: string) => t(`gpuAnalysis.headers.${key}`),
@@ -285,10 +297,11 @@ const GpuAnalysisOverview = () => {
     [t]
   )
 
-  const analysisQuery = useQuery({
-    queryKey: ['admin', 'gpu-analysis'],
-    queryFn: apiAdminListGpuAnalyses,
-    select: (res) => res.data,
+  const analysisQuery = useQuery<IPage<IGpuAnalysis>, Error>({
+    queryKey: buildRemoteQueryKey('admin-gpu-analysis', tableState.params),
+    queryFn: ({ signal }) =>
+      apiAdminListGpuAnalysesPaged(tableState.params, signal).then((res) => res.data),
+    placeholderData: keepPreviousData,
   })
 
   const copyHoggingMessage = useCallback(
@@ -317,7 +330,7 @@ const GpuAnalysisOverview = () => {
     mutationFn: ({ id, status }: { id: number; status: ReviewStatus }) =>
       apiAdminUpdateGpuAnalysisReviewStatus(id, status),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'gpu-analysis'] })
+      await queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-gpu-analysis'] })
       toast.success(t('gpuAnalysis.toast.updateSuccess'))
     },
     onError: (error) => {
@@ -386,6 +399,7 @@ const GpuAnalysisOverview = () => {
       },
       {
         accessorKey: 'Nodes',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('gpuAnalysis.headers.Nodes')} />
         ),
@@ -396,6 +410,7 @@ const GpuAnalysisOverview = () => {
       },
       {
         accessorKey: 'Resources',
+        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('gpuAnalysis.headers.Resources')} />
         ),
@@ -554,7 +569,7 @@ const GpuAnalysisOverview = () => {
                         try {
                           await confirmAndStopAsync(record.ID)
                           await queryClient.invalidateQueries({
-                            queryKey: ['admin', 'gpu-analysis'],
+                            queryKey: ['remote-list', 'admin-gpu-analysis'],
                           })
                           toast.success(t('gpuAnalysis.toast.confirmAndStopSuccess'))
                           const message = t('gpuAnalysis.copy.template', {
@@ -581,10 +596,11 @@ const GpuAnalysisOverview = () => {
 
   return (
     <div className="space-y-4">
-      <DataTable
-        storageKey="admin_gpu_analysis"
+      <RemoteDataTable
         query={analysisQuery}
+        state={tableState}
         columns={columns}
+        getRowId={(row) => String(row.ID)}
         toolbarConfig={toolbarConfig}
         info={{
           title: t('gpuAnalysis.title'),
@@ -604,7 +620,7 @@ const GpuAnalysisOverview = () => {
               const promises = rows.map((row) => confirmAndStopAsync(row.original.ID))
               Promise.all(promises)
                 .then(() => {
-                  queryClient.invalidateQueries({ queryKey: ['admin', 'gpu-analysis'] })
+                  queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-gpu-analysis'] })
                   toast.success(
                     t('gpuAnalysis.handlers.confirmAndStopSuccess', { count: rows.length })
                   )
@@ -637,7 +653,7 @@ const GpuAnalysisOverview = () => {
               )
               Promise.all(promises)
                 .then(() => {
-                  queryClient.invalidateQueries({ queryKey: ['admin', 'gpu-analysis'] })
+                  queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-gpu-analysis'] })
                   toast.success(t('gpuAnalysis.handlers.confirmSuccess', { count: rows.length }))
                   // Bulk Copy
                   const jobList = rows.map((row) => `- ${row.original.JobName}`).join('\n')
@@ -665,7 +681,7 @@ const GpuAnalysisOverview = () => {
               )
               Promise.all(promises)
                 .then(() => {
-                  queryClient.invalidateQueries({ queryKey: ['admin', 'gpu-analysis'] })
+                  queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-gpu-analysis'] })
                   toast.success(t('gpuAnalysis.handlers.ignoreSuccess', { count: rows.length }))
                 })
                 .catch((error) => {
@@ -704,7 +720,7 @@ const GpuAnalysisOverview = () => {
             {t('common.refresh')}
           </Button>
         </div>
-      </DataTable>
+      </RemoteDataTable>
     </div>
   )
 }

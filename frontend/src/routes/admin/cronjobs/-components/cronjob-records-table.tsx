@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 // i18n-processed-v1.1.0
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { CalendarIcon, CopyIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -44,21 +44,28 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
   CronJobRecord,
   apiAdminCronJobRecordDelete,
-  apiAdminCronJobRecordList,
+  apiAdminCronJobRecordPage,
   apiAdminCronJobRecordTimeRange,
 } from '@/services/api/vcjob'
+import type { IPage } from '@/services/types'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import CronJobRecordStatus from './cronjob-record-status'
 
 export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobNames?: string[] }) {
   const { t } = useTranslation()
+  const tableState = useRemoteTableState('admin_cronjob_records', {
+    sorting: [{ id: 'executeTime', desc: true }],
+  })
 
   // 定义状态选项（使用 i18n）
   const cronJobRecordStatuses = useMemo(
@@ -104,25 +111,25 @@ export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobN
     loadTimeRange()
   }, [t])
 
-  // 使用 useQuery 获取记录
-  const recordsQuery = useQuery({
-    queryKey: ['admin', 'cronjob', 'records', dateRange],
-    queryFn: async () => {
-      const res = await apiAdminCronJobRecordList({
-        startTime: dateRange?.from?.toISOString(),
-        endTime: dateRange?.to?.toISOString(),
-      })
-      if (res.code === 0 && res.data) {
-        return res.data.records || []
-      }
-      throw new Error(res.msg || t('cronPolicy.recordsLoadError'))
-    },
-    select: (data) => {
-      if (filteredJobNames && filteredJobNames.length > 0) {
-        return data.filter((record) => filteredJobNames.includes(record.name))
-      }
-      return data
-    },
+  const recordQueryOptions = useMemo(
+    () => ({
+      startTime: dateRange?.from?.toISOString(),
+      endTime: dateRange?.to?.toISOString(),
+      scopeNames: filteredJobNames,
+    }),
+    [dateRange, filteredJobNames]
+  )
+
+  const recordsQuery = useQuery<IPage<CronJobRecord>, Error>({
+    queryKey: [
+      ...buildRemoteQueryKey('admin-cronjob-records', tableState.params),
+      recordQueryOptions,
+    ],
+    queryFn: ({ signal }) =>
+      apiAdminCronJobRecordPage(tableState.params, recordQueryOptions, signal).then(
+        (response) => response.data
+      ),
+    placeholderData: keepPreviousData,
     refetchInterval: 30000, // 每30秒自动刷新
   })
 
@@ -246,6 +253,7 @@ export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobN
             </div>
           )
         },
+        enableSorting: false,
       },
       {
         id: 'affected',
@@ -291,6 +299,7 @@ export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobN
             </TooltipProvider>
           )
         },
+        enableSorting: false,
       },
     ]
   }, [t, copyToClipboard])
@@ -302,13 +311,10 @@ export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobN
     },
     filterOptions: [
       {
-        key: 'name',
-        title: t('cronJob.record.table.jobName'),
-      },
-      {
         key: 'status',
         title: t('cronJob.record.table.statusFilter'),
         option: cronJobRecordStatuses,
+        remoteFacets: true,
       },
     ],
     getHeader: (key: string) => {
@@ -332,10 +338,11 @@ export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobN
   return (
     <Card className="mt-1 p-0">
       <CardContent className="p-6">
-        <DataTable
-          storageKey="admin_cronjob_records"
+        <RemoteDataTable
           query={recordsQuery}
+          state={tableState}
           columns={columns}
+          getRowId={(row) => String(row.id)}
           toolbarConfig={toolbarConfig}
           withI18n={true}
           briefChildren={
@@ -367,7 +374,10 @@ export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobN
                     <Calendar
                       mode="range"
                       selected={dateRange}
-                      onSelect={setDateRange}
+                      onSelect={(value) => {
+                        setDateRange(value)
+                        tableState.setPagination((current) => ({ ...current, pageIndex: 0 }))
+                      }}
                       numberOfMonths={2}
                       fromDate={minDate}
                       toDate={maxDate}
@@ -380,7 +390,14 @@ export default function CronJobRecordsTable({ filteredJobNames }: { filteredJobN
                   </PopoverContent>
                 </Popover>
                 {(dateRange?.from || dateRange?.to) && (
-                  <Button variant="ghost" size="sm" onClick={() => setDateRange(undefined)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDateRange(undefined)
+                      tableState.setPagination((current) => ({ ...current, pageIndex: 0 }))
+                    }}
+                  >
                     {t('cronJob.record.table.clearDate')}
                   </Button>
                 )}

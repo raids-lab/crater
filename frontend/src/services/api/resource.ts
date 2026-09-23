@@ -13,9 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
-import { IResponse } from '../types'
+import { IPage, IResponse } from '../types'
 
 export interface Resource {
   ID: number
@@ -59,6 +64,19 @@ export const apiResourceList = (withVendorDomain: boolean) => {
     searchParams: {
       withVendorDomain,
     },
+  })
+}
+
+export const apiResourceListPaged = (
+  params: RemoteTableParams,
+  withVendorDomain: boolean,
+  signal?: AbortSignal
+) => {
+  const searchParams = buildRemoteSearchParams(params)
+  searchParams.set('withVendorDomain', String(withVendorDomain))
+  return apiV1Get<IResponse<IPage<Resource>>>('resources/page', {
+    searchParams,
+    signal,
   })
 }
 

@@ -13,10 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { apiV1Get, apiV1Post } from '@/services/client'
-import { IResponse } from '@/services/types'
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
 
-import { ListImageResponse, ListKanikoResponse, UpdateDescription } from '../imagepack'
+import { apiV1Get, apiV1Post } from '@/services/client'
+import { IPage, IResponse } from '@/services/types'
+
+import {
+  ImageInfoResponse,
+  KanikoInfoResponse,
+  ListImageResponse,
+  ListKanikoResponse,
+  UpdateDescription,
+} from '../imagepack'
 
 export const apiAdminImagePublicStatusChange = async (id: number) => {
   const response = await apiV1Post<IResponse<string>>('admin/images/change', id)
@@ -25,6 +36,12 @@ export const apiAdminImagePublicStatusChange = async (id: number) => {
 
 export const apiAdminListImage = () => apiV1Get<IResponse<ListImageResponse>>('admin/images/image')
 
+export const apiAdminListImagePage = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<ImageInfoResponse>>>('admin/images/image/page', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
+
 export const apiAdminDeleteKanikoList = (idList: number[]) =>
   apiV1Post<IResponse<string>>('admin/images/deletekaniko', {
     idList,
@@ -32,6 +49,12 @@ export const apiAdminDeleteKanikoList = (idList: number[]) =>
 
 export const apiAdminListKaniko = () =>
   apiV1Get<IResponse<ListKanikoResponse>>('admin/images/kaniko')
+
+export const apiAdminListKanikoPage = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<KanikoInfoResponse>>>('admin/images/kaniko/page', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 export const apiAdminDeleteImageList = (idList: number[]) =>
   apiV1Post<IResponse<string>>('admin/images/deleteimage', {

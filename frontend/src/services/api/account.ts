@@ -13,9 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
 import { IResponse } from '../types'
+import type { IPage } from '../types'
 import { IUserAttributes } from './admin/user'
 import { Role } from './auth'
 import { QuotaResp } from './context'
@@ -61,6 +67,12 @@ export interface IAccount {
 }
 
 export const apiAdminAccountList = () => apiV1Get<IResponse<IAccount[]>>('admin/accounts')
+
+export const apiAdminAccountListPaged = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IAccount>>>('admin/accounts/page', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 export const apiAccountCreate = (account: ICreateOrUpdateAccount) =>
   apiV1Post<IResponse<ICreateProjectResponse>>('admin/accounts', account)
@@ -124,6 +136,16 @@ export const apiRemoveUser = async (pid: number, user: IUserInAccountCreate) =>
 export const apiUserInProjectList = (pid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>(`admin/accounts/userIn/${pid}`)
 
+export const apiUserInProjectListPaged = (
+  pid: number,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IPage<IUserInAccount>>>(`admin/accounts/userIn/${pid}/page`, {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
+
 export const apiUserOutOfProjectList = (pid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>(`admin/accounts/userOutOf/${pid}`)
 
@@ -158,6 +180,16 @@ export const apiUserRemoveAccountMember = async (aid: number, user: IUserInAccou
 
 export const apiUserListAccountMembers = (aid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>(`accounts/${aid}/users`)
+
+export const apiUserListAccountMembersPaged = (
+  aid: number,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IPage<IUserInAccount>>>(`accounts/${aid}/users/page`, {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 export const apiUserListUsersOutOfAccount = (aid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>(`accounts/${aid}/users/out`)

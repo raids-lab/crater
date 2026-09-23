@@ -61,9 +61,10 @@ export default function ShareWithAccounts({
       }),
     onSuccess: () => {
       toast.success(t('shareDatasetToQueueDialog.success'))
-      void queryClient.invalidateQueries({
-        queryKey: ['data', 'queuedataset', datasetId],
-      })
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['remote-list', 'dataset-account-shares'] }),
+        queryClient.invalidateQueries({ queryKey: ['dataset', 'queueOutList', { datasetId }] }),
+      ])
       setQueueIds([])
     },
   })

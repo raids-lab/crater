@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 // i18n-processed-v1.1.0
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Link, linkOptions } from '@tanstack/react-router'
 import { ArrowLeftIcon, DownloadIcon, PlusIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -25,20 +25,34 @@ import { Button } from '@/components/ui/button'
 import DocsButton from '@/components/button/docs-button'
 import ListedButton from '@/components/button/listed-button'
 import { DataCreateForm } from '@/components/file/data-create-form'
-import DataList from '@/components/layout/data-list'
+import DataList, { DataListRemoteQuery } from '@/components/layout/data-list'
 import { ModelDownloadDialog } from '@/components/model/model-download-dialog'
 import RepositorySourceMark from '@/components/model/repository-source-mark'
 import SandwichSheet from '@/components/sheet/sandwich-sheet'
 
-import { IDataset } from '@/services/api/dataset'
-import { IResponse } from '@/services/types'
+import { DatasetListParams, IDataset } from '@/services/api/dataset'
+import { IPage, IResponse } from '@/services/types'
 
 import TooltipLink from '../label/tooltip-link'
 
 interface DatesetTableProps {
   sourceType?: 'dataset' | 'model' | 'sharefile'
   apiGetDataset: () => Promise<IResponse<IDataset[]>>
+  apiGetDatasetPaged?: (
+    params: DatasetListParams,
+    signal?: AbortSignal
+  ) => Promise<IResponse<IPage<IDataset>>>
   organization?: string
+}
+
+const defaultRemoteQuery: DataListRemoteQuery = {
+  page: 1,
+  pageSize: 10,
+  search: '',
+  owner: 'all',
+  tag: '所有标签',
+  sortField: 'createdAt',
+  sortDirection: 'descending',
 }
 
 const getLinkOptions = (sourceType: string) => {
@@ -56,12 +70,49 @@ const getLinkOptions = (sourceType: string) => {
   }
 }
 
-export function DataView({ apiGetDataset, sourceType, organization }: DatesetTableProps) {
+export function DataView({
+  apiGetDataset,
+  apiGetDatasetPaged,
+  sourceType,
+  organization,
+}: DatesetTableProps) {
   const { t } = useTranslation()
-  const data = useQuery({
+  // Models keep the local path because the top-level view groups them by organization.
+  // Dataset and shared-file lists are direct database collections and can use the page API.
+  const isRemote = sourceType !== 'model' && apiGetDatasetPaged !== undefined
+  const [remoteQuery, setRemoteQuery] = useState(defaultRemoteQuery)
+
+  const localData = useQuery({
     queryKey: ['data', sourceType || 'mydataset'],
     queryFn: () => apiGetDataset(),
     select: (res) => res.data,
+    enabled: !isRemote,
+  })
+
+  const remoteData = useQuery({
+    queryKey: ['data', sourceType || 'mydataset', 'page', apiGetDatasetPaged, remoteQuery],
+    queryFn: ({ signal }) =>
+      apiGetDatasetPaged!(
+        {
+          page: remoteQuery.page,
+          pageSize: remoteQuery.pageSize,
+          search: remoteQuery.search,
+          owner: remoteQuery.owner,
+          sort:
+            remoteQuery.sortField === 'mountCount'
+              ? remoteQuery.sortDirection === 'ascending'
+                ? 'mountCount'
+                : '-mountCount'
+              : remoteQuery.sortDirection === 'ascending'
+                ? 'createdAt'
+                : '-createdAt',
+          type: sourceType || 'sharefile',
+        },
+        signal
+      ),
+    select: (res) => res.data,
+    placeholderData: keepPreviousData,
+    enabled: isRemote,
   })
 
   const sourceTypeMap = {
@@ -75,17 +126,21 @@ export function DataView({ apiGetDataset, sourceType, organization }: DatesetTab
   const [openSheet, setOpenSheet] = useState(false)
   const [openDownloadSheet, setOpenDownloadSheet] = useState(false)
 
-  const filteredData = useMemo(
-    () =>
-      data.data?.filter(
+  const filteredData = useMemo(() => {
+    if (isRemote) {
+      return remoteData.data?.items || []
+    }
+
+    return (
+      localData.data?.filter(
         (dataset) =>
           dataset.type === sourceType &&
           (!organization ||
             (dataset.organization || dataset.name.split('/')[0]).toLowerCase() ===
               organization.toLowerCase())
-      ) || [],
-    [data.data, organization, sourceType]
-  )
+      ) || []
+    )
+  }, [isRemote, localData.data, organization, remoteData.data?.items, sourceType])
   const isShareFile = sourceType === 'sharefile'
 
   const resourceItems = filteredData.map((dataset) => ({
@@ -243,6 +298,17 @@ export function DataView({ apiGetDataset, sourceType, organization }: DatesetTab
   return (
     <DataList
       items={sourceType === 'model' && !organization ? organizationItems : resourceItems}
+      remote={
+        isRemote
+          ? {
+              query: remoteQuery,
+              total: remoteData.data?.total ?? 0,
+              isLoading: remoteData.isFetching,
+              availableSortFields: ['createdAt', 'mountCount'],
+              onQueryChange: setRemoteQuery,
+            }
+          : undefined
+      }
       title={organization || sourceTitle}
       description={
         organization

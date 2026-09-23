@@ -23,7 +23,7 @@ import {
   apiUserChangeImageDescription,
   apiUserChangeImagePublicStatus,
   apiUserDeleteImageList,
-  apiUserListImage,
+  apiUserListImagePage,
 } from '@/services/api/imagepack'
 
 export const Route = createFileRoute('/portal/env/images/')({
@@ -38,7 +38,7 @@ export const Route = createFileRoute('/portal/env/images/')({
 function RouteComponent() {
   return (
     <ImageListTable
-      apiListImage={apiUserListImage}
+      apiListImage={apiUserListImagePage}
       apiDeleteImageList={apiUserDeleteImageList}
       apiChangeImagePublicStatus={apiUserChangeImagePublicStatus}
       apiChangeImageDescription={apiUserChangeImageDescription}

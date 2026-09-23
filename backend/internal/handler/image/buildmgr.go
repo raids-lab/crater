@@ -337,6 +337,10 @@ func (mgr *ImagePackMgr) getPodName(c *gin.Context, kanikoID uint) (name, ns, no
 }
 
 func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) ListKanikoResponse {
+	return ListKanikoResponse{KanikoInfoList: mgr.generateKanikoInfos(kanikos)}
+}
+
+func (mgr *ImagePackMgr) generateKanikoInfos(kanikos []*model.Kaniko) []KanikoInfo {
 	kanikoInfos := []KanikoInfo{}
 	for i := range kanikos {
 		kaniko := kanikos[i]
@@ -345,13 +349,17 @@ func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) Lis
 		if kaniko.Archs.Data() == nil {
 			archs = []string{"linux/amd64"}
 		}
+		description := ""
+		if kaniko.Description != nil {
+			description = *kaniko.Description
+		}
 		kanikoInfo := KanikoInfo{
 			ID:          kaniko.ID,
 			ImageLink:   kaniko.ImageLink,
 			Status:      kaniko.Status,
 			CreatedAt:   kaniko.CreatedAt,
 			Size:        kaniko.Size,
-			Description: *kaniko.Description,
+			Description: description,
 			UserInfo: model.UserInfo{
 				Username: kaniko.User.Name,
 				Nickname: kaniko.User.Nickname,
@@ -363,7 +371,5 @@ func (mgr *ImagePackMgr) generateKanikoListResponse(kanikos []*model.Kaniko) Lis
 		}
 		kanikoInfos = append(kanikoInfos, kanikoInfo)
 	}
-	return ListKanikoResponse{
-		KanikoInfoList: kanikoInfos,
-	}
+	return kanikoInfos
 }

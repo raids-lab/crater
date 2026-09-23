@@ -704,6 +704,22 @@ export const apiAdminCronJobRecordTimeRange = () =>
 export const apiAdminCronJobRecordList = (param: CronJobRecordListReq) =>
   apiV1Post<IResponse<CronJobRecordListResp>>('admin/operations/cronjob/record/list', param)
 
+export const apiAdminCronJobRecordPage = (
+  params: RemoteTableParams,
+  options: { startTime?: string; endTime?: string; scopeNames?: string[] },
+  signal?: AbortSignal
+) => {
+  const searchParams = buildRemoteSearchParams(params)
+  if (options.startTime) searchParams.set('start_time', options.startTime)
+  if (options.endTime) searchParams.set('end_time', options.endTime)
+  for (const name of options.scopeNames ?? []) searchParams.append('scope_name', name)
+
+  return apiV1Get<IResponse<IPage<CronJobRecord>>>('admin/operations/cronjob/record/page', {
+    searchParams,
+    signal,
+  })
+}
+
 export interface DeleteCronJobRecordsReq {
   id?: number[]
   startTime?: string
