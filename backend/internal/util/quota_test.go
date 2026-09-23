@@ -8,7 +8,7 @@ import (
 )
 
 func TestCheckStorageQuotaDisabledSkipsDatabase(t *testing.T) {
-	configPath, err := filepath.Abs("../../etc/debug-config.yaml")
+	configPath, err := filepath.Abs("../../etc/example-config.yaml")
 	if err != nil {
 		t.Fatalf("resolve debug config path: %v", err)
 	}
