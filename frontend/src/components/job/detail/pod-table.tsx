@@ -36,7 +36,10 @@ import { SnapshotControls } from '@/components/query-table/cursor-list'
 import { SnapshotStatus } from '@/components/query-table/snapshot-list'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { type SnapshotPod, apiGetJobPodSnapshot } from '@/services/api/snapshot'
+import {
+  type SnapshotPod,
+  apiGetJobPodSnapshot,
+} from '@/services/api/snapshot'
 import { PodDetail } from '@/services/api/vcjob'
 
 import { configGrafanaJobAtom } from '@/utils/store/config'
