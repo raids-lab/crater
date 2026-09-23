@@ -1,0 +1,299 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-file-typo-json/argv --
+crater file get --json --no-interactive
+-- en/01-file-typo-json/exit --
+2
+-- en/01-file-typo-json/stdout --
+-- en/01-file-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"get\" for \"crater file\"\nRun \"crater file --help\" for usage."
+}
+-- en/01b-file-typo-text/argv --
+crater file get --no-interactive
+-- en/01b-file-typo-text/exit --
+2
+-- en/01b-file-typo-text/stdout --
+-- en/01b-file-typo-text/stderr --
+Error:
+  unknown command "get" for "crater file"
+  Run "crater file --help" for usage.
+-- en/02-file-upload-missing-local-json/argv --
+crater file upload --json --no-interactive
+-- en/02-file-upload-missing-local-json/exit --
+2
+-- en/02-file-upload-missing-local-json/stdout --
+-- en/02-file-upload-missing-local-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "local file is required (\u003clocal-file\u003e)"
+}
+-- en/03-file-upload-missing-remote-json/argv --
+crater file upload .snapshot-upload-en.bin --json --no-interactive
+-- en/03-file-upload-missing-remote-json/exit --
+2
+-- en/03-file-upload-missing-remote-json/stdout --
+-- en/03-file-upload-missing-remote-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "remote path is required (\u003cremote-path\u003e)"
+}
+-- en/04-file-upload-extra-arg-json/argv --
+crater file upload .snapshot-upload-en.bin user/a.bin extra --json --no-interactive
+-- en/04-file-upload-extra-arg-json/exit --
+2
+-- en/04-file-upload-extra-arg-json/stdout --
+-- en/04-file-upload-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "too many arguments for crater file upload: got 3, want at most 2"
+}
+-- en/05-file-upload-traversal-json/argv --
+crater file upload .snapshot-upload-en.bin user/../public/a.bin --json --no-interactive
+-- en/05-file-upload-traversal-json/exit --
+2
+-- en/05-file-upload-traversal-json/stdout --
+-- en/05-file-upload-traversal-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid remote path \"user/../public/a.bin\""
+}
+-- en/06-file-upload-root-json/argv --
+crater file upload .snapshot-upload-en.bin user --json --no-interactive
+-- en/06-file-upload-root-json/exit --
+2
+-- en/06-file-upload-root-json/stdout --
+-- en/06-file-upload-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "remote file must name an entry below user, public, or account: \"user\""
+}
+-- en/07-file-upload-directory-json/argv --
+crater file upload . user/a.bin --json --no-interactive
+-- en/07-file-upload-directory-json/exit --
+2
+-- en/07-file-upload-directory-json/stdout --
+-- en/07-file-upload-directory-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "local path is not a regular file: \".\""
+}
+-- en/08-file-upload-404-json/argv --
+crater file upload .snapshot-upload-en.bin user/实验 data/result.bin --json --no-interactive
+-- en/08-file-upload-404-json/exit --
+4
+-- en/08-file-upload-404-json/stdout --
+-- en/08-file-upload-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/09-file-help/argv --
+crater file --help
+-- en/09-file-help/exit --
+0
+-- en/09-file-help/stdout --
+List, download, upload, create directories, and move entries in user, public, and account storage spaces.
+
+Usage:
+  crater file [flags]
+  crater file [command]
+
+Available Commands:
+  download    Download one remote file
+  ls          List remote files
+  mkdir       Create one remote directory
+  mv          Move one remote file or directory
+  upload      Upload one local file
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+
+Use "crater file [command] --help" for more information about a command.
+-- en/09-file-help/stderr --
+-- en/10-file-upload-help/argv --
+crater file upload --help
+-- en/10-file-upload-help/exit --
+0
+-- en/10-file-upload-help/stdout --
+Stream one local regular file to a path below user, public, or account storage.
+
+Usage:
+  crater file upload <local-file> <remote-path> [flags]
+
+Flags:
+      --overwrite   Replace an existing remote file
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/10-file-upload-help/stderr --
+-- en/11-file-mkdir-help/argv --
+crater file mkdir --help
+-- en/11-file-mkdir-help/exit --
+0
+-- en/11-file-mkdir-help/stdout --
+Create exactly one directory below user, public, or account storage without creating missing parents.
+
+Usage:
+  crater file mkdir <remote-path> [flags]
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/11-file-mkdir-help/stderr --
+-- en/12-file-mkdir-missing-json/argv --
+crater file mkdir --json --no-interactive
+-- en/12-file-mkdir-missing-json/exit --
+2
+-- en/12-file-mkdir-missing-json/stdout --
+-- en/12-file-mkdir-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "remote directory is required (\u003cremote-path\u003e)"
+}
+-- en/13-file-mkdir-root-json/argv --
+crater file mkdir user --json --no-interactive
+-- en/13-file-mkdir-root-json/exit --
+2
+-- en/13-file-mkdir-root-json/stdout --
+-- en/13-file-mkdir-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "remote path must name an entry below user, public, or account: \"user\""
+}
+-- en/14-file-mkdir-404-json/argv --
+crater file mkdir user/实验 data --json --no-interactive
+-- en/14-file-mkdir-404-json/exit --
+4
+-- en/14-file-mkdir-404-json/stdout --
+-- en/14-file-mkdir-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/15-file-mv-help/argv --
+crater file mv --help
+-- en/15-file-mv-help/exit --
+0
+-- en/15-file-mv-help/stdout --
+Move one remote storage entry to an exact destination path without replacing an existing entry.
+
+Usage:
+  crater file mv <source-path> <destination-path> [flags]
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/15-file-mv-help/stderr --
+-- en/16-file-mv-missing-source-json/argv --
+crater file mv --json --no-interactive
+-- en/16-file-mv-missing-source-json/exit --
+2
+-- en/16-file-mv-missing-source-json/stdout --
+-- en/16-file-mv-missing-source-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "source path is required (\u003csource-path\u003e)"
+}
+-- en/17-file-mv-missing-destination-json/argv --
+crater file mv user/source --json --no-interactive
+-- en/17-file-mv-missing-destination-json/exit --
+2
+-- en/17-file-mv-missing-destination-json/stdout --
+-- en/17-file-mv-missing-destination-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "destination path is required (\u003cdestination-path\u003e)"
+}
+-- en/18-file-mv-invalid-operands-json/argv --
+crater file mv user/../source account\destination --json --no-interactive
+-- en/18-file-mv-invalid-operands-json/exit --
+2
+-- en/18-file-mv-invalid-operands-json/stdout --
+-- en/18-file-mv-invalid-operands-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid remote path \"user/../source\"\ninvalid remote path \"account\\\\destination\"",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "source-path",
+        "message": "invalid remote path \"user/../source\""
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "destination-path",
+        "message": "invalid remote path \"account\\\\destination\""
+      }
+    ]
+  }
+}
+-- en/19-file-mv-same-json/argv --
+crater file mv user/source /user//./source --json --no-interactive
+-- en/19-file-mv-same-json/exit --
+2
+-- en/19-file-mv-same-json/stdout --
+-- en/19-file-mv-same-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "move destination must differ from the source: \"user/source\""
+}
+-- en/20-file-mv-descendant-json/argv --
+crater file mv user/source user/source/nested --json --no-interactive
+-- en/20-file-mv-descendant-json/exit --
+2
+-- en/20-file-mv-descendant-json/stdout --
+-- en/20-file-mv-descendant-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "move destination \"user/source/nested\" cannot be inside source \"user/source\""
+}
+-- en/21-file-mv-404-json/argv --
+crater file mv user/source account/实验 data/result --json --no-interactive
+-- en/21-file-mv-404-json/exit --
+4
+-- en/21-file-mv-404-json/stdout --
+-- en/21-file-mv-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

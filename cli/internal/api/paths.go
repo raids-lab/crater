@@ -55,5 +55,8 @@ const (
 	VCJobListPath         = VCJobsPrefix
 	VCJobBillingPath      = VCJobsPrefix + "/billing"
 	AdminVCJobBillingPath = AdminVCJobsPrefix + "/billing"
+	FileMovePath          = StoragePrefix + "/move"
+	FileUploadPath        = StoragePrefix + "/upload"
+	FileDownloadPath      = StoragePrefix + "/download"
 	FileListPath          = StoragePrefix + "/files"
 )

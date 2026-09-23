@@ -16,7 +16,7 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	APIVersion = 1
+	APIVersion = 3
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
 	MinSupportedCLIAPIVersion = 1

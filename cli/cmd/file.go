@@ -20,8 +20,8 @@ var fileRemoteRoots = []string{"user", "public", "account"}
 
 var fileCmd = &cobra.Command{
 	Use:   "file",
-	Short: "View remote files",
-	Long:  "List files in user, public, and account storage spaces.",
+	Short: "Manage remote files",
+	Long:  "List, download, upload, create directories, and move entries in user, public, and account storage spaces.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			return errUnknownSubcommand(cmd, args[0])
@@ -67,15 +67,19 @@ func runFileLs(_ *cobra.Command, args []string) error {
 }
 
 func normalizeRemotePath(remotePath string) (string, error) {
+	return normalizeRemotePathWithIssue(remotePath, invalidRemotePathIssue)
+}
+
+func normalizeRemotePathWithIssue(remotePath string, invalidPath func(string) error) (string, error) {
 	if remotePath == "" {
 		return "", nil
 	}
 	if strings.ContainsRune(remotePath, '\\') {
-		return "", invalidRemotePathIssue(i18n.T("err_file_path_invalid", remotePath))
+		return "", invalidPath(i18n.T("err_file_path_invalid", remotePath))
 	}
 	for _, character := range remotePath {
 		if unicode.IsControl(character) {
-			return "", invalidRemotePathIssue(i18n.T("err_file_path_invalid", remotePath))
+			return "", invalidPath(i18n.T("err_file_path_invalid", remotePath))
 		}
 	}
 
@@ -87,7 +91,7 @@ func normalizeRemotePath(remotePath string) (string, error) {
 	segments := make([]string, 0, len(rawSegments))
 	for _, segment := range rawSegments {
 		if segment == ".." {
-			return "", invalidRemotePathIssue(i18n.T("err_file_path_invalid", remotePath))
+			return "", invalidPath(i18n.T("err_file_path_invalid", remotePath))
 		}
 		if segment == "" || segment == "." {
 			continue
@@ -98,7 +102,7 @@ func normalizeRemotePath(remotePath string) (string, error) {
 		return "", nil
 	}
 	if !isFileRemoteRoot(segments[0]) {
-		return "", invalidRemotePathIssue(i18n.T("err_file_path_root", remotePath))
+		return "", invalidPath(i18n.T("err_file_path_root", remotePath))
 	}
 	return strings.Join(segments, "/"), nil
 }
