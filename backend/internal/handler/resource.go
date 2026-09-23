@@ -1,20 +1,26 @@
 package handler
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/pkg/crclient"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -25,13 +31,19 @@ func init() {
 type ResourceMgr struct {
 	name           string
 	kubeClient     kubernetes.Interface
+	nodeClient     *crclient.NodeClient
 	billingService *service.BillingService
 }
 
 func NewResourceMgr(conf *RegisterConfig) Manager {
 	return &ResourceMgr{
-		name:           "resources",
-		kubeClient:     conf.KubeClient,
+		name:       "resources",
+		kubeClient: conf.KubeClient,
+		nodeClient: &crclient.NodeClient{
+			Client:           conf.Client,
+			KubeClient:       conf.KubeClient,
+			PrometheusClient: conf.PrometheusClient,
+		},
 		billingService: conf.BillingService,
 	}
 }
@@ -51,11 +63,95 @@ func (mgr *ResourceMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *ResourceMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListResource)
 	g.GET("/page", mgr.ListResourcePage)
+	g.GET("/snapshot", mgr.ListNodeSnapshot)
 	g.GET("/billing/prices", mgr.ListBillingPrices)
 	g.GET("/:id/networks", mgr.GetGPUNetworks)
 	g.GET(":id/vgpu", mgr.GetGPUVGPUResources)
 }
 
+type NodeSnapshotQuery struct {
+	Limit           int64  `form:"limit"`
+	Cursor          string `form:"cursor"`
+	Selector        string `form:"selector"`
+	ResourceVersion string `form:"resource_version"`
+}
+
+type NodeSnapshotPage struct {
+	Items           []crclient.NodeBriefInfo `json:"items"`
+	NextCursor      *string                  `json:"next_cursor"`
+	HasMore         bool                     `json:"has_more"`
+	SnapshotID      string                   `json:"snapshot_id"`
+	ResourceVersion string                   `json:"resource_version"`
+	ObservedAt      string                   `json:"observed_at"`
+}
+
+// ListNodeSnapshot godoc
+//
+//	@Summary		获取 Kubernetes 节点快照
+//	@Description	使用 Kubernetes limit/continue 返回只读节点快照，不返回数据库 total
+//	@Tags		Resource
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		limit	query	int	false	"每页数量，1-200"
+//	@Param		cursor	query	string	false	"不透明 continue 游标"
+//	@Param		selector	query	string	false	"Kubernetes label selector"
+//	@Param		resource_version	query	string	false	"Kubernetes resource version"
+//	@Success	200	{object}	resputil.Response[NodeSnapshotPage]
+//	@Failure	409	{object}	resputil.Response[any]	"游标过期"
+//	@Router		/v1/resources/snapshot [get]
+//
+// The handler serves a read-only Kubernetes NodeList using an opaque
+// Kubernetes continue token. It deliberately does not expose a database total.
+func (mgr *ResourceMgr) ListNodeSnapshot(c *gin.Context) {
+	var req NodeSnapshotQuery
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid snapshot query"))
+		return
+	}
+	if req.Limit == 0 {
+		req.Limit = 50
+	}
+	if req.Limit < 1 || req.Limit > 200 {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("limit must be between 1 and 200"))
+		return
+	}
+
+	items, next, resourceVersion, err := mgr.nodeClient.ListNodesSnapshot(c, &metav1.ListOptions{
+		Limit:           req.Limit,
+		Continue:        req.Cursor,
+		LabelSelector:   req.Selector,
+		ResourceVersion: req.ResourceVersion,
+	})
+	if err != nil {
+		if apierrors.IsResourceExpired(err) || apierrors.IsGone(err) {
+			resputil.HandleError(c, bizerr.Conflict.CursorExpired.New("snapshot cursor expired; refresh and retry"))
+			return
+		}
+		if apierrors.IsInvalid(err) {
+			resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid node snapshot query"))
+			return
+		}
+		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "list node snapshot failed"))
+		return
+	}
+
+	var nextCursor *string
+	if next != "" {
+		nextCursor = &next
+	}
+	hashInput := resourceVersion + "\x00" + req.Selector
+	hash := sha256.Sum256([]byte(hashInput))
+	resputil.Success(c, NodeSnapshotPage{
+		Items:           items,
+		NextCursor:      nextCursor,
+		HasMore:         next != "",
+		SnapshotID:      hex.EncodeToString(hash[:8]),
+		ResourceVersion: resourceVersion,
+		ObservedAt:      time.Now().UTC().Format(time.RFC3339Nano),
+	})
+}
+
+//nolint:dupl // Route registration remains explicit so each manager exposes a readable API surface.
 func (mgr *ResourceMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.POST("/sync", mgr.SyncResource)
 	g.PUT("/:id", mgr.UpdateResource) // 注意这里改为新的方法名

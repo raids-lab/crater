@@ -82,6 +82,7 @@ type NodeBriefInfo struct {
 type Pod struct {
 	Name             string                  `json:"name"`
 	Namespace        string                  `json:"namespace"`
+	NodeName         string                  `json:"nodeName,omitempty"`
 	OwnerReference   []metav1.OwnerReference `json:"ownerReference"`
 	IP               string                  `json:"ip"`
 	CreateTime       metav1.Time             `json:"createTime"`
@@ -105,6 +106,7 @@ func podInfoFromKubePod(pod *corev1.Pod) Pod {
 	return Pod{
 		Name:             pod.Name,
 		Namespace:        pod.Namespace,
+		NodeName:         pod.Spec.NodeName,
 		IP:               pod.Status.PodIP,
 		CreateTime:       pod.CreationTimestamp,
 		StartTime:        pod.Status.StartTime,
@@ -115,6 +117,12 @@ func podInfoFromKubePod(pod *corev1.Pod) Pod {
 		Locked:           false,
 		LockedTimestamp:  metav1.Time{},
 	}
+}
+
+// PodInfoFromKubePod converts a read-only Kubernetes Pod object to the
+// platform's common pod response shape.
+func PodInfoFromKubePod(pod *corev1.Pod) Pod {
+	return podInfoFromKubePod(pod)
 }
 
 type ClusterNodeDetail struct {
@@ -341,6 +349,60 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 	}
 
 	return nodeInfos, nil
+}
+
+// ListNodesSnapshot lists nodes through the Kubernetes pagination contract.
+// The continue token is returned unchanged so callers can treat it as opaque.
+func (nc *NodeClient) ListNodesSnapshot(
+	ctx context.Context,
+	options *metav1.ListOptions,
+) (items []NodeBriefInfo, nextCursor, resourceVersion string, err error) {
+	nodes, err := nc.KubeClient.CoreV1().Nodes().List(ctx, *options)
+	if err != nil {
+		return nil, "", "", err
+	}
+	podList, err := nc.KubeClient.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	usedByNode := make(map[string]corev1.ResourceList)
+	workloadsByNode := make(map[string]int)
+	if err != nil {
+		klog.Errorf("failed to get pods for node snapshot: %v", err)
+	} else {
+		for i := range podList.Items {
+			pod := &podList.Items[i]
+			if pod.Spec.NodeName == "" {
+				continue
+			}
+			usedByNode[pod.Spec.NodeName] = utils.SumResources(
+				usedByNode[pod.Spec.NodeName],
+				utils.CalculateRequsetsByContainers(pod.Spec.Containers),
+			)
+			if pod.Namespace == config.GetConfig().Namespaces.Job {
+				workloadsByNode[pod.Spec.NodeName]++
+			}
+		}
+	}
+
+	items = make([]NodeBriefInfo, 0, len(nodes.Items))
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		items = append(items, NodeBriefInfo{
+			Name:          node.Name,
+			Role:          getNodeRole(node),
+			Arch:          node.Status.NodeInfo.Architecture,
+			Status:        getNodeStatus(node),
+			Vendor:        node.Labels["crater.raids-lab.io/instance-type"],
+			Taints:        node.Spec.Taints,
+			Capacity:      node.Status.Capacity,
+			Allocatable:   node.Status.Allocatable,
+			Used:          usedByNode[node.Name],
+			Workloads:     workloadsByNode[node.Name],
+			Annotations:   node.Annotations,
+			KernelVersion: node.Status.NodeInfo.KernelVersion,
+			GPUDriver:     node.Labels["nvidia.com/cuda.driver-version.full"],
+			Address:       getNodeIP(node),
+		})
+	}
+	return items, nodes.Continue, nodes.ResourceVersion, nil
 }
 
 // GetNode 获取指定 Node 的信息

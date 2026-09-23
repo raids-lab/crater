@@ -81,6 +81,8 @@ type conflictGroup struct {
 	DuplicateOperation BizCode `code:"40903"`
 	// DependencyConflict: 级联删除限制（如：该角色下还有用户，不能删除该角色）
 	DependencyConflict BizCode `code:"40904"`
+	// CursorExpired: Kubernetes 快照游标已失效，需要重新获取快照首页
+	CursorExpired BizCode `code:"40905"`
 }
 
 // payloadTooLargeGroup 413xx - 数据过大

@@ -10130,6 +10130,63 @@
                 }
             }
         },
+        "/v1/resources/snapshot": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "使用 Kubernetes limit/continue 返回只读节点快照，不返回数据库 total",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Resource"
+                ],
+                "summary": "获取 Kubernetes 节点快照",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "每页数量，1-200",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "不透明 continue 游标",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Kubernetes label selector",
+                        "name": "selector",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Kubernetes resource version",
+                        "name": "resource_version",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeSnapshotPage"
+                        }
+                    },
+                    "409": {
+                        "description": "游标过期",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/spjobs/{name}/events": {
             "get": {
                 "security": [
@@ -11318,6 +11375,64 @@
                     },
                     "500": {
                         "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs/{job}/pods/snapshot": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "使用 Kubernetes limit/continue 返回作业范围的只读 Pod 快照",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PodSnapshot"
+                ],
+                "summary": "获取作业 Pod 快照",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "作业名称",
+                        "name": "job",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量，1-200",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "不透明 continue 游标",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Kubernetes resource version",
+                        "name": "resource_version",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodSnapshotPage"
+                        }
+                    },
+                    "409": {
+                        "description": "游标过期",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -13650,6 +13765,21 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeSnapshotPage": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.NodeSnapshotPage"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodBandwidthConfigResp": {
             "type": "object",
             "properties": {
@@ -13659,6 +13789,21 @@
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.PodBandwidthConfigResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodSnapshotPage": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.PodSnapshotPage"
                 },
                 "msg": {
                     "type": "string"
@@ -14214,6 +14359,72 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_pkg_crclient.NodeBriefInfo": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "allocatable": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "annotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "arch": {
+                    "type": "string"
+                },
+                "capacity": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "gpuDriver": {
+                    "type": "string"
+                },
+                "kernelVersion": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.NodeRole"
+                },
+                "status": {
+                    "$ref": "#/definitions/v1.NodeConditionType"
+                },
+                "taints": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.Taint"
+                    }
+                },
+                "used": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "vendor": {
+                    "type": "string"
+                },
+                "workloads": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_pkg_crclient.NodeRole": {
+            "type": "string",
+            "enum": [
+                "control-plane",
+                "worker",
+                "virtual"
+            ],
+            "x-enum-varnames": [
+                "NodeRoleControlPlane",
+                "NodeRoleWorker",
+                "NodeRoleVirtual"
+            ]
+        },
         "github_com_raids-lab_crater_pkg_crclient.Pod": {
             "type": "object",
             "properties": {
@@ -14245,6 +14456,9 @@
                     "type": "string"
                 },
                 "namespace": {
+                    "type": "string"
+                },
+                "nodeName": {
                     "type": "string"
                 },
                 "ownerReference": {
@@ -15320,6 +15534,32 @@
                 }
             }
         },
+        "internal_handler.NodeSnapshotPage": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.NodeBriefInfo"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "observed_at": {
+                    "type": "string"
+                },
+                "resource_version": {
+                    "type": "string"
+                },
+                "snapshot_id": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.NodeTaint": {
             "type": "object",
             "properties": {
@@ -15357,6 +15597,32 @@
                     "type": "string"
                 },
                 "modelDownloadBandwidth": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.PodSnapshotPage": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "observed_at": {
+                    "type": "string"
+                },
+                "resource_version": {
+                    "type": "string"
+                },
+                "snapshot_id": {
                     "type": "string"
                 }
             }
@@ -17254,6 +17520,44 @@
                     "type": "boolean"
                 }
             }
+        },
+        "v1.Taint": {
+            "type": "object",
+            "properties": {
+                "effect": {
+                    "description": "Required. The effect of the taint on pods\nthat do not tolerate the taint.\nValid effects are NoSchedule, PreferNoSchedule and NoExecute.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/v1.TaintEffect"
+                        }
+                    ]
+                },
+                "key": {
+                    "description": "Required. The taint key to be applied to a node.",
+                    "type": "string"
+                },
+                "timeAdded": {
+                    "description": "TimeAdded represents the time at which the taint was added.\nIt is only written for NoExecute taints.\n+optional",
+                    "type": "string"
+                },
+                "value": {
+                    "description": "The taint value corresponding to the taint key.\n+optional",
+                    "type": "string"
+                }
+            }
+        },
+        "v1.TaintEffect": {
+            "type": "string",
+            "enum": [
+                "NoSchedule",
+                "PreferNoSchedule",
+                "NoExecute"
+            ],
+            "x-enum-varnames": [
+                "TaintEffectNoSchedule",
+                "TaintEffectPreferNoSchedule",
+                "TaintEffectNoExecute"
+            ]
         },
         "volcano_sh_apis_pkg_apis_batch_v1alpha1.JobPhase": {
             "type": "string",
