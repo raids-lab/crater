@@ -5199,6 +5199,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/aijobs/{id}/pods/snapshot": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "使用 Kubernetes limit/continue 返回 EMIAS 任务范围的只读 Pod 快照",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AIJob"
+                ],
+                "summary": "获取 EMIAS 任务 Pod 快照",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "EMIAS 任务 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "每页数量，1-200",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "不透明 continue 游标",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Kubernetes resource version",
+                        "name": "resource_version",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_handler_PodSnapshotPage"
+                        }
+                    },
+                    "409": {
+                        "description": "游标过期",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/aijobs/{id}/yaml": {
             "get": {
                 "security": [
@@ -12634,6 +12692,32 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_handler.PodSnapshotPage": {
+            "type": "object",
+            "properties": {
+                "has_more": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "observed_at": {
+                    "type": "string"
+                },
+                "resource_version": {
+                    "type": "string"
+                },
+                "snapshot_id": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_payload.Order": {
             "type": "string",
             "enum": [
@@ -13167,6 +13251,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_handler_PodSnapshotPage": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler.PodSnapshotPage"
                 },
                 "msg": {
                     "type": "string"

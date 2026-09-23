@@ -36,9 +36,14 @@ import { SnapshotControls } from '@/components/query-table/cursor-list'
 import { SnapshotStatus } from '@/components/query-table/snapshot-list'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { type SnapshotPod, apiGetJobPodSnapshot } from '@/services/api/snapshot'
+import {
+  type SnapshotPod,
+  apiGetAIJobPodSnapshot,
+  apiGetJobPodSnapshot,
+} from '@/services/api/snapshot'
 import { PodDetail } from '@/services/api/vcjob'
 
+import { globalJobUrl } from '@/utils/store'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 
 import PodIngressDialog from './ingress'
@@ -90,6 +95,7 @@ const getPodMonitorUrl = (baseURL: string, pod: PodDetail) => {
 }
 
 export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
+  const jobUrl = useAtomValue(globalJobUrl)
   const queryClient = useQueryClient()
   const [showLog, setShowLog] = useState<NamespacedName>()
   const [showTerminal, setShowTerminal] = useState<NamespacedName>()
@@ -98,12 +104,16 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const [grafanaUrl, setGrafanaUrl] = useState<string>('')
 
-  const podSnapshotQueryKey = ['job', 'detail', jobName, 'pods', 'snapshot'] as const
+  const podSnapshotQueryKey = ['job', 'detail', jobUrl, jobName, 'pods', 'snapshot'] as const
   const podSnapshotQuery = useInfiniteQuery({
-    queryKey: ['job', 'detail', jobName, 'pods', 'snapshot'],
+    queryKey: ['job', 'detail', jobUrl, jobName, 'pods', 'snapshot'],
     initialPageParam: '',
-    queryFn: ({ pageParam }) =>
-      apiGetJobPodSnapshot(jobName, { limit: 50, cursor: pageParam || undefined }),
+    queryFn: ({ pageParam }) => {
+      const params = { limit: 50, cursor: pageParam || undefined }
+      return jobUrl === 'aijobs'
+        ? apiGetAIJobPodSnapshot(jobName, params)
+        : apiGetJobPodSnapshot(jobName, params)
+    },
     getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,
     enabled: !!jobName,
   })

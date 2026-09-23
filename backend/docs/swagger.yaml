@@ -485,6 +485,23 @@ definitions:
       username:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_handler.PodSnapshotPage:
+    properties:
+      has_more:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod'
+        type: array
+      next_cursor:
+        type: string
+      observed_at:
+        type: string
+      resource_version:
+        type: string
+      snapshot_id:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_payload.Order:
     enum:
     - asc
@@ -839,6 +856,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.GpuAnalysis'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_handler_PodSnapshotPage:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_handler.PodSnapshotPage'
       msg:
         type: string
     type: object
@@ -7121,6 +7148,43 @@ paths:
       security:
       - Bearer: []
       summary: 获取AI任务的事件
+      tags:
+      - AIJob
+  /v1/aijobs/{id}/pods/snapshot:
+    get:
+      description: 使用 Kubernetes limit/continue 返回 EMIAS 任务范围的只读 Pod 快照
+      parameters:
+      - description: EMIAS 任务 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 每页数量，1-200
+        in: query
+        name: limit
+        type: integer
+      - description: 不透明 continue 游标
+        in: query
+        name: cursor
+        type: string
+      - description: Kubernetes resource version
+        in: query
+        name: resource_version
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_handler_PodSnapshotPage'
+        "409":
+          description: 游标过期
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取 EMIAS 任务 Pod 快照
       tags:
       - AIJob
   /v1/aijobs/{id}/yaml:

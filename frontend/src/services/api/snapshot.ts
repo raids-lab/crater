@@ -47,3 +47,8 @@ export const apiGetJobPodSnapshot = (jobName: string, params: SnapshotQuery = {}
   apiV1Get<IResponse<SnapshotPage<SnapshotPod>>>(`vcjobs/${jobName}/pods/snapshot`, {
     searchParams: snapshotParams(params),
   })
+
+export const apiGetAIJobPodSnapshot = (jobID: number | string, params: SnapshotQuery = {}) =>
+  apiV1Get<IResponse<SnapshotPage<SnapshotPod>>>(`aijobs/${jobID}/pods/snapshot`, {
+    searchParams: snapshotParams(params),
+  })

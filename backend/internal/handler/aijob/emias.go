@@ -3,6 +3,8 @@ package aijob
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -14,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -23,6 +26,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	interpayload "github.com/raids-lab/crater/internal/payload"
@@ -54,6 +58,33 @@ type AIJobMgr struct {
 	userBanService *service.UserBanService
 }
 
+// resolveAIJobName recovers the Kubernetes resource name for historical task
+// rows that predate persistence of AITask.JobName. It never writes the value
+// back to the database.
+func resolveAIJobName(ctx context.Context, kubeClient client.Client, task *model.AITask) (string, error) {
+	if task.JobName != "" {
+		return task.JobName, nil
+	}
+	if task.Namespace == "" {
+		return "", fmt.Errorf("AI task namespace is missing")
+	}
+
+	jobs := &aijobapi.AIJobList{}
+	if err := kubeClient.List(ctx, jobs,
+		client.InNamespace(task.Namespace),
+		client.MatchingLabels{aijobapi.LabelKeyTaskID: strconv.FormatUint(uint64(task.ID), 10)},
+	); err != nil {
+		return "", err
+	}
+	if len(jobs.Items) == 0 {
+		return "", fmt.Errorf("AI job resource not found")
+	}
+	sort.SliceStable(jobs.Items, func(i, j int) bool {
+		return jobs.Items[i].CreationTimestamp.Before(&jobs.Items[j].CreationTimestamp)
+	})
+	return jobs.Items[0].Name, nil
+}
+
 func NewAITaskMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &AIJobMgr{
 		name:           "aijobs",
@@ -80,6 +111,7 @@ func (mgr *AIJobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET(":id/detail", mgr.GetDetail)
 	g.GET(":id/yaml", mgr.GetJobYaml)
 	g.GET(":id/pods", mgr.GetJobPods)
+	g.GET(":id/pods/snapshot", mgr.GetJobPodsSnapshot)
 	g.GET(":id/event", mgr.GetJobEvents) // 添加获取事件的路由
 
 	g.POST("training", mgr.CreateCustom)
@@ -288,6 +320,106 @@ func (mgr *AIJobMgr) GetJobPods(c *gin.Context) {
 	}
 
 	resputil.Success(c, podDetails)
+}
+
+// GetJobPodsSnapshot godoc
+//
+//	@Summary		获取 EMIAS 任务 Pod 快照
+//	@Description	使用 Kubernetes limit/continue 返回 EMIAS 任务范围的只读 Pod 快照
+//	@Tags		AIJob
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		id	path	uint	true	"EMIAS 任务 ID"
+//	@Param		limit	query	int	false	"每页数量，1-200"
+//	@Param		cursor	query	string	false	"不透明 continue 游标"
+//	@Param		resource_version	query	string	false	"Kubernetes resource version"
+//	@Success	200	{object}	resputil.Response[handler.PodSnapshotPage]
+//	@Failure	409	{object}	resputil.Response[any]	"游标过期"
+//	@Router		/v1/aijobs/{id}/pods/snapshot [get]
+func (mgr *AIJobMgr) GetJobPodsSnapshot(c *gin.Context) {
+	var req AIJobDetailReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid EMIAS task ID"))
+		return
+	}
+	var query handler.PodSnapshotQuery
+	if err := c.ShouldBindQuery(&query); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid pod snapshot query"))
+		return
+	}
+	if query.Limit == 0 {
+		query.Limit = 50
+	}
+	if query.Limit < 1 || query.Limit > 200 {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("limit must be between 1 and 200"))
+		return
+	}
+
+	token := interutil.GetToken(c)
+	taskModel, err := mgr.taskService.GetByQueueAndID(token.AccountName, req.JobID)
+	if err != nil {
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "AI task not found"))
+		return
+	}
+	if taskModel.Namespace == "" {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.New("AI task snapshot metadata is missing"))
+		return
+	}
+	jobName, err := resolveAIJobName(c, mgr.client, taskModel)
+	if err != nil {
+		resputil.HandleError(c, bizerr.NotFound.K8sResourceNotFound.Wrap(err, "AI job resource not found"))
+		return
+	}
+
+	job := &aijobapi.AIJob{}
+	if err := mgr.client.Get(c, client.ObjectKey{Name: jobName, Namespace: taskModel.Namespace}, job); err != nil {
+		resputil.HandleError(c, bizerr.NotFound.K8sResourceNotFound.Wrap(err, "AI job resource not found"))
+		return
+	}
+	selector := ""
+	if job.Labels != nil {
+		selector = job.Labels[crclient.LabelKeyBaseURL]
+	}
+	listOptions := metav1.ListOptions{
+		Limit:           query.Limit,
+		Continue:        query.Cursor,
+		ResourceVersion: query.ResourceVersion,
+	}
+	if selector != "" {
+		listOptions.LabelSelector = fmt.Sprintf("%s=%s", crclient.LabelKeyBaseURL, selector)
+	} else {
+		// Older EMIAS jobs may not have the base-url label. Keep the fallback
+		// narrow to the task's conventional Pod name instead of enumerating a
+		// whole namespace.
+		listOptions.FieldSelector = fmt.Sprintf("metadata.name=%s-0", jobName)
+	}
+
+	pods, err := mgr.kubeClient.CoreV1().Pods(taskModel.Namespace).List(c, listOptions)
+	if err != nil {
+		if apierrors.IsResourceExpired(err) || apierrors.IsGone(err) {
+			resputil.HandleError(c, bizerr.Conflict.CursorExpired.New("snapshot cursor expired; refresh and retry"))
+			return
+		}
+		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "list AI job pod snapshot failed"))
+		return
+	}
+	items := make([]crclient.Pod, 0, len(pods.Items))
+	for i := range pods.Items {
+		items = append(items, crclient.PodInfoFromKubePod(&pods.Items[i]))
+	}
+	var nextCursor *string
+	if pods.Continue != "" {
+		nextCursor = &pods.Continue
+	}
+	hash := sha256.Sum256([]byte(taskModel.Namespace + "\x00" + jobName + "\x00" + selector + "\x00" + pods.ResourceVersion))
+	resputil.Success(c, handler.PodSnapshotPage{
+		Items:           items,
+		NextCursor:      nextCursor,
+		HasMore:         pods.Continue != "",
+		SnapshotID:      hex.EncodeToString(hash[:8]),
+		ResourceVersion: pods.ResourceVersion,
+		ObservedAt:      time.Now().UTC().Format(time.RFC3339Nano),
+	})
 }
 
 type (
