@@ -1,0 +1,144 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-file-typo-json/argv --
+crater file get --json --no-interactive
+-- en/01-file-typo-json/exit --
+2
+-- en/01-file-typo-json/stdout --
+-- en/01-file-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"get\" for \"crater file\"\nRun \"crater file --help\" for usage."
+}
+-- en/01b-file-typo-text/argv --
+crater file get --no-interactive
+-- en/01b-file-typo-text/exit --
+2
+-- en/01b-file-typo-text/stdout --
+-- en/01b-file-typo-text/stderr --
+Error:
+  unknown command "get" for "crater file"
+  Run "crater file --help" for usage.
+-- en/02-file-upload-missing-local-json/argv --
+crater file upload --json --no-interactive
+-- en/02-file-upload-missing-local-json/exit --
+2
+-- en/02-file-upload-missing-local-json/stdout --
+-- en/02-file-upload-missing-local-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "local file is required (\u003clocal-file\u003e)"
+}
+-- en/03-file-upload-missing-remote-json/argv --
+crater file upload .snapshot-upload-en.bin --json --no-interactive
+-- en/03-file-upload-missing-remote-json/exit --
+2
+-- en/03-file-upload-missing-remote-json/stdout --
+-- en/03-file-upload-missing-remote-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "remote path is required (\u003cremote-path\u003e)"
+}
+-- en/04-file-upload-extra-arg-json/argv --
+crater file upload .snapshot-upload-en.bin user/a.bin extra --json --no-interactive
+-- en/04-file-upload-extra-arg-json/exit --
+2
+-- en/04-file-upload-extra-arg-json/stdout --
+-- en/04-file-upload-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "too many arguments for crater file upload: got 3, want at most 2"
+}
+-- en/05-file-upload-traversal-json/argv --
+crater file upload .snapshot-upload-en.bin user/../public/a.bin --json --no-interactive
+-- en/05-file-upload-traversal-json/exit --
+2
+-- en/05-file-upload-traversal-json/stdout --
+-- en/05-file-upload-traversal-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid remote path \"user/../public/a.bin\""
+}
+-- en/06-file-upload-root-json/argv --
+crater file upload .snapshot-upload-en.bin user --json --no-interactive
+-- en/06-file-upload-root-json/exit --
+2
+-- en/06-file-upload-root-json/stdout --
+-- en/06-file-upload-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "remote file must name an entry below user, public, or account: \"user\""
+}
+-- en/07-file-upload-directory-json/argv --
+crater file upload . user/a.bin --json --no-interactive
+-- en/07-file-upload-directory-json/exit --
+2
+-- en/07-file-upload-directory-json/stdout --
+-- en/07-file-upload-directory-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "local path is not a regular file: \".\""
+}
+-- en/08-file-upload-404-json/argv --
+crater file upload .snapshot-upload-en.bin user/实验 data/result.bin --json --no-interactive
+-- en/08-file-upload-404-json/exit --
+4
+-- en/08-file-upload-404-json/stdout --
+-- en/08-file-upload-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/09-file-help/argv --
+crater file --help
+-- en/09-file-help/exit --
+0
+-- en/09-file-help/stdout --
+List, download, and upload files in user, public, and account storage spaces.
+
+Usage:
+  crater file [flags]
+  crater file [command]
+
+Available Commands:
+  download    Download one remote file
+  ls          List remote files
+  upload      Upload one local file
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+
+Use "crater file [command] --help" for more information about a command.
+-- en/09-file-help/stderr --
+-- en/10-file-upload-help/argv --
+crater file upload --help
+-- en/10-file-upload-help/exit --
+0
+-- en/10-file-upload-help/stdout --
+Stream one local regular file to a path below user, public, or account storage.
+
+Usage:
+  crater file upload <local-file> <remote-path> [flags]
+
+Flags:
+      --overwrite   Replace an existing remote file
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/10-file-upload-help/stderr --

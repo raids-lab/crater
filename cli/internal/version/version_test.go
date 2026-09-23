@@ -142,3 +142,12 @@ func TestShortCommitSHA(t *testing.T) {
 		})
 	}
 }
+
+func TestUploadContractCompatibility(t *testing.T) {
+	if got := EvaluateCompatibility(1, 1); got != CompatibilityBackendTooOld {
+		t.Fatalf("backend without safe upload: got %s, want %s", got, CompatibilityBackendTooOld)
+	}
+	if got := EvaluateCompatibility(2, 1); got != CompatibilityCompatible {
+		t.Fatalf("backend with safe upload: got %s, want %s", got, CompatibilityCompatible)
+	}
+}
