@@ -1,0 +1,428 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-file-typo-json/argv --
+crater file get --json --no-interactive
+-- zh-CN/01-file-typo-json/exit --
+2
+-- zh-CN/01-file-typo-json/stdout --
+-- zh-CN/01-file-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"get\" for \"crater file\"\nRun \"crater file --help\" for usage."
+}
+-- zh-CN/01b-file-typo-text/argv --
+crater file get --no-interactive
+-- zh-CN/01b-file-typo-text/exit --
+2
+-- zh-CN/01b-file-typo-text/stdout --
+-- zh-CN/01b-file-typo-text/stderr --
+Error:
+  unknown command "get" for "crater file"
+  Run "crater file --help" for usage.
+-- zh-CN/02-file-upload-missing-local-json/argv --
+crater file upload --json --no-interactive
+-- zh-CN/02-file-upload-missing-local-json/exit --
+2
+-- zh-CN/02-file-upload-missing-local-json/stdout --
+-- zh-CN/02-file-upload-missing-local-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：本地文件 (\u003clocal-file\u003e)"
+}
+-- zh-CN/03-file-upload-missing-remote-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin --json --no-interactive
+-- zh-CN/03-file-upload-missing-remote-json/exit --
+2
+-- zh-CN/03-file-upload-missing-remote-json/stdout --
+-- zh-CN/03-file-upload-missing-remote-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：远端路径 (\u003cremote-path\u003e)"
+}
+-- zh-CN/04-file-upload-extra-arg-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin user/a.bin extra --json --no-interactive
+-- zh-CN/04-file-upload-extra-arg-json/exit --
+2
+-- zh-CN/04-file-upload-extra-arg-json/stdout --
+-- zh-CN/04-file-upload-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater file upload 的参数过多：收到 3 个，最多允许 2 个"
+}
+-- zh-CN/05-file-upload-traversal-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin user/../public/a.bin --json --no-interactive
+-- zh-CN/05-file-upload-traversal-json/exit --
+2
+-- zh-CN/05-file-upload-traversal-json/stdout --
+-- zh-CN/05-file-upload-traversal-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的远端路径 \"user/../public/a.bin\""
+}
+-- zh-CN/06-file-upload-root-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin user --json --no-interactive
+-- zh-CN/06-file-upload-root-json/exit --
+2
+-- zh-CN/06-file-upload-root-json/stdout --
+-- zh-CN/06-file-upload-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "远端文件必须指向 user、public 或 account 下的具体条目：\"user\""
+}
+-- zh-CN/07-file-upload-directory-json/argv --
+crater file upload . user/a.bin --json --no-interactive
+-- zh-CN/07-file-upload-directory-json/exit --
+2
+-- zh-CN/07-file-upload-directory-json/stdout --
+-- zh-CN/07-file-upload-directory-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "本地路径不是普通文件：\".\""
+}
+-- zh-CN/08-file-upload-404-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin user/实验 data/result.bin --json --no-interactive
+-- zh-CN/08-file-upload-404-json/exit --
+4
+-- zh-CN/08-file-upload-404-json/stdout --
+-- zh-CN/08-file-upload-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/09-file-help/argv --
+crater file --help
+-- zh-CN/09-file-help/exit --
+0
+-- zh-CN/09-file-help/stdout --
+列出、传输、创建、移动和删除用户、公共及当前账户存储空间中的条目。
+
+Usage:
+  crater file [flags]
+  crater file [command]
+
+Available Commands:
+  download    下载单个远端文件
+  ls          列出远端文件
+  mkdir       创建单个远端目录
+  mv          移动单个远端文件或目录
+  rm          删除单个远端文件或目录
+  upload      上传单个本地文件
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+
+Use "crater file [command] --help" for more information about a command.
+-- zh-CN/09-file-help/stderr --
+-- zh-CN/10-file-upload-help/argv --
+crater file upload --help
+-- zh-CN/10-file-upload-help/exit --
+0
+-- zh-CN/10-file-upload-help/stdout --
+将一个本地普通文件流式上传到 user、public 或 account 存储空间下的路径。
+
+Usage:
+  crater file upload <local-file> <remote-path> [flags]
+
+Flags:
+      --overwrite   替换已存在的远端文件
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/10-file-upload-help/stderr --
+-- zh-CN/11-file-mkdir-help/argv --
+crater file mkdir --help
+-- zh-CN/11-file-mkdir-help/exit --
+0
+-- zh-CN/11-file-mkdir-help/stdout --
+在 user、public 或 account 存储空间下创建单个目录，且不会自动创建缺失的父目录。
+
+Usage:
+  crater file mkdir <remote-path> [flags]
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/11-file-mkdir-help/stderr --
+-- zh-CN/12-file-mkdir-missing-json/argv --
+crater file mkdir --json --no-interactive
+-- zh-CN/12-file-mkdir-missing-json/exit --
+2
+-- zh-CN/12-file-mkdir-missing-json/stdout --
+-- zh-CN/12-file-mkdir-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：远端目录 (\u003cremote-path\u003e)"
+}
+-- zh-CN/13-file-mkdir-root-json/argv --
+crater file mkdir user --json --no-interactive
+-- zh-CN/13-file-mkdir-root-json/exit --
+2
+-- zh-CN/13-file-mkdir-root-json/stdout --
+-- zh-CN/13-file-mkdir-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "远端路径必须指向 user、public 或 account 下的具体条目：\"user\""
+}
+-- zh-CN/14-file-mkdir-404-json/argv --
+crater file mkdir user/实验 data --json --no-interactive
+-- zh-CN/14-file-mkdir-404-json/exit --
+4
+-- zh-CN/14-file-mkdir-404-json/stdout --
+-- zh-CN/14-file-mkdir-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/15-file-mv-help/argv --
+crater file mv --help
+-- zh-CN/15-file-mv-help/exit --
+0
+-- zh-CN/15-file-mv-help/stdout --
+将单个远端存储条目移动到指定目标路径，且不会覆盖已存在的条目。
+
+Usage:
+  crater file mv <source-path> <destination-path> [flags]
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/15-file-mv-help/stderr --
+-- zh-CN/16-file-mv-missing-source-json/argv --
+crater file mv --json --no-interactive
+-- zh-CN/16-file-mv-missing-source-json/exit --
+2
+-- zh-CN/16-file-mv-missing-source-json/stdout --
+-- zh-CN/16-file-mv-missing-source-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：源路径 (\u003csource-path\u003e)"
+}
+-- zh-CN/17-file-mv-missing-destination-json/argv --
+crater file mv user/source --json --no-interactive
+-- zh-CN/17-file-mv-missing-destination-json/exit --
+2
+-- zh-CN/17-file-mv-missing-destination-json/stdout --
+-- zh-CN/17-file-mv-missing-destination-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：目标路径 (\u003cdestination-path\u003e)"
+}
+-- zh-CN/18-file-mv-invalid-operands-json/argv --
+crater file mv user/../source account\destination --json --no-interactive
+-- zh-CN/18-file-mv-invalid-operands-json/exit --
+2
+-- zh-CN/18-file-mv-invalid-operands-json/stdout --
+-- zh-CN/18-file-mv-invalid-operands-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的远端路径 \"user/../source\"\n无效的远端路径 \"account\\\\destination\"",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "source-path",
+        "message": "无效的远端路径 \"user/../source\""
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "destination-path",
+        "message": "无效的远端路径 \"account\\\\destination\""
+      }
+    ]
+  }
+}
+-- zh-CN/19-file-mv-same-json/argv --
+crater file mv user/source /user//./source --json --no-interactive
+-- zh-CN/19-file-mv-same-json/exit --
+2
+-- zh-CN/19-file-mv-same-json/stdout --
+-- zh-CN/19-file-mv-same-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "移动目标必须与源路径不同：\"user/source\""
+}
+-- zh-CN/20-file-mv-descendant-json/argv --
+crater file mv user/source user/source/nested --json --no-interactive
+-- zh-CN/20-file-mv-descendant-json/exit --
+2
+-- zh-CN/20-file-mv-descendant-json/stdout --
+-- zh-CN/20-file-mv-descendant-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "移动目标 \"user/source/nested\" 不能位于源路径 \"user/source\" 内"
+}
+-- zh-CN/21-file-mv-404-json/argv --
+crater file mv user/source account/实验 data/result --json --no-interactive
+-- zh-CN/21-file-mv-404-json/exit --
+4
+-- zh-CN/21-file-mv-404-json/stdout --
+-- zh-CN/21-file-mv-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/22-file-rm-help/argv --
+crater file rm --help
+-- zh-CN/22-file-rm-help/exit --
+0
+-- zh-CN/22-file-rm-help/stdout --
+删除 user、public 或 account 存储空间下的单个远端条目。删除目录时必须提供 --recursive。
+
+Usage:
+  crater file rm <remote-path> [flags]
+
+Flags:
+      --recursive   删除目录及其中的全部内容
+  -y, --yes         跳过确认并执行删除
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/22-file-rm-help/stderr --
+-- zh-CN/23-file-rm-missing-json/argv --
+crater file rm --json --no-interactive
+-- zh-CN/23-file-rm-missing-json/exit --
+2
+-- zh-CN/23-file-rm-missing-json/stdout --
+-- zh-CN/23-file-rm-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：远端路径 (\u003cremote-path\u003e)"
+}
+-- zh-CN/24-file-rm-extra-arg-json/argv --
+crater file rm user/a user/b --json --no-interactive
+-- zh-CN/24-file-rm-extra-arg-json/exit --
+2
+-- zh-CN/24-file-rm-extra-arg-json/stdout --
+-- zh-CN/24-file-rm-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater file rm 的参数过多：收到 2 个，最多允许 1 个"
+}
+-- zh-CN/25-file-rm-root-json/argv --
+crater file rm user --yes --json --no-interactive
+-- zh-CN/25-file-rm-root-json/exit --
+2
+-- zh-CN/25-file-rm-root-json/stdout --
+-- zh-CN/25-file-rm-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "拒绝删除存储根目录：\"user\""
+}
+-- zh-CN/26-file-rm-dot-json/argv --
+crater file rm user/./victim --yes --json --no-interactive
+-- zh-CN/26-file-rm-dot-json/exit --
+2
+-- zh-CN/26-file-rm-dot-json/stdout --
+-- zh-CN/26-file-rm-dot-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "待删除的远端路径不能包含 . 或 .. 路径段：\"user/./victim\""
+}
+-- zh-CN/27-file-rm-traversal-json/argv --
+crater file rm user/../victim --yes --json --no-interactive
+-- zh-CN/27-file-rm-traversal-json/exit --
+2
+-- zh-CN/27-file-rm-traversal-json/stdout --
+-- zh-CN/27-file-rm-traversal-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "待删除的远端路径不能包含 . 或 .. 路径段：\"user/../victim\""
+}
+-- zh-CN/28-file-rm-missing-yes-json/argv --
+crater file rm user/victim --json --no-interactive
+-- zh-CN/28-file-rm-missing-yes-json/exit --
+2
+-- zh-CN/28-file-rm-missing-yes-json/stdout --
+-- zh-CN/28-file-rm-missing-yes-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "非交互模式下必须提供 --yes"
+}
+-- zh-CN/29-file-rm-json-implies-noninteractive/argv --
+crater file rm user/victim --json
+-- zh-CN/29-file-rm-json-implies-noninteractive/exit --
+2
+-- zh-CN/29-file-rm-json-implies-noninteractive/stdout --
+-- zh-CN/29-file-rm-json-implies-noninteractive/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "非交互模式下必须提供 --yes"
+}
+-- zh-CN/30-file-rm-404-json/argv --
+crater file rm user/实验 data/result --yes --json --no-interactive
+-- zh-CN/30-file-rm-404-json/exit --
+4
+-- zh-CN/30-file-rm-404-json/stdout --
+-- zh-CN/30-file-rm-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/31-file-rm-recursive-404-json/argv --
+crater file rm account/runs/old --recursive --yes --json --no-interactive
+-- zh-CN/31-file-rm-recursive-404-json/exit --
+4
+-- zh-CN/31-file-rm-recursive-404-json/stdout --
+-- zh-CN/31-file-rm-recursive-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

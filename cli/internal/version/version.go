@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	APIVersion                       = 1
-	MinSupportedBackendAPIVersion    = 1
+	APIVersion                       = 4
+	MinSupportedBackendAPIVersion    = 4
 	APIVersionHeader                 = "X-Crater-API-Version"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"

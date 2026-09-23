@@ -80,14 +80,19 @@ crater file --help
 -- en/07-file-help/exit --
 0
 -- en/07-file-help/stdout --
-List files in user, public, and account storage spaces.
+List, transfer, create, move, and remove entries in user, public, and account storage spaces.
 
 Usage:
   crater file [flags]
   crater file [command]
 
 Available Commands:
+  download    Download one remote file
   ls          List remote files
+  mkdir       Create one remote directory
+  mv          Move one remote file or directory
+  rm          Remove one remote file or directory
+  upload      Upload one local file
 
 Global Flags:
   -h, --help             Help for crater

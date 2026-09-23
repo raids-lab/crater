@@ -874,6 +874,7 @@ func RegisterFile(webdavGroup *gin.RouterGroup) {
 	webdavGroup.GET("/admin/files", GetAllFiles)
 	webdavGroup.GET("/admin/files/*path", GetAllFiles)
 	webdavGroup.GET("/download/*path", Download)
+	webdavGroup.POST("/upload/*path", UploadFile)
 	webdavGroup.DELETE("/delete/*path", DeleteFile)
 	webdavGroup.GET("/userspace", GetUserSpace)
 	webdavGroup.GET("/queuespace", GetAccountSpace)
