@@ -66,7 +66,7 @@ func resolveAIJobName(ctx context.Context, kubeClient client.Client, task *model
 		return task.JobName, nil
 	}
 	if task.Namespace == "" {
-		return "", fmt.Errorf("AI task namespace is missing")
+		return "", bizerr.Internal.ServiceError.New("AI task namespace is missing")
 	}
 
 	jobs := &aijobapi.AIJobList{}
@@ -77,7 +77,7 @@ func resolveAIJobName(ctx context.Context, kubeClient client.Client, task *model
 		return "", err
 	}
 	if len(jobs.Items) == 0 {
-		return "", fmt.Errorf("AI job resource not found")
+		return "", bizerr.NotFound.K8sResourceNotFound.New("AI job resource not found")
 	}
 	sort.SliceStable(jobs.Items, func(i, j int) bool {
 		return jobs.Items[i].CreationTimestamp.Before(&jobs.Items[j].CreationTimestamp)
@@ -336,21 +336,23 @@ func (mgr *AIJobMgr) GetJobPods(c *gin.Context) {
 //	@Success	200	{object}	resputil.Response[handler.PodSnapshotPage]
 //	@Failure	409	{object}	resputil.Response[any]	"游标过期"
 //	@Router		/v1/aijobs/{id}/pods/snapshot [get]
+//
+//nolint:gocyclo // This boundary keeps task authorization, snapshot validation, and Kubernetes error mapping together.
 func (mgr *AIJobMgr) GetJobPodsSnapshot(c *gin.Context) {
 	var req AIJobDetailReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid EMIAS task ID"))
 		return
 	}
-	var query handler.PodSnapshotQuery
-	if err := c.ShouldBindQuery(&query); err != nil {
+	var snapshotQuery handler.PodSnapshotQuery
+	if err := c.ShouldBindQuery(&snapshotQuery); err != nil {
 		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid pod snapshot query"))
 		return
 	}
-	if query.Limit == 0 {
-		query.Limit = 50
+	if snapshotQuery.Limit == 0 {
+		snapshotQuery.Limit = 50
 	}
-	if query.Limit < 1 || query.Limit > 200 {
+	if snapshotQuery.Limit < 1 || snapshotQuery.Limit > 200 {
 		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("limit must be between 1 and 200"))
 		return
 	}
@@ -381,9 +383,9 @@ func (mgr *AIJobMgr) GetJobPodsSnapshot(c *gin.Context) {
 		selector = job.Labels[crclient.LabelKeyBaseURL]
 	}
 	listOptions := metav1.ListOptions{
-		Limit:           query.Limit,
-		Continue:        query.Cursor,
-		ResourceVersion: query.ResourceVersion,
+		Limit:           snapshotQuery.Limit,
+		Continue:        snapshotQuery.Cursor,
+		ResourceVersion: snapshotQuery.ResourceVersion,
 	}
 	if selector != "" {
 		listOptions.LabelSelector = fmt.Sprintf("%s=%s", crclient.LabelKeyBaseURL, selector)
