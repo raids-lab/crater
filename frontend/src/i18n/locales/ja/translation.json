@@ -310,6 +310,7 @@
   "cronPolicy.enable": "有効化",
   "cronPolicy.enableDescription": "有効にすると、設定したスケジュールに従って自動実行されます。",
   "cronPolicy.executeError": "実行失敗：",
+  "cronPolicy.executeSuccess": "実行成功",
   "cronPolicy.executeNow": "今すぐ実行",
   "cronPolicy.executing": "実行中...",
   "cronPolicy.gpuAnalysisError": "GPU 不正使用検知ポリシーの更新に失敗しました：",

@@ -170,18 +170,8 @@ export default function CronJobCard({
       }
       return await executeFunc(jobParams)
     },
-    onSuccess: (data) => {
-      const deleted = data.data.deleted || []
-      const reminded = data.data.reminded || []
-      const total = deleted.length + reminded.length
-
-      toast.success(
-        t('cronPolicy.cleanupSummary', {
-          total,
-          deleted: deleted.length,
-          reminded: reminded.length,
-        })
-      )
+    onSuccess: (_data) => {
+      toast.success(t('cronPolicy.executeSuccess'))
       onUpdate()
     },
     onError: (error: Error) => {

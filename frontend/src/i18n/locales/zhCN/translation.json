@@ -310,6 +310,7 @@
   "cronPolicy.enable": "启用",
   "cronPolicy.enableDescription": "启用后，系统将按照执行计划自动运行此任务。",
   "cronPolicy.executeError": "执行失败：",
+  "cronPolicy.executeSuccess": "执行成功",
   "cronPolicy.executeNow": "立即执行",
   "cronPolicy.executing": "执行中...",
   "cronPolicy.gpuAnalysisError": "GPU 违规占用检测更新失败：",
