@@ -5196,6 +5196,22 @@ paths:
       summary: 管理员模式下更新镜像的描述
       tags:
       - ImagePack
+  /v1/admin/images/getbyid:
+    get:
+      parameters:
+      - description: 镜像构建记录 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 管理员获取镜像构建详情
+      tags:
+      - ImagePack
   /v1/admin/images/image:
     get:
       consumes:
@@ -8464,17 +8480,37 @@ paths:
       summary: 获取imagepack的模板信息
       tags:
       - ImagePack
+  /v1/images/getbyid:
+    get:
+      description: 通过镜像构建记录 ID 获取详情；按名称查询保留在 getbyname 作为兼容接口
+      parameters:
+      - description: 镜像构建记录 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - Bearer: []
+      summary: 获取当前用户的镜像构建详情
+      tags:
+      - ImagePack
   /v1/images/getbyname:
     get:
       consumes:
       - application/json
-      description: 获取imagepackname，搜索到imagepack
+      description: 按名称获取镜像构建详情；也兼容通过 id 查询，列表页优先使用 id
       parameters:
-      - description: 获取ImagePack的name
+      - description: 兼容：获取ImagePack的name
         in: query
         name: name
-        required: true
         type: string
+      - description: 镜像构建记录 ID
+        in: query
+        name: id
+        type: integer
       produces:
       - application/json
       responses: {}

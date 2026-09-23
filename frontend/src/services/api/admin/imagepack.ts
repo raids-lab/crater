@@ -56,6 +56,11 @@ export const apiAdminListKanikoPage = (params: RemoteTableParams, signal?: Abort
     signal,
   })
 
+export const apiAdminGetKanikoByID = (id: number) =>
+  apiV1Get<IResponse<KanikoInfoResponse>>('admin/images/getbyid', {
+    searchParams: { id: String(id) },
+  })
+
 export const apiAdminDeleteImageList = (idList: number[]) =>
   apiV1Post<IResponse<string>>('admin/images/deleteimage', {
     idList,

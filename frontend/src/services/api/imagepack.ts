@@ -430,7 +430,14 @@ export const apiUserRemoveKanikoList = (idList: number[]) =>
   })
 
 export const apiUserGetKaniko = (name: string) =>
-  apiV1Get<IResponse<KanikoInfoResponse>>(`images/getbyname?name=${name}`)
+  apiV1Get<IResponse<KanikoInfoResponse>>('images/getbyname', {
+    searchParams: { name },
+  })
+
+export const apiUserGetKanikoByID = (id: number) =>
+  apiV1Get<IResponse<KanikoInfoResponse>>('images/getbyid', {
+    searchParams: { id: String(id) },
+  })
 
 export const apiUserListImage = () => apiV1Get<IResponse<ListImageResponse>>('images/image')
 

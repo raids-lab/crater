@@ -2036,6 +2036,32 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/admin/images/getbyid": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "管理员获取镜像构建详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "镜像构建记录 ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/v1/admin/images/image": {
             "get": {
                 "security": [
@@ -7192,6 +7218,33 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/images/getbyid": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "通过镜像构建记录 ID 获取详情；按名称查询保留在 getbyname 作为兼容接口",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "获取当前用户的镜像构建详情",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "镜像构建记录 ID",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/v1/images/getbyname": {
             "get": {
                 "security": [
@@ -7199,7 +7252,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取imagepackname，搜索到imagepack",
+                "description": "按名称获取镜像构建详情；也兼容通过 id 查询，列表页优先使用 id",
                 "consumes": [
                     "application/json"
                 ],
@@ -7213,10 +7266,15 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "获取ImagePack的name",
+                        "description": "兼容：获取ImagePack的name",
                         "name": "name",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "镜像构建记录 ID",
+                        "name": "id",
+                        "in": "query"
                     }
                 ],
                 "responses": {}

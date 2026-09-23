@@ -222,6 +222,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             />
           }
           to={`${row.original.imagepackName}`}
+          search={{ id: row.original.ID }}
           tooltip={`查看镜像详情`}
         />
       ),
@@ -306,11 +307,13 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                         navigate({
                           to: '/admin/env/registry/$name',
                           params: { name: kanikoInfo.imagepackName },
+                          search: { id: kanikoInfo.ID },
                         })
                       } else {
                         navigate({
                           to: '/portal/env/registry/$name',
                           params: { name: kanikoInfo.imagepackName },
+                          search: { id: kanikoInfo.ID },
                         })
                       }
                     }}
