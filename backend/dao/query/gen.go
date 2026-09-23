@@ -37,7 +37,6 @@ var (
 	ModelDatasetSource      *modelDatasetSource
 	ModelDownload           *modelDownload
 	ModelDownloadSubmission *modelDownloadSubmission
-	PrequeueConfig          *prequeueConfig
 	QueueQuotaLimit         *queueQuotaLimit
 	Resource                *resource
 	ResourceNetwork         *resourceNetwork
@@ -72,7 +71,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	ModelDatasetSource = &Q.ModelDatasetSource
 	ModelDownload = &Q.ModelDownload
 	ModelDownloadSubmission = &Q.ModelDownloadSubmission
-	PrequeueConfig = &Q.PrequeueConfig
 	QueueQuotaLimit = &Q.QueueQuotaLimit
 	Resource = &Q.Resource
 	ResourceNetwork = &Q.ResourceNetwork
@@ -108,7 +106,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		ModelDatasetSource:      newModelDatasetSource(db, opts...),
 		ModelDownload:           newModelDownload(db, opts...),
 		ModelDownloadSubmission: newModelDownloadSubmission(db, opts...),
-		PrequeueConfig:          newPrequeueConfig(db, opts...),
 		QueueQuotaLimit:         newQueueQuotaLimit(db, opts...),
 		Resource:                newResource(db, opts...),
 		ResourceNetwork:         newResourceNetwork(db, opts...),
@@ -145,7 +142,6 @@ type Query struct {
 	ModelDatasetSource      modelDatasetSource
 	ModelDownload           modelDownload
 	ModelDownloadSubmission modelDownloadSubmission
-	PrequeueConfig          prequeueConfig
 	QueueQuotaLimit         queueQuotaLimit
 	Resource                resource
 	ResourceNetwork         resourceNetwork
@@ -183,7 +179,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		ModelDatasetSource:      q.ModelDatasetSource.clone(db),
 		ModelDownload:           q.ModelDownload.clone(db),
 		ModelDownloadSubmission: q.ModelDownloadSubmission.clone(db),
-		PrequeueConfig:          q.PrequeueConfig.clone(db),
 		QueueQuotaLimit:         q.QueueQuotaLimit.clone(db),
 		Resource:                q.Resource.clone(db),
 		ResourceNetwork:         q.ResourceNetwork.clone(db),
@@ -228,7 +223,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		ModelDatasetSource:      q.ModelDatasetSource.replaceDB(db),
 		ModelDownload:           q.ModelDownload.replaceDB(db),
 		ModelDownloadSubmission: q.ModelDownloadSubmission.replaceDB(db),
-		PrequeueConfig:          q.PrequeueConfig.replaceDB(db),
 		QueueQuotaLimit:         q.QueueQuotaLimit.replaceDB(db),
 		Resource:                q.Resource.replaceDB(db),
 		ResourceNetwork:         q.ResourceNetwork.replaceDB(db),
@@ -263,7 +257,6 @@ type queryCtx struct {
 	ModelDatasetSource      IModelDatasetSourceDo
 	ModelDownload           IModelDownloadDo
 	ModelDownloadSubmission IModelDownloadSubmissionDo
-	PrequeueConfig          IPrequeueConfigDo
 	QueueQuotaLimit         IQueueQuotaLimitDo
 	Resource                IResourceDo
 	ResourceNetwork         IResourceNetworkDo
@@ -298,7 +291,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		ModelDatasetSource:      q.ModelDatasetSource.WithContext(ctx),
 		ModelDownload:           q.ModelDownload.WithContext(ctx),
 		ModelDownloadSubmission: q.ModelDownloadSubmission.WithContext(ctx),
-		PrequeueConfig:          q.PrequeueConfig.WithContext(ctx),
 		QueueQuotaLimit:         q.QueueQuotaLimit.WithContext(ctx),
 		Resource:                q.Resource.WithContext(ctx),
 		ResourceNetwork:         q.ResourceNetwork.WithContext(ctx),

@@ -35,9 +35,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -48,9 +51,10 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/monitor"
-	"github.com/raids-lab/crater/pkg/prequeuewatcher"
+	"github.com/raids-lab/crater/pkg/utils"
 
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 )
 
 // VcJobReconciler reconciles a AIJob object
@@ -60,7 +64,6 @@ type VcJobReconciler struct {
 	log              logr.Logger
 	prometheusClient monitor.PrometheusInterface // get monitor data
 	kubeClient       kubernetes.Interface
-	prequeueWatcher  *prequeuewatcher.PrequeueWatcher
 	billingService   *service.BillingService
 }
 
@@ -70,7 +73,6 @@ func NewVcJobReconciler(
 	scheme *runtime.Scheme,
 	prometheusClient monitor.PrometheusInterface,
 	kubeClient kubernetes.Interface,
-	prequeueWatcher *prequeuewatcher.PrequeueWatcher,
 	billingService *service.BillingService,
 ) *VcJobReconciler {
 	return &VcJobReconciler{
@@ -79,7 +81,6 @@ func NewVcJobReconciler(
 		log:              ctrl.Log.WithName("vcjob-reconciler"),
 		prometheusClient: prometheusClient,
 		kubeClient:       kubeClient,
-		prequeueWatcher:  prequeueWatcher,
 		billingService:   billingService,
 	}
 }
@@ -89,8 +90,24 @@ func (r *VcJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("vcjob-reconciler").
 		For(&batch.Job{}).
+		Owns(&scheduling.PodGroup{}, builder.WithPredicates(podGroupPhaseChanged())).
 		WithOptions(controller.Options{}).
 		Complete(r)
+}
+
+// podGroupPhaseChanged keeps pod counter and condition churn out of the queue; only the admission
+// phase carries information the database record does not already have.
+func podGroupPhaseChanged() predicate.Predicate {
+	return predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldGroup, oldOK := e.ObjectOld.(*scheduling.PodGroup)
+			newGroup, newOK := e.ObjectNew.(*scheduling.PodGroup)
+			if !oldOK || !newOK {
+				return true
+			}
+			return oldGroup.Status.Phase != newGroup.Status.Phase
+		},
+	}
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -143,7 +160,6 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				logger.Error(err, "unable to update job profile data")
 				return ctrl.Result{Requeue: true}, err
 			}
-			r.notifyPrequeue()
 			return ctrl.Result{}, nil
 		}
 
@@ -192,7 +208,6 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 				logger.Error(settleErr, "billing final settlement hook failed")
 			}
 		}
-		r.notifyPrequeue()
 		return ctrl.Result{}, nil
 	}
 
@@ -246,7 +261,11 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// if job found, update the record
-	updateRecord := r.generateUpdateJobModel(ctx, &job, oldRecord)
+	updateRecord, err := r.generateUpdateJobModel(ctx, &job, oldRecord)
+	if err != nil {
+		logger.Error(err, "unable to resolve job status")
+		return ctrl.Result{Requeue: true}, err
+	}
 	_, err = j.WithContext(ctx).Where(j.JobName.Eq(job.Name)).Updates(updateRecord)
 	if err != nil {
 		logger.Error(err, "unable to update job record")
@@ -254,11 +273,10 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Check if job is finished and cancel pending approval orders
-	isJobActive := job.Status.State.Phase == batch.Running ||
-		job.Status.State.Phase == batch.Pending
+	isJobActive := isActiveJobStatus(updateRecord.Status)
 
 	if !isJobActive {
-		if r.billingService != nil && (oldRecord.Status == batch.Running || oldRecord.Status == batch.Pending) {
+		if r.billingService != nil && isActiveJobStatus(oldRecord.Status) {
 			finalJob := *oldRecord
 			finalJob.Status = job.Status.State.Phase
 			if updateRecord.RunningTimestamp.IsZero() {
@@ -281,33 +299,26 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		r.cancelPendingApprovalOrders(ctx, job.Name, fmt.Sprintf("job is not running (status: %s), order is canceled", job.Status.State.Phase))
 	}
 
-	if shouldActivatePrequeueOnPhaseChange(oldRecord.Status, job.Status.State.Phase) {
-		r.notifyPrequeue()
-	}
-
 	return ctrl.Result{}, nil
 }
 
-func shouldActivatePrequeueOnPhaseChange(oldStatus, newStatus batch.JobPhase) bool {
-	if !isReleasedJobPhase(newStatus) || isReleasedJobPhase(oldStatus) {
-		return false
-	}
-
-	return oldStatus != model.Deleted && oldStatus != model.Freed && oldStatus != model.Prequeue
+func isActiveJobStatus(status batch.JobPhase) bool {
+	return status == batch.Running || status == batch.Pending
 }
 
-func isReleasedJobPhase(status batch.JobPhase) bool {
-	return status == batch.Completed ||
-		status == batch.Failed ||
-		status == batch.Aborted ||
-		status == batch.Terminated
-}
-
-func (r *VcJobReconciler) notifyPrequeue() {
-	if r.prequeueWatcher == nil {
-		return
+// getPodGroup follows volcano's own lookup, including the pre-1.5 name without the job UID suffix.
+func (r *VcJobReconciler) getPodGroup(ctx context.Context, job *batch.Job) (*scheduling.PodGroup, error) {
+	for _, name := range []string{fmt.Sprintf("%s-%s", job.Name, job.UID), job.Name} {
+		var group scheduling.PodGroup
+		err := r.Get(ctx, types.NamespacedName{Namespace: job.Namespace, Name: name}, &group)
+		if err == nil {
+			return &group, nil
+		}
+		if !k8serrors.IsNotFound(err) {
+			return nil, err
+		}
 	}
-	r.prequeueWatcher.RequestFullScan()
+	return nil, nil
 }
 
 func (r *VcJobReconciler) updateMissingJobProfile(ctx context.Context, jobName string, record *model.Job) error {
@@ -360,9 +371,9 @@ func (r *VcJobReconciler) createOrUpdateJobRecord(ctx context.Context, record *m
 			"user_id",
 			"account_id",
 			"job_type",
-			"schedule_type",
 			"waiting_tolerance_seconds",
 			"status",
+			"pod_group_phase",
 			"queue",
 			"creation_timestamp",
 			"running_timestamp",
@@ -422,12 +433,6 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	if err != nil {
 		alertEnabled = true
 	}
-	scheduleType := model.ScheduleTypeNormal
-	if scheduleTypeInt, err := strconv.ParseInt(
-		job.Annotations[vcjobservice.AnnotationKeyScheduleType], 10, 64,
-	); err == nil {
-		scheduleType = model.ScheduleType(scheduleTypeInt)
-	}
 	var waitingToleranceSeconds *int64
 	if waitingToleranceSecondsInt, err := strconv.ParseInt(
 		job.Annotations[vcjobservice.AnnotationKeyWaitingToleranceSeconds], 10, 64,
@@ -435,15 +440,23 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		waitingToleranceSeconds = ptr.To(waitingToleranceSecondsInt)
 	}
 
+	podGroup, err := r.getPodGroup(ctx, job)
+	if err != nil {
+		return nil, err
+	}
+	var podGroupPhase scheduling.PodGroupPhase
+	if podGroup != nil {
+		podGroupPhase = podGroup.Status.Phase
+	}
 	return &model.Job{
 		Name:                    job.Annotations[vcjob.AnnotationKeyTaskName],
 		JobName:                 job.Name,
 		UserID:                  user.ID,
 		AccountID:               queue.ID,
 		JobType:                 model.JobType(job.Labels[crclient.LabelKeyTaskType]),
-		ScheduleType:            ptr.To(scheduleType),
 		WaitingToleranceSeconds: waitingToleranceSeconds,
 		Status:                  job.Status.State.Phase,
+		PodGroupPhase:           podGroupPhase,
 		Queue:                   job.Spec.Queue,
 		CreationTimestamp:       job.CreationTimestamp.Time,
 		Resources:               datatypes.NewJSONType(resources),
@@ -453,13 +466,29 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	}, nil
 }
 
-//nolint:gocyclo // refactor later
-func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch.Job, oldRecord *model.Job) *model.Job {
-	conditions := job.Status.Conditions
-	status := job.Status.State.Phase
-	if status == "" && (oldRecord.Status == batch.Pending || oldRecord.Status == model.Prequeue) {
-		status = batch.Pending
+func (r *VcJobReconciler) generateUpdateJobModel(
+	ctx context.Context, job *batch.Job, oldRecord *model.Job,
+) (*model.Job, error) {
+	podGroup, err := r.getPodGroup(ctx, job)
+	if err != nil {
+		return nil, err
 	}
+	var podGroupPhase scheduling.PodGroupPhase
+	if podGroup != nil {
+		podGroupPhase = podGroup.Status.Phase
+	}
+	record := r.buildUpdateJobModel(ctx, job, oldRecord)
+	// Updates skips the zero value, so a missing PodGroup leaves the last observed phase in place.
+	record.PodGroupPhase = podGroupPhase
+	return record, nil
+}
+
+//nolint:gocyclo // refactor later
+func (r *VcJobReconciler) buildUpdateJobModel(
+	ctx context.Context, job *batch.Job, oldRecord *model.Job,
+) *model.Job {
+	status := job.Status.State.Phase
+	conditions := job.Status.Conditions
 
 	var runningTimestamp time.Time
 	var completedTimestamp time.Time
@@ -503,12 +532,6 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			}
 		}
 	}
-	scheduleType := model.ScheduleTypeNormal
-	if scheduleTypeInt, err := strconv.ParseInt(
-		job.Annotations[vcjobservice.AnnotationKeyScheduleType], 10, 64,
-	); err == nil {
-		scheduleType = model.ScheduleType(scheduleTypeInt)
-	}
 	var waitingToleranceSeconds *int64
 	if waitingToleranceSecondsInt, err := strconv.ParseInt(
 		job.Annotations[vcjobservice.AnnotationKeyWaitingToleranceSeconds], 10, 64,
@@ -534,7 +557,7 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 					profilePtr = ptr.To(datatypes.NewJSONType(profile))
 				}
 			}
-			if isReleasedJobPhase(status) {
+			if utils.IsJobPhaseTerminal(status) {
 				events := r.getNewEventsForJob(ctx, job, oldRecord)
 				if len(events) > 0 {
 					eventsPtr = ptr.To(datatypes.NewJSONType(events))
@@ -553,7 +576,6 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			ProfileData:             profilePtr,
 			Events:                  eventsPtr,
 			TerminatedStates:        terminatedStatesPtr,
-			ScheduleType:            ptr.To(scheduleType),
 			WaitingToleranceSeconds: waitingToleranceSeconds,
 		}
 	}
@@ -568,10 +590,10 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			eventsPtr = ptr.To(datatypes.NewJSONType(events))
 		}
 		for i := range events {
-			event := &events[i]
-			if event.Reason == "Pulled" {
+			jobEvent := &events[i]
+			if jobEvent.Reason == "Pulled" {
 				// 解析事件消息，获取镜像拉取时间和大小
-				msg := event.Message
+				msg := jobEvent.Message
 				var scheduleData model.ScheduleData
 				err := scheduleData.Init(msg)
 				if err != nil {
@@ -588,7 +610,6 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 			Nodes:                   datatypes.NewJSONType(nodes),
 			ScheduleData:            scheduleDataPtr,
 			Events:                  eventsPtr,
-			ScheduleType:            ptr.To(scheduleType),
 			WaitingToleranceSeconds: waitingToleranceSeconds,
 		}
 	}
@@ -598,7 +619,6 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 		RunningTimestamp:        runningTimestamp,
 		CompletedTimestamp:      completedTimestamp,
 		Nodes:                   datatypes.NewJSONType(nodes),
-		ScheduleType:            ptr.To(scheduleType),
 		WaitingToleranceSeconds: waitingToleranceSeconds,
 	}
 }

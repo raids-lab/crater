@@ -32,6 +32,10 @@ type Config struct {
 	// Required: Must be specified for the server to start.
 	Port string `json:"port"`
 
+	// SchedulerExtenderPort defines the port serving volcano's extender plugin callbacks.
+	// Optional: an empty value leaves the endpoint unregistered, so volcano is never answered.
+	SchedulerExtenderPort string `json:"schedulerExtenderPort"`
+
 	// Namespaces contains Kubernetes namespace configurations for different resources.
 	// Required: Both Job and Image namespaces must be specified.
 	Namespaces struct {

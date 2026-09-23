@@ -51,7 +51,6 @@ func main() {
 		model.UserModelDownload{},
 		model.GpuAnalysis{},
 		model.SystemConfig{},
-		model.PrequeueConfig{},
 		model.QueueQuotaLimit{},
 		model.UserBanRecord{},
 	)

@@ -214,9 +214,6 @@ func TestListJobsSendsPagingAndServerFilters(t *testing.T) {
 		if !reflect.DeepEqual(query["job_type"], []string{"jupyter", "pytorch"}) {
 			t.Fatalf("unexpected job types: %v", query["job_type"])
 		}
-		if !reflect.DeepEqual(query["schedule_type"], []string{"1", "0"}) {
-			t.Fatalf("unexpected schedule types: %v", query["schedule_type"])
-		}
 		writer.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(writer).Encode(Response[Page[JobInfo]]{
 			Data: Page[JobInfo]{Items: []JobInfo{{Name: "job"}}, Total: 1, Page: 2, PageSize: 25},
@@ -224,14 +221,13 @@ func TestListJobsSendsPagingAndServerFilters(t *testing.T) {
 	})
 
 	page, err := client.ListJobs(JobListOptions{
-		ListOptions:   ListOptions{Page: 2, PageSize: 25, Sort: "-createdAt"},
-		All:           true,
-		Days:          14,
-		Search:        "demo",
-		Statuses:      []string{"Running", "Pending"},
-		JobTypes:      []string{"jupyter", "pytorch"},
-		ScheduleTypes: []int{1, 0},
-		Node:          "gpu-01",
+		ListOptions: ListOptions{Page: 2, PageSize: 25, Sort: "-createdAt"},
+		All:         true,
+		Days:        14,
+		Search:      "demo",
+		Statuses:    []string{"Running", "Pending"},
+		JobTypes:    []string{"jupyter", "pytorch"},
+		Node:        "gpu-01",
 	})
 	if err != nil {
 		t.Fatalf("ListJobs returned error: %v", err)

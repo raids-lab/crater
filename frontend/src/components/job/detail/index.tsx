@@ -377,7 +377,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
         {
           title: '状态',
           icon: ActivityIcon,
-          value: <JobPhaseLabel jobPhase={data.status} />,
+          value: <JobPhaseLabel jobPhase={data.status} podGroupPhase={data.podGroupPhase} />,
         },
         {
           title: '累计消耗',

@@ -24,8 +24,8 @@ var adminSystemConfigLLMCmd = &cobra.Command{Use: "llm", Short: "Get LLM configu
 var adminSystemConfigGPUCmd = &cobra.Command{Use: "gpu-analysis", Short: "Get GPU analysis status", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "gpu_analysis", Path: api.AdminSysConfigPfx + "/gpu-analysis", Params: noParams, Table: printRawObject})
 }}
-var adminSystemConfigPrequeueCmd = &cobra.Command{Use: "prequeue", Short: "Get prequeue configuration", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "prequeue", Path: api.AdminSysConfigPfx + "/prequeue", Params: noParams, Table: printRawObject})
+var adminSystemConfigSchedulerExtenderCmd = &cobra.Command{Use: "scheduler-extender", Short: "Get scheduler extender configuration", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+	return runRawRead(cmd, rawReadSpec{PayloadKey: "scheduler_extender", Path: api.AdminSysConfigPfx + "/scheduler-extender", Params: noParams, Table: printRawObject})
 }}
 var adminQueueQuotasCmd = &cobra.Command{Use: "queue-quotas", Short: "List queue quotas", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "queue_quotas", Path: api.AdminQueueQuotasPfx, Params: noParams, Table: printRawObject})
@@ -55,7 +55,7 @@ func runAdminOperationLogs(cmd *cobra.Command, _ []string) error {
 }
 
 func init() {
-	adminSystemConfigCmd.AddCommand(adminSystemConfigLLMCmd, adminSystemConfigGPUCmd, adminSystemConfigPrequeueCmd)
+	adminSystemConfigCmd.AddCommand(adminSystemConfigLLMCmd, adminSystemConfigGPUCmd, adminSystemConfigSchedulerExtenderCmd)
 	adminOperationLogsCmd.Flags().Int("page", 1, "Page number")
 	adminOperationLogsCmd.Flags().Int("limit", 20, "Page size")
 	adminOperationLogsCmd.Flags().String("operator", "", "Filter by operator")

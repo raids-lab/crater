@@ -58,8 +58,8 @@ func jobSuccessCases() []snaptest.Case {
 
 func jobFilterCases() []snaptest.Case {
 	return []snaptest.Case{
-		{ID: "22-ls-invalid-multi-filters-json", Args: []string{"job", "ls", "--status", "Running,bad", "--type", "custom,nope", "--schedule", "normal,0", "--no-interactive", "--json"}},
-		{ID: "23-ls-valid-multi-filters-timeout-json", Args: []string{"job", "ls", "--search", "demo", "--status", "Running,Pending", "--type", "pytorch,tensorflow", "--schedule", "normal,backfill", "--no-interactive", "--json"}},
+		{ID: "22-ls-invalid-multi-filters-json", Args: []string{"job", "ls", "--status", "Running,bad", "--type", "custom,nope", "--no-interactive", "--json"}},
+		{ID: "23-ls-valid-multi-filters-timeout-json", Args: []string{"job", "ls", "--search", "demo", "--status", "Running,Pending", "--type", "pytorch,tensorflow", "--no-interactive", "--json"}},
 	}
 }
 
@@ -97,7 +97,6 @@ func newJobListSnapshotServer(t *testing.T) *httptest.Server {
         "owner": "alice",
         "userInfo": {"username": "alice", "nickname": "Alice"},
         "jobType": "pytorch",
-        "scheduleType": 0,
         "queue": "default",
         "status": "Running",
         "createdAt": "2026-07-25T08:00:00Z",

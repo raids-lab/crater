@@ -8,7 +8,6 @@ import (
 
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
-	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -18,15 +17,13 @@ func init() {
 
 type QueueQuotaMgr struct {
 	name    string
-	service *service.PrequeueService
-	watcher *prequeuewatcher.PrequeueWatcher
+	service *service.QueueQuotaService
 }
 
 func NewQueueQuotaMgr(conf *RegisterConfig) Manager {
 	return &QueueQuotaMgr{
 		name:    "queue-quotas",
-		service: conf.PrequeueService,
-		watcher: conf.PrequeueWatcher,
+		service: conf.QueueQuotaService,
 	}
 }
 
@@ -112,9 +109,6 @@ func (mgr *QueueQuotaMgr) CreateQueueQuota(c *gin.Context) {
 	}
 
 	resputil.Success(c, toQueueQuotaConfigItemResp(quota))
-	if mgr.watcher != nil {
-		mgr.watcher.RequestFullScan()
-	}
 }
 
 // UpdateQueueQuota godoc
@@ -157,9 +151,6 @@ func (mgr *QueueQuotaMgr) UpdateQueueQuota(c *gin.Context) {
 	}
 
 	resputil.Success(c, toQueueQuotaConfigItemResp(quota))
-	if mgr.watcher != nil {
-		mgr.watcher.RequestFullScan()
-	}
 }
 
 // DeleteQueueQuota godoc
@@ -186,9 +177,6 @@ func (mgr *QueueQuotaMgr) DeleteQueueQuota(c *gin.Context) {
 	}
 
 	resputil.Success(c, "Queue quota deleted successfully")
-	if mgr.watcher != nil {
-		mgr.watcher.RequestFullScan()
-	}
 }
 
 func (mgr *QueueQuotaMgr) writeQueueQuotaError(c *gin.Context, err error) {

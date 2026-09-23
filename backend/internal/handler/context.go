@@ -36,7 +36,7 @@ func init() {
 type ContextMgr struct {
 	name           string
 	configService  *service.ConfigService
-	queueQuotaSvc  *service.PrequeueService
+	queueQuotaSvc  *service.QueueQuotaService
 	billingService *service.BillingService
 }
 
@@ -44,7 +44,7 @@ func NewContextMgr(conf *RegisterConfig) Manager {
 	return &ContextMgr{
 		name:           "context",
 		configService:  conf.ConfigService,
-		queueQuotaSvc:  conf.PrequeueService,
+		queueQuotaSvc:  conf.QueueQuotaService,
 		billingService: conf.BillingService,
 	}
 }
@@ -54,7 +54,6 @@ func (mgr *ContextMgr) GetName() string { return mgr.name }
 func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("prequeue", mgr.GetPrequeueStatus)
 	g.GET("quota", mgr.GetQuota)
 	g.GET("job-resource-summary", mgr.GetJobResourceSummary)
 	g.POST("resource-limit-check", mgr.CheckResourceLimit)
@@ -77,9 +76,6 @@ type (
 	ResourceLimitCheckReq struct {
 		RequestedResources map[string]string `json:"requestedResources"`
 	}
-	PrequeueFeatureStatusResp struct {
-		BackfillEnabled bool `json:"backfillEnabled"`
-	}
 	JobResourceSummaryUsageResp struct {
 		Used    string  `json:"used"`
 		Running string  `json:"running"`
@@ -101,31 +97,6 @@ type (
 		Accelerators []JobResourceSummaryAcceleratorResp `json:"accelerators"`
 	}
 )
-
-// GetPrequeueStatus godoc
-//
-//	@Summary		获取回填提交开关状态
-//	@Description	返回当前是否允许提交 backfill 作业
-//	@Tags			Context
-//	@Produce		json
-//	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[PrequeueFeatureStatusResp]	"当前状态"
-//	@Failure		500	{object}	resputil.Response[any]						"服务器错误"
-//	@Router			/v1/context/prequeue [get]
-func (mgr *ContextMgr) GetPrequeueStatus(c *gin.Context) {
-	if mgr.configService == nil {
-		resputil.Error(c, "config service is not initialized", resputil.ServiceError)
-		return
-	}
-
-	cfg, err := mgr.configService.GetPrequeueConfig(c.Request.Context())
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.ServiceError)
-		return
-	}
-
-	resputil.Success(c, PrequeueFeatureStatusResp{BackfillEnabled: cfg.BackfillEnabled})
-}
 
 // GetQuota godoc
 //
