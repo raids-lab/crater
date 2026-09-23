@@ -32,7 +32,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { MarkdownRenderer } from '@/components/form/markdown-renderer'
 
 // Current app version - update this when you release new features
-const CURRENT_VERSION = '1.1.1'
+const CURRENT_VERSION = '1.2.0'
 
 interface WhatsNewDialogProps {
   // You can pass a custom version if needed
