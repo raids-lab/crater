@@ -88,7 +88,7 @@ export const AccountTable = ({
     () => ({
       globalSearch: {
         enabled: true,
-        placeholder: '搜索账户名称',
+        placeholder: t('table.toolbar.searchPlaceholder'),
       },
       filterOptions: [],
       getHeader: (key: string) => getHeader(key, t),

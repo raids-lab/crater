@@ -50,7 +50,9 @@ const defaultRemoteQuery: DataListRemoteQuery = {
   pageSize: 10,
   search: '',
   owner: 'all',
-  tag: '所有标签',
+  // Remote dataset queries do not expose a tag filter yet. Keep this as a
+  // language-neutral empty value instead of using a translated display label.
+  tag: '',
   sortField: 'createdAt',
   sortDirection: 'descending',
 }
