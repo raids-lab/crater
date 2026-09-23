@@ -531,7 +531,7 @@ func (s *BillingService) IssueAccountNow(ctx context.Context, accountID uint) er
 
 func (s *BillingService) IssueUserAccountNow(ctx context.Context, userID, accountID uint) error {
 	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return s.issueUserAccountNowTx(ctx, tx, userID, accountID)
+		return s.issueUserAccountNowTx(ctx, query.Use(tx), userID, accountID)
 	})
 }
 
@@ -541,7 +541,7 @@ func (s *BillingService) IssueUserAccountNowInTransaction(
 	tx *query.Query,
 	userID, accountID uint,
 ) error {
-	return s.issueUserAccountNowTx(ctx, tx.UserAccount.WithContext(ctx).UnderlyingDB(), userID, accountID)
+	return s.issueUserAccountNowTx(ctx, tx, userID, accountID)
 }
 
 func (s *BillingService) bootstrapIssueConfigOnFeatureEnableTx(ctx context.Context, tx *gorm.DB) error {
@@ -630,9 +630,8 @@ func (s *BillingService) issueAccountNowTx(
 	return len(userAccounts), nil
 }
 
-func (s *BillingService) issueUserAccountNowTx(ctx context.Context, tx *gorm.DB, userID, accountID uint) error {
-	txQuery := query.Use(tx)
-	accountQuery := txQuery.Account
+func (s *BillingService) issueUserAccountNowTx(ctx context.Context, tx *query.Query, userID, accountID uint) error {
+	accountQuery := tx.Account
 	account, err := accountQuery.WithContext(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where(accountQuery.ID.Eq(accountID), accountQuery.DeletedAt.IsNull()).
@@ -640,10 +639,10 @@ func (s *BillingService) issueUserAccountNowTx(ctx context.Context, tx *gorm.DB,
 	if err != nil {
 		return err
 	}
-	issueConfig := loadBillingIssueConfigTx(ctx, tx)
+	issueConfig := loadBillingIssueConfigTx(ctx, tx.SystemConfig.WithContext(ctx).UnderlyingDB())
 	issueAmount, _ := issueConfig.resolveForAccount(account)
 
-	uaQuery := txQuery.UserAccount
+	uaQuery := tx.UserAccount
 	ua, err := uaQuery.WithContext(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where(uaQuery.UserID.Eq(userID), uaQuery.AccountID.Eq(accountID), uaQuery.DeletedAt.IsNull()).
