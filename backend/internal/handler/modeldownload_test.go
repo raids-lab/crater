@@ -30,6 +30,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -109,6 +110,29 @@ func TestModelDownloadResponseKeepsReferenceCountCompatibilityAlias(t *testing.T
 	}
 }
 
+func TestReusedDownloadMessageMentionsCrossSourceReuse(t *testing.T) {
+	ready := &model.ModelDownload{
+		Source: model.ModelSourceModelScope, Path: "public/Datasets/owner/dataset",
+		Status: model.ModelDownloadStatusReady,
+	}
+	message := reusedDownloadMessage(ready, model.ModelSourceHuggingFace, "main")
+	if !strings.Contains(message, "from modelscope") || !strings.Contains(message, "from huggingface") {
+		t.Fatalf("cross-source ready message = %q", message)
+	}
+	if !strings.Contains(message, `shared revision is ""`) {
+		t.Fatalf("cross-revision ready message = %q", message)
+	}
+
+	downloading := &model.ModelDownload{
+		Source: model.ModelSourceModelScope, Status: model.ModelDownloadStatusDownloading,
+	}
+	message = reusedDownloadMessage(downloading, model.ModelSourceHuggingFace, "")
+	if !strings.Contains(message, "already being downloaded from modelscope") ||
+		!strings.Contains(message, "from huggingface") {
+		t.Fatalf("cross-source ongoing message = %q", message)
+	}
+}
+
 func TestApplyDownloadRequestersRecordsDemandWithoutChangingPublicAccess(t *testing.T) {
 	responses := []ModelDownloadResp{
 		{ID: 10, Relation: ModelDownloadRelationCreator},
@@ -184,6 +208,153 @@ func TestCheckRetryRevisionConflictIncludesSoftDeletedRecords(t *testing.T) {
 	}
 }
 
+func TestCheckLogicalDownloadConflictRejectsOtherReusableDownload(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:retry_logical_conflict?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+
+	failed := model.ModelDownload{
+		Name: "owner/model", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Path: "public/Models/owner/model",
+		Status: model.ModelDownloadStatusFailed, CreatorID: 1,
+	}
+	ready := model.ModelDownload{
+		Name: failed.Name, Source: model.ModelSourceHuggingFace,
+		Category: failed.Category, Path: failed.Path,
+		Status: model.ModelDownloadStatusReady, CreatorID: 2,
+	}
+	if err := db.Create(&failed).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&ready).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	err = checkLogicalDownloadConflict(ginContext, query.Use(db), &failed)
+	if !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("expected a conflict for another reusable download, got %v", err)
+	}
+
+	if err := db.Model(&ready).Update("status", model.ModelDownloadStatusFailed).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := checkLogicalDownloadConflict(ginContext, query.Use(db), &failed); err != nil {
+		t.Fatalf("failed history must not block retry: %v", err)
+	}
+}
+
+func TestPrepareResumeDownloadRejectsReusableSiblingBeforeMutation(t *testing.T) {
+	for _, siblingStatus := range []model.ModelDownloadStatus{
+		model.ModelDownloadStatusReady,
+		model.ModelDownloadStatusDownloading,
+	} {
+		t.Run(string(siblingStatus), func(t *testing.T) {
+			db, mgr := newResumePreparationTestManager(t, "resume_conflict_"+string(siblingStatus))
+			paused := createResumePreparationTestDownload(
+				t, db, model.ModelSourceModelScope, "master", model.ModelDownloadStatusPaused, "paused-job",
+			)
+			createResumePreparationTestDownload(
+				t, db, model.ModelSourceHuggingFace, "main", siblingStatus, "sibling-job",
+			)
+
+			ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+			download, err := mgr.prepareResumeDownload(
+				ginContext, query.Use(db), paused.ID, util.JWTMessage{UserID: paused.CreatorID, Username: "alice"},
+			)
+			if !errors.Is(err, bizerr.Conflict.Base) {
+				t.Fatalf("expected sibling %s to block resume, got %v", siblingStatus, err)
+			}
+			if download != nil {
+				t.Fatalf("conflicting resume returned download %#v", download)
+			}
+
+			var unchanged model.ModelDownload
+			if err := db.First(&unchanged, paused.ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			if unchanged.Status != model.ModelDownloadStatusPaused || unchanged.JobName != "paused-job" {
+				t.Fatalf("conflicting resume mutated target: status=%s job=%q", unchanged.Status, unchanged.JobName)
+			}
+			var reservations int64
+			if err := db.Model(&model.ModelDownloadSubmission{}).Count(&reservations).Error; err != nil {
+				t.Fatal(err)
+			}
+			if reservations != 0 {
+				t.Fatalf("conflicting resume created %d quota reservations, want 0", reservations)
+			}
+		})
+	}
+}
+
+func TestPrepareResumeDownloadStartsSolePausedRecord(t *testing.T) {
+	db, mgr := newResumePreparationTestManager(t, "resume_without_conflict")
+	paused := createResumePreparationTestDownload(
+		t, db, model.ModelSourceModelScope, "master", model.ModelDownloadStatusPaused, "paused-job",
+	)
+
+	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
+	download, err := mgr.prepareResumeDownload(
+		ginContext, query.Use(db), paused.ID, util.JWTMessage{UserID: paused.CreatorID, Username: "alice"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if download.Status != model.ModelDownloadStatusDownloading || download.JobName == "paused-job" {
+		t.Fatalf("resumed download = status %s job %q", download.Status, download.JobName)
+	}
+
+	var submission model.ModelDownloadSubmission
+	if err := db.Where("model_download_id = ?", paused.ID).First(&submission).Error; err != nil {
+		t.Fatal(err)
+	}
+	if submission.Action != model.ModelDownloadSubmissionResume ||
+		submission.Status != model.ModelDownloadSubmissionReserved {
+		t.Fatalf("resume submission = action %s status %s", submission.Action, submission.Status)
+	}
+}
+
+func newResumePreparationTestManager(t *testing.T, databaseName string) (*gorm.DB, *ModelDownloadMgr) {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open("file:"+databaseName+"?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(
+		&model.SystemConfig{}, &model.PrequeueConfig{}, &model.ModelDownload{}, &model.ModelDownloadSubmission{},
+	); err != nil {
+		t.Fatal(err)
+	}
+	configService := service.NewConfigService(query.Use(db))
+	return db, &ModelDownloadMgr{quotaService: service.NewModelDownloadQuotaService(configService)}
+}
+
+func createResumePreparationTestDownload(
+	t *testing.T, db *gorm.DB, source model.ModelSource, revision string,
+	status model.ModelDownloadStatus, jobName string,
+) model.ModelDownload {
+	t.Helper()
+	download := model.ModelDownload{
+		Name: "owner/model", Source: source, Category: model.DownloadCategoryModel,
+		Revision: revision, Path: "public/Models/owner/model", Status: status,
+		CreatorID: 1, JobName: jobName,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+	return download
+}
+
 func TestRetryUpdateDuplicateIsConflict(t *testing.T) {
 	if err := retryUpdateError(gorm.ErrDuplicatedKey); !errors.Is(err, bizerr.Conflict.Base) {
 		t.Fatalf("duplicate retry update should be a conflict: %v", err)
@@ -222,7 +393,7 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 		Revision: `main; touch /tmp/injected; $(id)`,
 	}
 
-	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "Qwen3-32B")
+	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "Qwen3-32B", true)
 
 	for _, expected := range []string{
 		`args = ["modelscope", "download", resource_flag, repo_id]`,
@@ -232,6 +403,7 @@ func TestModelScopeDownloadCommandUsesArgumentArray(t *testing.T) {
 		"available revisions",
 		"modelscope==" + modelScopeVersion,
 		"modelscope-hub==" + modelScopeHubVersion,
+		`rm -rf "$OUT_DIR"`,
 		`raw_readme = b""`,
 		`with open(p, "rb") as f:`,
 		"raw_readme = f.read(max_readme_bytes)",
@@ -265,13 +437,16 @@ func TestHuggingFaceDownloadCommandKeepsPaginationOnConfiguredEndpoint(t *testin
 		Category: model.DownloadCategoryDataset,
 	}
 
-	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "loveda")
+	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "loveda", true)
 
 	for _, expected := range []string{
 		`expected = "` + huggingFaceHubVersion + `"`,
 		`if actual != expected:`,
 		`unsupported huggingface_hub version`,
 		`use crater-model-downloader:v1.0.0 or an exact mirror of it`,
+		`from huggingface_hub import set_client_factory, snapshot_download`,
+		`httpx.Client(follow_redirects=True, trust_env=True)`,
+		`[NETWORK] using configured egress proxy`,
 		`if mirror != upstream:`,
 		`except (ImportError, AttributeError) as error:`,
 		"from huggingface_hub.utils import _pagination",
@@ -293,6 +468,55 @@ func TestHuggingFaceDownloadCommandKeepsPaginationOnConfiguredEndpoint(t *testin
 	}
 	if strings.Contains(command, "pip install") {
 		t.Fatal("download command mutates the pinned downloader image at runtime")
+	}
+}
+
+func TestDownloadHuggingFaceEndpoint(t *testing.T) {
+	for _, testCase := range []struct {
+		name            string
+		endpoint        string
+		proxyConfigured bool
+		want            string
+	}{
+		{
+			name: "bypass hf mirror when proxy is configured", endpoint: "https://hf-mirror.com",
+			proxyConfigured: true, want: "https://huggingface.co",
+		},
+		{
+			name: "keep mirror without proxy", endpoint: "https://hf-mirror.com",
+			proxyConfigured: false, want: "https://hf-mirror.com",
+		},
+		{
+			name: "keep another custom endpoint", endpoint: "https://hf.example.test",
+			proxyConfigured: true, want: "https://hf.example.test",
+		},
+		{
+			name: "keep official endpoint", endpoint: "https://huggingface.co",
+			proxyConfigured: true, want: "https://huggingface.co",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := downloadHuggingFaceEndpoint(testCase.endpoint, testCase.proxyConfigured); got != testCase.want {
+				t.Fatalf("downloadHuggingFaceEndpoint(%q, %v) = %q, want %q",
+					testCase.endpoint, testCase.proxyConfigured, got, testCase.want)
+			}
+		})
+	}
+}
+
+func TestResumedDownloadCommandPreservesExistingFiles(t *testing.T) {
+	download := &model.ModelDownload{
+		Name:     "chloechia/loveda",
+		Source:   model.ModelSourceHuggingFace,
+		Category: model.DownloadCategoryDataset,
+	}
+
+	command := (&ModelDownloadMgr{}).buildDownloadCommand(download, "loveda", false)
+	if strings.Contains(command, `rm -rf "$OUT_DIR"`) {
+		t.Fatal("resumed download command must preserve its partially downloaded files")
+	}
+	if !strings.Contains(command, `mkdir -p "$OUT_DIR"`) {
+		t.Fatal("resumed download command must still create a missing output directory")
 	}
 }
 
@@ -341,6 +565,60 @@ func TestModelDownloadStoragePathUsesCanonicalShortPath(t *testing.T) {
 	}
 }
 
+func TestIsValidModelNameRejectsTraversalSegments(t *testing.T) {
+	for _, name := range []string{
+		"owner/model",
+		"owner/.hidden-model",
+		"owner/model...",
+	} {
+		if !isValidModelName(name) {
+			t.Fatalf("isValidModelName(%q) = false, want true", name)
+		}
+	}
+
+	for _, name := range []string{
+		"owner/.",
+		"owner/..",
+		"./model",
+		"../model",
+		"owner/model/extra",
+	} {
+		if isValidModelName(name) {
+			t.Fatalf("isValidModelName(%q) = true, want false", name)
+		}
+	}
+}
+
+func TestValidateDownloadStoragePath(t *testing.T) {
+	for _, download := range []*model.ModelDownload{
+		{
+			Name: "owner/model", Category: model.DownloadCategoryModel,
+			Path: filepath.Join("public", "Models", "owner", "model"),
+		},
+		{
+			Name: "owner/dataset", Category: model.DownloadCategoryDataset,
+			Path: filepath.Join("public", "Datasets", "owner", "dataset", "modelscope", "revision"),
+		},
+	} {
+		if err := validateDownloadStoragePath(download); err != nil {
+			t.Fatalf("validateDownloadStoragePath(%#v) = %v, want nil", download, err)
+		}
+	}
+
+	for _, download := range []*model.ModelDownload{
+		nil,
+		{Name: "owner/..", Category: model.DownloadCategoryModel, Path: "public/Models"},
+		{Name: "../model", Category: model.DownloadCategoryModel, Path: "public/model"},
+		{Name: "owner/model", Category: model.DownloadCategoryModel, Path: "public/Models"},
+		{Name: "owner/model", Category: model.DownloadCategoryModel, Path: "public/Models/owner/other"},
+		{Name: "owner/model", Category: model.DownloadCategory("unknown"), Path: "public/Models/owner/model"},
+	} {
+		if err := validateDownloadStoragePath(download); err == nil {
+			t.Fatalf("validateDownloadStoragePath(%#v) = nil, want error", download)
+		}
+	}
+}
+
 func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:logical_download_reuse?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
@@ -374,8 +652,7 @@ func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
 
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
 	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "master",
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.DownloadCategoryModel, "master",
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -385,7 +662,7 @@ func TestFindReadyLogicalDownloadReusesHistoricalPath(t *testing.T) {
 	}
 }
 
-func TestFindOngoingLogicalDownloadDoesNotReuseReadyOtherSource(t *testing.T) {
+func TestFindLogicalDownloadReusesReadyRecordFromAnotherRevision(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:logical_download_exact_ongoing?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		IgnoreRelationshipsWhenMigrating:         true,
@@ -403,7 +680,7 @@ func TestFindOngoingLogicalDownloadDoesNotReuseReadyOtherSource(t *testing.T) {
 		Path: "public/Models/Qwen/Qwen3-32B", Status: model.ModelDownloadStatusReady,
 		CreatorID: 1,
 	}
-	ongoingExact := model.ModelDownload{
+	ongoingOtherRevision := model.ModelDownload{
 		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceModelScope,
 		Category: model.DownloadCategoryModel, Revision: "master",
 		Path: "public/Models/Qwen/Qwen3-32B/modelscope/fc613b4dfd67", Status: model.ModelDownloadStatusDownloading,
@@ -412,37 +689,29 @@ func TestFindOngoingLogicalDownloadDoesNotReuseReadyOtherSource(t *testing.T) {
 	if err := db.Create(&readyOtherSource).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := db.Create(&ongoingExact).Error; err != nil {
+	if err := db.Create(&ongoingOtherRevision).Error; err != nil {
 		t.Fatal(err)
 	}
 
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
 	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "master",
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.DownloadCategoryModel, "master",
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got == nil || got.ID != ongoingExact.ID {
-		t.Fatalf("findReadyOrOngoingDownload() = %#v, want exact ongoing record %d", got, ongoingExact.ID)
+	if got == nil || got.ID != readyOtherSource.ID {
+		t.Fatalf("findReadyOrOngoingDownload() = %#v, want ready record %d", got, readyOtherSource.ID)
 	}
 
 	got, err = (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "v2",
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.DownloadCategoryModel, "v2",
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != nil {
-		t.Fatalf("cross-revision request reused download %#v", got)
-	}
-	if err := checkLogicalDownloadConflict(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "v2",
-	); !errors.Is(err, bizerr.Conflict.Base) {
-		t.Fatalf("cross-revision request should conflict with canonical storage, got %v", err)
+	if got == nil || got.ID != readyOtherSource.ID {
+		t.Fatalf("cross-revision request should reuse ready record %#v", got)
 	}
 }
 
@@ -497,7 +766,7 @@ func TestAssociateUserWithLogicalDownloadIncrementsReferenceOnce(t *testing.T) {
 	}
 }
 
-func TestLogicalDownloadConflictIncludesOtherSourceAndSoftDeletedRows(t *testing.T) {
+func TestFindLogicalDownloadIgnoresFailedAndSoftDeletedRows(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:logical_download_conflict?mode=memory&cache=shared"), &gorm.Config{
 		DisableForeignKeyConstraintWhenMigrating: true,
 		IgnoreRelationshipsWhenMigrating:         true,
@@ -523,19 +792,26 @@ func TestLogicalDownloadConflictIncludesOtherSourceAndSoftDeletedRows(t *testing
 	}
 
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
-	err = checkLogicalDownloadConflict(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceHuggingFace,
-		model.DownloadCategoryModel, "main",
-	)
-	if !errors.Is(err, bizerr.Conflict.Base) {
-		t.Fatalf("expected cross-source soft-deleted conflict, got %v", err)
+	ready := model.ModelDownload{
+		Name: "Qwen/Qwen3-32B", Source: model.ModelSourceHuggingFace,
+		Category: model.DownloadCategoryModel, Revision: "legacy",
+		Path: "public/Models/Qwen/Qwen3-32B", Status: model.ModelDownloadStatusReady,
+		CreatorID: 2,
 	}
-
-	if err := checkLogicalDownloadConflict(
-		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.ModelSourceModelScope,
-		model.DownloadCategoryModel, "master",
-	); err != nil {
-		t.Fatalf("exact historical identity should be retried in place, got %v", err)
+	if err := db.Create(&ready).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&ready).Error; err != nil {
+		t.Fatal(err)
+	}
+	got, err := (&ModelDownloadMgr{}).findReadyOrOngoingDownload(
+		ginContext, query.Use(db), "Qwen/Qwen3-32B", model.DownloadCategoryModel, "main",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != nil {
+		t.Fatalf("failed or soft-deleted history should not be reusable: %#v", got)
 	}
 }
 
@@ -563,6 +839,27 @@ func TestDownloadTokenEnvIsSourceSpecificAndEphemeral(t *testing.T) {
 
 	if env := downloadTokenEnv(model.ModelSourceModelScope, ""); env != nil {
 		t.Fatalf("empty token should not create environment variables: %#v", env)
+	}
+}
+
+func TestDownloadProxyEnv(t *testing.T) {
+	env := downloadProxyEnv("proxy:1080", "socks5://proxy:1081", "localhost,127.0.0.1")
+	if len(env) != 3 {
+		t.Fatalf("unexpected proxy environment: %#v", env)
+	}
+	want := map[string]string{
+		"HTTPS_PROXY": "http://proxy:1080",
+		"HTTP_PROXY":  "socks5://proxy:1081",
+		"NO_PROXY":    "localhost,127.0.0.1",
+	}
+	for _, variable := range env {
+		if want[variable.Name] != variable.Value {
+			t.Fatalf("unexpected proxy variable: %#v", variable)
+		}
+	}
+
+	if env := downloadProxyEnv("", "", ""); env != nil {
+		t.Fatalf("empty proxy configuration should not create environment variables: %#v", env)
 	}
 }
 

@@ -23,9 +23,9 @@ Select **Download model**, then enter the source, repository ID (for example, `Q
 public/Models/<owner>/<repository>
 ```
 
-Crater keeps one public resource for each repository ID. If a Ready, pending, downloading, or paused record already exists, Crater reuses that record and its actual path instead of downloading another copy for a different source, revision, or historical path format. Each requesting user is associated once, and the record's reference count is the number of associated users. If the existing record has failed, retry or resolve it before requesting another source or revision.
+Crater keeps one public resource for each repository ID. If a Ready, pending, downloading, or paused record already exists, Crater reuses that record and its actual path instead of downloading another copy for a different source, revision, or historical path format. Each requesting user is associated once, and the record's reference count is the number of associated users. If no valid record exists, retry the failed record or submit the same repository from another source where it exists.
 
-After a failed download, partial files remain in the original directory so retrying the same record can continue there. Only a record in Ready state represents a complete, usable model. Deleting a download task removes the task record but does not remove its stored files. Ask an administrator to clean up a failed directory only after confirming that no retry, mount, or user depends on it.
+The download Job detects upstream errors such as a missing repository, an invalid revision, or insufficient access and then moves the task to Failed. A new task or failed-task retry clears incomplete files from the canonical public directory before downloading, preventing content from different sources from being mixed. Resuming a paused task preserves its existing progress. Only a Ready record represents a complete, usable model. Deleting a download task removes the task record but does not remove stored files.
 
 ## How to Create a Model
 

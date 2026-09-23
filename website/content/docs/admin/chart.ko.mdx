@@ -125,9 +125,9 @@ Crater 는 Kubernetes 를 위해 설계된 종합 AI 개발 플랫폼으로, GPU
 | backendConfig.registry.harbor.server | string | `"..."` | Harbor 서비스 접속 주소 |
 | backendConfig.registry.harbor.user | string | `"admin"` | Harbor 관리자 계정 |
 | backendConfig.registry.harbor.password | string | `"..."` | Harbor 관리자 비밀번호 |
-| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `null` | 이미지 빌드 시 HTTP 프록시 |
-| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `null` | 이미지 빌드 시 HTTPS 프록시 |
-| backendConfig.registry.buildTools.proxyConfig.noProxy | string | `null` | 프록시를 사용하지 않는 도메인 목록 (쉼표로 구분) |
+| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `null` | 이미지 빌드와 Hugging Face 다운로드 Job에서 사용하는 HTTP 송신 프록시 |
+| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `null` | 이미지 빌드와 Hugging Face 다운로드 Job에서 사용하는 HTTPS 송신 프록시 |
+| backendConfig.registry.buildTools.proxyConfig.noProxy | string | `null` | 이미지 빌드와 Hugging Face 다운로드 Job이 프록시를 우회할 주소 목록 (쉼표로 구분) |
 
 ### 메일 서비스 설정 (backendConfig.smtp)
 
