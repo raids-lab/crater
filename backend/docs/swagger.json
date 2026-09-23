@@ -3221,6 +3221,138 @@
                 }
             }
         },
+        "/v1/admin/storage/capabilities": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Probe storage quota providers and return diagnostics to platform administrators",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Get detailed storage quota capabilities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_StorageCapabilities"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/storage/user-spaces": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Get paginated user storage usage and quotas",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size, from 1 to 100",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/storage/user-spaces/refresh": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Refresh user storage usage and reconcile quota mirrors",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_patrol_StorageUsageRefreshResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/storage/user-spaces/{user}/quota": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Set a user's CephFS storage quota",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Username",
+                        "name": "user",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Space quota request",
+                        "name": "quota",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.SetUserSpaceQuotaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/system-config/gpu-analysis": {
             "get": {
                 "security": [
@@ -8755,6 +8887,101 @@
                 }
             }
         },
+        "/v1/storage/capabilities": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Return non-sensitive storage capability flags for the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Get storage quota capability summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_StorageCapabilitySummary"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/storage/dirsize/{path}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Read the current user's user, account, or public storage root usage",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Get permitted storage root usage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Storage scope: user, account, or public",
+                        "name": "path",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/storage/my-quota": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Storage"
+                ],
+                "summary": "Get the current user's enforced storage quota",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/system-config/model-download-limit": {
             "get": {
                 "security": [
@@ -11087,6 +11314,21 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_patrol_StorageUsageRefreshResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_pkg_patrol.StorageUsageRefreshResult"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdjustUserExtraBalanceResp": {
             "type": "object",
             "properties": {
@@ -11426,6 +11668,36 @@
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.QueueQuotaResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_StorageCapabilities": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.StorageCapabilities"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_StorageCapabilitySummary": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.StorageCapabilitySummary"
                 },
                 "msg": {
                     "type": "string"
@@ -11921,6 +12193,20 @@
                 "userRealName": {
                     "description": "用户真实名称（用于tooltip）",
                     "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_pkg_patrol.StorageUsageRefreshResult": {
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "type": "integer"
+                },
+                "refreshed_at": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "integer"
                 }
             }
         },
@@ -12973,6 +13259,17 @@
                 }
             }
         },
+        "internal_handler.SetUserSpaceQuotaRequest": {
+            "type": "object",
+            "required": [
+                "quota"
+            ],
+            "properties": {
+                "quota": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_handler.SharedQueueReq": {
             "type": "object",
             "required": [
@@ -13006,6 +13303,70 @@
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "internal_handler.StorageCapabilities": {
+            "type": "object",
+            "properties": {
+                "backend": {
+                    "type": "string"
+                },
+                "configured": {
+                    "type": "boolean"
+                },
+                "csi_driver": {
+                    "type": "string"
+                },
+                "pv_name": {
+                    "type": "string"
+                },
+                "pvc_name": {
+                    "type": "string"
+                },
+                "pvc_namespace": {
+                    "type": "string"
+                },
+                "quota_enabled": {
+                    "type": "boolean"
+                },
+                "quota_provider": {
+                    "type": "string"
+                },
+                "quota_readable": {
+                    "type": "boolean"
+                },
+                "quota_writable": {
+                    "type": "boolean"
+                },
+                "reasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "storage_server_available": {
+                    "type": "boolean"
+                },
+                "toolbox_available": {
+                    "type": "boolean"
+                },
+                "usage_readable": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler.StorageCapabilitySummary": {
+            "type": "object",
+            "properties": {
+                "quota_enabled": {
+                    "type": "boolean"
+                },
+                "quota_readable": {
+                    "type": "boolean"
+                },
+                "usage_readable": {
+                    "type": "boolean"
                 }
             }
         },

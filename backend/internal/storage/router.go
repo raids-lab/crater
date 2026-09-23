@@ -3,6 +3,8 @@ package storage
 import "github.com/gin-gonic/gin"
 
 func RegisterRoutes(r *gin.Engine) {
+	RegisterQuotaRoutes(r)
+
 	methods := []string{
 		"PUT",
 		"MKCOL",
