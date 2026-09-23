@@ -1197,8 +1197,8 @@ func main() {
 			ID: "202604161300",
 			Migrate: func(tx *gorm.DB) error {
 				defaults := map[string]string{
-					model.PrequeueBackfillEnabledKey:   strconv.FormatBool(model.PrequeueDefaultBackfillEnabled),
-					model.PrequeueQueueQuotaEnabledKey: strconv.FormatBool(model.PrequeueDefaultQueueQuotaEnabled),
+					"backfill_enabled":    strconv.FormatBool(false),
+					"queue_quota_enabled": strconv.FormatBool(false),
 				}
 
 				for key, value := range defaults {
@@ -1223,8 +1223,8 @@ func main() {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				if err := tx.Table("prequeue_configs").Where("key IN ?", []string{
-					model.PrequeueBackfillEnabledKey,
-					model.PrequeueQueueQuotaEnabledKey,
+					"backfill_enabled",
+					"queue_quota_enabled",
 				}).Delete(nil).Error; err != nil {
 					return err
 				}
@@ -1241,7 +1241,7 @@ func main() {
 					"created_at": time.Now(),
 					"updated_at": time.Now(),
 					"key":        "enabled",
-					"value":      strconv.FormatBool(model.PrequeueDefaultBackfillEnabled),
+					"value":      strconv.FormatBool(false),
 				}).Error
 			},
 		},
@@ -1249,8 +1249,8 @@ func main() {
 			ID: "202604171200",
 			Migrate: func(tx *gorm.DB) error {
 				defaults := map[string]string{
-					model.PrequeueActivateTickerIntervalSecondsKey: strconv.FormatInt(model.PrequeueDefaultActivateTickerIntervalSeconds, 10),
-					model.PrequeueMaxTotalActivationsPerRoundKey:   strconv.FormatInt(model.PrequeueDefaultMaxTotalActivationsPerRound, 10),
+					"activate_ticker_interval_seconds": strconv.FormatInt(5, 10),
+					"max_total_activations_per_round":  strconv.FormatInt(500, 10),
 				}
 				for key, value := range defaults {
 					var count int64
@@ -1273,8 +1273,8 @@ func main() {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				return tx.Table("prequeue_configs").Where("key IN ?", []string{
-					model.PrequeueActivateTickerIntervalSecondsKey,
-					model.PrequeueMaxTotalActivationsPerRoundKey,
+					"activate_ticker_interval_seconds",
+					"max_total_activations_per_round",
 				}).Delete(nil).Error
 			},
 		},
@@ -1574,6 +1574,113 @@ func main() {
 		},
 		modelDownloadSubmissionMigration(),
 		storageQuotaMigration(),
+		{
+			ID: "202609010950",
+			Migrate: func(tx *gorm.DB) error {
+				if !tx.Migrator().HasTable("prequeue_configs") {
+					return nil
+				}
+				var rows []struct {
+					Key   string
+					Value string
+				}
+				if err := tx.Table("prequeue_configs").
+					Where("deleted_at IS NULL AND (expire_at IS NULL OR expire_at > ?)", time.Now()).
+					Find(&rows).Error; err != nil {
+					return err
+				}
+				legacy := make(map[string]string, len(rows))
+				for _, row := range rows {
+					legacy[row.Key] = row.Value
+				}
+
+				values := map[string]string{}
+				quotaEnabled, quotaErr := strconv.ParseBool(legacy["queue_quota_enabled"])
+				backfillEnabled, backfillErr := strconv.ParseBool(legacy["backfill_enabled"])
+				if quotaErr == nil {
+					values["QUEUE_QUOTA_ENABLED"] = strconv.FormatBool(quotaEnabled)
+				}
+				if quotaErr == nil || backfillErr == nil {
+					values["SCHEDULER_EXTENDER_ENABLED"] = strconv.FormatBool(quotaEnabled || backfillEnabled)
+				}
+				tolerance, toleranceErr := strconv.ParseInt(legacy["normal_job_waiting_tolerance_seconds"], 10, 64)
+				if toleranceErr == nil && tolerance > 0 {
+					values["JOB_WAITING_TOLERANCE_SECONDS"] = strconv.FormatInt(tolerance, 10)
+				}
+
+				for key, value := range values {
+					var count int64
+					if err := tx.Table("system_configs").Where("key = ?", key).Count(&count).Error; err != nil {
+						return err
+					}
+					if count > 0 {
+						continue
+					}
+					if err := tx.Table("system_configs").Create(map[string]any{"key": key, "value": value}).Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+			Rollback: func(tx *gorm.DB) error {
+				return tx.Table("system_configs").Where("key IN ?", []string{
+					"SCHEDULER_EXTENDER_ENABLED",
+					"QUEUE_QUOTA_ENABLED",
+					"JOB_WAITING_TOLERANCE_SECONDS",
+				}).Delete(nil).Error
+			},
+		},
+		{
+			ID: "202609011000",
+			Migrate: func(tx *gorm.DB) error {
+				return dropTableIfPresent(tx, "prequeue_configs")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type PrequeueConfig struct {
+					gorm.Model
+					Key      string     `gorm:"uniqueIndex:idx_prequeue_configs_key;size:100;not null;comment:配置项的键"`
+					Value    string     `gorm:"type:text;not null;comment:配置项的值"`
+					ExpireAt *time.Time `gorm:"index:idx_prequeue_configs_expire_at;comment:配置项过期时间"`
+				}
+				return createTableIfMissing(tx, &PrequeueConfig{})
+			},
+		},
+		{
+			ID: "202609011200",
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					ScheduleType *int `gorm:"index:idx_jobs_schedule_type;default:1;not null;comment:调度类型"`
+				}
+				if err := dropIndexIfPresent(tx, "jobs", &Job{}, "ScheduleType"); err != nil {
+					return err
+				}
+				return dropColumnIfPresent(tx, "jobs", &Job{}, "ScheduleType")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					ScheduleType *int `gorm:"index:idx_jobs_schedule_type;default:1;not null;comment:调度类型"`
+				}
+				if err := addColumnIfMissing(tx, "jobs", &Job{}, "ScheduleType"); err != nil {
+					return err
+				}
+				return createIndexIfMissing(tx, "jobs", &Job{}, "ScheduleType")
+			},
+		},
+		{
+			ID: "202609071000",
+			Migrate: func(tx *gorm.DB) error {
+				type Job struct {
+					PodGroupPhase string `gorm:"comment:volcano PodGroup 的原始 phase"`
+				}
+				return addColumnIfMissing(tx, "jobs", &Job{}, "PodGroupPhase")
+			},
+			Rollback: func(tx *gorm.DB) error {
+				type Job struct {
+					PodGroupPhase string `gorm:"comment:volcano PodGroup 的原始 phase"`
+				}
+				return dropColumnIfPresent(tx, "jobs", &Job{}, "PodGroupPhase")
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1607,7 +1714,6 @@ func main() {
 			&model.GpuAnalysis{},
 			&model.SystemConfig{},
 			&model.OperationLog{},
-			&model.PrequeueConfig{},
 			&model.QueueQuotaLimit{},
 			&model.UserBanRecord{},
 			&model.UserSpaceSize{},

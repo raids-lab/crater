@@ -1,6 +1,6 @@
 # crater
 
-![Version: 1.2.0](https://img.shields.io/badge/Version-1.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0](https://img.shields.io/badge/AppVersion-1.2.0-informational?style=flat-square)
+![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.3.0](https://img.shields.io/badge/AppVersion-1.3.0-informational?style=flat-square)
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
@@ -82,6 +82,7 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | backendConfig.registry.harbor.password | string | `"<MASKED>"` | Admin password for Harbor authentication (Required) Must match the specified user's password |
 | backendConfig.registry.harbor.server | string | `"harbor.example.com"` | Harbor registry server URL (Required) Must be a valid Harbor instance URL |
 | backendConfig.registry.harbor.user | string | `"admin"` | Admin username for Harbor authentication (Required) User must have appropriate permissions in Harbor |
+| backendConfig.schedulerExtenderPort | string | `":8089"` | Network port serving volcano's scheduler extender callbacks (Optional) The default deploys the ClusterIP Service crater-volcano-extender-svc, idle until extender.urlPrefix in the volcano configmap points at it and the admin switch is on; set it to "" to skip the endpoint. Keep the backend at one replica: quota reservations live in process memory and are not shared. |
 | backendConfig.secrets | object | `{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"}` | Kubernetes secret names for various security components (Required) All secret names must correspond to existing Kubernetes secrets |
 | backendConfig.secrets.imagePullSecretName | string | `""` | Name of the Kubernetes secret for pulling container images from private registries. Also applied to model download Jobs when `modelDownload.image` is private. If not specified, no image pull secret will be used. |
 | backendConfig.secrets.tlsForwardSecretName | string | `"crater-tls-forward-secret"` | Name of the Kubernetes secret for TLS forwarding configuration (Required) Secret must contain appropriate forwarding certificates |

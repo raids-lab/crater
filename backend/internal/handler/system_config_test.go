@@ -38,7 +38,7 @@ func TestUpdatePodBandwidthConfigRejectsUnavailableCNI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}); err != nil {
+	if err := db.AutoMigrate(&model.SystemConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	configService := service.NewConfigService(query.Use(db))
@@ -77,7 +77,7 @@ func TestModelDownloadLimitConfigRoutesHideWhitelistFromProtectedUsers(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}); err != nil {
+	if err := db.AutoMigrate(&model.SystemConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	configService := service.NewConfigService(query.Use(db))

@@ -27,20 +27,29 @@ export interface MetadataFormType {
   migrations?: Record<string, MetadataFormMigration>
 }
 
-const CurrentJobTemplateVersion = '20260707'
+// Each bump registers a migration from the previous version so older templates chain up to the current one.
+const NodeSelectorTemplateVersion = '20260707'
+const CurrentJobTemplateVersion = '20260922'
 
 const NodeSelectorMode = {
   Include: 'include',
   Exclude: 'exclude',
 } as const
 
-const migrateToCurrentNodeSelector = {
-  to: CurrentJobTemplateVersion,
+const migrateToNodeSelectorVersion = {
+  to: NodeSelectorTemplateVersion,
   migrate: (data: unknown) => migrateRootNodeSelector(data),
 }
 
-const withNodeSelectorMigration = (fromVersion: string): Record<string, MetadataFormMigration> => ({
-  [fromVersion]: migrateToCurrentNodeSelector,
+// scheduleType left the job forms with the scheduler extender; templates of every older version may carry it.
+const migrateToCurrent = {
+  to: CurrentJobTemplateVersion,
+  migrate: (data: unknown) => removeScheduleType(data),
+}
+
+const jobTemplateMigrations = (fromVersion: string): Record<string, MetadataFormMigration> => ({
+  [fromVersion]: migrateToNodeSelectorVersion,
+  [NodeSelectorTemplateVersion]: migrateToCurrent,
 })
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
@@ -59,6 +68,15 @@ const uniqueStrings = (values: unknown): string[] => {
         .map((value) => value.trim())
     )
   ).filter(Boolean)
+}
+
+const removeScheduleType = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('模板数据格式无效，无法移除调度类型配置')
+  }
+  const rest = { ...data }
+  delete rest.scheduleType
+  return rest
 }
 
 const migrateRootNodeSelector = (data: unknown): unknown => {
@@ -129,43 +147,43 @@ export const MetadataFormAccount: MetadataFormType = {
 export const MetadataFormJupyter: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'jupyter',
-  migrations: withNodeSelectorMigration('20250420'),
+  migrations: jobTemplateMigrations('20250420'),
 }
 
 export const MetadataFormWebIDE: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'webide',
-  migrations: withNodeSelectorMigration('20251126'),
+  migrations: jobTemplateMigrations('20251126'),
 }
 
 export const MetadataFormCustom: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'custom',
-  migrations: withNodeSelectorMigration('20250317'),
+  migrations: jobTemplateMigrations('20250317'),
 }
 
 export const MetadataFormCustomEmias: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'custom-emias',
-  migrations: withNodeSelectorMigration('20250420'),
+  migrations: jobTemplateMigrations('20250420'),
 }
 
 export const MetadataFormTensorflow: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'tensorflow',
-  migrations: withNodeSelectorMigration('20240528'),
+  migrations: jobTemplateMigrations('20240528'),
 }
 
 export const MetadataFormPytorch: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'pytorch',
-  migrations: withNodeSelectorMigration('20240528'),
+  migrations: jobTemplateMigrations('20240528'),
 }
 
 export const MetadataFormSingle: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'single',
-  migrations: withNodeSelectorMigration('20240528'),
+  migrations: jobTemplateMigrations('20240528'),
 }
 
 // 基于Dockerfile构建
@@ -195,5 +213,5 @@ export const MetadataFormEnvdRaw: MetadataFormType = {
 export const MetadataFormJupyterEmias: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'jupyter-emias',
-  migrations: withNodeSelectorMigration('20240528'),
+  migrations: jobTemplateMigrations('20240528'),
 }

@@ -17,17 +17,12 @@ import (
 	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
-//nolint:gocyclo // Job assembly coordinates validation, queues, and task generation in one request flow.
+// //nolint:gocyclo // Job assembly coordinates validation, queues, and task generation in one request flow.
 func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	token := util.GetToken(c)
 
 	var req CreateTensorflowReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-	scheduleType, err := req.validateScheduleOptions(false)
-	if err != nil {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
@@ -37,10 +32,10 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		return
 	}
 
-	if !mgr.preCheckCreateJob(c, token, scheduleType, false) {
+	if !mgr.preCheckCreateJob(c, token, false) {
 		return
 	}
-	scheduleMetadata, err := mgr.resolveJobScheduleMetadata(c.Request.Context(), scheduleType)
+	waitingToleranceSeconds, err := mgr.resolveWaitingTolerance(c)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
@@ -94,7 +89,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		token,
 		baseURL,
 		&req.CreateJobCommon,
-		scheduleMetadata,
+		waitingToleranceSeconds,
 	)
 
 	// 4. Create the task spec
@@ -189,7 +184,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	}
 
 	if err = mgr.submitJob(c, token, &job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 

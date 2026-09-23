@@ -29,7 +29,7 @@ description: 즉시 사용 가능한 Jupyter Lab, 인터랙티브 작업의 생�
 
 ```json
 {
-  "version": "20260707",
+  "version": "20260922",
   "type": "jupyter",
   "data": {
     "jobName": "DL-bench-test",
@@ -74,8 +74,7 @@ description: 즉시 사용 가능한 Jupyter Lab, 인터랙티브 작업의 생�
     },
     "alertEnabled": true,
     "cpuPinningEnabled": false,
-    "forwards": [],
-    "scheduleType": 1
+    "forwards": []
   }
 }
 ```

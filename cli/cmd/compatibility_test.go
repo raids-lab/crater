@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -163,8 +164,8 @@ func TestCompatibilityAPIErrorMapsNotFoundToVersionMismatch(t *testing.T) {
 		"Situation:",
 		"The platform returned HTTP 404 for the API compatibility endpoint.",
 		"Versions:",
-		"CLI API version: 1",
-		"CLI minimum backend API version: 1",
+		fmt.Sprintf("CLI API version: %d", internalversion.APIVersion),
+		fmt.Sprintf("CLI minimum backend API version: %d", internalversion.MinSupportedBackendAPIVersion),
 		"Backend product version: unknown",
 		"Backend short commit SHA: unknown",
 		"Backend build type: unknown",
@@ -218,7 +219,10 @@ func TestNewCompatibilityResultTreatsReportedZeroAsBackendTooOld(t *testing.T) {
 	}
 	err := compatibilityMismatchError(result)
 	for _, want := range []string{
-		"The backend API version (0) is lower than the CLI minimum supported backend API version (1).",
+		fmt.Sprintf(
+			"The backend API version (0) is lower than the CLI minimum supported backend API version (%d).",
+			internalversion.MinSupportedBackendAPIVersion,
+		),
 		"Backend product version: v0.0.0",
 		"Backend short commit SHA: 0000000",
 		"Backend build type: development",

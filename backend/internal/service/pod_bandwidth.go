@@ -202,7 +202,7 @@ func JobPodBandwidthAnnotations(
 
 // ApplyJobPodBandwidth applies the current system configuration immediately
 // before a Volcano Job is created. Existing bandwidth annotations are removed
-// first so prequeued jobs do not retain a stale configuration snapshot.
+// first so queued jobs do not retain a stale configuration snapshot.
 func ApplyJobPodBandwidth(
 	ctx context.Context,
 	configService *ConfigService,

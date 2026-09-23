@@ -31,16 +31,15 @@ type jobListScope struct {
 }
 
 type jobListQuery struct {
-	Page          int      `form:"page,default=1" binding:"min=1"`
-	PageSize      int      `form:"page_size,default=10" binding:"min=1,max=200"`
-	Sort          string   `form:"sort"`
-	Search        string   `form:"search"`
-	Days          *int     `form:"days" binding:"omitempty,eq=-1|gt=0"`
-	JobTypes      []string `form:"job_type" binding:"max=20,dive,required"`
-	ScheduleTypes []int    `form:"schedule_type" binding:"max=20,dive,oneof=0 1"`
-	Statuses      []string `form:"status" binding:"max=20,dive,required"`
-	Node          *string  `form:"node"`
-	sorts         []jobSort
+	Page     int      `form:"page,default=1" binding:"min=1"`
+	PageSize int      `form:"page_size,default=10" binding:"min=1,max=200"`
+	Sort     string   `form:"sort"`
+	Search   string   `form:"search"`
+	Days     *int     `form:"days" binding:"omitempty,eq=-1|gt=0"`
+	JobTypes []string `form:"job_type" binding:"max=20,dive,required"`
+	Statuses []string `form:"status" binding:"max=20,dive,required"`
+	Node     *string  `form:"node"`
+	sorts    []jobSort
 }
 
 type jobSort struct {
@@ -96,7 +95,7 @@ func parseJobSort(raw string) ([]jobSort, error) {
 	}
 	allowed := map[string]struct{}{
 		"name": {}, "jobName": {}, "owner": {}, "queue": {}, "jobType": {},
-		"scheduleType": {}, "status": {}, "billedPointsTotal": {}, "createdAt": {},
+		"status": {}, "billedPointsTotal": {}, "createdAt": {},
 		"startedAt": {}, "completedAt": {},
 	}
 	parts := strings.Split(raw, ",")
@@ -188,9 +187,6 @@ func applyJobFilters(
 	if len(request.JobTypes) > 0 {
 		q = q.Where(j.JobType.In(request.JobTypes...))
 	}
-	if len(request.ScheduleTypes) > 0 {
-		q = q.Where(j.ScheduleType.In(request.ScheduleTypes...))
-	}
 	if len(request.Statuses) > 0 {
 		q = q.Where(j.Status.In(request.Statuses...))
 	}
@@ -221,7 +217,6 @@ func jobSortFields() map[string]field.OrderExpr {
 		"owner":             query.User.Nickname,
 		"queue":             query.Account.Nickname,
 		"jobType":           j.JobType,
-		"scheduleType":      j.ScheduleType,
 		"status":            j.Status,
 		"billedPointsTotal": j.BilledPointsTotal,
 		"createdAt":         j.CreationTimestamp,
@@ -242,20 +237,14 @@ func findJobFacets(
 	if err != nil {
 		return nil, err
 	}
-	scheduleRequest := jobFacetQuery(request, "schedule_type")
-	schedules, err := scanJobIntFacet(ctx, scope, &scheduleRequest, defaultDays, &query.Job.ScheduleType)
-	if err != nil {
-		return nil, err
-	}
 	statusRequest := jobFacetQuery(request, "status")
 	statuses, err := scanJobStringFacet(ctx, scope, &statusRequest, defaultDays, &query.Job.Status)
 	if err != nil {
 		return nil, err
 	}
 	result := map[string][]resputil.FacetItem{
-		"job_type":      types,
-		"schedule_type": schedules,
-		"status":        statuses,
+		"job_type": types,
+		"status":   statuses,
 	}
 	if !includeOverview {
 		return result, nil
@@ -277,8 +266,6 @@ func jobFacetQuery(source *jobListQuery, facet string) jobListQuery {
 	switch facet {
 	case "job_type":
 		request.JobTypes = nil
-	case "schedule_type":
-		request.ScheduleTypes = nil
 	case "status":
 		request.Statuses = nil
 	}
@@ -307,32 +294,6 @@ func scanJobStringFacet(
 	items := make([]resputil.FacetItem, len(rows))
 	for index, row := range rows {
 		items[index] = resputil.FacetItem{Value: row.Value, Count: row.Count}
-	}
-	return items, nil
-}
-
-func scanJobIntFacet(
-	ctx context.Context,
-	scope jobListScope,
-	request *jobListQuery,
-	defaultDays int,
-	group *field.Int,
-) ([]resputil.FacetItem, error) {
-	rows := make([]struct {
-		Value int
-		Count int64
-	}, 0)
-	err := applyJobFilters(ctx, scope, request, defaultDays).
-		Select(group.As("value"), query.Job.ID.Count().As("count")).
-		Group(group).
-		Order(query.Job.ID.Count().Desc(), group.Asc()).
-		Scan(&rows)
-	if err != nil {
-		return nil, err
-	}
-	items := make([]resputil.FacetItem, len(rows))
-	for index, row := range rows {
-		items[index] = resputil.FacetItem{Value: strconv.Itoa(row.Value), Count: row.Count}
 	}
 	return items, nil
 }
