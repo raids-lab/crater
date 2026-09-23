@@ -196,6 +196,57 @@ func TestRetryUpdateDuplicateIsConflict(t *testing.T) {
 	}
 }
 
+func TestPauseDownloadTransitionIsConditionalAndReleasesQuota(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:pause_download_transition?mode=memory&cache=shared"), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+		IgnoreRelationshipsWhenMigrating:         true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.ModelDownload{}, &model.ModelDownloadSubmission{}); err != nil {
+		t.Fatal(err)
+	}
+	query.SetDefault(db)
+
+	download := model.ModelDownload{
+		Name: "owner/pause", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "main", Path: "public/Models/owner/pause",
+		Status: model.ModelDownloadStatusDownloading, JobName: "pause-job", CreatorID: 7,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.ModelDownloadSubmission{
+		UserID: 7, ModelDownloadID: download.ID,
+		Action: model.ModelDownloadSubmissionCreate, Status: model.ModelDownloadSubmissionReserved,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := pauseDownloadAndReleaseQuota(t.Context(), download.ID); err != nil {
+		t.Fatal(err)
+	}
+	var stored model.ModelDownload
+	if err := db.First(&stored, download.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != model.ModelDownloadStatusPaused || stored.Message != "Download paused by user" {
+		t.Fatalf("unexpected paused download: %#v", stored)
+	}
+	var submission model.ModelDownloadSubmission
+	if err := db.Where("model_download_id = ?", download.ID).First(&submission).Error; err != nil {
+		t.Fatal(err)
+	}
+	if submission.Status != model.ModelDownloadSubmissionReleased || submission.CompletedAt != nil {
+		t.Fatalf("pause did not release quota reservation: %#v", submission)
+	}
+
+	if err := pauseDownloadAndReleaseQuota(t.Context(), download.ID); !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("second pause error = %v, want status conflict", err)
+	}
+}
+
 func TestRestoredReadyDownloadDoesNotSubmitJob(t *testing.T) {
 	for _, testCase := range []struct {
 		status model.ModelDownloadStatus

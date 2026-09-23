@@ -378,6 +378,25 @@ func updateDownloadAndReleaseQuota(
 	})
 }
 
+func pauseDownloadAndReleaseQuota(ctx context.Context, downloadID uint) error {
+	db := query.ModelDownload.WithContext(ctx).UnderlyingDB().Session(&gorm.Session{NewDB: true})
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&model.ModelDownload{}).
+			Where("id = ? AND status = ?", downloadID, model.ModelDownloadStatusDownloading).
+			Updates(map[string]any{
+				"status":  model.ModelDownloadStatusPaused,
+				"message": "Download paused by user",
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return bizerr.Conflict.ResourceStatusError.New("only downloading tasks can be paused")
+		}
+		return service.ReleaseModelDownloadQuotaReservation(ctx, tx, downloadID)
+	})
+}
+
 // checkLogicalDownloadConflict blocks a new source/revision when a historical
 // failed or soft-deleted record already owns storage for the same public model.
 // Ready and ongoing records are handled earlier and reused instead.
@@ -1119,24 +1138,26 @@ func (mgr *ModelDownloadMgr) PauseDownload(c *gin.Context) {
 		return
 	}
 
-	// Pausing is implemented by deleting the Job. Persist logs before removal.
+	// Persist the user's pause intent before deleting the Job. Kubernetes deletion
+	// is asynchronous, so the reconciler must be able to observe Paused before it
+	// handles the Job deletion event.
 	mgr.captureJobLogsToRecord(c, download)
-	if err := mgr.deleteDownloadJob(c, download.JobName); err != nil {
-		resputil.HandleError(c, err)
-		return
-	}
-
-	updates := map[string]any{
-		"status":  model.ModelDownloadStatusPaused,
-		"message": "Download paused by user",
-	}
-	if err := updateDownloadAndReleaseQuota(c, download.ID, updates); err != nil {
+	if err := pauseDownloadAndReleaseQuota(c, download.ID); err != nil {
+		if errors.Is(err, bizerr.Conflict.Base) {
+			resputil.HandleError(c, err)
+			return
+		}
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "update paused download failed"))
 		return
 	}
 
 	download.Status = model.ModelDownloadStatusPaused
 	download.Message = "Download paused by user"
+	if err := mgr.deleteDownloadJob(c, download.JobName); err != nil {
+		// Paused is the durable desired state. Keep it instead of rolling back to
+		// Downloading; the reconciler will retry the idempotent Job cleanup.
+		klog.Warningf("download %d was paused but Job %q cleanup failed: %v", download.ID, download.JobName, err)
+	}
 
 	resputil.Success(c, convertDownloadToResp(download, token))
 }
