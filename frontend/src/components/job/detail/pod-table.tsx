@@ -43,7 +43,6 @@ import {
 } from '@/services/api/snapshot'
 import { PodDetail } from '@/services/api/vcjob'
 
-import { globalJobUrl } from '@/utils/store'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 
 import PodIngressDialog from './ingress'
@@ -52,6 +51,7 @@ interface PodTableProps {
   jobName: string
   userName: string
   jobType?: string
+  jobID?: number
 }
 
 const getHeader = (key: string): string => {
@@ -94,8 +94,8 @@ const getPodMonitorUrl = (baseURL: string, pod: PodDetail) => {
   return `${baseURL}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`
 }
 
-export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
-  const jobUrl = useAtomValue(globalJobUrl)
+export const PodTable = ({ jobName, userName, jobType, jobID }: PodTableProps) => {
+  const jobKind = jobID === undefined ? 'vcjobs' : 'aijobs'
   const queryClient = useQueryClient()
   const [showLog, setShowLog] = useState<NamespacedName>()
   const [showTerminal, setShowTerminal] = useState<NamespacedName>()
@@ -104,14 +104,22 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const [grafanaUrl, setGrafanaUrl] = useState<string>('')
 
-  const podSnapshotQueryKey = ['job', 'detail', jobUrl, jobName, 'pods', 'snapshot'] as const
+  const podSnapshotQueryKey = [
+    'job',
+    'detail',
+    jobKind,
+    jobID,
+    jobName,
+    'pods',
+    'snapshot',
+  ] as const
   const podSnapshotQuery = useInfiniteQuery({
-    queryKey: ['job', 'detail', jobUrl, jobName, 'pods', 'snapshot'],
+    queryKey: ['job', 'detail', jobKind, jobID, jobName, 'pods', 'snapshot'],
     initialPageParam: '',
     queryFn: ({ pageParam }) => {
       const params = { limit: 50, cursor: pageParam || undefined }
-      return jobUrl === 'aijobs'
-        ? apiGetAIJobPodSnapshot(jobName, params)
+      return jobID !== undefined
+        ? apiGetAIJobPodSnapshot(jobID, params)
         : apiGetJobPodSnapshot(jobName, params)
     },
     getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,

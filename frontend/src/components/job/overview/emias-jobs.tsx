@@ -389,7 +389,11 @@ const ColocateOverview = () => {
                     {t('jobs.actions.dropdown.title')}
                   </DropdownMenuLabel>
                   <DropdownMenuItem asChild>
-                    <Link {...portalJobDetailLinkOptions} params={{ name: taskInfo.jobName }}>
+                    <Link
+                      {...portalJobDetailLinkOptions}
+                      params={{ name: taskInfo.jobName }}
+                      search={{ tab: '', id: taskInfo.id }}
+                    >
                       {t('jobs.actions.dropdown.details')}
                     </Link>
                   </DropdownMenuItem>

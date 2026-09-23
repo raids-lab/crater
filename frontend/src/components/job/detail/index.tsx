@@ -79,6 +79,10 @@ import {
   JobPhase,
   JobStatus,
   JobType,
+  apiAIJobGetDetail,
+  apiAIJobGetEvent,
+  apiAIJobGetPods,
+  apiAIJobGetYaml,
   apiJobDelete,
   apiJobDeleteForAdmin,
   apiJobGetDetail,
@@ -106,7 +110,11 @@ import JobOrderList from './job-order-list'
 import { PodTable } from './pod-table'
 import { SSHPortDialog } from './s-s-h-port-dialog'
 
-export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { jobName: string }) {
+export default function BaseCore({
+  jobName,
+  jobID,
+  ...props
+}: DetailPageCoreProps & { jobName: string; jobID?: number }) {
   useFixedLayout()
   const isAdmin = useIsAdmin()
   const navigate = useNavigate()
@@ -115,18 +123,21 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const { t } = useTranslation()
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false)
+  const jobIdentifier = String(jobID ?? jobName)
+  const isEMIASJob = jobID !== undefined
 
   // 获取作业详情
   const { data, isLoading } = useQuery({
-    queryKey: ['job', 'detail', jobName],
-    queryFn: () => apiJobGetDetail(jobName),
+    queryKey: ['job', 'detail', isEMIASJob, jobID, jobName, jobIdentifier],
+    queryFn: () => (isEMIASJob ? apiAIJobGetDetail(jobID!) : apiJobGetDetail(jobName)),
     select: (res) => res.data,
     refetchInterval: REFETCH_INTERVAL,
   })
   const { data: billingDetail } = useQuery({
-    queryKey: ['job', 'detail', jobName, 'billing'],
-    queryFn: () => apiJobBillingDetail(jobName).then((res) => res.data),
+    queryKey: ['job', 'detail', isEMIASJob, jobID, jobName, jobIdentifier, 'billing'],
+    queryFn: () => apiJobBillingDetail(jobIdentifier).then((res) => res.data),
     refetchInterval: REFETCH_INTERVAL,
+    enabled: !isEMIASJob,
   })
 
   // 获取工单列表以确定是否显示“相关工单”选项卡
@@ -138,8 +149,8 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
 
   // Pod 相关信息获取
   const podQuery = useQuery({
-    queryKey: ['job', 'detail', jobName, 'pods'],
-    queryFn: () => apiJobGetPods(jobName),
+    queryKey: ['job', 'detail', isEMIASJob, jobID, jobName, jobIdentifier, 'pods'],
+    queryFn: () => (isEMIASJob ? apiAIJobGetPods(jobID!) : apiJobGetPods(jobName)),
     select: (res) => res.data.sort((a, b) => a.name.localeCompare(b.name)),
     enabled: !!jobName,
   })
@@ -173,7 +184,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   )
 
   const { mutate: deleteJob } = useMutation({
-    mutationFn: () => (isAdmin ? apiJobDeleteForAdmin(jobName) : apiJobDelete(jobName)),
+    mutationFn: () => (isAdmin ? apiJobDeleteForAdmin(jobIdentifier) : apiJobDelete(jobIdentifier)),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ['context', 'job-resource-summary'],
@@ -192,7 +203,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   })
 
   // 判断作业所在节点是否被禁止调度
-  const snapshotDisabled = useSnapshotDisabled(jobName)
+  const snapshotDisabled = useSnapshotDisabled(isEMIASJob ? '' : jobName)
 
   const showGPUDashboard = useMemo(() => {
     if (!data) {
@@ -232,13 +243,13 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
             <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
               {data.status === JobPhase.Running && (
                 <>
-                  {isSingleJob(data.jobType) && (
+                  {!isEMIASJob && isSingleJob(data.jobType) && (
                     <PrefixLinkButton names={ingressNames} prefixes={ingressPrefixes} />
                   )}
-                  {isSingleJob(data.jobType) && (
+                  {!isEMIASJob && isSingleJob(data.jobType) && (
                     <SSHPortDialog jobName={jobName} userName={data.username} />
                   )}
-                  {isSingleJob(data.jobType) && (
+                  {!isEMIASJob && isSingleJob(data.jobType) && (
                     <SimpleTooltip
                       tooltip={
                         snapshotDisabled
@@ -257,7 +268,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
                       </Button>
                     </SimpleTooltip>
                   )}
-                  {data.jobType === JobType.Jupyter && (
+                  {!isEMIASJob && data.jobType === JobType.Jupyter && (
                     <SimpleTooltip tooltip="打开新页面以 Jupyter Lab 访问容器">
                       <Button variant="secondary" className="cursor-pointer" asChild>
                         <Link
@@ -271,7 +282,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
                       </Button>
                     </SimpleTooltip>
                   )}
-                  {data.jobType === JobType.WebIDE && (
+                  {!isEMIASJob && data.jobType === JobType.WebIDE && (
                     <SimpleTooltip tooltip="打开新页面以 Code Server 访问容器">
                       <Button variant="secondary" className="cursor-pointer" asChild>
                         <Link
@@ -382,7 +393,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
         {
           title: '累计消耗',
           icon: CoinsIcon,
-          value: (
+          value: !isEMIASJob && (
             <span className="font-mono text-sm">
               {formatBillingPoints(billingDetail?.billedPointsTotal ?? 0)}
             </span>
@@ -420,7 +431,14 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
           key: 'base',
           icon: LayoutGridIcon,
           label: '基本信息',
-          children: <PodTable jobName={jobName} userName={data.username} jobType={data.jobType} />,
+          children: (
+            <PodTable
+              jobName={jobName}
+              jobID={jobID}
+              userName={data.username}
+              jobType={data.jobType}
+            />
+          ),
           scrollable: true,
           hidden: jobStatus === JobStatus.MetadataOnly || isCompletedOver3Days,
         },
@@ -430,9 +448,11 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
           label: '作业配置',
           children: (
             <LazyContent
-              name={jobName}
+              name={jobIdentifier}
               type="yaml"
-              fetchData={apiJobGetYaml}
+              fetchData={(identifier) =>
+                isEMIASJob ? apiAIJobGetYaml(jobID!) : apiJobGetYaml(identifier)
+              }
               renderData={(yaml) => (
                 <CodeContent
                   data={yaml}
@@ -467,9 +487,11 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
           label: jobStatus === JobStatus.Terminated ? '历史事件' : '作业事件',
           children: (
             <LazyContent
-              name={jobName}
+              name={jobIdentifier}
               type="event"
-              fetchData={apiJobGetEvent}
+              fetchData={(identifier) =>
+                isEMIASJob ? apiAIJobGetEvent(jobID!) : apiJobGetEvent(identifier)
+              }
               fallbackData={data.events ?? []}
               renderData={(events) => (
                 <>

@@ -546,14 +546,24 @@ export const apiJobLock = (params: object) =>
 export const apiJobGetDetail = (jobName: string) =>
   apiV1Get<IResponse<IJupyterDetail>>(`${JOB_URL}/${jobName}/detail`)
 
+export const apiAIJobGetDetail = (id: number) =>
+  apiV1Get<IResponse<IJupyterDetail>>(`aijobs/${id}/detail`)
+
 export const apiJobGetPods = (jobName: string) =>
   apiV1Get<IResponse<PodDetail[]>>(`${JOB_URL}/${jobName}/pods`)
+
+export const apiAIJobGetPods = (id: number) => apiV1Get<IResponse<PodDetail[]>>(`aijobs/${id}/pods`)
 
 export const apiJobGetYaml = (jobName: string) =>
   apiV1Get<IResponse<string>>(`${JOB_URL}/${jobName}/yaml`)
 
+export const apiAIJobGetYaml = (id: number) => apiV1Get<IResponse<string>>(`aijobs/${id}/yaml`)
+
 export const apiJobGetEvent = (jobName: string) =>
   apiV1Get<IResponse<KubernetesEvent[]>>(`${JOB_URL}/${jobName}/event`)
+
+export const apiAIJobGetEvent = (id: number) =>
+  apiV1Get<IResponse<KubernetesEvent[]>>(`aijobs/${id}/event`)
 
 export const apiJobTemplate = (jobName: string) =>
   apiV1Get<IResponse<string>>(`${JOB_URL}/${jobName}/template`)
