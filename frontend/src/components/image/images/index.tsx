@@ -91,13 +91,13 @@ import { ValidDialog } from './valid-dialog'
 const adminDetailLinkOptions = linkOptions({
   to: '/admin/env/registry/$name',
   params: { name: '' },
-  search: { tab: '' },
+  search: { tab: '', id: undefined as number | undefined },
 })
 
 const portalDetailLinkOptions = linkOptions({
   to: '/portal/env/registry/$name',
   params: { name: '' },
-  search: { tab: '' },
+  search: { tab: '', id: undefined as number | undefined },
 })
 
 const toolbarConfig: DataTableToolbarConfig = {
@@ -246,6 +246,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
               }
               {...(isAdminView ? adminDetailLinkOptions : portalDetailLinkOptions)}
               params={{ name: row.original.imagepackName }}
+              search={{ tab: '', id: row.original.ID }}
               tooltip={`查看镜像详情`}
             />
           )
