@@ -36,7 +36,7 @@ import { SnapshotControls } from '@/components/query-table/cursor-list'
 import { SnapshotStatus } from '@/components/query-table/snapshot-list'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { apiGetJobPodSnapshot, type SnapshotPod } from '@/services/api/snapshot'
+import { type SnapshotPod, apiGetJobPodSnapshot } from '@/services/api/snapshot'
 import { PodDetail } from '@/services/api/vcjob'
 
 import { configGrafanaJobAtom } from '@/utils/store/config'
@@ -100,7 +100,7 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
 
   const podSnapshotQueryKey = ['job', 'detail', jobName, 'pods', 'snapshot'] as const
   const podSnapshotQuery = useInfiniteQuery({
-    queryKey: podSnapshotQueryKey,
+    queryKey: ['job', 'detail', jobName, 'pods', 'snapshot'],
     initialPageParam: '',
     queryFn: ({ pageParam }) =>
       apiGetJobPodSnapshot(jobName, { limit: 50, cursor: pageParam || undefined }),
