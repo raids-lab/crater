@@ -209,9 +209,9 @@
 
 ### 运行方式（强制约定）
 
-本规范强调**测试分层与职责**，具体命令入口以 `cli/Makefile` 为准（例如 `unit-test` / `snapshot-check` / `snapshot-update` / `test`）。
+本规范强调**测试分层与职责**，具体命令入口以 `cli/Makefile` 为准（例如 `unit-test` / `snapshot-check` / `snapshot-update` / `npm-test` / `pre-commit-check`）。
 
-其中快照测试的实现入口与用例定义由 `cli/test/snapshots/**` 下的测试代码驱动。`snapshot-check`、`snapshot-update`、`test` 与 `pre-commit-check` 都会自动执行相应快照用例及其测试管理的 loopback fixture；运行这些目标的环境因此必须支持 loopback bind/connect。**golden 快照测试默认开启存储沙箱（`CRATER_TEST_SANDBOX=1`）**；除非在文档中明确说明并给出替代隔离方案，否则不得在快照 harness 中关闭该默认设置。
+其中快照测试的实现入口与用例定义由 `cli/test/snapshots/**` 下的测试代码驱动。`snapshot-check`、`snapshot-update` 与 `pre-commit-check` 都会自动执行相应快照用例及其测试管理的 loopback fixture；运行这些目标的环境因此必须支持 loopback bind/connect。**golden 快照测试默认开启存储沙箱（`CRATER_TEST_SANDBOX=1`）**；除非在文档中明确说明并给出替代隔离方案，否则不得在快照 harness 中关闭该默认设置。
 
 **禁止手改 golden**：`cli/testdata/snapshots/**/*.txtar` 须通过 `make snapshot-update`（或 `UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...`）由测试运行生成；不得直接编辑 golden 文本冒充快照结果。
 

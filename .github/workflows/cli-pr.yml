@@ -27,12 +27,18 @@ permissions:
   contents: read
 
 jobs:
-  check-cli:
-    name: Check CLI
+  check:
+    name: Check CLI and npm scripts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -44,14 +50,18 @@ jobs:
         working-directory: cli
         run: go mod download
 
-      - name: Run CLI tests
+      - name: Run pre-commit checks
         working-directory: cli
-        run: make test
+        run: make pre-commit-check
 
-  check-npm-packaging:
-    name: Check npm packaging
-    needs: check-cli
+  resolve-version:
+    name: Resolve build version
     runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.version.outputs.app_version }}
+      commit_sha: ${{ steps.version.outputs.commit_sha }}
+      build_type: ${{ steps.version.outputs.build_type }}
+      build_time: ${{ steps.version.outputs.build_time }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -62,15 +72,29 @@ jobs:
         id: version
         run: bash hack/set-build-version.sh
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          package-manager-cache: false
-
-      - name: Test npm packaging scripts
-        working-directory: cli/npm
-        run: npm test
+  cross-build:
+    name: Cross-build ${{ matrix.target.goos }}/${{ matrix.target.goarch }}
+    needs: [check, resolve-version]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+          - goos: windows
+            goarch: arm64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -82,25 +106,56 @@ jobs:
         working-directory: cli
         run: go mod download
 
-      - name: Cross-build six release targets
+      - name: Build release artifact
         env:
-          APP_VERSION: ${{ steps.version.outputs.app_version }}
-          COMMIT_SHA: ${{ steps.version.outputs.commit_sha }}
-          BUILD_TYPE: ${{ steps.version.outputs.build_type }}
-          BUILD_TIME: ${{ steps.version.outputs.build_time }}
-        run: |
-          for spec in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
-            bash cli/hack/build-release-artifact.sh "${spec%/*}" "${spec#*/}" cli/dist
-          done
+          APP_VERSION: ${{ needs.resolve-version.outputs.app_version }}
+          COMMIT_SHA: ${{ needs.resolve-version.outputs.commit_sha }}
+          BUILD_TYPE: ${{ needs.resolve-version.outputs.build_type }}
+          BUILD_TIME: ${{ needs.resolve-version.outputs.build_time }}
+        run: >-
+          bash cli/hack/build-release-artifact.sh
+          ${{ matrix.target.goos }}
+          ${{ matrix.target.goarch }}
+          cli/dist
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crater-${{ matrix.target.goos }}-${{ matrix.target.goarch }}
+          path: cli/dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  prepare-npm:
+    name: Prepare npm packages
+    needs: [resolve-version, cross-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: crater-*
+          path: cli/artifacts
+          merge-multiple: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          package-manager-cache: false
 
       - name: Build npm packages
         run: >-
           node cli/npm/scripts/build-packages.mjs
           --version 0.0.0
-          --artifacts cli/dist
+          --artifacts cli/artifacts
           --output "${RUNNER_TEMP}/npm-packages"
 
-      - name: Pack npm packages
+      - name: Validate npm package contents
         run: |
           node -e '
             const manifest = require(process.env.RUNNER_TEMP + "/npm-packages/publish-manifest.json");
@@ -111,13 +166,21 @@ jobs:
             npm pack "$package_dir" --dry-run --json >/dev/null
           done
 
-      - name: Install npm entry package
+      - name: Pack npm packages
         run: |
           mkdir -p "${RUNNER_TEMP}/npm-tarballs"
-          npm pack "${RUNNER_TEMP}/npm-packages/crater-cli" \
-            --pack-destination "${RUNNER_TEMP}/npm-tarballs" >/dev/null
-          npm pack "${RUNNER_TEMP}/npm-packages/crater-cli-linux-x64" \
-            --pack-destination "${RUNNER_TEMP}/npm-tarballs" >/dev/null
+          node -e '
+            const manifest = require(process.env.RUNNER_TEMP + "/npm-packages/publish-manifest.json");
+            for (const entry of [...manifest.platformPackages, manifest.rootPackage]) {
+              process.stdout.write(entry.directory + "\n");
+            }
+          ' | while IFS= read -r package_dir; do
+            npm pack "$package_dir" \
+              --pack-destination "${RUNNER_TEMP}/npm-tarballs" >/dev/null
+          done
+
+      - name: Test installed npm entry package
+        run: |
           npm install \
             --prefix "${RUNNER_TEMP}/npm-install" \
             "${RUNNER_TEMP}/npm-tarballs/raids-lab-crater-cli-0.0.0.tgz" \
@@ -131,6 +194,14 @@ jobs:
             linux \
             amd64 \
             development \
-            "${{ steps.version.outputs.commit_sha }}" \
-            "${{ steps.version.outputs.app_version }}" \
-            "${{ steps.version.outputs.build_time }}"
+            "${{ needs.resolve-version.outputs.commit_sha }}" \
+            "${{ needs.resolve-version.outputs.app_version }}" \
+            "${{ needs.resolve-version.outputs.build_time }}"
+
+      - name: Upload tested npm tarballs
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-cli-pr-tarballs
+          path: ${{ runner.temp }}/npm-tarballs/*.tgz
+          if-no-files-found: error
+          retention-days: 14

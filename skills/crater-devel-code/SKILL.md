@@ -46,7 +46,7 @@ description: "Crater 代码开发：在 backend/、frontend/、cli/ 下开发 Go
 - 改变用户可见 CLI 行为时，先更新 `COMMANDS.md`；跨命令规则、参数校验、管理员命名空间、后端契约、Skills 分发和快照要求以 `SPEC.md` 为准；实现边界以 `ARCHITECTURE.md` 为准；收尾自检以 `REVIEW.md` 为准。
 - CLI 调用新接口时必须保留后端错误事实：终端人类输出说明失败原因，`--json` 错误信封保留 `http_status`、`crater_code`、`msg` 等可序列化字段，方便用户修改命令输入，也方便管理员按业务码和后端日志排查。
 - 维护 `cli/skills/` 时，把稳定或高频报错沉淀为“错误信息 / 结构化字段 -> 对应情况 -> 用户修正动作 / 管理员排查事实”；写入前先把该理解展示给开发者检查，确认没有误解后再更新 Skill 并提升版本。
-- 构建与测试走 `cli/Makefile`；运行前检查 `go version`。如果本地 Go 版本不匹配，提醒开发者可能通过 gvm 管理 Go 版本，并按 `cli/CONTRIBUTING.md` / `go.mod` 切换后再测试。提交前优先 `make pre-commit-check`（当前等价于 `make test`）。涉及用户可见 CLI 行为时，要求开发者手动执行关键命令并检查输入输出。
+- 构建与测试走 `cli/Makefile`；运行前检查 `go version`。如果本地 Go 版本不匹配，提醒开发者可能通过 gvm 管理 Go 版本，并按 `cli/CONTRIBUTING.md` / `go.mod` 切换后再测试。提交前优先 `make pre-commit-check`，包含单元测试、快照校验和 npm 打包脚本测试。涉及用户可见 CLI 行为时，要求开发者手动执行关键命令并检查输入输出。
 
 ## 验证
 
