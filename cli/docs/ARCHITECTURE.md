@@ -27,9 +27,9 @@ npm 分发采用“一个入口包 + 六个平台包”：
 - `@raids-lab/crater-cli` 提供 Node 启动器和 `crater` bin 映射。
 - `@raids-lab/crater-cli-<platform>-<arch>` 只包含一个原生二进制，并通过 package.json 的 `os` / `cpu` 限制安装平台。
 - 入口包把六个平台包固定为同版本 `optionalDependencies`。`npm/lib/platform.cjs` 将 Node 的 `win32` / `x64` 等命名映射到 Go 的 `windows` / `amd64` 构建产物，运行时只启动当前平台的二进制。
-- `npm/scripts/build-packages.mjs` 从 workflow 汇总的原生二进制生成七个可发布目录；`publish-packages.mjs` 先发布六个平台包，确认 registry 可见后再发布入口包，并在重跑时跳过已经存在的相同版本。
+- `npm/scripts/build-packages.mjs` 从 workflow 汇总的原生二进制生成七个可发布目录。workflow 将它们打包为 tarball，先通过独立 job 暂存六个平台包，全部成功后再暂存入口包；公开发布由维护者在 npm 审批完成。
 
-`.github/workflows/cli-pr.yml` 先运行 `Check CLI`（`make test`：单元测试与快照），再运行 `Check npm packaging`（打包脚本测试、六目标交叉编译、`npm pack`，并在 Linux 上安装入口包）。`cli-release.yml` 只接受精确的 `vX.Y.Z` tag，在确认远端 tag 仍指向原始 commit 后发布 npm，不创建 GitHub Release。正式 tag 同时直接触发现有的前端、后端、Storage 与 Helm workflow；GitHub Release 若由维护者填写，只作为更新说明，不触发任何 workflow。
+`.github/workflows/cli-pr.yml` 与 `cli-release.yml` 都先运行 `make pre-commit-check`（CLI 单元测试、快照和 npm 打包脚本测试），再由六个独立 job 交叉编译，汇总构建产物并打包全部七个 npm tarball，最后在 Linux 上安装入口包进行冒烟测试。PR 使用 `0.0.0` 作为仅供打包的 npm 版本，不向 npm 提交；正式发布 workflow 只接受精确的 `vX.Y.Z` tag，在确认远端 tag 仍指向原始 commit 后暂存 npm 包，等待维护者审批，不创建 GitHub Release。正式 tag 同时直接触发现有的前端、后端、Storage 与 Helm workflow；GitHub Release 若由维护者填写，只作为更新说明，不触发任何 workflow。
 
 ## AI Agent Skills
 
@@ -154,7 +154,7 @@ CLI 的快照测试与可复现测试通过环境变量实现“网络与存储�
 
 - 测试进程先构建 `crater` 可执行文件（由 `internal/snaptest` 内部一次性完成），再以子进程方式运行各用例。
 - 运行环境由快照 harness 统一设置：隔离 HOME、固定 `CRATER_LANG` 与 `LANG/LC_ALL`、关闭交互（用例通常显式传 `--no-interactive`），并默认开启存储沙箱 `CRATER_TEST_SANDBOX=1`，以确保不同机器输出一致。
-- `snapshot-check`、`snapshot-update`、`test` 与 `pre-commit-check` 都会通过 `cli/test/snapshots/**` 自动执行快照用例；包含成功 fixture 的用例会在测试进程内启动并关闭 loopback Server，因此这些目标的运行环境必须允许 loopback bind/connect。
+- `snapshot-check`、`snapshot-update` 与 `pre-commit-check` 都会通过 `cli/test/snapshots/**` 自动执行快照用例；包含成功 fixture 的用例会在测试进程内启动并关闭 loopback Server，因此这些目标的运行环境必须允许 loopback bind/connect。
 
 ### 多语言支持
 
