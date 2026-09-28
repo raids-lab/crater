@@ -180,7 +180,7 @@ func TestListJobPodsEnforcesOwnership(t *testing.T) {
 	createSnapshotJob(t, db, 2, 1)
 	handler := NewPodSnapshotHandler(&RegisterConfig{KubeClient: fake.NewSimpleClientset()})
 	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/vcjobs/snapshot-job/pods/snapshot", snapshotTestToken(1, 1))
-	ctx.Params = gin.Params{{Key: "job", Value: "snapshot-job"}}
+	ctx.Params = gin.Params{{Key: "name", Value: "snapshot-job"}}
 	handler.ListJobPods(ctx)
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("cross-user pod snapshot returned HTTP %d, want 403", recorder.Code)
@@ -210,7 +210,7 @@ func TestListJobPodsReturnsSnapshotPage(t *testing.T) {
 	)
 	handler := NewPodSnapshotHandler(&RegisterConfig{KubeClient: kubeClient})
 	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/vcjobs/snapshot-job/pods/snapshot", snapshotTestToken(1, 1))
-	ctx.Params = gin.Params{{Key: "job", Value: "snapshot-job"}}
+	ctx.Params = gin.Params{{Key: "name", Value: "snapshot-job"}}
 	handler.ListJobPods(ctx)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("pod snapshot returned HTTP %d: %s", recorder.Code, recorder.Body.String())
@@ -233,7 +233,7 @@ func TestListJobPodsMapsExpiredCursor(t *testing.T) {
 	})
 	handler := NewPodSnapshotHandler(&RegisterConfig{KubeClient: kubeClient})
 	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/vcjobs/snapshot-job/pods/snapshot?cursor=expired", snapshotTestToken(1, 1))
-	ctx.Params = gin.Params{{Key: "job", Value: "snapshot-job"}}
+	ctx.Params = gin.Params{{Key: "name", Value: "snapshot-job"}}
 	handler.ListJobPods(ctx)
 	if recorder.Code != http.StatusConflict {
 		t.Fatalf("expired pod cursor returned HTTP %d, want 409", recorder.Code)

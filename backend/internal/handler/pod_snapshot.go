@@ -28,7 +28,10 @@ func NewPodSnapshotHandler(conf *RegisterConfig) *PodSnapshotHandler {
 }
 
 func (h *PodSnapshotHandler) Register(g *gin.RouterGroup) {
-	g.GET("/:job/pods/snapshot", h.ListJobPods)
+	// Keep the wildcard name aligned with the existing /vcjobs/:name routes.
+	// Gin treats wildcard names at the same path position as conflicting even
+	// though the generated URL is otherwise identical.
+	g.GET("/:name/pods/snapshot", h.ListJobPods)
 }
 
 type PodSnapshotQuery struct {
@@ -53,13 +56,13 @@ type PodSnapshotPage struct {
 //	@Tags		PodSnapshot
 //	@Produce	json
 //	@Security	Bearer
-//	@Param		job	path	string	true	"作业名称"
+//	@Param		name	path	string	true	"作业名称"
 //	@Param		limit	query	int	false	"每页数量，1-200"
 //	@Param		cursor	query	string	false	"不透明 continue 游标"
 //	@Param		resource_version	query	string	false	"Kubernetes resource version"
 //	@Success	200	{object}	resputil.Response[PodSnapshotPage]
 //	@Failure	409	{object}	resputil.Response[any]	"游标过期"
-//	@Router		/v1/vcjobs/{job}/pods/snapshot [get]
+//	@Router		/v1/vcjobs/{name}/pods/snapshot [get]
 //
 // The handler returns a read-only, cursor-based Pod snapshot for a VCJob.
 // The job lookup intentionally reuses the existing ownership check so this
@@ -67,7 +70,7 @@ type PodSnapshotPage struct {
 //
 //nolint:gocyclo // This boundary keeps authorization, snapshot validation, and Kubernetes error mapping together.
 func (h *PodSnapshotHandler) ListJobPods(c *gin.Context) {
-	jobName := c.Param("job")
+	jobName := c.Param("name")
 	if jobName == "" {
 		resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("job is required"))
 		return

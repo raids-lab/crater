@@ -212,11 +212,29 @@ export const getJobStateType = (phase: JobPhase): JobStatus => {
   return JobStatus.Unknown
 }
 
-export const apiJobBatchList = (params: RemoteTableParams, signal?: AbortSignal) =>
-  apiV1Get<IResponse<IPage<IJobInfo>>>(JOB_URL, {
+export const apiJobBatchList = async (params: RemoteTableParams, signal?: AbortSignal) => {
+  const response = await apiV1Get<IResponse<IPage<IJobInfo> | IJobInfo[]>>(JOB_URL, {
     searchParams: buildRemoteSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),
     signal,
   })
+
+  // EMIAS still exposes the historical array response. Normalize it here so
+  // the remote table can consume the same page shape as the Volcano API
+  // without changing the public endpoint used by existing clients.
+  if (Array.isArray(response.data)) {
+    return {
+      ...response,
+      data: {
+        items: response.data,
+        total: response.data.length,
+        page: params.page,
+        page_size: params.page_size,
+      },
+    } satisfies IResponse<IPage<IJobInfo>>
+  }
+
+  return response as IResponse<IPage<IJobInfo>>
+}
 
 export const apiJobBatchFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
   apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/facets`, {
@@ -531,6 +549,9 @@ export const apiJobDelete = (jobName: string) =>
 
 export const apiJobDeleteForAdmin = (jobName: string) =>
   apiV1Delete<IResponse<string>>(`admin/${JOB_URL}/${jobName}`)
+
+export const apiAIJobDelete = (id: number | string) =>
+  apiV1Delete<IResponse<string>>(`aijobs/${id}`)
 
 export const apiJobToggleKeepForAdmin = (jobName: string) =>
   apiV1Put<IResponse<string>>(`admin/operations/keep/${jobName}`)

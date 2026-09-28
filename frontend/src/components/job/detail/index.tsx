@@ -79,6 +79,7 @@ import {
   JobPhase,
   JobStatus,
   JobType,
+  apiAIJobDelete,
   apiAIJobGetDetail,
   apiAIJobGetEvent,
   apiAIJobGetPods,
@@ -184,7 +185,12 @@ export default function BaseCore({
   )
 
   const { mutate: deleteJob } = useMutation({
-    mutationFn: () => (isAdmin ? apiJobDeleteForAdmin(jobIdentifier) : apiJobDelete(jobIdentifier)),
+    mutationFn: () => {
+      if (isEMIASJob) {
+        return apiAIJobDelete(jobID!)
+      }
+      return isAdmin ? apiJobDeleteForAdmin(jobIdentifier) : apiJobDelete(jobIdentifier)
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ['context', 'job-resource-summary'],

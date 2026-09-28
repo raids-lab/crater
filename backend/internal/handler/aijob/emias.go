@@ -306,7 +306,16 @@ func (mgr *AIJobMgr) GetJobPods(c *gin.Context) {
 	}
 
 	var podDetails []vcjob.PodDetail
-	podName := fmt.Sprintf("%s-0", taskModel.JobName)
+	jobName := taskModel.JobName
+	if jobName == "" {
+		jobName, err = resolveAIJobName(c, mgr.client, taskModel)
+		if err != nil {
+			// A queued task may not have a Kubernetes resource yet.
+			resputil.Success(c, podDetails)
+			return
+		}
+	}
+	podName := fmt.Sprintf("%s-0", jobName)
 	pod, err := mgr.kubeClient.CoreV1().Pods(taskModel.Namespace).Get(c, podName, metav1.GetOptions{})
 	if err == nil {
 		podDetails = []vcjob.PodDetail{{
@@ -751,9 +760,20 @@ func (mgr *AIJobMgr) GetJobYaml(c *gin.Context) {
 		return
 	}
 
+	jobName := taskModel.JobName
+	if jobName == "" {
+		jobName, err = resolveAIJobName(c, mgr.client, taskModel)
+		if err != nil {
+			resputil.Success(c, nil)
+			return
+		}
+	}
 	job := &aijobapi.AIJob{}
-	namespace := config.GetConfig().Namespaces.Job
-	if err = mgr.client.Get(c, client.ObjectKey{Name: taskModel.JobName,
+	namespace := taskModel.Namespace
+	if namespace == "" {
+		namespace = config.GetConfig().Namespaces.Job
+	}
+	if err = mgr.client.Get(c, client.ObjectKey{Name: jobName,
 		Namespace: namespace}, job); err != nil {
 		resputil.Success(c, nil)
 		return
@@ -803,10 +823,22 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 		return
 	}
 
+	jobName := taskModel.JobName
+	if jobName == "" {
+		jobName, err = resolveAIJobName(c, mgr.client, taskModel)
+		if err != nil {
+			resputil.HandleError(c, err)
+			return
+		}
+	}
+
 	// Get AIJob to check annotations
 	job := &aijobapi.AIJob{}
-	namespace := config.GetConfig().Namespaces.Job
-	if err = mgr.client.Get(c, client.ObjectKey{Name: taskModel.JobName, Namespace: namespace}, job); err != nil {
+	namespace := taskModel.Namespace
+	if namespace == "" {
+		namespace = config.GetConfig().Namespaces.Job
+	}
+	if err = mgr.client.Get(c, client.ObjectKey{Name: jobName, Namespace: namespace}, job); err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
@@ -824,14 +856,14 @@ func (mgr *AIJobMgr) GetJupyterToken(c *gin.Context) {
 			BaseURL:   baseURL,
 			Token:     jupyterToken,
 			FullURL:   fullURL,
-			PodName:   fmt.Sprintf("%s-0", taskModel.JobName),
+			PodName:   fmt.Sprintf("%s-0", jobName),
 			Namespace: namespace,
 		})
 		return
 	}
 
 	// Get the logs of the job pod to find token
-	podName := fmt.Sprintf("%s-0", taskModel.JobName)
+	podName := fmt.Sprintf("%s-0", jobName)
 	buf, err := mgr.getPodLog(c, namespace, podName)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
@@ -912,20 +944,25 @@ func (mgr *AIJobMgr) GetJobEvents(c *gin.Context) {
 	jobName := taskModel.JobName
 
 	if jobName == "" {
-		// 作业还在排队中，模拟一个事件，说明作业正在排队
-		jobName = taskModel.TaskName
-		event := &v1.Event{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      jobName,
-				Namespace: namespace,
-			},
-			Reason:        "Queueing",
-			Type:          "Warning",
-			LastTimestamp: metav1.Time{Time: taskModel.CreatedAt},
-			Message:       fmt.Sprintf("Job %s is queueing", jobName),
+		resolvedName, resolveErr := resolveAIJobName(c, mgr.client, taskModel)
+		if resolveErr == nil {
+			jobName = resolvedName
+		} else {
+			// 作业还在排队中，模拟一个事件，说明作业正在排队
+			jobName = taskModel.TaskName
+			event := &v1.Event{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      jobName,
+					Namespace: namespace,
+				},
+				Reason:        "Queueing",
+				Type:          "Warning",
+				LastTimestamp: metav1.Time{Time: taskModel.CreatedAt},
+				Message:       fmt.Sprintf("Job %s is queueing", jobName),
+			}
+			resputil.Success(c, []v1.Event{*event})
+			return
 		}
-		resputil.Success(c, []v1.Event{*event})
-		return
 	}
 
 	// 获取任务相关事件
@@ -940,7 +977,7 @@ func (mgr *AIJobMgr) GetJobEvents(c *gin.Context) {
 	events := jobEvents.Items
 
 	// 获取Pod相关事件
-	podName := fmt.Sprintf("%s-0", taskModel.JobName)
+	podName := fmt.Sprintf("%s-0", jobName)
 	podEvents, err := mgr.kubeClient.CoreV1().Events(namespace).List(c, metav1.ListOptions{
 		FieldSelector: fmt.Sprintf("involvedObject.name=%s", podName),
 		TypeMeta:      metav1.TypeMeta{Kind: "Pod"},
