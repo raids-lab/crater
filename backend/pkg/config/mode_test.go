@@ -15,6 +15,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -32,5 +33,33 @@ func TestIsDebugModeIncludesGinTestMode(t *testing.T) {
 	gin.SetMode(gin.ReleaseMode)
 	if IsDebugMode() {
 		t.Fatal("gin release mode must use the production configuration path")
+	}
+}
+
+func TestConfigPathForTestModeUsesBundledExample(t *testing.T) {
+	path := configPathForMode(gin.TestMode, "", true)
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("test config path %q is not available: %v", path, err)
+	}
+}
+
+func TestConfigPathForDebugTestProcessUsesBundledExample(t *testing.T) {
+	path := configPathForMode(gin.DebugMode, "", true)
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("test config path %q is not available: %v", path, err)
+	}
+}
+
+func TestConfigPathForDebugModeUsesOverride(t *testing.T) {
+	const want = "/tmp/crater-test-debug-config.yaml"
+	if got := configPathForMode(gin.DebugMode, want, false); got != want {
+		t.Fatalf("configPathForMode() = %q, want %q", got, want)
+	}
+}
+
+func TestConfigPathForDebugModeRequiresLocalConfig(t *testing.T) {
+	const want = "./etc/debug-config.yaml"
+	if got := configPathForMode(gin.DebugMode, "", false); got != want {
+		t.Fatalf("configPathForMode() = %q, want %q", got, want)
 	}
 }
