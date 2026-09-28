@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"gorm.io/datatypes"
@@ -14,12 +16,20 @@ import (
 
 //nolint:gochecknoinits // Operation logs need schema migration during service registration.
 func init() {
-	if os.Getenv("CRATER_SKIP_OPERATION_LOG_MIGRATION") == "1" {
+	if shouldSkipOperationLogMigration() {
 		return
 	}
 	if err := query.GetDB().AutoMigrate(&model.OperationLog{}); err != nil {
 		klog.Fatalf("auto migrate operation_logs failed: %v", err)
 	}
+}
+
+func shouldSkipOperationLogMigration() bool {
+	if os.Getenv("CRATER_SKIP_OPERATION_LOG_MIGRATION") == "1" {
+		return true
+	}
+	executable := strings.ToLower(filepath.Base(os.Args[0]))
+	return strings.HasSuffix(executable, ".test") || strings.HasSuffix(executable, ".test.exe")
 }
 
 type OperationLogService struct{}

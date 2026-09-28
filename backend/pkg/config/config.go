@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -802,16 +804,7 @@ func IsDebugMode() bool {
 func initConfig() *Config {
 	// 读取配置文件
 	config := &Config{}
-	var configPath string
-	if IsDebugMode() {
-		if os.Getenv("CRATER_DEBUG_CONFIG_PATH") != "" {
-			configPath = os.Getenv("CRATER_DEBUG_CONFIG_PATH")
-		} else {
-			configPath = "./etc/debug-config.yaml"
-		}
-	} else {
-		configPath = "/etc/config/config.yaml"
-	}
+	configPath := configPathForMode(gin.Mode(), os.Getenv("CRATER_DEBUG_CONFIG_PATH"), isTestProcess())
 	klog.Infof("Loading configuration from: %s", configPath)
 
 	err := readConfig(configPath, config)
@@ -832,6 +825,36 @@ func initConfig() *Config {
 
 	klog.Info("Configuration loaded and validated successfully")
 	return config
+}
+
+func configPathForMode(mode, debugConfigPath string, testProcess bool) string {
+	if debugConfigPath != "" {
+		if mode == gin.DebugMode || mode == gin.TestMode {
+			return debugConfigPath
+		}
+	}
+
+	if testProcess || mode == gin.TestMode {
+		// Go runs each package's tests with that package directory as the working
+		// directory, so resolve the shared example config from this source file.
+		return bundledExampleConfigPath()
+	}
+	if mode == gin.DebugMode {
+		return "./etc/debug-config.yaml"
+	}
+	return "/etc/config/config.yaml"
+}
+
+func isTestProcess() bool {
+	executable := strings.ToLower(filepath.Base(os.Args[0]))
+	return strings.HasSuffix(executable, ".test") || strings.HasSuffix(executable, ".test.exe")
+}
+
+func bundledExampleConfigPath() string {
+	if _, sourcePath, _, ok := runtime.Caller(0); ok {
+		return filepath.Join(filepath.Dir(sourcePath), "..", "..", "etc", "example-config.yaml")
+	}
+	return "./etc/example-config.yaml"
 }
 
 func readConfig(filePath string, config *Config) error {
