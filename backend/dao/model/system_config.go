@@ -40,6 +40,12 @@ const (
 	ConfigKeyModelDownloadBandwidth = "POD_BANDWIDTH_MODEL_DOWNLOAD"
 	ConfigKeyJobIngressBandwidth    = "POD_BANDWIDTH_JOB_INGRESS"
 	ConfigKeyJobEgressBandwidth     = "POD_BANDWIDTH_JOB_EGRESS"
+
+	// Scheduler extender configuration keys: the master switch for crater's share of volcano's
+	// scheduling decisions, plus the two inputs it judges with.
+	ConfigKeySchedulerExtenderEnabled   = "SCHEDULER_EXTENDER_ENABLED"
+	ConfigKeyQueueQuotaEnabled          = "QUEUE_QUOTA_ENABLED"
+	ConfigKeyJobWaitingToleranceSeconds = "JOB_WAITING_TOLERANCE_SECONDS"
 )
 
 // DefaultConfigKeys 定义了系统启动时必须存在的键
@@ -66,4 +72,7 @@ var DefaultConfigKeys = []string{
 	ConfigKeyModelDownloadBandwidth,
 	ConfigKeyJobIngressBandwidth,
 	ConfigKeyJobEgressBandwidth,
+	ConfigKeySchedulerExtenderEnabled,
+	ConfigKeyQueueQuotaEnabled,
+	ConfigKeyJobWaitingToleranceSeconds,
 }

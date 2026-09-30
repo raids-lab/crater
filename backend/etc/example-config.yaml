@@ -6,6 +6,10 @@ enableLeaderElection: false
 # Required: Must be specified for the server to start
 port: :8088
 
+# Port serving volcano's extender plugin callbacks, reached only from inside the cluster
+# Optional: leave it unset to keep the endpoint off; set it only when debugging the extender
+# schedulerExtenderPort: :8089
+
 # Model download functionality configurations
 # Optional: If not specified, default values will be used
 modelDownload:

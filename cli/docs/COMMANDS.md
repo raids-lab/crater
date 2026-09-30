@@ -114,16 +114,16 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 1,
-      "min_supported_backend_api_version": 1
+      "api_version": 2,
+      "min_supported_backend_api_version": 2
     },
     "backend": {
       "product_version": "1.1.1",
       "short_commit_sha": "f42b0c2",
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
-      "api_version": 1,
-      "min_supported_cli_api_version": 1
+      "api_version": 2,
+      "min_supported_cli_api_version": 2
     }
   }
   ```
@@ -473,14 +473,13 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--search` (string): 服务端按作业名称、所有者或账户搜索，最多 128 个 Unicode 字符。
   - `--status` (string slice): 服务端过滤作业状态，可重复或逗号分隔，最多 20 项。
   - `--type` (string slice): 服务端过滤作业类型，可重复或逗号分隔，最多 20 项；类型为 `jupyter | webide | custom | pytorch | tensorflow | kuberay | deepspeed | openmpi`。
-  - `--schedule` (string slice): 服务端过滤调度类型，可重复或逗号分隔，值为 `normal | backfill`，最多 20 项。
   - `--node` (string): 服务端过滤运行在指定节点上的作业。
   - `--owner` (string): 本地按用户名或作业响应中的 owner 精确筛选。
   - `--from` / `--to` (string): 本地按 `createdAt` 时间范围筛选，支持 RFC3339 或 `YYYY-MM-DD`。
   - `--interactive` (bool): 服务端只返回交互式作业（`jupyter` / `webide`）。
   - `--batch` (bool): 服务端只返回非交互式作业。
   - `--page` (int, default `1`) / `--page-size` (int, default `15`, max `200`): 请求指定服务端分页。
-  - `--sort` (string): 最多 3 个逗号分隔的服务端排序字段，字段前加 `-` 表示降序；支持 `name | jobName | owner | queue | jobType | scheduleType | status | billedPointsTotal | createdAt | startedAt | completedAt`，不允许重复字段。
+  - `--sort` (string): 最多 3 个逗号分隔的服务端排序字段，字段前加 `-` 表示降序；支持 `name | jobName | owner | queue | jobType | status | billedPointsTotal | createdAt | startedAt | completedAt`，不允许重复字段。
   - `--all-pages` (bool): 顺序请求全部服务端分页。
 - **处理逻辑**:
   - 默认调用 `/api/v1/vcjobs`，列出当前用户和当前账户下的作业。
@@ -576,7 +575,6 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--memory` (string, required without `--file`): 内存请求量，不能为负数。
   - `--gpu` (int, default `0`): GPU 数量，必须大于等于 0。
   - `--gpu-resource` (string, default `nvidia.com/gpu`): GPU 资源名；`--gpu > 0` 时必填。
-  - `--schedule` (string): `normal | backfill`。
   - `--env` (stringArray): `KEY=VALUE`，可重复。
   - `--volume` (stringArray): `subPath:mountPath`，可重复；转换为后端 `volumeMounts` 的工作区类型（`type=1`）。
   - `--dataset` (stringArray): `datasetID:mountPath`，可重复；转换为后端实际消费的 `volumeMounts` 数据集类型（`type=2`），`datasetID` 必须大于 0。
@@ -607,7 +605,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 每个 task 的 `name`、`image.imageLink` 必填。
   - 每个 task 的 `replicas` 必须大于 0。
   - 每个 task 的资源值不能为负数。
-  - 请求文件只允许后端 DTO 中存在的字段；TensorFlow / PyTorch 不允许 `scheduleType=0`（backfill）。
+  - 请求文件只允许后端 DTO 中存在的字段。
 - **`--json` 的 `data`**：`job`。
 - **状态**: [x] Completed
 
@@ -778,7 +776,7 @@ This section records the read-only API surface covered by the CLI after the broa
 - 列表 JSON payload 包含 `downloads` 与当前页 `pagination`；普通列表还包含后端 `summary`。`--all-pages` 省略 `pagination`。其他 payload keys: `download`, `logs`.
 
 ### Context, Billing, User, And Approval Reads
-- `crater context prequeue|quota|resources|billing`: `/api/v1/context/...` summary reads used by the portal.
+- `crater context quota|resources|billing`: `/api/v1/context/...` summary reads used by the portal.
 - `crater billing status`, `summary`, `prices`, `job <name>`.
 - `crater billing jobs [--all | --user USER] [--days N] [--search TEXT] [--page N] [--page-size N] [--all-pages]` 与 `crater admin billing jobs [--user USER] ...`：
   - `--days` 默认 `30` 且必须大于等于 `-1`；普通命令仅在 `--all` / `--user` 路由中传递 days，并保留 `--user` 优先于 `--all` 的语义；管理员命令始终传递 days。
@@ -823,7 +821,7 @@ This section records the read-only API surface covered by the CLI after the broa
 - Public health, Swagger, Prometheus metrics, and generic WebDAV operations are left to their domain-specific tools rather than this read CLI surface.
 
 ### Admin-Only Read Coverage
-- `crater admin system-config llm|gpu-analysis|prequeue`: `/api/v1/admin/system-config/{llm,gpu-analysis,prequeue}`.
+- `crater admin system-config llm|gpu-analysis|scheduler-extender`: `/api/v1/admin/system-config/{llm,gpu-analysis,scheduler-extender}`.
 - `crater admin queue-quotas`: `/api/v1/admin/queue-quotas`.
 - `crater admin gpu-analyses`: `/api/v1/admin/gpu-analysis`.
 - `crater admin operation-logs [--page N] [--limit N] [--operator USER] [--operation-type TYPE] [--target TARGET] [--start-time TIME] [--end-time TIME]`: `/api/v1/admin/operation-logs`.

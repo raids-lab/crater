@@ -15,14 +15,17 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/pkg/aitaskctl"
 	aisystemv1alpha1 "github.com/raids-lab/crater/pkg/apis/aijob/v1alpha1"
 	recommenddljob "github.com/raids-lab/crater/pkg/apis/recommenddljob/v1"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/extender"
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/indexer"
 	"github.com/raids-lab/crater/pkg/packer"
+	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 	"github.com/raids-lab/crater/pkg/reconciler"
 	"github.com/raids-lab/crater/pkg/util"
 )
@@ -195,17 +198,34 @@ func (ms *ManagerSetup) setupVolcano(mgr manager.Manager, registerConfig *handle
 		mgr.GetScheme(),
 		registerConfig.PrometheusClient,
 		registerConfig.KubeClient,
-		registerConfig.PrequeueWatcher,
 		registerConfig.BillingService,
 	)
-	err := vcjobReconciler.SetupWithManager(mgr)
-	if err != nil {
+	if err := vcjobReconciler.SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to set up vcjob controller: %w", err)
 	}
-	if registerConfig.PrequeueWatcher != nil {
-		if err := mgr.Add(registerConfig.PrequeueWatcher); err != nil {
-			return fmt.Errorf("unable to add prequeue watcher: %w", err)
+
+	// No port means the endpoint stays off: answering volcano requires a matching configmap change.
+	if ms.backendConfig.SchedulerExtenderPort != "" {
+		extenderServer := extender.New(
+			mgr.GetClient(),
+			registerConfig.QueueQuotaService,
+			registerConfig.ConfigService,
+			ms.backendConfig.SchedulerExtenderPort,
+		)
+		if err := mgr.Add(extenderServer); err != nil {
+			return fmt.Errorf("unable to add volcano extender endpoint: %w", err)
 		}
+	}
+
+	prequeueWatcher := prequeuewatcher.New(
+		query.Q,
+		registerConfig.ConfigService,
+		mgr.GetClient(),
+		registerConfig.KubeClient,
+		registerConfig.ServiceManager,
+	)
+	if err := mgr.Add(prequeueWatcher); err != nil {
+		return fmt.Errorf("unable to add prequeue watcher: %w", err)
 	}
 	return nil
 }

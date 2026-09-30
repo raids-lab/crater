@@ -2,7 +2,6 @@ package prequeuewatcher
 
 import (
 	"context"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -12,35 +11,28 @@ import (
 
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/service"
-	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
 
 const (
-	activationRetryDelay = time.Second
-	signalBufferSize     = 1024
+	drainInterval      = time.Minute
+	maxSubmitsPerRound = 50
 )
 
-// PrequeueWatcher coordinates full-scan activation and preemption for prequeue jobs.
+// PrequeueWatcher drains the jobs left behind by the retired prequeue stage. Submitting them is safe
+// because it no longer implies admission: the pod group stops at Pending and the extender judges it
+// like any other job on the next scheduling session.
 type PrequeueWatcher struct {
-	q              *query.Query
-	queueQuotaSvc  *service.PrequeueService
-	configService  *service.ConfigService
-	k8sClient      client.Client
-	kubeClient     kubernetes.Interface
-	serviceMgr     crclient.ServiceManagerInterface
-	logger         logr.Logger
-	signalCh       chan struct{}
-	activateTicker *time.Ticker
-	wakeCh         chan struct{}
-	runtimeConfig  atomic.Value
-
-	needScan bool
+	q             *query.Query
+	configService *service.ConfigService
+	k8sClient     client.Client
+	kubeClient    kubernetes.Interface
+	serviceMgr    crclient.ServiceManagerInterface
+	logger        logr.Logger
 }
 
 func New(
 	q *query.Query,
-	queueQuotaSvc *service.PrequeueService,
 	configService *service.ConfigService,
 	k8sClient client.Client,
 	kubeClient kubernetes.Interface,
@@ -48,14 +40,11 @@ func New(
 ) *PrequeueWatcher {
 	return &PrequeueWatcher{
 		q:             q,
-		queueQuotaSvc: queueQuotaSvc,
 		configService: configService,
 		k8sClient:     k8sClient,
 		kubeClient:    kubeClient,
 		serviceMgr:    serviceMgr,
 		logger:        ctrl.Log.WithName("prequeue-watcher"),
-		signalCh:      make(chan struct{}, signalBufferSize),
-		wakeCh:        make(chan struct{}, 1),
 	}
 }
 
@@ -63,92 +52,48 @@ func (w *PrequeueWatcher) NeedLeaderElection() bool {
 	return true
 }
 
-// RequestFullScan schedules a full scan without blocking the caller.
-func (w *PrequeueWatcher) RequestFullScan() {
-	w.notify()
-}
-
-func (w *PrequeueWatcher) notify() {
-	select {
-	case w.signalCh <- struct{}{}:
-	default:
-		return
-	}
-}
-
-func (w *PrequeueWatcher) finalize() {
-	if w.activateTicker != nil {
-		w.activateTicker.Stop()
-	}
-}
-
-// Start runs the signal-driven activation loop under the manager lifecycle.
 func (w *PrequeueWatcher) Start(ctx context.Context) error {
-	if err := w.refreshRuntimeConfig(ctx); err != nil {
-		return err
-	}
-	defer w.finalize()
-	cfg := w.currentRuntimeConfig()
-	w.needScan = true
-	w.activateTicker = time.NewTicker(time.Duration(cfg.ActivateTickerIntervalSeconds) * time.Second)
-
-	w.logger.Info("prequeue watcher started",
-		"activateTickerIntervalSeconds", cfg.ActivateTickerIntervalSeconds,
-	)
-
-	if !config.GetConfig().EnableLeaderElection {
-		w.logger.Info("prequeue watcher is running without leader election")
-	}
+	ticker := time.NewTicker(drainInterval)
+	defer ticker.Stop()
 
 	for {
+		// Returning an error would take the whole manager down, so a failed round only waits.
+		if err := w.drainRound(ctx); err != nil {
+			w.logger.Error(err, "prequeue drain round failed")
+		}
+
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-w.wakeCh:
-		case <-w.signalCh:
-			w.needScan = true
-			w.drainSignals()
-		case <-w.activateTicker.C:
-			w.needScan = true
+		case <-ticker.C:
 		}
+	}
+}
 
-		if err := w.refreshRuntimeConfig(ctx); err != nil {
-			w.logger.Error(err, "failed to refresh prequeue config")
-			w.needScan = true
-			w.retryLater()
+// drainRound submits one bounded batch so a large backlog spreads over several rounds instead of
+// bursting against the apiserver at startup.
+func (w *PrequeueWatcher) drainRound(ctx context.Context) error {
+	candidates, err := w.listPrequeueJobs(ctx, maxSubmitsPerRound)
+	if err != nil {
+		return err
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	submitted := 0
+	for _, candidate := range candidates {
+		activated, activateErr := w.claimAndActivatePrequeueJob(ctx, candidate)
+		if activateErr != nil {
+			// A broken template or a deleted queue needs a human; the record stays where it is.
+			w.logger.Error(activateErr, "unable to submit prequeue job", "job", candidate.JobName)
 			continue
 		}
-
-		if err := w.runScanIfRequested(ctx); err != nil {
-			w.logger.Error(err, "activation round failed")
-			w.needScan = true
-			w.retryLater()
-			continue
-		}
-		if w.needScan {
-			w.kick()
+		if activated {
+			submitted++
 		}
 	}
-}
-
-func (w *PrequeueWatcher) drainSignals() {
-	for {
-		select {
-		case <-w.signalCh:
-			w.needScan = true
-		default:
-			return
-		}
-	}
-}
-
-func (w *PrequeueWatcher) kick() {
-	select {
-	case w.wakeCh <- struct{}{}:
-	default:
-	}
-}
-
-func (w *PrequeueWatcher) retryLater() {
-	time.AfterFunc(activationRetryDelay, w.kick)
+	w.logger.Info("submitted jobs left in the retired prequeue state",
+		"submitted", submitted, "candidates", len(candidates))
+	return nil
 }

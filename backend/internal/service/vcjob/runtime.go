@@ -5,14 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-	"time"
 
-	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
@@ -40,7 +37,7 @@ const (
 	annotationKeyTaskName     = "crater.raids.io/task-name"
 	annotationKeyTaskTemplate = "crater.raids.io/task-template"
 	annotationKeyAlertEnabled = "crater.raids.io/alert-enabled"
-	annotationKeyUserID       = "crater.raids.io/user-id"
+	AnnotationKeyUserID       = "crater.raids.io/user-id"
 	annotationKeyForwards     = "crater.raids.io/forwards"
 	// AnnotationKeyMountedDatasetIDs stores mounted dataset IDs as JSON array on job annotations.
 	AnnotationKeyMountedDatasetIDs = "crater.raids.io/mounted-dataset-ids"
@@ -60,51 +57,6 @@ func CalculateJobResources(job *batch.Job) v1.ResourceList {
 			return task.Replicas
 		},
 	)
-}
-
-func GenerateJobRecord(
-	job *batch.Job,
-	userID uint,
-	accountID uint,
-	status batch.JobPhase,
-) (*model.Job, error) {
-	alertEnabled, err := strconv.ParseBool(job.Annotations[annotationKeyAlertEnabled])
-	if err != nil {
-		alertEnabled = true
-	}
-	creationTimestamp := job.CreationTimestamp.Time
-	if creationTimestamp.IsZero() {
-		creationTimestamp = time.Now()
-	}
-	scheduleType := model.ScheduleTypeNormal
-	if scheduleTypeInt, err := strconv.ParseInt(
-		job.Annotations[AnnotationKeyScheduleType], 10, 64,
-	); err == nil {
-		scheduleType = model.ScheduleType(scheduleTypeInt)
-	}
-	var waitingToleranceSeconds *int64
-	if waitingToleranceSecondsInt, err := strconv.ParseInt(
-		job.Annotations[AnnotationKeyWaitingToleranceSeconds], 10, 64,
-	); err == nil {
-		waitingToleranceSeconds = ptr.To(waitingToleranceSecondsInt)
-	}
-	ret := &model.Job{
-		Name:                    job.Annotations[annotationKeyTaskName],
-		JobName:                 job.Name,
-		UserID:                  userID,
-		AccountID:               accountID,
-		JobType:                 model.JobType(job.Labels[crclient.LabelKeyTaskType]),
-		ScheduleType:            ptr.To(scheduleType),
-		WaitingToleranceSeconds: waitingToleranceSeconds,
-		Status:                  status,
-		Queue:                   job.Spec.Queue,
-		CreationTimestamp:       creationTimestamp,
-		Resources:               datatypes.NewJSONType(CalculateJobResources(job)),
-		Attributes:              datatypes.NewJSONType(job),
-		Template:                job.Annotations[annotationKeyTaskTemplate],
-		AlertEnabled:            alertEnabled,
-	}
-	return ret, nil
 }
 
 func RestoreJobFromRecord(record *model.Job) (*batch.Job, error) {
@@ -193,7 +145,7 @@ func ensureJobAccessResources(
 	jobType := job.Labels[crclient.LabelKeyTaskType]
 	username := job.Labels[crclient.LabelKeyTaskUser]
 	baseURL := job.Labels[crclient.LabelKeyBaseURL]
-	userID, err := strconv.ParseUint(job.Annotations[annotationKeyUserID], 10, 64)
+	userID, err := strconv.ParseUint(job.Annotations[AnnotationKeyUserID], 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid user id annotation: %w", err)
 	}

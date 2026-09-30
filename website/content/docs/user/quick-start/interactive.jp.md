@@ -29,7 +29,7 @@ description: オールインワンの Jupyter Lab、インタラクティブな�
 
 ```json
 {
-  "version": "20260707",
+  "version": "20260922",
   "type": "jupyter",
   "data": {
     "jobName": "DL-bench-test",
@@ -74,8 +74,7 @@ description: オールインワンの Jupyter Lab、インタラクティブな�
     },
     "alertEnabled": true,
     "cpuPinningEnabled": false,
-    "forwards": [],
-    "scheduleType": 1
+    "forwards": []
   }
 }
 ```

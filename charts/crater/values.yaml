@@ -253,6 +253,12 @@ backendConfig:
   # Must be specified for the server to start
   port: :8088
 
+  # -- Network port serving volcano's scheduler extender callbacks (Optional)
+  # The default deploys the ClusterIP Service crater-volcano-extender-svc, idle until extender.urlPrefix in the
+  # volcano configmap points at it and the admin switch is on; set it to "" to skip the endpoint.
+  # Keep the backend at one replica: quota reservations live in process memory and are not shared.
+  schedulerExtenderPort: :8089
+
   # -- Model download functionality configurations
   modelDownload:
     # -- Container image used for model download jobs

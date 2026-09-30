@@ -35,7 +35,6 @@ import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
-import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
@@ -51,7 +50,6 @@ import {
   IJobInfo,
   JobPhase,
   JobType,
-  ScheduleType,
   apiAdminGetJobFacets,
   apiAdminGetJobList,
   apiJobDeleteForAdmin,
@@ -65,17 +63,6 @@ import { logger } from '@/utils/loglevel'
 
 import { DurationDialog } from '../../../routes/admin/jobs/-components/duration-dialog'
 
-export type StatusValue =
-  | 'Prequeue'
-  | 'Queueing'
-  | 'Created'
-  | 'Pending'
-  | 'Running'
-  | 'Failed'
-  | 'Succeeded'
-  | 'Preempted'
-  | 'Deleted'
-
 type JobTableRow = IJobInfo
 
 export const getHeader = (key: string): string => {
@@ -84,8 +71,6 @@ export const getHeader = (key: string): string => {
       return t('jobs.headers.jobName')
     case 'jobType':
       return t('jobs.headers.jobType')
-    case 'scheduleType':
-      return t('jobs.headers.scheduleType')
     case 'queue':
       return t('jobs.headers.queue')
     case 'owner':
@@ -170,8 +155,6 @@ const AdminJobOverview = () => {
           return t('jobs.headers.jobName')
         case 'jobType':
           return t('jobs.headers.jobType')
-        case 'scheduleType':
-          return t('jobs.headers.scheduleType')
         case 'queue':
           return t('jobs.headers.queue')
         case 'owner':
@@ -199,17 +182,6 @@ const AdminJobOverview = () => {
           <DataTableColumnHeader column={column} title={getHeader('jobType')} />
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
-      },
-      {
-        accessorFn: (row) => String(row.scheduleType ?? ScheduleType.Normal),
-        id: 'scheduleType',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('scheduleType')} />
-        ),
-        cell: ({ row }) => <ScheduleTypeLabel scheduleType={row.original.scheduleType} />,
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id))
-        },
       },
       {
         accessorKey: 'jobName',
@@ -270,7 +242,12 @@ const AdminJobOverview = () => {
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
         cell: ({ row }) => {
-          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>('status')} />
+          return (
+            <JobPhaseLabel
+              jobPhase={row.getValue<JobPhase>('status')}
+              podGroupPhase={row.original.podGroupPhase}
+            />
+          )
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id))

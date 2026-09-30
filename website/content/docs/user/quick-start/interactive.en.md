@@ -29,7 +29,7 @@ Various settings for interactive jobs can be done by **importing a configuration
 
 ```json
 {
-  "version": "20260707",
+  "version": "20260922",
   "type": "jupyter",
   "data": {
     "jobName": "DL-bench-test",
@@ -74,8 +74,7 @@ Various settings for interactive jobs can be done by **importing a configuration
     },
     "alertEnabled": true,
     "cpuPinningEnabled": false,
-    "forwards": [],
-    "scheduleType": 1
+    "forwards": []
   }
 }
 ```

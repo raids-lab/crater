@@ -61,21 +61,16 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	scheduleType, err := req.validateScheduleOptions(false)
-	if err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
 
 	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
-	if !mgr.preCheckCreateJob(c, token, scheduleType, false) {
+	if !mgr.preCheckCreateJob(c, token, false) {
 		return
 	}
-	scheduleMetadata, err := mgr.resolveJobScheduleMetadata(c.Request.Context(), scheduleType)
+	waitingToleranceSeconds, err := mgr.resolveWaitingTolerance(c.Request.Context())
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
@@ -129,7 +124,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		token,
 		baseURL,
 		&req.CreateJobCommon,
-		scheduleMetadata,
+		waitingToleranceSeconds,
 	)
 
 	// 4. Create the task spec
@@ -174,7 +169,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	}
 
 	if err = mgr.submitJob(c, token, &job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 

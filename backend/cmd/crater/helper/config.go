@@ -16,7 +16,6 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/monitor"
-	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
 
 // ConfigInitializer 封装配置初始化逻辑
@@ -58,6 +57,14 @@ func (ci *ConfigInitializer) LoadDebugEnvironment() error {
 		ci.backendConfig.Port = ":" + be
 	}
 
+	if ex := os.Getenv("CRATER_SCHED_EX_PORT"); ex != "" {
+		if ex[0] == ':' {
+			ci.backendConfig.SchedulerExtenderPort = ex
+		} else {
+			ci.backendConfig.SchedulerExtenderPort = ":" + ex
+		}
+	}
+
 	return nil
 }
 
@@ -92,7 +99,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 
 	registerConfig.ConfigService = service.NewConfigService(query.Q)
 	registerConfig.BillingService = service.NewBillingService(query.Q)
-	registerConfig.PrequeueService = service.NewPrequeueService(query.Q, registerConfig.ConfigService)
+	registerConfig.QueueQuotaService = service.NewQueueQuotaService(query.Q, registerConfig.ConfigService)
 	registerConfig.UserBanService = service.NewUserBanService(query.Q)
 
 	registerConfig.GpuAnalysisService = service.NewGpuAnalysisService(
@@ -117,15 +124,5 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 	go registerConfig.CronJobManager.SyncCronJob()
 
 	// 初始化 ServiceManager
-	serviceManager := crclient.NewServiceManager(mgr.GetClient(), registerConfig.KubeClient)
-	registerConfig.ServiceManager = serviceManager
-
-	registerConfig.PrequeueWatcher = prequeuewatcher.New(
-		query.Q,
-		registerConfig.PrequeueService,
-		registerConfig.ConfigService,
-		mgr.GetClient(),
-		registerConfig.KubeClient,
-		serviceManager,
-	)
+	registerConfig.ServiceManager = crclient.NewServiceManager(mgr.GetClient(), registerConfig.KubeClient)
 }

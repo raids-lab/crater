@@ -116,7 +116,7 @@ function CronPolicy({ className }: { className?: string }) {
   })
 
   const statusQuery = useQuery({
-    queryKey: ['admin', 'cronjobs', 'status'],
+    queryKey: ['admin', 'cronjobs', 'status', showGpuAnalysis, showBilling],
     queryFn: async () => {
       const visibleNames = JOB_CONFIGS.filter((job) => {
         if (job.jobId === 'trigger-gpu-analysis-job') return showGpuAnalysis

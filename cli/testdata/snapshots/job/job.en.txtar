@@ -342,7 +342,6 @@ crater job ls --page 2 --page-size 2 --json --no-interactive
           "nickname": "Alice"
         },
         "jobType": "pytorch",
-        "scheduleType": 0,
         "queue": "default",
         "status": "Running",
         "createdAt": "2026-07-25T08:00:00Z",
@@ -372,7 +371,7 @@ crater job ls --page 2 --page-size 2 --json --no-interactive
 }
 -- en/21-ls-page-success-json/stderr --
 -- en/22-ls-invalid-multi-filters-json/argv --
-crater job ls --status Running,bad --type custom,nope --schedule normal,0 --no-interactive --json
+crater job ls --status Running,bad --type custom,nope --no-interactive --json
 -- en/22-ls-invalid-multi-filters-json/exit --
 2
 -- en/22-ls-invalid-multi-filters-json/stdout --
@@ -380,7 +379,7 @@ crater job ls --status Running,bad --type custom,nope --schedule normal,0 --no-i
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
-  "message": "invalid job status: bad\ninvalid job type: nope\ninvalid schedule type \"0\": use normal or backfill",
+  "message": "invalid job status: bad\ninvalid job type: nope",
   "context": {
     "issues": [
       {
@@ -392,17 +391,12 @@ crater job ls --status Running,bad --type custom,nope --schedule normal,0 --no-i
         "code": "ERR_INVALID_FLAG_VALUE",
         "field": "type",
         "message": "invalid job type: nope"
-      },
-      {
-        "code": "ERR_INVALID_FLAG_VALUE",
-        "field": "schedule",
-        "message": "invalid schedule type \"0\": use normal or backfill"
       }
     ]
   }
 }
 -- en/23-ls-valid-multi-filters-timeout-json/argv --
-crater job ls --search demo --status Running,Pending --type pytorch,tensorflow --schedule normal,backfill --no-interactive --json
+crater job ls --search demo --status Running,Pending --type pytorch,tensorflow --no-interactive --json
 -- en/23-ls-valid-multi-filters-timeout-json/exit --
 4
 -- en/23-ls-valid-multi-filters-timeout-json/stdout --
@@ -410,9 +404,9 @@ crater job ls --search demo --status Running,Pending --type pytorch,tensorflow -
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
-  "message": "could not reach server: Get \"https://example.invalid/api/v1/vcjobs?job_type=pytorch\u0026job_type=tensorflow\u0026page=1\u0026page_size=15\u0026schedule_type=1\u0026schedule_type=0\u0026search=demo\u0026status=Running\u0026status=Pending\": context deadline exceeded",
+  "message": "could not reach server: Get \"https://example.invalid/api/v1/vcjobs?job_type=pytorch\u0026job_type=tensorflow\u0026page=1\u0026page_size=15\u0026search=demo\u0026status=Running\u0026status=Pending\": context deadline exceeded",
   "context": {
-    "msg": "network error: Get \"https://example.invalid/api/v1/vcjobs?job_type=pytorch\u0026job_type=tensorflow\u0026page=1\u0026page_size=15\u0026schedule_type=1\u0026schedule_type=0\u0026search=demo\u0026status=Running\u0026status=Pending\": context deadline exceeded"
+    "msg": "network error: Get \"https://example.invalid/api/v1/vcjobs?job_type=pytorch\u0026job_type=tensorflow\u0026page=1\u0026page_size=15\u0026search=demo\u0026status=Running\u0026status=Pending\": context deadline exceeded"
   }
 }
 -- en/24-logs-missing-name-nojson/argv --

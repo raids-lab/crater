@@ -264,7 +264,12 @@ const ColocateOverview = () => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
-        cell: ({ row }) => <JobPhaseLabel jobPhase={row.getValue('status')} />,
+        cell: ({ row }) => (
+          <JobPhaseLabel
+            jobPhase={row.getValue('status')}
+            podGroupPhase={row.original.podGroupPhase}
+          />
+        ),
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id))
         },

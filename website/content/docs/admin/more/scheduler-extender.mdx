@@ -1,0 +1,54 @@
+---
+title: 配置调度插件
+description: 配置 crater 通过 volcano extender 插件执行的队内用户资源限制与超时阻塞
+---
+
+crater 以 volcano 的 extender 插件参与作业准入：volcano 在每个调度会话把作业放入队列前询问 crater，crater 按队列内的用户资源限制和超时阻塞决定是否放行。管理员在“平台设置”的“调度与网络”标签页中，通过“调度插件”卡片控制这些规则。两个开关默认关闭，关闭时 crater 对所有询问弃权，作业完全由 volcano 自身的插件调度。
+
+## 部署前置条件
+
+- Helm values 的 `backendConfig.schedulerExtenderPort` 默认为 `:8089`。设置后 chart 会为后端创建专用的 ClusterIP Service `crater-volcano-extender-svc`；在 volcano configmap 指向它且总开关打开之前，该端点不做任何判断。留空则不部署该端点。
+- 在 volcano 调度器的 configmap 中，把 `extender` 插件追加到现有 tier 2 的末尾，与 `capacity` 同层。放到更后的 tier 不会被询问，因为前一层放行后 volcano 不再征询后续 tier。
+
+```yaml
+actions: "enqueue, allocate, backfill, reclaim"
+tiers:
+- plugins:
+  - name: priority
+  - name: gang
+    enablePreemptable: false
+  - name: conformance
+- plugins:
+  - name: drf
+    enablePreemptable: false
+  - name: predicates
+  - name: capacity
+  - name: nodeorder
+  - name: binpack
+  - name: extender
+    arguments:
+      extender.urlPrefix: http://crater-volcano-extender-svc.<namespace>.svc:8089
+      extender.jobEnqueueableVerb: jobEnqueueable
+      extender.onSessionCloseVerb: onSessionClose
+      extender.httpTimeout: 1s
+      extender.ignorable: true
+```
+
+- `onSessionCloseVerb` 建议配置：配置后 crater 只在每轮调度结束时重建集群快照，一轮内不变；不配置时退化为每 2 秒重建一次，后端日志会提示一次。不要配置 `onSessionOpenVerb`，它会阻塞每个调度会话的开始。
+- `extender.ignorable: true` 表示 crater 端点不可用时 volcano 直接放行，配额与阻塞在此期间暂停，恢复后自动继续。
+- 配额的预留账本保存在后端进程内存中，多副本会各自记账导致配额失效，因此后端只能单副本运行。滚动升级时新旧 Pod 会同时在线几秒，这段时间内配额判断可能不准，与端点不可用时的暂停属于同一类情况。
+
+## 配置项
+
+- **启用 extender 调度插件**：总开关。关闭后 crater 对 volcano 的准入询问一律弃权，配额与超时阻塞同时停止生效。
+- **启用用户资源限制**：开启后准入时检查用户在队列内已占用的资源。限额在账户设置的资源配额中按队列填写“队内上限”，未填写的队列不检查。
+- **作业等待忍耐时间（秒）**：作业提交时未指定忍耐时间则使用该默认值。忍耐时间在提交时写入作业注解，未携带忍耐时间的作业永不超时。
+
+配置保存后立即生效，无需重启后端，下一个调度会话即按新配置判断。
+
+## 准入规则
+
+- 用户资源限制按用户加队列核算：候选作业的申请量加上该用户在同队列内已准入且未结束作业的占用量，超过限额即拒绝。申请量本身就超过限额的作业在提交时直接被拒绝。
+- 超时阻塞：作业等待超过忍耐时间仍未运行时，会阻止同队列中资源类型和节点约束有交集的其他作业入队。已被自身配额或队列容量拦住的超时作业不阻塞他人。
+- crater 只会拒绝或弃权，不会替 volcano 放行，其他插件的检查不受影响。
+- 未准入的作业停留在“等待中”，作业详情里的 PodGroup 阶段为 Pending；准入后显示为“待调度”并开始创建 Pod。拒绝原因只记录在后端日志中。

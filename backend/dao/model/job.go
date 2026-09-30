@@ -11,13 +11,15 @@ import (
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/pkg/monitor"
 )
 
 const (
-	Deleted  batch.JobPhase = "Deleted"
-	Freed    batch.JobPhase = "Freed"
+	Deleted batch.JobPhase = "Deleted"
+	Freed   batch.JobPhase = "Freed"
+	// Prequeue is Deprecated; kept so historical records stay readable.
 	Prequeue batch.JobPhase = "Prequeue"
 )
 
@@ -34,54 +36,6 @@ const (
 	JobTypeOpenMPI    JobType = "openmpi"
 	JobTypeCustom     JobType = "custom"
 )
-
-type ScheduleType int
-
-const (
-	ScheduleTypeBackfill ScheduleType = 0
-	ScheduleTypeNormal   ScheduleType = 1
-)
-
-const (
-	ScheduleTypeBackfillName = "backfill"
-	ScheduleTypeNormalName   = "normal"
-)
-
-func (s ScheduleType) String() string {
-	switch s {
-	case ScheduleTypeBackfill:
-		return ScheduleTypeBackfillName
-	default:
-		return ScheduleTypeNormalName
-	}
-}
-
-func ParseScheduleType(raw string) (ScheduleType, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return ScheduleTypeNormal, nil
-	}
-
-	value, err := strconv.Atoi(raw)
-	if err == nil {
-		scheduleType := ScheduleType(value)
-		switch scheduleType {
-		case ScheduleTypeNormal, ScheduleTypeBackfill:
-			return scheduleType, nil
-		default:
-			return ScheduleTypeNormal, fmt.Errorf("invalid schedule type: %s", raw)
-		}
-	}
-
-	switch strings.ToLower(raw) {
-	case ScheduleTypeNormalName:
-		return ScheduleTypeNormal, nil
-	case ScheduleTypeBackfillName:
-		return ScheduleTypeBackfill, nil
-	default:
-		return ScheduleTypeNormal, fmt.Errorf("invalid schedule type: %s", raw)
-	}
-}
 
 func ParseWaitingToleranceSeconds(raw string) (*int64, error) {
 	if strings.TrimSpace(raw) == "" {
@@ -139,10 +93,11 @@ type Job struct {
 	AccountID               uint           `gorm:"primaryKey;index:idx_jobs_account_creation_timestamp,priority:1"`
 	Account                 Account        `gorm:"foreignKey:AccountID"`
 	JobType                 JobType        `gorm:"not null;index:idx_jobs_type_creation_timestamp,priority:1;comment:作业类型"`
-	ScheduleType            *ScheduleType  `gorm:"index:idx_jobs_schedule_type;default:1;not null;comment:调度类型"`
 	WaitingToleranceSeconds *int64         `gorm:"comment:作业等待忍耐时间(秒)"`
 	Status                  batch.JobPhase `gorm:"index:status;index:idx_jobs_status_creation_timestamp,priority:1;not null;comment:作业状态"`
 	Queue                   string         `gorm:"type:varchar(256);index:idx_jobs_queue;comment:作业提交的volcano队列"`
+	// PodGroupPhase is written together with Status from the same PodGroup read and is never cleared.
+	PodGroupPhase scheduling.PodGroupPhase `gorm:"comment:volcano PodGroup 的原始 phase"`
 	// TODO(perf): Evaluate adding composite indexes for statistics queries:
 	// (user_id, running_timestamp), (account_id, running_timestamp),
 	// and potentially (running_timestamp, completed_timestamp).
