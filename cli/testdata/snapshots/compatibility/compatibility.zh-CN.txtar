@@ -7,14 +7,14 @@ crater compatibility --no-interactive
 平台: https://example.invalid
 状态: 兼容
 CLI 产品版本: dev
-CLI API 版本: 1
-CLI 最低支持的后端 API 版本: 1
+CLI API 版本: 2
+CLI 最低支持的后端 API 版本: 2
 后端产品版本: v1.1.1
 后端短提交 SHA: f42b0c2
 后端构建类型: release
 后端构建时间: 2026-07-26T08:30:00Z
-后端 API 版本: 1
-后端最低支持的 CLI API 版本: 1
+后端 API 版本: 2
+后端最低支持的 CLI API 版本: 2
 -- zh-CN/01-compatible-active-platform-nojson/stderr --
 -- zh-CN/02-compatible-json/argv --
 crater compatibility --platform https://example.invalid --no-interactive --json
@@ -28,16 +28,16 @@ crater compatibility --platform https://example.invalid --no-interactive --json
       "status": "compatible",
       "cli": {
         "product_version": "dev",
-        "api_version": 1,
-        "min_supported_backend_api_version": 1
+        "api_version": 2,
+        "min_supported_backend_api_version": 2
       },
       "backend": {
         "product_version": "v1.1.1",
         "short_commit_sha": "f42b0c2",
         "build_type": "release",
         "build_time": "2026-07-26T08:30:00Z",
-        "api_version": 1,
-        "min_supported_cli_api_version": 1
+        "api_version": 2,
+        "min_supported_cli_api_version": 2
       }
     }
   },
@@ -55,18 +55,18 @@ Error:
   
   平台: https://example.invalid
   具体情况：
-    - CLI API 版本（1）低于后端最低支持的 CLI API 版本（2）。
+    - CLI API 版本（2）低于后端最低支持的 CLI API 版本（3）。
   
   版本信息：
     CLI 产品版本: dev
-    CLI API 版本: 1
-    CLI 最低支持的后端 API 版本: 1
+    CLI API 版本: 2
+    CLI 最低支持的后端 API 版本: 2
     后端产品版本: v1.1.1
     后端短提交 SHA: f42b0c2
     后端构建类型: release
     后端构建时间: 2026-07-26T08:30:00Z
-    后端 API 版本: 1
-    后端最低支持的 CLI API 版本: 2
+    后端 API 版本: 2
+    后端最低支持的 CLI API 版本: 3
   
   使用建议：
     - 你仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。
@@ -81,16 +81,16 @@ crater compatibility --platform https://example.invalid --no-interactive --json
 {
   "category": "api_error",
   "code": "ERR_API_VERSION_MISMATCH",
-  "message": "CLI 与平台的 API 版本不兼容。\n\n平台: https://example.invalid\n具体情况：\n  - CLI API 版本（1）低于后端最低支持的 CLI API 版本（2）。\n\n版本信息：\n  CLI 产品版本: dev\n  CLI API 版本: 1\n  CLI 最低支持的后端 API 版本: 1\n  后端产品版本: v1.1.1\n  后端短提交 SHA: f42b0c2\n  后端构建类型: release\n  后端构建时间: 2026-07-26T08:30:00Z\n  后端 API 版本: 1\n  后端最低支持的 CLI API 版本: 2\n\n使用建议：\n  - 你仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。\n  - 如果实际操作失败，请先根据该操作的报错排查更常见的原因，例如命令输入、本地配置、认证、网络连接或平台状态；CLI 自身也可能存在缺陷，尤其是开发版本。\n  - 只有在排除上述原因且仍有证据表明 API 契约不兼容时，才尝试将 CLI 升级到与平台兼容的版本，或联系平台管理员获得支持。",
+  "message": "CLI 与平台的 API 版本不兼容。\n\n平台: https://example.invalid\n具体情况：\n  - CLI API 版本（2）低于后端最低支持的 CLI API 版本（3）。\n\n版本信息：\n  CLI 产品版本: dev\n  CLI API 版本: 2\n  CLI 最低支持的后端 API 版本: 2\n  后端产品版本: v1.1.1\n  后端短提交 SHA: f42b0c2\n  后端构建类型: release\n  后端构建时间: 2026-07-26T08:30:00Z\n  后端 API 版本: 2\n  后端最低支持的 CLI API 版本: 3\n\n使用建议：\n  - 你仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。\n  - 如果实际操作失败，请先根据该操作的报错排查更常见的原因，例如命令输入、本地配置、认证、网络连接或平台状态；CLI 自身也可能存在缺陷，尤其是开发版本。\n  - 只有在排除上述原因且仍有证据表明 API 契约不兼容时，才尝试将 CLI 升级到与平台兼容的版本，或联系平台管理员获得支持。",
   "context": {
-    "backend_api_version": 1,
+    "backend_api_version": 2,
     "backend_build_time": "2026-07-26T08:30:00Z",
     "backend_build_type": "release",
-    "backend_min_supported_cli_api_version": 2,
+    "backend_min_supported_cli_api_version": 3,
     "backend_product_version": "v1.1.1",
     "backend_short_commit_sha": "f42b0c2",
-    "cli_api_version": 1,
-    "cli_min_supported_backend_api_version": 1,
+    "cli_api_version": 2,
+    "cli_min_supported_backend_api_version": 2,
     "cli_product_version": "dev",
     "platform_url": "https://example.invalid",
     "status": "cli_maybe_too_old"
@@ -111,8 +111,8 @@ Error:
   
   版本信息：
     CLI 产品版本: dev
-    CLI API 版本: 1
-    CLI 最低支持的后端 API 版本: 1
+    CLI API 版本: 2
+    CLI 最低支持的后端 API 版本: 2
     后端产品版本: 未知
     后端短提交 SHA: 未知
     后端构建类型: 未知
@@ -133,7 +133,7 @@ crater compatibility --platform https://example.invalid --no-interactive --json
 {
   "category": "api_error",
   "code": "ERR_API_VERSION_MISMATCH",
-  "message": "CLI 与平台的 API 版本不兼容。\n\n平台: https://example.invalid\n具体情况：\n  - 平台的 API 兼容性检查接口返回 HTTP 404。这通常表示后端版本早于当前 CLI 的兼容性检查命令。\n\n版本信息：\n  CLI 产品版本: dev\n  CLI API 版本: 1\n  CLI 最低支持的后端 API 版本: 1\n  后端产品版本: 未知\n  后端短提交 SHA: 未知\n  后端构建类型: 未知\n  后端构建时间: 未知\n  后端 API 版本: 未知\n  后端最低支持的 CLI API 版本: 未知\n\n使用建议：\n  - 你仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。\n  - 如果实际操作失败，请先根据该操作的报错排查更常见的原因，例如命令输入、本地配置、认证、网络连接或平台状态；CLI 自身也可能存在缺陷，尤其是开发版本。\n  - 只有在排除上述原因且仍有证据表明 API 契约不兼容时，才尝试将 CLI 降级到与平台兼容的版本，或联系平台管理员获得支持。",
+  "message": "CLI 与平台的 API 版本不兼容。\n\n平台: https://example.invalid\n具体情况：\n  - 平台的 API 兼容性检查接口返回 HTTP 404。这通常表示后端版本早于当前 CLI 的兼容性检查命令。\n\n版本信息：\n  CLI 产品版本: dev\n  CLI API 版本: 2\n  CLI 最低支持的后端 API 版本: 2\n  后端产品版本: 未知\n  后端短提交 SHA: 未知\n  后端构建类型: 未知\n  后端构建时间: 未知\n  后端 API 版本: 未知\n  后端最低支持的 CLI API 版本: 未知\n\n使用建议：\n  - 你仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。\n  - 如果实际操作失败，请先根据该操作的报错排查更常见的原因，例如命令输入、本地配置、认证、网络连接或平台状态；CLI 自身也可能存在缺陷，尤其是开发版本。\n  - 只有在排除上述原因且仍有证据表明 API 契约不兼容时，才尝试将 CLI 降级到与平台兼容的版本，或联系平台管理员获得支持。",
   "context": {
     "backend_api_version": 0,
     "backend_build_time": "",
@@ -141,8 +141,8 @@ crater compatibility --platform https://example.invalid --no-interactive --json
     "backend_min_supported_cli_api_version": 0,
     "backend_product_version": "",
     "backend_short_commit_sha": "",
-    "cli_api_version": 1,
-    "cli_min_supported_backend_api_version": 1,
+    "cli_api_version": 2,
+    "cli_min_supported_backend_api_version": 2,
     "cli_product_version": "dev",
     "http_status": 404,
     "msg": "404 page not found",
@@ -162,12 +162,12 @@ Error:
   
   平台: https://example.invalid
   具体情况：
-    - 后端 API 版本（0）低于 CLI 最低支持的后端 API 版本（1）。
+    - 后端 API 版本（0）低于 CLI 最低支持的后端 API 版本（2）。
   
   版本信息：
     CLI 产品版本: dev
-    CLI API 版本: 1
-    CLI 最低支持的后端 API 版本: 1
+    CLI API 版本: 2
+    CLI 最低支持的后端 API 版本: 2
     后端产品版本: v1.1.1
     后端短提交 SHA: f42b0c2
     后端构建类型: release
@@ -188,7 +188,7 @@ crater compatibility --platform https://example.invalid --no-interactive --json
 {
   "category": "api_error",
   "code": "ERR_API_VERSION_MISMATCH",
-  "message": "CLI 与平台的 API 版本不兼容。\n\n平台: https://example.invalid\n具体情况：\n  - 后端 API 版本（0）低于 CLI 最低支持的后端 API 版本（1）。\n\n版本信息：\n  CLI 产品版本: dev\n  CLI API 版本: 1\n  CLI 最低支持的后端 API 版本: 1\n  后端产品版本: v1.1.1\n  后端短提交 SHA: f42b0c2\n  后端构建类型: release\n  后端构建时间: 2026-07-26T08:30:00Z\n  后端 API 版本: 0\n  后端最低支持的 CLI API 版本: 0\n\n使用建议：\n  - 你仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。\n  - 如果实际操作失败，请先根据该操作的报错排查更常见的原因，例如命令输入、本地配置、认证、网络连接或平台状态；CLI 自身也可能存在缺陷，尤其是开发版本。\n  - 只有在排除上述原因且仍有证据表明 API 契约不兼容时，才尝试将 CLI 降级到与平台兼容的版本，或联系平台管理员获得支持。",
+  "message": "CLI 与平台的 API 版本不兼容。\n\n平台: https://example.invalid\n具体情况：\n  - 后端 API 版本（0）低于 CLI 最低支持的后端 API 版本（2）。\n\n版本信息：\n  CLI 产品版本: dev\n  CLI API 版本: 2\n  CLI 最低支持的后端 API 版本: 2\n  后端产品版本: v1.1.1\n  后端短提交 SHA: f42b0c2\n  后端构建类型: release\n  后端构建时间: 2026-07-26T08:30:00Z\n  后端 API 版本: 0\n  后端最低支持的 CLI API 版本: 0\n\n使用建议：\n  - 你仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。\n  - 如果实际操作失败，请先根据该操作的报错排查更常见的原因，例如命令输入、本地配置、认证、网络连接或平台状态；CLI 自身也可能存在缺陷，尤其是开发版本。\n  - 只有在排除上述原因且仍有证据表明 API 契约不兼容时，才尝试将 CLI 降级到与平台兼容的版本，或联系平台管理员获得支持。",
   "context": {
     "backend_api_version": 0,
     "backend_build_time": "2026-07-26T08:30:00Z",
@@ -196,8 +196,8 @@ crater compatibility --platform https://example.invalid --no-interactive --json
     "backend_min_supported_cli_api_version": 0,
     "backend_product_version": "v1.1.1",
     "backend_short_commit_sha": "f42b0c2",
-    "cli_api_version": 1,
-    "cli_min_supported_backend_api_version": 1,
+    "cli_api_version": 2,
+    "cli_min_supported_backend_api_version": 2,
     "cli_product_version": "dev",
     "platform_url": "https://example.invalid",
     "status": "backend_maybe_too_old"

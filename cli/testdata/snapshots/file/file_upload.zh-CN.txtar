@@ -1,0 +1,144 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-file-typo-json/argv --
+crater file get --json --no-interactive
+-- zh-CN/01-file-typo-json/exit --
+2
+-- zh-CN/01-file-typo-json/stdout --
+-- zh-CN/01-file-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"get\" for \"crater file\"\nRun \"crater file --help\" for usage."
+}
+-- zh-CN/01b-file-typo-text/argv --
+crater file get --no-interactive
+-- zh-CN/01b-file-typo-text/exit --
+2
+-- zh-CN/01b-file-typo-text/stdout --
+-- zh-CN/01b-file-typo-text/stderr --
+Error:
+  unknown command "get" for "crater file"
+  Run "crater file --help" for usage.
+-- zh-CN/02-file-upload-missing-local-json/argv --
+crater file upload --json --no-interactive
+-- zh-CN/02-file-upload-missing-local-json/exit --
+2
+-- zh-CN/02-file-upload-missing-local-json/stdout --
+-- zh-CN/02-file-upload-missing-local-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：本地文件 (\u003clocal-file\u003e)"
+}
+-- zh-CN/03-file-upload-missing-remote-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin --json --no-interactive
+-- zh-CN/03-file-upload-missing-remote-json/exit --
+2
+-- zh-CN/03-file-upload-missing-remote-json/stdout --
+-- zh-CN/03-file-upload-missing-remote-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：远端路径 (\u003cremote-path\u003e)"
+}
+-- zh-CN/04-file-upload-extra-arg-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin user/a.bin extra --json --no-interactive
+-- zh-CN/04-file-upload-extra-arg-json/exit --
+2
+-- zh-CN/04-file-upload-extra-arg-json/stdout --
+-- zh-CN/04-file-upload-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater file upload 的参数过多：收到 3 个，最多允许 2 个"
+}
+-- zh-CN/05-file-upload-traversal-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin user/../public/a.bin --json --no-interactive
+-- zh-CN/05-file-upload-traversal-json/exit --
+2
+-- zh-CN/05-file-upload-traversal-json/stdout --
+-- zh-CN/05-file-upload-traversal-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的远端路径 \"user/../public/a.bin\""
+}
+-- zh-CN/06-file-upload-root-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin user --json --no-interactive
+-- zh-CN/06-file-upload-root-json/exit --
+2
+-- zh-CN/06-file-upload-root-json/stdout --
+-- zh-CN/06-file-upload-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "远端文件必须指向 user、public 或 account 下的具体条目：\"user\""
+}
+-- zh-CN/07-file-upload-directory-json/argv --
+crater file upload . user/a.bin --json --no-interactive
+-- zh-CN/07-file-upload-directory-json/exit --
+2
+-- zh-CN/07-file-upload-directory-json/stdout --
+-- zh-CN/07-file-upload-directory-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "本地路径不是普通文件：\".\""
+}
+-- zh-CN/08-file-upload-404-json/argv --
+crater file upload .snapshot-upload-zh-CN.bin user/实验 data/result.bin --json --no-interactive
+-- zh-CN/08-file-upload-404-json/exit --
+4
+-- zh-CN/08-file-upload-404-json/stdout --
+-- zh-CN/08-file-upload-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/09-file-help/argv --
+crater file --help
+-- zh-CN/09-file-help/exit --
+0
+-- zh-CN/09-file-help/stdout --
+列出、下载和上传用户、公共及当前账户存储空间中的文件。
+
+Usage:
+  crater file [flags]
+  crater file [command]
+
+Available Commands:
+  download    下载单个远端文件
+  ls          列出远端文件
+  upload      上传单个本地文件
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+
+Use "crater file [command] --help" for more information about a command.
+-- zh-CN/09-file-help/stderr --
+-- zh-CN/10-file-upload-help/argv --
+crater file upload --help
+-- zh-CN/10-file-upload-help/exit --
+0
+-- zh-CN/10-file-upload-help/stdout --
+将一个本地普通文件流式上传到 user、public 或 account 存储空间下的路径。
+
+Usage:
+  crater file upload <local-file> <remote-path> [flags]
+
+Flags:
+      --overwrite   替换已存在的远端文件
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/10-file-upload-help/stderr --

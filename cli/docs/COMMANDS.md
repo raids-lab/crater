@@ -879,3 +879,29 @@ This section records the read-only API surface covered by the CLI after the broa
   - `bytes`（整数）：写入字节数。
   - `overwrite`（布尔）：本次是否启用了显式覆盖选项。
 - **状态**：[x] Completed
+
+### `crater file upload <local-file> <remote-path>`
+
+- **描述**：把一个本地普通文件流式上传到远端逻辑路径。
+- **位置参数**：
+  - `<local-file>`（必填）：本地普通文件。目录、管道、设备和 socket 会在请求前被拒绝。
+  - `<remote-path>`（必填）：`user`、`public` 或 `account` 下的完整目标文件路径，不能只给逻辑根。
+- **选项**：
+  - `--overwrite`（bool）：允许替换已存在的远端普通文件；默认拒绝覆盖。
+- **处理逻辑**：
+  - 调用 `POST /api/ss/upload/*path?overwrite=<bool>`，请求体直接流式读取本地文件，不把完整内容载入内存。
+  - storage service 在目标同目录写入临时文件，完成 `chmod`、`sync` 和 `close` 后才发布。新文件通过原子 no-clobber 链接发布；显式覆盖通过同目录原子重命名替换。服务端仅在支持安全 FD 相对发布的平台执行上传，其他平台明确失败。
+  - 服务端是覆盖策略的最终裁决者：即使预检后并发出现同名文件，未指定 `--overwrite` 也不会覆盖；上传失败不会暴露部分新文件或截断旧文件。
+  - 父目录必须预先存在，本命令不会自动创建目录。
+  - 不支持递归目录、glob、多文件、断点续传、分片或进度条。
+- **输出格式**：
+  - 默认模式：成功后展示本地路径、远端路径和已上传字节数。
+  - `--json`：stdout 仅输出结果元数据，不包含文件内容。
+- **`--json` 的 `data`**：
+  - `local_path`（字符串）：本地输入路径。
+  - `remote_path`（字符串）：规范化后的远端逻辑路径。
+  - `bytes`（整数）：服务端完整接收并发布的字节数。
+  - `overwrite`（布尔）：本次是否显式启用了覆盖选项。
+  - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
+- **兼容性**：安全上传端点由 API 契约 2 提供，CLI 最低要求后端 API 版本 2。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **状态**：[x] Completed

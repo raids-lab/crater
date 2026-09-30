@@ -80,7 +80,7 @@ crater file --help
 -- zh-CN/07-file-help/exit --
 0
 -- zh-CN/07-file-help/stdout --
-列出和下载用户、公共及当前账户存储空间中的文件。
+列出、下载和上传用户、公共及当前账户存储空间中的文件。
 
 Usage:
   crater file [flags]
@@ -89,6 +89,7 @@ Usage:
 Available Commands:
   download    下载单个远端文件
   ls          列出远端文件
+  upload      上传单个本地文件
 
 Global Flags:
   -h, --help             显示帮助信息
