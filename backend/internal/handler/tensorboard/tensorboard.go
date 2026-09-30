@@ -1,3 +1,19 @@
+/*
+Copyright 2026 The Crater Project Team, RAIDS-Lab
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package tensorboard
 
 import (
@@ -48,7 +64,6 @@ func (mgr *TensorboardMgr) RegisterProtected(group *gin.RouterGroup) {
 	group.GET("", mgr.UserList)
 	group.GET("/source/:jobName", mgr.UserGetSourceConfig)
 	group.DELETE("/:id", mgr.UserDelete)
-	group.POST("/:id/extend", mgr.UserExtendTTL)
 	group.POST("/:id/access", mgr.UserCreateAccessSession)
 }
 
@@ -106,7 +121,20 @@ func (mgr *TensorboardMgr) AuthorizeIngress(c *gin.Context) {
 		return
 	}
 	token, err := interutil.GetTokenMgr().CheckToken(cookie)
-	if err != nil || !isOwnedTensorboardURL(c.GetHeader("X-Original-URL"), token.Username) {
+	if err != nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	tbID, ok := tensorboardIDFromOwnedURL(c.GetHeader("X-Original-URL"), token.Username)
+	if !ok {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	if mgr.service == nil {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	if _, err := mgr.service.GetAccessPath(c.Request.Context(), token.Username, tbID); err != nil {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
@@ -122,27 +150,32 @@ func bearerToken(header string) (string, bool) {
 	return returnToken, returnToken != ""
 }
 
-func isOwnedTensorboardURL(rawURL, username string) bool {
+func tensorboardIDFromOwnedURL(rawURL, username string) (string, bool) {
 	parsed, err := url.ParseRequestURI(rawURL)
 	if err != nil || username == "" {
-		return false
+		return "", false
 	}
 	routePrefix := "/ingress/" + username + "-"
 	escapedPath := parsed.EscapedPath()
 	if !strings.HasPrefix(escapedPath, routePrefix) {
-		return false
+		return "", false
 	}
 	remainder := strings.TrimPrefix(escapedPath, routePrefix)
 	tensorboardID := strings.SplitN(remainder, "/", 2)[0]
 	if len(tensorboardID) != tensorboardIDLength {
-		return false
+		return "", false
 	}
 	for _, character := range tensorboardID {
 		if !strings.ContainsRune("0123456789abcdef", character) {
-			return false
+			return "", false
 		}
 	}
-	return true
+	return tensorboardID, true
+}
+
+func isOwnedTensorboardURL(rawURL, username string) bool {
+	_, ok := tensorboardIDFromOwnedURL(rawURL, username)
+	return ok
 }
 
 // UserGetSourceConfig returns TensorBoard settings stored in the selected job configuration.
@@ -167,7 +200,7 @@ func (mgr *TensorboardMgr) UserGetSourceConfig(c *gin.Context) {
 	resputil.Success(c, result)
 }
 
-// UserCreate provisions a TensorBoard deployment, service, and ingress.
+// UserCreate provisions a TensorBoard Volcano Job, Service, and Ingress.
 //
 //	@Summary		创建 TensorBoard 面板
 //	@Description	从当前用户个人空间的日志目录创建面板，也可关联一个或多个来源任务
@@ -190,39 +223,7 @@ func (mgr *TensorboardMgr) UserCreate(c *gin.Context) {
 	}
 
 	token := interutil.GetToken(c)
-	result, err := mgr.service.Create(c.Request.Context(), token.UserID, token.Username, &req)
-	if err != nil {
-		resputil.HandleError(c, err)
-		return
-	}
-	resputil.Success(c, result)
-}
-
-// UserExtendTTL extends the expiration time of a TensorBoard panel.
-//
-//	@Summary		延长 TensorBoard 面板有效期
-//	@Description	重新设置当前用户 TensorBoard 面板的过期时间
-//	@Tags			TensorBoard
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			id		path		string				true	"TensorBoard 面板 ID"
-//	@Param			data	body		payload.ExtendTTLReq	true	"有效期设置"
-//	@Success		200		{object}	resputil.Response[string]
-//	@Failure		400		{object}	resputil.Response[any]
-//	@Failure		403		{object}	resputil.Response[any]
-//	@Failure		404		{object}	resputil.Response[any]
-//	@Failure		500		{object}	resputil.Response[any]
-//	@Router			/v1/tensorboard/{id}/extend [post]
-func (mgr *TensorboardMgr) UserExtendTTL(c *gin.Context) {
-	var req payload.ExtendTTLReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
-		return
-	}
-
-	token := interutil.GetToken(c)
-	result, err := mgr.service.ExtendTTL(c.Request.Context(), token.Username, c.Param("id"), &req)
+	result, err := mgr.service.Create(c.Request.Context(), token, &req)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return

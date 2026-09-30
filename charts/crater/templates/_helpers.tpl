@@ -68,6 +68,10 @@ Generate backend config with images from top-level images section
   "image" (printf "%s:%s" .Values.images.tensorboard.repository .Values.images.tensorboard.tag)
   "imagePullPolicy" .Values.imagePullPolicy
   "imagePullSecrets" .Values.imagePullSecrets
+  "ingressAuthEnabled" .Values.tensorboard.ingressAuthEnabled
+  "nodeSelector" .Values.tensorboard.nodeSelector
+  "tolerations" .Values.tensorboard.tolerations
+  "affinity" .Values.tensorboard.affinity
 ) -}}
 {{- if $config.registry.enable -}}
   {{- $buildTools := $config.registry.buildTools -}}

@@ -1,3 +1,18 @@
+/**
+ * Copyright 2026 The Crater Project Team, RAIDS-Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
 
 export const MAX_TENSORBOARD_SOURCE_JOBS = 10
@@ -13,7 +28,6 @@ export interface CreateTensorboardReq {
   sourceJobNames?: string[]
   sourceJobs?: TensorboardSourceJobReq[]
   logDir: string
-  ttlHours: number
 }
 
 export interface CreateTensorboardResp {
@@ -21,28 +35,20 @@ export interface CreateTensorboardResp {
   accessPath: string
 }
 
-export type TensorboardStatus = 'starting' | 'ready' | 'failed'
+export type TensorboardStatus = 'pending' | 'starting' | 'ready' | 'failed' | 'expired'
 
 export type TensorboardStatusReason =
   | 'deployment_failed'
-  | 'status_check_pending'
-  | 'pod_list_pending'
-  | 'image_pull_failed'
-  | 'container_start_failed'
-  | 'container_exited'
   | 'deployment_starting'
-  | 'network_config_incomplete'
-  | 'service_missing'
-  | 'network_check_pending'
-  | 'service_misconfigured'
-  | 'ingress_missing'
-  | 'ingress_misconfigured'
-  | 'endpoint_pending'
+  | 'waiting_for_schedule'
+  | 'pod_starting'
+  | 'job_failed'
+  | 'runtime_expired'
   | 'ready'
 
 export interface TensorboardInfo {
   id: string
-  expiration: string
+  expiration?: string
   createdAt: string
   accessPath: string
   status: TensorboardStatus
@@ -64,10 +70,6 @@ export function apiTensorboardCreate(data: CreateTensorboardReq) {
 
 export function apiTensorboardSourceConfig(jobName: string) {
   return apiV1Get<TensorboardSourceConfig>(`tensorboard/source/${encodeURIComponent(jobName)}`)
-}
-
-export function apiTensorboardExtendTTL(id: string, ttlHours: number) {
-  return apiV1Post<string>(`tensorboard/${id}/extend`, { ttlHours })
 }
 
 export function apiTensorboardCreateAccessSession(id: string) {

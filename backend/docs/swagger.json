@@ -9045,76 +9045,6 @@
                 }
             }
         },
-        "/v1/tensorboard/{id}/extend": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "重新设置当前用户 TensorBoard 面板的过期时间",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "TensorBoard"
-                ],
-                "summary": "延长 TensorBoard 面板有效期",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "TensorBoard 面板 ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "有效期设置",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.ExtendTTLReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/token/verify": {
             "get": {
                 "security": [
@@ -11080,9 +11010,6 @@
         },
         "github_com_raids-lab_crater_internal_payload.CreateTensorboardReq": {
             "type": "object",
-            "required": [
-                "ttlHours"
-            ],
             "properties": {
                 "logDir": {
                     "type": "string",
@@ -11103,12 +11030,6 @@
                     "items": {
                         "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq"
                     }
-                },
-                "ttlHours": {
-                    "type": "integer",
-                    "maximum": 168,
-                    "minimum": 1,
-                    "example": 24
                 }
             }
         },
@@ -11122,19 +11043,6 @@
                 "tensorboardId": {
                     "description": "Unique panel identifier.",
                     "type": "string"
-                }
-            }
-        },
-        "github_com_raids-lab_crater_internal_payload.ExtendTTLReq": {
-            "type": "object",
-            "required": [
-                "ttlHours"
-            ],
-            "properties": {
-                "ttlHours": {
-                    "type": "integer",
-                    "maximum": 168,
-                    "minimum": 1
                 }
             }
         },
@@ -11232,50 +11140,38 @@
         "github_com_raids-lab_crater_internal_payload.TensorboardStatus": {
             "type": "string",
             "enum": [
+                "pending",
                 "starting",
                 "ready",
-                "failed"
+                "failed",
+                "expired"
             ],
             "x-enum-varnames": [
+                "TensorboardStatusPending",
                 "TensorboardStatusStarting",
                 "TensorboardStatusReady",
-                "TensorboardStatusFailed"
+                "TensorboardStatusFailed",
+                "TensorboardStatusExpired"
             ]
         },
         "github_com_raids-lab_crater_internal_payload.TensorboardStatusReason": {
             "type": "string",
             "enum": [
                 "deployment_failed",
-                "status_check_pending",
-                "pod_list_pending",
-                "image_pull_failed",
-                "container_start_failed",
-                "container_exited",
                 "deployment_starting",
-                "network_config_incomplete",
-                "service_missing",
-                "network_check_pending",
-                "service_misconfigured",
-                "ingress_missing",
-                "ingress_misconfigured",
-                "endpoint_pending",
+                "waiting_for_schedule",
+                "pod_starting",
+                "job_failed",
+                "runtime_expired",
                 "ready"
             ],
             "x-enum-varnames": [
                 "TensorboardStatusReasonDeploymentFailed",
-                "TensorboardStatusReasonStatusCheckPending",
-                "TensorboardStatusReasonPodListPending",
-                "TensorboardStatusReasonImagePullFailed",
-                "TensorboardStatusReasonContainerStartFailed",
-                "TensorboardStatusReasonContainerExited",
                 "TensorboardStatusReasonDeploymentStarting",
-                "TensorboardStatusReasonNetworkConfigIncomplete",
-                "TensorboardStatusReasonServiceMissing",
-                "TensorboardStatusReasonNetworkCheckPending",
-                "TensorboardStatusReasonServiceMisconfigured",
-                "TensorboardStatusReasonIngressMissing",
-                "TensorboardStatusReasonIngressMisconfigured",
-                "TensorboardStatusReasonEndpointPending",
+                "TensorboardStatusReasonWaitingForSchedule",
+                "TensorboardStatusReasonPodStarting",
+                "TensorboardStatusReasonJobFailed",
+                "TensorboardStatusReasonRuntimeExpired",
                 "TensorboardStatusReasonReady"
             ]
         },

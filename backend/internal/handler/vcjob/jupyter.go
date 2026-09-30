@@ -120,6 +120,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	podSpec, err := generateInteractivePodSpec(
 		c,
 		token,
+		jobName,
 		&req.CreateJobCommon,
 		req.Resource,
 		req.Image,

@@ -1,6 +1,6 @@
 # crater
 
-![Version: 1.1.3](https://img.shields.io/badge/Version-1.1.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.1.3](https://img.shields.io/badge/AppVersion-1.1.3-informational?style=flat-square)
+![Version: 1.2.0](https://img.shields.io/badge/Version-1.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.2.0](https://img.shields.io/badge/AppVersion-1.2.0-informational?style=flat-square)
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
@@ -20,7 +20,7 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"NotIn","values":["true"]}]},"weight":100}]}}` | Pod affinity configuration |
+| affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"NotIn","values":["true"]}]},"weight":100}]}}` | Pod affinity for chart Deployments |
 | backendConfig | object | `{"auth":{"ldap":{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}},"normal":{"allowLogin":true,"allowRegister":true},"token":{"accessTokenSecret":"example-access-token","refreshTokenSecret":"example-refresh-token"}},"enableLeaderElection":false,"modelDownload":{"huggingFaceEndpoint":"https://huggingface.co","image":"ghcr.io/raids-lab/crater-model-downloader:v1.0.0","modelScopeEndpoint":"https://modelscope.cn"},"modelMetadata":{"huggingFaceEndpoints":["https://huggingface.co"],"logicalPublicPrefix":"public","logoAllowedHosts":["huggingface.co","cdn-avatars.huggingface.co","resouces.modelscope.cn","resources.modelscope.cn"],"maxLogoBytes":524288,"modelScopeEndpoints":["https://modelscope.cn"],"timeoutSeconds":20},"port":":8088","postgres":{"TimeZone":"Asia/Shanghai","dbname":"postgres","host":"crater-postgresql.crater-system.svc.cluster.local","password":"<MUSTEDIT>","port":5432,"sslmode":"disable","user":"postgres"},"prometheusAPI":"http://192.168.0.1:12345","registry":{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":false,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}},"secrets":{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"},"smtp":{"enable":false,"host":"mail.example.com","insecureSkipVerify":false,"notify":"example@example.com","password":"<MASKED>","port":25,"user":"example"},"storage":{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"}}}` | Backend configuration |
 | backendConfig.auth | object | `{"ldap":{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}},"normal":{"allowLogin":true,"allowRegister":true},"token":{"accessTokenSecret":"example-access-token","refreshTokenSecret":"example-refresh-token"}}` | Configuration for authentication methods and tokens |
 | backendConfig.auth.ldap | object | `{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}}` | LDAP authentication settings |
@@ -226,13 +226,18 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | namespaces.create | bool | `true` | Whether to create namespaces along with the deployment |
 | namespaces.image | string | `"crater-images"` | Namespace for building images |
 | namespaces.job | string | `"crater-workspace"` | Namespace for running jobs |
-| nodeSelector | object | `{"node-role.kubernetes.io/control-plane":""}` | Node selector for all Deployments Prevents control components from being scheduled to GPU worker nodes |
+| nodeSelector | object | `{"node-role.kubernetes.io/control-plane":""}` | Node selector for chart Deployments Prevents control components from being scheduled to GPU worker nodes |
 | protocol | string | `"http"` | Protocol for server communication ("http" or "https") |
 | storage | object | `{"create":true,"pvcName":"crater-rw-storage","request":"10Gi","storageClass":"nfs"}` | Persistent Volume Claim configuration |
 | storage.create | bool | `true` | Whether to create PVC or use existing pvc. |
 | storage.pvcName | string | `"crater-rw-storage"` | PVC name (existing or created, also used in backendConfig) |
 | storage.request | string | `"10Gi"` | If create, Storage request size |
 | storage.storageClass | string | `"nfs"` | If create, Storage class name (e.g. cephfs, nfs, must support ReadWriteMany) |
+| tensorboard | object | `{"affinity":{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"DoesNotExist"}]},"weight":100}]}},"ingressAuthEnabled":true,"nodeSelector":{},"tolerations":[]}` | Scheduling and access policy for dynamically created TensorBoard Volcano Jobs |
+| tensorboard.affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"DoesNotExist"}]},"weight":100}]}}` | Prefer nodes without GPUs while still allowing the scheduler to use other eligible nodes |
+| tensorboard.ingressAuthEnabled | bool | `true` | Protect every TensorBoard Ingress request through the Crater authentication endpoint |
+| tensorboard.nodeSelector | object | `{}` | Node selector applied only to TensorBoard Pods |
+| tensorboard.tolerations | list | `[]` | Tolerations applied only to TensorBoard Pods |
 | tls | object | `{"base":{"cert":"<MASKED>","create":false,"key":"<MASKED>"},"forward":{"cert":"<MASKED>","create":false,"key":"<MASKED>"}}` | TLS certificate configuration for exposing services via Ingress cert-manager configuration variables |
 | tls.base | object | `{"cert":"<MASKED>","create":false,"key":"<MASKED>"}` | Base certificate configuration (Standard mode, e.g., crater.example.com certificate) |
 | tls.base.cert | string | `"<MASKED>"` | Base certificate content (masked) |
@@ -242,7 +247,7 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | tls.forward.cert | string | `"<MASKED>"` | Forward certificate content (masked) |
 | tls.forward.create | bool | `false` | Whether to create forward certificate |
 | tls.forward.key | string | `"<MASKED>"` | Forward certificate private key (masked) |
-| tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]` | Pod tolerations |
+| tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]` | Pod tolerations for chart Deployments |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

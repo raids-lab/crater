@@ -30,6 +30,7 @@ export interface MetadataFormType {
 const CurrentJobTemplateVersion = '20260707'
 const CurrentCustomJobTemplateVersion = '20260728'
 const CurrentTensorboardJobTemplateVersion = '20260729'
+const CurrentTensorboardPanelTemplateVersion = '20260930'
 const TensorboardLogDirEnv = 'TENSORBOARD_LOGDIR'
 
 const NodeSelectorMode = {
@@ -144,6 +145,16 @@ const migrateTensorboardLogDir = (data: unknown): unknown => {
   }
 }
 
+const migrateTensorboardPanelLifetime = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('The TensorBoard template data is invalid')
+  }
+
+  const currentData = { ...data }
+  delete currentData.ttlHours
+  return currentData
+}
+
 const withTensorboardLogDirMigration = (
   nodeSelectorVersion: string
 ): Record<string, MetadataFormMigration> => ({
@@ -196,8 +207,14 @@ export const MetadataFormTensorflow: MetadataFormType = {
 }
 
 export const MetadataFormTensorboard: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardPanelTemplateVersion,
   type: 'tensorboard',
+  migrations: {
+    [CurrentJobTemplateVersion]: {
+      to: CurrentTensorboardPanelTemplateVersion,
+      migrate: migrateTensorboardPanelLifetime,
+    },
+  },
 }
 
 export const MetadataFormPytorch: MetadataFormType = {

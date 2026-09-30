@@ -87,6 +87,24 @@ images:
     # -- TensorBoard image tag
     tag: "2.20.0"
 
+# Scheduling policy for dynamically created TensorBoard Volcano Jobs
+tensorboard:
+  # -- Protect every TensorBoard Ingress request through the Crater authentication endpoint
+  ingressAuthEnabled: true
+  # -- Node selector applied only to TensorBoard Pods
+  nodeSelector: {}
+  # -- Tolerations applied only to TensorBoard Pods
+  tolerations: []
+  # -- Prefer nodes without GPUs while still allowing the scheduler to use other eligible nodes
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: DoesNotExist
+
 # -- Periodically refresh public model and dataset metadata from configured source endpoints
 modelMetadataRefresh:
   # -- Enable periodic refresh; the first run backfills metadata for existing ready downloads
@@ -160,18 +178,18 @@ storage:
   # -- PVC name (existing or created, also used in backendConfig)
   pvcName: &rwPvcName "crater-rw-storage"
 
-# -- Node selector for all Deployments
+# -- Node selector for chart Deployments
 # Prevents control components from being scheduled to GPU worker nodes
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 
-# -- Pod tolerations
+# -- Pod tolerations for chart Deployments
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
 
-# -- Pod affinity configuration
+# -- Pod affinity for chart Deployments
 affinity:
   nodeAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:

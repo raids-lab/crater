@@ -15,14 +15,17 @@
  */
 
 export const TensorboardLogDirEnv = 'TENSORBOARD_LOGDIR'
+export const TensorboardJobNamePlaceholder = '__CRATER_JOB_NAME__'
 
 interface EnvironmentVariable {
   name: string
   value: string
 }
 
-export const getDefaultTensorboardLogDir = (workspacePath: string, jobName: string) =>
-  `${workspacePath.replace(/\/+$/, '')}/tensorboard-runs/${jobName}`
+export const getDefaultTensorboardLogDir = (
+  workspacePath: string,
+  jobName = TensorboardJobNamePlaceholder
+) => `${workspacePath.replace(/\/+$/, '')}/tensorboard-runs/${jobName}`
 
 export const withTensorboardLogDirEnv = (
   envs: EnvironmentVariable[],

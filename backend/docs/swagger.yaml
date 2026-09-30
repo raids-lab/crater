@@ -370,13 +370,6 @@ definitions:
         items:
           $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq'
         type: array
-      ttlHours:
-        example: 24
-        maximum: 168
-        minimum: 1
-        type: integer
-    required:
-    - ttlHours
     type: object
   github_com_raids-lab_crater_internal_payload.CreateTensorboardResp:
     properties:
@@ -386,15 +379,6 @@ definitions:
       tensorboardId:
         description: Unique panel identifier.
         type: string
-    type: object
-  github_com_raids-lab_crater_internal_payload.ExtendTTLReq:
-    properties:
-      ttlHours:
-        maximum: 168
-        minimum: 1
-        type: integer
-    required:
-    - ttlHours
     type: object
   github_com_raids-lab_crater_internal_payload.Order:
     enum:
@@ -461,47 +445,35 @@ definitions:
     type: object
   github_com_raids-lab_crater_internal_payload.TensorboardStatus:
     enum:
+    - pending
     - starting
     - ready
     - failed
+    - expired
     type: string
     x-enum-varnames:
+    - TensorboardStatusPending
     - TensorboardStatusStarting
     - TensorboardStatusReady
     - TensorboardStatusFailed
+    - TensorboardStatusExpired
   github_com_raids-lab_crater_internal_payload.TensorboardStatusReason:
     enum:
     - deployment_failed
-    - status_check_pending
-    - pod_list_pending
-    - image_pull_failed
-    - container_start_failed
-    - container_exited
     - deployment_starting
-    - network_config_incomplete
-    - service_missing
-    - network_check_pending
-    - service_misconfigured
-    - ingress_missing
-    - ingress_misconfigured
-    - endpoint_pending
+    - waiting_for_schedule
+    - pod_starting
+    - job_failed
+    - runtime_expired
     - ready
     type: string
     x-enum-varnames:
     - TensorboardStatusReasonDeploymentFailed
-    - TensorboardStatusReasonStatusCheckPending
-    - TensorboardStatusReasonPodListPending
-    - TensorboardStatusReasonImagePullFailed
-    - TensorboardStatusReasonContainerStartFailed
-    - TensorboardStatusReasonContainerExited
     - TensorboardStatusReasonDeploymentStarting
-    - TensorboardStatusReasonNetworkConfigIncomplete
-    - TensorboardStatusReasonServiceMissing
-    - TensorboardStatusReasonNetworkCheckPending
-    - TensorboardStatusReasonServiceMisconfigured
-    - TensorboardStatusReasonIngressMissing
-    - TensorboardStatusReasonIngressMisconfigured
-    - TensorboardStatusReasonEndpointPending
+    - TensorboardStatusReasonWaitingForSchedule
+    - TensorboardStatusReasonPodStarting
+    - TensorboardStatusReasonJobFailed
+    - TensorboardStatusReasonRuntimeExpired
     - TensorboardStatusReasonReady
   github_com_raids-lab_crater_internal_payload.TimePointData:
     properties:
@@ -8758,51 +8730,6 @@ paths:
       security:
       - Bearer: []
       summary: 创建 TensorBoard 访问会话
-      tags:
-      - TensorBoard
-  /v1/tensorboard/{id}/extend:
-    post:
-      consumes:
-      - application/json
-      description: 重新设置当前用户 TensorBoard 面板的过期时间
-      parameters:
-      - description: TensorBoard 面板 ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: 有效期设置
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.ExtendTTLReq'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 延长 TensorBoard 面板有效期
       tags:
       - TensorBoard
   /v1/tensorboard/source/{jobName}:

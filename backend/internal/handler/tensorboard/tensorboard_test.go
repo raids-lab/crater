@@ -1,3 +1,19 @@
+/*
+Copyright 2026 The Crater Project Team, RAIDS-Lab
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package tensorboard
 
 import (
@@ -6,8 +22,16 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
+	tensorboardservice "github.com/raids-lab/crater/internal/service/tensorboard"
 	interutil "github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/crclient"
 )
 
 func TestBearerToken(t *testing.T) {
@@ -124,7 +148,25 @@ func TestAuthorizeIngress(t *testing.T) {
 		},
 	}
 
-	mgr := &TensorboardMgr{}
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Kubernetes scheme: %v", err)
+	}
+	if err := batch.AddToScheme(scheme); err != nil {
+		t.Fatalf("add Volcano scheme: %v", err)
+	}
+	panel := &batch.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tb-12ab34cd",
+			Namespace: config.GetConfig().Namespaces.Job,
+			Labels: map[string]string{
+				crclient.LabelKeyTaskUser: "alice",
+			},
+		},
+		Status: batch.JobStatus{State: batch.JobState{Phase: batch.Pending}},
+	}
+	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(panel).Build()
+	mgr := &TensorboardMgr{service: tensorboardservice.NewTensorboardService(client, nil)}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()

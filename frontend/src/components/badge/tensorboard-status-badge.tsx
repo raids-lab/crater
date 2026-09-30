@@ -22,19 +22,11 @@ import { PhaseBadge, PhaseBadgeData } from './phase-badge'
 
 const statusReasonTranslationKeys: Record<TensorboardStatusReason, string> = {
   deployment_failed: 'tensorboard.statusReason.deploymentFailed',
-  status_check_pending: 'tensorboard.statusReason.statusCheckPending',
-  pod_list_pending: 'tensorboard.statusReason.podListPending',
-  image_pull_failed: 'tensorboard.statusReason.imagePullFailed',
-  container_start_failed: 'tensorboard.statusReason.containerStartFailed',
-  container_exited: 'tensorboard.statusReason.containerExited',
   deployment_starting: 'tensorboard.statusReason.deploymentStarting',
-  network_config_incomplete: 'tensorboard.statusReason.networkConfigIncomplete',
-  service_missing: 'tensorboard.statusReason.serviceMissing',
-  network_check_pending: 'tensorboard.statusReason.networkCheckPending',
-  service_misconfigured: 'tensorboard.statusReason.serviceMisconfigured',
-  ingress_missing: 'tensorboard.statusReason.ingressMissing',
-  ingress_misconfigured: 'tensorboard.statusReason.ingressMisconfigured',
-  endpoint_pending: 'tensorboard.statusReason.endpointPending',
+  waiting_for_schedule: 'tensorboard.statusReason.waitingForSchedule',
+  pod_starting: 'tensorboard.statusReason.podStarting',
+  job_failed: 'tensorboard.statusReason.jobFailed',
+  runtime_expired: 'tensorboard.statusReason.runtimeExpired',
   ready: 'tensorboard.statusReason.ready',
 }
 
@@ -49,12 +41,16 @@ export const getTensorboardStatusDescription = (
   }
 
   switch (status) {
+    case 'pending':
+      return t('jobs.statuses.pending.description')
     case 'starting':
       return t('tensorboard.status.startingDescription')
     case 'ready':
       return t('tensorboard.status.readyDescription')
     case 'failed':
       return t('tensorboard.status.failedDescription')
+    case 'expired':
+      return t('tensorboard.status.expiredDescription')
     default:
       return t('tensorboard.status.unknownDescription')
   }
@@ -66,6 +62,12 @@ export const getTensorboardStatusLabel = (
   t: TFunction
 ): PhaseBadgeData => {
   switch (status) {
+    case 'pending':
+      return {
+        label: t('jobs.statuses.pending.label'),
+        color: 'text-highlight-purple bg-highlight-purple/20',
+        description: getTensorboardStatusDescription(status, statusReason, t),
+      }
     case 'starting':
       return {
         label: t('tensorboard.status.starting'),
@@ -82,6 +84,12 @@ export const getTensorboardStatusLabel = (
       return {
         label: t('tensorboard.status.failed'),
         color: 'text-highlight-red bg-highlight-red/20',
+        description: getTensorboardStatusDescription(status, statusReason, t),
+      }
+    case 'expired':
+      return {
+        label: t('tensorboard.status.expired'),
+        color: 'text-highlight-slate bg-highlight-slate/20',
         description: getTensorboardStatusDescription(status, statusReason, t),
       }
     default:

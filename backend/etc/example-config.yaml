@@ -28,6 +28,19 @@ tensorboard:
   imagePullPolicy: IfNotPresent
   # Secrets must exist in the configured job namespace
   imagePullSecrets: []
+  # Keep enabled outside explicitly isolated local development environments
+  ingressAuthEnabled: true
+  # Optional TensorBoard-only scheduling policy. Panels are submitted as Volcano Jobs.
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: DoesNotExist
 
 # Source metadata refresh configuration
 modelMetadata:

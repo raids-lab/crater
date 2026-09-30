@@ -94,7 +94,7 @@ func (ms *ManagerSetup) SetupCustomCRDAddon(
 		return err
 	}
 
-	// Setup TensorBoard TTL garbage collector
+	// Keep the legacy Deployment TTL collector during the VCJob migration window.
 	if err := ms.setupTensorboardGarbageCollector(mgr); err != nil {
 		return err
 	}
