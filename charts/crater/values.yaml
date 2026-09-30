@@ -389,13 +389,13 @@ backendConfig:
     # -- Configuration for container image building tools and proxies
     # Required if Registry.Enable is true
     buildTools:
-      # -- HTTP proxy settings for build environments
-      # If not specified, no proxy will be configured for builds
+      # -- HTTP proxy settings for build environments and Hugging Face download Jobs
+      # If not specified, builds and downloads will not use an explicit proxy
       proxyConfig:
-        # -- HTTPS proxy URL for build environments
+        # -- HTTPS proxy URL for build environments and Hugging Face downloads
         # If not specified, HTTPS traffic will not be proxied
         httpsProxy: null
-        # -- HTTP proxy URL for build environments
+        # -- HTTP proxy URL for build environments and Hugging Face downloads
         # If not specified, HTTP traffic will not be proxied
         httpProxy: null
         # -- Comma-separated list of domains that should not be proxied

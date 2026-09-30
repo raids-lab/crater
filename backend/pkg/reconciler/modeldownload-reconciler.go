@@ -996,7 +996,9 @@ var downloadFailureRules = []downloadFailureRule{
 	},
 	{
 		keywords: []string{"404", "not found", "repository not found", "does not exist"},
-		reason:   "Download failed: repository or revision not found (404). Check the name and revision.",
+		reason: "Download failed: repository or revision not found (404). " +
+			"Check the selected source, repository name, and revision. " +
+			"If the resource is available from another source, switch source and try again.",
 	},
 	{
 		keywords: []string{"no space left"},

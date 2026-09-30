@@ -156,10 +156,10 @@ registry:
   # Configuration for container image building tools and proxies
   # Required if Registry.Enable is true
   buildTools:
-    # HTTP proxy settings for build environments
-    # Optional: If not specified, no proxy will be configured for builds
+    # HTTP proxy settings for build environments and Hugging Face download Jobs
+    # Optional: If not specified, builds and downloads will not use an explicit proxy
     proxyConfig:
-      # HTTPS proxy URL for build environments
+      # HTTPS proxy URL for build environments and Hugging Face downloads
       # Optional: If not specified, HTTPS traffic will not be proxied
       httpsProxy: http://192.168.0.1:1080
     # Container image references for various build tools

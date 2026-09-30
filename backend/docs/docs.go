@@ -6817,7 +6817,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "创建一个新的模型下载任务",
+                "description": "按 name + category 复用已有有效公共资源，响应可能返回不同的 source/revision 且不创建 Job；否则创建下载 Job 并异步处理源站错误。",
                 "consumes": [
                     "application/json"
                 ],
@@ -6827,7 +6827,7 @@ const docTemplate = `{
                 "tags": [
                     "ModelDownload"
                 ],
-                "summary": "创建模型下载任务",
+                "summary": "创建或复用模型/数据集下载任务",
                 "parameters": [
                     {
                         "description": "下载请求",

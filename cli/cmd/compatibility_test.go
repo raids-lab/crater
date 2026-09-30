@@ -163,7 +163,7 @@ func TestCompatibilityAPIErrorMapsNotFoundToVersionMismatch(t *testing.T) {
 		"Situation:",
 		"The platform returned HTTP 404 for the API compatibility endpoint.",
 		"Versions:",
-		"CLI API version: 1",
+		"CLI API version: 2",
 		"CLI minimum backend API version: 1",
 		"Backend product version: unknown",
 		"Backend short commit SHA: unknown",

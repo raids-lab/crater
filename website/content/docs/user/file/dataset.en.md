@@ -30,9 +30,9 @@ Select **Download dataset**, then enter the source, repository ID, revision, and
 public/Datasets/<owner>/<repository>
 ```
 
-Crater keeps one public resource for each repository ID. It reuses any existing Ready, pending, downloading, or paused record and its actual path, and associates each requesting user once. The reference count is the number of associated users. If the existing record has failed, retry or resolve it before requesting another source or revision.
+Crater keeps one public resource for each repository ID. It reuses any existing Ready, pending, downloading, or paused record and its actual path, and associates each requesting user once. The reference count is the number of associated users. If no valid record exists, retry the failed record or submit the same repository from another source where it exists.
 
-After a failed download, partial files remain in the original directory so retrying the same record can continue there. Only a record in Ready state represents a complete, usable dataset. Deleting a download task removes the task record but does not remove its stored files. Ask an administrator to clean up a failed directory only after confirming that no retry, mount, or user depends on it.
+The download Job detects upstream errors such as a missing repository, an invalid revision, or insufficient access and then moves the task to Failed. A new task or failed-task retry clears incomplete files from the canonical public directory before downloading, preventing content from different sources from being mixed. Resuming a paused task preserves its existing progress. Only a Ready record represents a complete, usable dataset. Deleting a download task removes the task record but does not remove stored files.
 
 ## How to Create a Dataset
 

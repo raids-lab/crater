@@ -206,14 +206,14 @@ type Config struct {
 		// BuildTools contains configuration for container image building tools and proxies.
 		// Required if Registry.Enable is true.
 		BuildTools struct {
-			// ProxyConfig contains HTTP proxy settings for build environments.
-			// Optional: If not specified, no proxy will be configured for builds.
+			// ProxyConfig contains HTTP proxy settings for build environments and Hugging Face download Jobs.
+			// Optional: If not specified, builds and downloads will not use an explicit proxy.
 			ProxyConfig struct {
-				// HTTPSProxy is the HTTPS proxy URL for build environments.
+				// HTTPSProxy is the HTTPS proxy URL for build environments and Hugging Face downloads.
 				// Optional: If not specified, HTTPS traffic will not be proxied.
 				HTTPSProxy string `json:"httpsProxy"`
 
-				// HTTPProxy is the HTTP proxy URL for build environments.
+				// HTTPProxy is the HTTP proxy URL for build environments and Hugging Face downloads.
 				// Optional: If not specified, HTTP traffic will not be proxied.
 				HTTPProxy string `json:"httpProxy"`
 
