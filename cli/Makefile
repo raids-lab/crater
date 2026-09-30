@@ -97,18 +97,14 @@ unit-test: ## 运行 cli 的所有单元测试（排除 ./test/snapshots）
 	@go test $(UNIT_TEST_PKGS) -count=1
 	@echo "$(GREEN)✅ 单元测试通过$(RESET)"
 
-.PHONY: test
-test: unit-test snapshot-check ## 依次运行单元测试与快照校验
-	@echo "$(GREEN)✅ 全部测试通过$(RESET)"
-
 .PHONY: npm-test
-npm-test: ## 运行 npm 发布脚本单元测试
-	@echo "$(BLUE)📦 运行 npm 发布脚本单元测试...$(RESET)"
+npm-test: ## 运行 npm 打包脚本单元测试
+	@echo "$(BLUE)📦 运行 npm 打包脚本单元测试...$(RESET)"
 	@cd npm && npm test
-	@echo "$(GREEN)✅ npm 发布脚本单元测试通过$(RESET)"
+	@echo "$(GREEN)✅ npm 打包脚本单元测试通过$(RESET)"
 
 .PHONY: pre-commit-check
-pre-commit-check: test npm-test ## 提交前检查（CLI 测试与 npm 发布脚本测试）
+pre-commit-check: unit-test snapshot-check npm-test ## 提交前检查（单元测试、快照与 npm 打包脚本测试）
 
 # 默认目标
 .DEFAULT_GOAL := help

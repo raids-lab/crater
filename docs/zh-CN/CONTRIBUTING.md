@@ -338,7 +338,7 @@ PR 创建后，需要检查 workflow 状态。PR 也可能需要和 Copilot revi
 发布分成两条线。之后修改 workflow 必须保持这个划分。不要重新引入 `release.published` 这类 GitHub Release 事件作为触发条件，也不要让某个组件创建的 GitHub Release 去带动其它组件。不要移动已经用于正式发布的 `vX.Y.Z` tag。
 
 - **`main` 更新**（沿用各 workflow 已有的 path 过滤）：前端、后端和 Storage 向 GHCR 推送开发镜像。Helm 在 `charts/**` 变更时把 Chart 发布到 GHCR OCI。CLI 不发布。
-- **精确 `vX.Y.Z` tag**：上述镜像和 Chart workflow 再发布带该版本的产物。Helm 还要求 `charts/crater/Chart.yaml` 的 `version` 与 `appVersion` 都等于 tag 版本。CLI 只发布 npm 包。
+- **精确 `vX.Y.Z` tag**：上述镜像和 Chart workflow 再发布带该版本的产物。Helm 还要求 `charts/crater/Chart.yaml` 的 `version` 与 `appVersion` 都等于 tag 版本。CLI 通过 Trusted Publishing 暂存 npm 包；维护者在 npm 审批后才会公开。
 - **GitHub Release** 可选，只用于人工撰写更新说明。它不得触发 workflow，也不得挂发布用的二进制、镜像或 Chart。
 
 ## 应用构建版本
