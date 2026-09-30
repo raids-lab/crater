@@ -106,7 +106,7 @@ crater file --help
 -- en/09-file-help/exit --
 0
 -- en/09-file-help/stdout --
-List, download, and upload files in user, public, and account storage spaces.
+List, download, upload, create directories, and move entries in user, public, and account storage spaces.
 
 Usage:
   crater file [flags]
@@ -115,6 +115,8 @@ Usage:
 Available Commands:
   download    Download one remote file
   ls          List remote files
+  mkdir       Create one remote directory
+  mv          Move one remote file or directory
   upload      Upload one local file
 
 Global Flags:
@@ -142,3 +144,156 @@ Global Flags:
       --json             Output in raw JSON format
       --no-interactive   Disable interactive prompts
 -- en/10-file-upload-help/stderr --
+-- en/11-file-mkdir-help/argv --
+crater file mkdir --help
+-- en/11-file-mkdir-help/exit --
+0
+-- en/11-file-mkdir-help/stdout --
+Create exactly one directory below user, public, or account storage without creating missing parents.
+
+Usage:
+  crater file mkdir <remote-path> [flags]
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/11-file-mkdir-help/stderr --
+-- en/12-file-mkdir-missing-json/argv --
+crater file mkdir --json --no-interactive
+-- en/12-file-mkdir-missing-json/exit --
+2
+-- en/12-file-mkdir-missing-json/stdout --
+-- en/12-file-mkdir-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "remote directory is required (\u003cremote-path\u003e)"
+}
+-- en/13-file-mkdir-root-json/argv --
+crater file mkdir user --json --no-interactive
+-- en/13-file-mkdir-root-json/exit --
+2
+-- en/13-file-mkdir-root-json/stdout --
+-- en/13-file-mkdir-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "remote path must name an entry below user, public, or account: \"user\""
+}
+-- en/14-file-mkdir-404-json/argv --
+crater file mkdir user/实验 data --json --no-interactive
+-- en/14-file-mkdir-404-json/exit --
+4
+-- en/14-file-mkdir-404-json/stdout --
+-- en/14-file-mkdir-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/15-file-mv-help/argv --
+crater file mv --help
+-- en/15-file-mv-help/exit --
+0
+-- en/15-file-mv-help/stdout --
+Move one remote storage entry to an exact destination path without replacing an existing entry.
+
+Usage:
+  crater file mv <source-path> <destination-path> [flags]
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/15-file-mv-help/stderr --
+-- en/16-file-mv-missing-source-json/argv --
+crater file mv --json --no-interactive
+-- en/16-file-mv-missing-source-json/exit --
+2
+-- en/16-file-mv-missing-source-json/stdout --
+-- en/16-file-mv-missing-source-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "source path is required (\u003csource-path\u003e)"
+}
+-- en/17-file-mv-missing-destination-json/argv --
+crater file mv user/source --json --no-interactive
+-- en/17-file-mv-missing-destination-json/exit --
+2
+-- en/17-file-mv-missing-destination-json/stdout --
+-- en/17-file-mv-missing-destination-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "destination path is required (\u003cdestination-path\u003e)"
+}
+-- en/18-file-mv-invalid-operands-json/argv --
+crater file mv user/../source account\destination --json --no-interactive
+-- en/18-file-mv-invalid-operands-json/exit --
+2
+-- en/18-file-mv-invalid-operands-json/stdout --
+-- en/18-file-mv-invalid-operands-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid remote path \"user/../source\"\ninvalid remote path \"account\\\\destination\"",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "source-path",
+        "message": "invalid remote path \"user/../source\""
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "destination-path",
+        "message": "invalid remote path \"account\\\\destination\""
+      }
+    ]
+  }
+}
+-- en/19-file-mv-same-json/argv --
+crater file mv user/source /user//./source --json --no-interactive
+-- en/19-file-mv-same-json/exit --
+2
+-- en/19-file-mv-same-json/stdout --
+-- en/19-file-mv-same-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "move destination must differ from the source: \"user/source\""
+}
+-- en/20-file-mv-descendant-json/argv --
+crater file mv user/source user/source/nested --json --no-interactive
+-- en/20-file-mv-descendant-json/exit --
+2
+-- en/20-file-mv-descendant-json/stdout --
+-- en/20-file-mv-descendant-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "move destination \"user/source/nested\" cannot be inside source \"user/source\""
+}
+-- en/21-file-mv-404-json/argv --
+crater file mv user/source account/实验 data/result --json --no-interactive
+-- en/21-file-mv-404-json/exit --
+4
+-- en/21-file-mv-404-json/stdout --
+-- en/21-file-mv-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}

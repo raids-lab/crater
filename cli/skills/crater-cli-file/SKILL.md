@@ -1,7 +1,7 @@
 ---
 name: crater-cli-file
-version: 0.3.0
-description: "Use Crater CLI to list, download, and upload ordinary-user files in user, public, and account storage spaces."
+version: 0.4.0
+description: "Use Crater CLI to list, download, upload, create directories, and move entries in user, public, and account storage spaces."
 metadata:
   requires:
     bins: ["crater"]
@@ -12,7 +12,7 @@ metadata:
 
 **CRITICAL — Before doing anything else, MUST read `crater-cli-shared` (possible path: [`../crater-cli-shared/SKILL.md`](../crater-cli-shared/SKILL.md)) for global options, non-interactive use, errors, and sensitive information handling.**
 
-Use `crater file` when a user needs to inspect, download, or upload files visible through their ordinary Crater identity.
+Use `crater file` when a user needs to inspect, download, upload, create, or move entries visible through their ordinary Crater identity.
 
 ## Supported workflow
 
@@ -119,3 +119,11 @@ Use `crater file upload` when a user wants to copy one local regular file into C
 3. If the target exists, choose a new path or obtain explicit permission to add `--overwrite`.
 4. A `404` from `/api/ss/upload` can indicate an older storage service or incorrect routing. Check the deployed service and route; this command requires API contract 2 and never falls back to WebDAV PUT.
 5. For API errors, inspect `category`, `code`, and `context.http_status` from JSON stderr without exposing credentials.
+
+## Create and move entries
+
+- Create exactly one directory: `crater file mkdir user/jobs/new-run`. Its parent must exist.
+- Move one entry to an exact destination: `crater file mv user/jobs/train.py user/archive/train.py`.
+- The destination must not exist. There is no overwrite mode for `mv`.
+- Do not move an entry to itself or below itself. Unsupported atomic no-clobber rename fails safely.
+- These commands require backend API contract 3. Inspect JSON error metadata for permission, missing-parent, or destination-conflict errors.

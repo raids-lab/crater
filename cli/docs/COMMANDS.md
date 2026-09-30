@@ -903,5 +903,41 @@ This section records the read-only API surface covered by the CLI after the broa
   - `bytes`（整数）：服务端完整接收并发布的字节数。
   - `overwrite`（布尔）：本次是否显式启用了覆盖选项。
   - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
-- **兼容性**：安全上传端点由 API 契约 2 提供，CLI 最低要求后端 API 版本 2。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **兼容性**：安全上传端点由 API 契约 2 提供；当前 CLI 因包含创建目录和移动命令，最低要求后端 API 版本 3。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **状态**：[x] Completed
+
+### `crater file mkdir <remote-path>`
+
+- **描述**：在远端逻辑文件空间创建一个目录。
+- **位置参数**：
+  - `<remote-path>`（必填）：`user`、`public` 或 `account` 下的完整目标目录路径，不能只给逻辑根。
+- **处理逻辑**：
+  - 调用 `MKCOL /api/ss/*path`。
+  - 只创建目标目录；父目录必须预先存在，不会递归补齐。
+  - 已存在的文件或目录按冲突处理，不会被修改。
+  - 权限和目标路径由 storage service 再次校验；CLI 只有在收到精确的 HTTP 201 后才报告成功。
+- **输出格式**：
+  - 默认模式：展示规范化后的已创建目录路径。
+  - `--json`：stdout 仅输出成功信封。
+- **`--json` 的 `data`**：`remote_path`（字符串）。
+- **兼容性**：要求后端 API 契约 3；CLI 不回退到旧语义。
+- **状态**：[x] Completed
+
+### `crater file mv <source-path> <destination-path>`
+
+- **描述**：把一个远端文件或目录移动到另一个精确目标路径。
+- **位置参数**：
+  - `<source-path>`（必填）：现有文件或目录的完整逻辑路径。
+  - `<destination-path>`（必填）：移动后的完整目标路径，不是仅包含目标父目录的路径。
+- **处理逻辑**：
+  - 调用 `POST /api/ss/move/*source-path`，请求体中的 `dst` 为完整目标路径。
+  - 源和目标都必须位于 `user`、`public` 或 `account` 下，且必须具备写权限。
+  - 拒绝同路径移动，也拒绝把目录移动到自身的后代路径。
+  - 目标父目录必须预先存在，不会自动创建。
+  - 不提供覆盖选项；目标已存在时始终返回冲突。服务端仅在文件系统支持原生原子 no-clobber rename 时执行移动；不支持该能力时安全失败，不会退化为可能覆盖并发目标的普通重命名。
+- **输出格式**：
+  - 默认模式：展示源路径和目标路径。
+  - `--json`：stdout 仅输出成功信封。
+- **`--json` 的 `data`**：`source_path`（字符串）、`destination_path`（字符串）。
+- **兼容性**：要求后端 API 契约 3；CLI 不回退到旧语义。
 - **状态**：[x] Completed

@@ -45,6 +45,17 @@ func runFileUploadSnapshots(t *testing.T, language string) {
 		{ID: "08-file-upload-404-json", Args: []string{"file", "upload", localFixture, "user/实验 data/result.bin", "--json", "--no-interactive"}},
 		{ID: "09-file-help", Args: []string{"file", "--help"}},
 		{ID: "10-file-upload-help", Args: []string{"file", "upload", "--help"}},
+		{ID: "11-file-mkdir-help", Args: []string{"file", "mkdir", "--help"}},
+		{ID: "12-file-mkdir-missing-json", Args: []string{"file", "mkdir", "--json", "--no-interactive"}},
+		{ID: "13-file-mkdir-root-json", Args: []string{"file", "mkdir", "user", "--json", "--no-interactive"}},
+		{ID: "14-file-mkdir-404-json", Args: []string{"file", "mkdir", "user/实验 data", "--json", "--no-interactive"}},
+		{ID: "15-file-mv-help", Args: []string{"file", "mv", "--help"}},
+		{ID: "16-file-mv-missing-source-json", Args: []string{"file", "mv", "--json", "--no-interactive"}},
+		{ID: "17-file-mv-missing-destination-json", Args: []string{"file", "mv", "user/source", "--json", "--no-interactive"}},
+		{ID: "18-file-mv-invalid-operands-json", Args: []string{"file", "mv", "user/../source", `account\destination`, "--json", "--no-interactive"}},
+		{ID: "19-file-mv-same-json", Args: []string{"file", "mv", "user/source", "/user//./source", "--json", "--no-interactive"}},
+		{ID: "20-file-mv-descendant-json", Args: []string{"file", "mv", "user/source", "user/source/nested", "--json", "--no-interactive"}},
+		{ID: "21-file-mv-404-json", Args: []string{"file", "mv", "user/source", "account/实验 data/result", "--json", "--no-interactive"}},
 	}
 
 	results := make([]*snaptest.Result, len(cases))

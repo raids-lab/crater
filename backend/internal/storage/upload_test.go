@@ -271,7 +271,7 @@ func TestOpenUploadTargetRejectsEscapingParentSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err := openUploadTarget(storage, "users/alice", "users/alice/escape/secret.bin")
+	_, _, err := openUploadTarget(storage, testRealUserRoot, "users/alice/escape/secret.bin")
 	if !errors.Is(err, errUploadParentInvalid) {
 		t.Fatalf("error = %v, want errUploadParentInvalid", err)
 	}
@@ -287,7 +287,7 @@ func TestOpenUploadTargetRejectsAuthorizedRootEscapingStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err := openUploadTarget(storage, "users/alice", "users/alice/secret.bin")
+	_, _, err := openUploadTarget(storage, testRealUserRoot, "users/alice/secret.bin")
 	if !errors.Is(err, errUploadParentInvalid) {
 		t.Fatalf("error = %v, want errUploadParentInvalid", err)
 	}
@@ -352,7 +352,7 @@ func TestOpenUploadTargetDoesNotCreateMissingParent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err := openUploadTarget(storage, "users/alice", "users/alice/missing/secret.bin")
+	_, _, err := openUploadTarget(storage, testRealUserRoot, "users/alice/missing/secret.bin")
 	if !errors.Is(err, errUploadParentInvalid) {
 		t.Fatalf("error = %v, want errUploadParentInvalid", err)
 	}
@@ -370,7 +370,7 @@ func TestOpenedUploadTargetRemainsAnchoredAcrossParentRename(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	parent, targetName, err := openUploadTarget(storage, "users/alice", "users/alice/jobs/result.bin")
+	parent, targetName, err := openUploadTarget(storage, testRealUserRoot, "users/alice/jobs/result.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +427,7 @@ func TestUploadFileHandlerHTTPContract(t *testing.T) {
 		mutate     func(*testing.T, string, *uploadHandlerDeps)
 	}{
 		{name: "invalid overwrite", path: "user/result.bin", query: "overwrite=yes", wantStatus: http.StatusBadRequest, wantCode: 40004},
-		{name: "invalid path", path: "user", query: "overwrite=false", wantStatus: http.StatusBadRequest, wantCode: 40004},
+		{name: "invalid path", path: testLogicalUserRoot, query: "overwrite=false", wantStatus: http.StatusBadRequest, wantCode: 40004},
 		{
 			name: "unauthorized", path: "user/result.bin", query: "overwrite=false",
 			wantStatus: http.StatusUnauthorized, wantCode: 40102,
@@ -505,9 +505,34 @@ func TestNormalizeUploadLogicalPath(t *testing.T) {
 	if got, err := normalizeUploadLogicalPath("/user//runs/./a.bin"); err != nil || got != "user/runs/a.bin" {
 		t.Fatalf("normalize = %q, %v", got, err)
 	}
-	for _, invalid := range []string{"user", "admin/file", "user/../public/file", `user\file`, "user/a\nb"} {
+	for _, invalid := range []string{testLogicalUserRoot, "admin/file", "user/../public/file", `user\file`, "user/a\nb"} {
 		if _, err := normalizeUploadLogicalPath(invalid); err == nil {
 			t.Errorf("normalizeUploadLogicalPath(%q) accepted invalid path", invalid)
+		}
+	}
+}
+
+func TestNormalizeWebDAVMutationLogicalPathKeepsAdminCompatibility(t *testing.T) {
+	for _, valid := range []string{
+		"user/new-directory",
+		"public/new-directory",
+		"account/new-directory",
+		"admin-user/alice/new-directory",
+		"admin-public/new-directory",
+		"admin-account/team/new-directory",
+	} {
+		if _, err := normalizeWebDAVMutationLogicalPath(valid); err != nil {
+			t.Errorf("normalizeWebDAVMutationLogicalPath(%q): %v", valid, err)
+		}
+	}
+	for _, invalid := range []string{
+		testLogicalUserRoot,
+		"admin-user",
+		"crater-model/new-directory",
+		"user/../public/new-directory",
+	} {
+		if _, err := normalizeWebDAVMutationLogicalPath(invalid); err == nil {
+			t.Errorf("normalizeWebDAVMutationLogicalPath(%q) accepted invalid path", invalid)
 		}
 	}
 }
@@ -597,10 +622,10 @@ func testUploadHandlerDeps(storage string) uploadHandlerDeps {
 			return model.ReadWrite
 		},
 		redirect: func(_ *gin.Context, logicalPath string, _ util.JWTMessage) (string, error) {
-			if logicalPath == "user" {
-				return "users/alice", nil
+			if logicalPath == testLogicalUserRoot {
+				return testRealUserRoot, nil
 			}
-			return "users/alice/" + strings.TrimPrefix(logicalPath, "user/"), nil
+			return testRealUserRoot + "/" + strings.TrimPrefix(logicalPath, testLogicalUserRoot+"/"), nil
 		},
 		openTarget:   openUploadTarget,
 		stagePublish: stageAndPublishFile,

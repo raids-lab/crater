@@ -57,6 +57,8 @@ type notFoundGroup struct {
 	ServiceSshdNotFound BizCode `code:"40402"`
 	// K8sResourceNotFound: 集群中找不到指定的 Pod, Deployment 或 Namespace
 	K8sResourceNotFound BizCode `code:"40403"`
+	// StorageResourceNotFound: 存储空间中找不到指定的文件或目录
+	StorageResourceNotFound BizCode `code:"40404"`
 }
 
 // methodNotAllowedGroup 405xx - 方法不允许

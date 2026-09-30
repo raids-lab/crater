@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"unicode"
 
 	"github.com/gin-gonic/gin"
@@ -35,6 +36,40 @@ var (
 	errUploadTargetNotRegular = errors.New("upload target is not a regular file")
 	errUploadParentInvalid    = errors.New("upload parent is missing, invalid, or outside the authorized storage root")
 )
+
+// uploadParentAccessError preserves the operating-system cause of a failed
+// parent-directory lookup while continuing to classify it as an invalid
+// upload parent for existing callers.
+type uploadParentAccessError struct {
+	cause error
+}
+
+func (e *uploadParentAccessError) Error() string {
+	return errUploadParentInvalid.Error()
+}
+
+func (e *uploadParentAccessError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.cause
+}
+
+func (e *uploadParentAccessError) Is(target error) bool {
+	return target == errUploadParentInvalid
+}
+
+func isUploadParentMissing(err error) bool {
+	var accessErr *uploadParentAccessError
+	return errors.As(err, &accessErr) &&
+		(errors.Is(accessErr, os.ErrNotExist) || errors.Is(accessErr, syscall.ENOTDIR))
+}
+
+func isUploadParentInfrastructureFailure(err error) bool {
+	var accessErr *uploadParentAccessError
+	return errors.As(err, &accessErr) &&
+		(errors.Is(accessErr, os.ErrPermission) || errors.Is(accessErr, syscall.EIO))
+}
 
 type uploadSourceError struct {
 	cause error
@@ -89,6 +124,7 @@ func UploadFile(c *gin.Context) {
 	uploadFileWithDeps(c, defaultUploadHandlerDeps())
 }
 
+//nolint:gocyclo // Authentication, path authorization, and staged-publish errors have distinct stable API mappings.
 func uploadFileWithDeps(c *gin.Context, deps uploadHandlerDeps) {
 	token, err := deps.authenticate(c)
 	if err != nil {
@@ -130,6 +166,11 @@ func uploadFileWithDeps(c *gin.Context, deps uploadHandlerDeps) {
 	parentRoot, targetName, err := deps.openTarget(deps.storageRoot, realRoot, realPath)
 	if err != nil {
 		if errors.Is(err, errUploadParentInvalid) {
+			if isUploadParentInfrastructureFailure(err) {
+				klog.Errorf("open upload target: %v", err)
+				resputil.HandleError(c, bizerr.Internal.FileSystemError.Wrap(err, "failed to access upload storage"))
+				return
+			}
 			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("upload parent directory is unavailable"))
 			return
 		}
@@ -187,6 +228,33 @@ func parseUploadOverwrite(raw string) (bool, error) {
 }
 
 func normalizeUploadLogicalPath(raw string) (string, error) {
+	return normalizeStorageLogicalPath(raw, func(root string) bool {
+		switch root {
+		case model.UserPath, model.PublicPath, model.AccountPath:
+			return true
+		default:
+			return false
+		}
+	})
+}
+
+func normalizeWebDAVMutationLogicalPath(raw string) (string, error) {
+	return normalizeStorageLogicalPath(raw, func(root string) bool {
+		switch root {
+		case model.UserPath,
+			model.PublicPath,
+			model.AccountPath,
+			model.AdminUserPath,
+			model.AdminPublicPath,
+			model.AdminAccountPath:
+			return true
+		default:
+			return false
+		}
+	})
+}
+
+func normalizeStorageLogicalPath(raw string, allowedRoot func(string) bool) (string, error) {
 	if strings.ContainsRune(raw, '\\') {
 		return "", errors.New("backslashes are not allowed")
 	}
@@ -211,9 +279,7 @@ func normalizeUploadLogicalPath(raw string) (string, error) {
 	if len(segments) < 2 {
 		return "", errors.New("a file below a logical root is required")
 	}
-	switch segments[0] {
-	case model.UserPath, model.PublicPath, model.AccountPath:
-	default:
+	if allowedRoot == nil || !allowedRoot(segments[0]) {
 		return "", errors.New("invalid logical root")
 	}
 	return strings.Join(segments, "/"), nil
@@ -248,7 +314,7 @@ func openUploadTarget(storageRoot, authorizedRealRoot, targetRealPath string) (*
 
 	authorized, err := storage.OpenRoot(authorizedPath)
 	if err != nil {
-		return nil, "", errUploadParentInvalid
+		return nil, "", &uploadParentAccessError{cause: err}
 	}
 	defer authorized.Close()
 
@@ -259,7 +325,7 @@ func openUploadTarget(storageRoot, authorizedRealRoot, targetRealPath string) (*
 	}
 	parent, err := authorized.OpenRoot(parentRelative)
 	if err != nil {
-		return nil, "", errUploadParentInvalid
+		return nil, "", &uploadParentAccessError{cause: err}
 	}
 	return parent, targetName, nil
 }
