@@ -1,6 +1,6 @@
 ---
 name: crater-cli-file
-version: 0.5.0
+version: 0.3.0
 description: "Use Crater CLI to list, transfer, create, move, and remove entries in user, public, and account storage spaces."
 metadata:
   requires:
@@ -126,7 +126,7 @@ Use `crater file upload` when a user wants to copy one local regular file into C
 - Move one entry to an exact destination: `crater file mv user/jobs/train.py user/archive/train.py`.
 - The destination must not exist. There is no overwrite mode for `mv`.
 - Do not move an entry to itself or below itself. Unsupported atomic no-clobber rename fails safely.
-- These commands require backend API contract 3. Inspect JSON error metadata for permission, missing-parent, or destination-conflict errors.
+- These commands require backend API contract 2. Inspect JSON error metadata for permission, missing-parent, or destination-conflict errors.
 
 ## Remove an entry
 
@@ -134,4 +134,4 @@ Use `crater file upload` when a user wants to copy one local regular file into C
 - Removing any directory, including an empty one, requires `--recursive`. Recursive removal requires explicit user authorization and `--recursive`; it can partially complete before an error.
 - JSON and non-interactive removal require `--yes`. Never add it without user authorization for the exact target.
 - Logical storage roots cannot be removed. Symlinks are removed as entries; their targets are not followed.
-- The safe remove endpoint requires backend API contract 4. Never fall back to the legacy `/delete` endpoint.
+- The safe remove endpoint requires backend API contract 2. Never fall back to the legacy `/delete` endpoint.
