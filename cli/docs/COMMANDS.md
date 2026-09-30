@@ -903,7 +903,7 @@ This section records the read-only API surface covered by the CLI after the broa
   - `bytes`（整数）：服务端完整接收并发布的字节数。
   - `overwrite`（布尔）：本次是否显式启用了覆盖选项。
   - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
-- **兼容性**：安全上传端点由 API 契约 2 提供；当前 CLI 因包含创建目录和移动命令，最低要求后端 API 版本 3。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **兼容性**：安全上传端点由 API 契约 2 提供；当前 CLI 因包含安全删除命令，最低要求后端 API 版本 4。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
 - **状态**：[x] Completed
 
 ### `crater file mkdir <remote-path>`
@@ -940,4 +940,26 @@ This section records the read-only API surface covered by the CLI after the broa
   - `--json`：stdout 仅输出成功信封。
 - **`--json` 的 `data`**：`source_path`（字符串）、`destination_path`（字符串）。
 - **兼容性**：要求后端 API 契约 3；CLI 不回退到旧语义。
+- **状态**：[x] Completed
+
+### `crater file rm <remote-path>`
+
+- **描述**：删除普通用户逻辑空间中的一个精确远端路径。
+- **位置参数**：
+  - `<remote-path>`（必填）：`user`、`public` 或 `account` 下的完整目标路径；不能是逻辑根，也不能包含原始 `.`、`..`、反斜杠、控制字符或平台保留根。
+- **选项**：
+  - `--recursive`（bool）：允许删除目录及其内容；删除目录时必须显式提供。
+  - `--yes, -y`（bool）：跳过交互确认。`--json` 或 `--no-interactive` 模式下必须显式提供。
+- **处理逻辑**：
+  - 调用专用安全接口 `DELETE /api/ss/files/*path?recursive=<bool>`，不会回退到旧的无条件递归删除接口。
+  - 交互模式在发送请求前展示规范化后的精确目标，默认选择 No；取消时不创建 API client，也不发送请求。
+  - 普通文件和最终 symlink 只删除该条目且不跟随链接；目录（包括空目录）必须显式提供 `--recursive`，并通过交互确认或显式 `--yes` 确认删除。
+  - 权限、授权根和条目类型由 storage service 再次校验；删除过程中类型发生变化时安全失败，不会自动升级为递归删除。
+  - 递归删除遇到条目变化、跨文件系统边界或底层错误时安全失败，可能已删除部分内容，无法回滚。
+  - 仅支持单目标，不支持 glob、批量删除、Trash、恢复或管理员跨用户删除。
+- **输出格式**：
+  - 默认模式：展示已删除的规范化远端路径。
+  - `--json`：stdout 仅输出成功信封；失败时 stdout 为空。
+- **`--json` 的 `data`**：`remote_path`（字符串）、`recursive`（布尔）。
+- **兼容性**：安全删除端点由 API 契约 4 提供；CLI 最低要求后端 API 版本 4，不回退到旧 `/delete` 端点。
 - **状态**：[x] Completed

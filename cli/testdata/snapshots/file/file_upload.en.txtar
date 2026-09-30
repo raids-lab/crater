@@ -106,7 +106,7 @@ crater file --help
 -- en/09-file-help/exit --
 0
 -- en/09-file-help/stdout --
-List, download, upload, create directories, and move entries in user, public, and account storage spaces.
+List, transfer, create, move, and remove entries in user, public, and account storage spaces.
 
 Usage:
   crater file [flags]
@@ -117,6 +117,7 @@ Available Commands:
   ls          List remote files
   mkdir       Create one remote directory
   mv          Move one remote file or directory
+  rm          Remove one remote file or directory
   upload      Upload one local file
 
 Global Flags:
@@ -287,6 +288,134 @@ crater file mv user/source account/实验 data/result --json --no-interactive
 4
 -- en/21-file-mv-404-json/stdout --
 -- en/21-file-mv-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/22-file-rm-help/argv --
+crater file rm --help
+-- en/22-file-rm-help/exit --
+0
+-- en/22-file-rm-help/stdout --
+Remove exactly one remote entry below user, public, or account storage. Directories require --recursive.
+
+Usage:
+  crater file rm <remote-path> [flags]
+
+Flags:
+      --recursive   Remove a directory and all of its contents
+  -y, --yes         Remove without confirmation
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/22-file-rm-help/stderr --
+-- en/23-file-rm-missing-json/argv --
+crater file rm --json --no-interactive
+-- en/23-file-rm-missing-json/exit --
+2
+-- en/23-file-rm-missing-json/stdout --
+-- en/23-file-rm-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "remote path is required (\u003cremote-path\u003e)"
+}
+-- en/24-file-rm-extra-arg-json/argv --
+crater file rm user/a user/b --json --no-interactive
+-- en/24-file-rm-extra-arg-json/exit --
+2
+-- en/24-file-rm-extra-arg-json/stdout --
+-- en/24-file-rm-extra-arg-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "too many arguments for crater file rm: got 2, want at most 1"
+}
+-- en/25-file-rm-root-json/argv --
+crater file rm user --yes --json --no-interactive
+-- en/25-file-rm-root-json/exit --
+2
+-- en/25-file-rm-root-json/stdout --
+-- en/25-file-rm-root-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "refusing to remove a storage root: \"user\""
+}
+-- en/26-file-rm-dot-json/argv --
+crater file rm user/./victim --yes --json --no-interactive
+-- en/26-file-rm-dot-json/exit --
+2
+-- en/26-file-rm-dot-json/stdout --
+-- en/26-file-rm-dot-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "remote path for removal must not contain . or .. segments: \"user/./victim\""
+}
+-- en/27-file-rm-traversal-json/argv --
+crater file rm user/../victim --yes --json --no-interactive
+-- en/27-file-rm-traversal-json/exit --
+2
+-- en/27-file-rm-traversal-json/stdout --
+-- en/27-file-rm-traversal-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "remote path for removal must not contain . or .. segments: \"user/../victim\""
+}
+-- en/28-file-rm-missing-yes-json/argv --
+crater file rm user/victim --json --no-interactive
+-- en/28-file-rm-missing-yes-json/exit --
+2
+-- en/28-file-rm-missing-yes-json/stdout --
+-- en/28-file-rm-missing-yes-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "--yes is required in non-interactive mode"
+}
+-- en/29-file-rm-json-implies-noninteractive/argv --
+crater file rm user/victim --json
+-- en/29-file-rm-json-implies-noninteractive/exit --
+2
+-- en/29-file-rm-json-implies-noninteractive/stdout --
+-- en/29-file-rm-json-implies-noninteractive/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "--yes is required in non-interactive mode"
+}
+-- en/30-file-rm-404-json/argv --
+crater file rm user/实验 data/result --yes --json --no-interactive
+-- en/30-file-rm-404-json/exit --
+4
+-- en/30-file-rm-404-json/stdout --
+-- en/30-file-rm-404-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/31-file-rm-recursive-404-json/argv --
+crater file rm account/runs/old --recursive --yes --json --no-interactive
+-- en/31-file-rm-recursive-404-json/exit --
+4
+-- en/31-file-rm-recursive-404-json/stdout --
+-- en/31-file-rm-recursive-404-json/stderr --
 {
   "category": "api_error",
   "code": "ERR_NOT_FOUND_404",

@@ -56,6 +56,16 @@ func runFileUploadSnapshots(t *testing.T, language string) {
 		{ID: "19-file-mv-same-json", Args: []string{"file", "mv", "user/source", "/user//./source", "--json", "--no-interactive"}},
 		{ID: "20-file-mv-descendant-json", Args: []string{"file", "mv", "user/source", "user/source/nested", "--json", "--no-interactive"}},
 		{ID: "21-file-mv-404-json", Args: []string{"file", "mv", "user/source", "account/实验 data/result", "--json", "--no-interactive"}},
+		{ID: "22-file-rm-help", Args: []string{"file", "rm", "--help"}},
+		{ID: "23-file-rm-missing-json", Args: []string{"file", "rm", "--json", "--no-interactive"}},
+		{ID: "24-file-rm-extra-arg-json", Args: []string{"file", "rm", "user/a", "user/b", "--json", "--no-interactive"}},
+		{ID: "25-file-rm-root-json", Args: []string{"file", "rm", "user", "--yes", "--json", "--no-interactive"}},
+		{ID: "26-file-rm-dot-json", Args: []string{"file", "rm", "user/./victim", "--yes", "--json", "--no-interactive"}},
+		{ID: "27-file-rm-traversal-json", Args: []string{"file", "rm", "user/../victim", "--yes", "--json", "--no-interactive"}},
+		{ID: "28-file-rm-missing-yes-json", Args: []string{"file", "rm", "user/victim", "--json", "--no-interactive"}},
+		{ID: "29-file-rm-json-implies-noninteractive", Args: []string{"file", "rm", "user/victim", "--json"}},
+		{ID: "30-file-rm-404-json", Args: []string{"file", "rm", "user/实验 data/result", "--yes", "--json", "--no-interactive"}},
+		{ID: "31-file-rm-recursive-404-json", Args: []string{"file", "rm", "account/runs/old", "--recursive", "--yes", "--json", "--no-interactive"}},
 	}
 
 	results := make([]*snaptest.Result, len(cases))

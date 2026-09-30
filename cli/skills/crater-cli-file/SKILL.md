@@ -1,7 +1,7 @@
 ---
 name: crater-cli-file
-version: 0.4.0
-description: "Use Crater CLI to list, download, upload, create directories, and move entries in user, public, and account storage spaces."
+version: 0.5.0
+description: "Use Crater CLI to list, transfer, create, move, and remove entries in user, public, and account storage spaces."
 metadata:
   requires:
     bins: ["crater"]
@@ -12,7 +12,7 @@ metadata:
 
 **CRITICAL — Before doing anything else, MUST read `crater-cli-shared` (possible path: [`../crater-cli-shared/SKILL.md`](../crater-cli-shared/SKILL.md)) for global options, non-interactive use, errors, and sensitive information handling.**
 
-Use `crater file` when a user needs to inspect, download, upload, create, or move entries visible through their ordinary Crater identity.
+Use `crater file` when a user needs to inspect, transfer, create, move, or remove entries visible through their ordinary Crater identity.
 
 ## Supported workflow
 
@@ -127,3 +127,11 @@ Use `crater file upload` when a user wants to copy one local regular file into C
 - The destination must not exist. There is no overwrite mode for `mv`.
 - Do not move an entry to itself or below itself. Unsupported atomic no-clobber rename fails safely.
 - These commands require backend API contract 3. Inspect JSON error metadata for permission, missing-parent, or destination-conflict errors.
+
+## Remove an entry
+
+- Remove one file: `crater file rm user/results/old.bin`.
+- Removing any directory, including an empty one, requires `--recursive`. Recursive removal requires explicit user authorization and `--recursive`; it can partially complete before an error.
+- JSON and non-interactive removal require `--yes`. Never add it without user authorization for the exact target.
+- Logical storage roots cannot be removed. Symlinks are removed as entries; their targets are not followed.
+- The safe remove endpoint requires backend API contract 4. Never fall back to the legacy `/delete` endpoint.

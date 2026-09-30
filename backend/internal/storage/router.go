@@ -21,4 +21,6 @@ func RegisterRoutes(r *gin.Engine) {
 	webdavGroup := r.Group("api/ss", WebDAVMiddleware())
 	RegisterDataset(webdavGroup)
 	RegisterFile(webdavGroup)
+	webdavGroup.DELETE("/files", RemoveFile)
+	webdavGroup.DELETE("/files/*path", RemoveFile)
 }
