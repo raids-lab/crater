@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
@@ -26,12 +27,22 @@ type ImagePullSecret struct {
 
 // TensorboardConfig configures the image used by dynamically created TensorBoard workloads.
 type TensorboardConfig struct {
-	Image            string            `json:"image"`
-	ImagePullPolicy  string            `json:"imagePullPolicy"`
-	ImagePullSecrets []ImagePullSecret `json:"imagePullSecrets,omitempty"`
+	Image              string              `json:"image"`
+	ImagePullPolicy    string              `json:"imagePullPolicy"`
+	ImagePullSecrets   []ImagePullSecret   `json:"imagePullSecrets,omitempty"`
+	IngressAuthEnabled *bool               `json:"ingressAuthEnabled,omitempty"`
+	NodeSelector       map[string]string   `json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration `json:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity    `json:"affinity,omitempty"`
 }
 
-func (c TensorboardConfig) validationErrors() []string {
+// IsIngressAuthEnabled keeps Ingress authentication enabled unless an
+// administrator explicitly disables it for a local development environment.
+func (c *TensorboardConfig) IsIngressAuthEnabled() bool {
+	return c.IngressAuthEnabled == nil || *c.IngressAuthEnabled
+}
+
+func (c *TensorboardConfig) validationErrors() []string {
 	if c.Image == "" && c.ImagePullPolicy == "" && len(c.ImagePullSecrets) == 0 {
 		return nil
 	}
@@ -54,7 +65,7 @@ func (c TensorboardConfig) validationErrors() []string {
 	return errors
 }
 
-func (c TensorboardConfig) logSummary() {
+func (c *TensorboardConfig) logSummary() {
 	if c.Image == "" {
 		return
 	}

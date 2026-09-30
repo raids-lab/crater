@@ -163,8 +163,7 @@ function RouteComponent() {
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
       const tensorboardLogDir =
-        values.tensorboardLogDir?.trim() ||
-        getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}`, values.jobName)
+        values.tensorboardLogDir?.trim() || getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}`)
 
       return apiTrainingCreate({
         name: values.jobName,
@@ -427,7 +426,7 @@ conda activate base;
                     <TensorboardLogDirFormField
                       defaultPath={getDefaultTensorboardLogDir(
                         `/home/${user?.name ?? '<user>'}`,
-                        form.watch('jobName') || '<job-name>'
+                        '<unique-job-name>'
                       )}
                       descriptionKey="tensorboard.singleJob.logDirDescription"
                       inputProps={{ ...field, value: field.value ?? '' }}

@@ -33,6 +33,7 @@ import (
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/pkg/crclient"
 )
 
 const (
@@ -142,4 +143,22 @@ func TestGenerateUpdateJobModel(t *testing.T) {
 		So(group, ShouldBeNil)
 		So(err, ShouldBeNil)
 	})
+}
+
+func TestShouldReconcileVCJobSkipsTensorboard(t *testing.T) {
+	t.Parallel()
+
+	tensorboardJob := &batch.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
+		crclient.LabelKeyTaskType: "tensorboard",
+	}}}
+	if shouldReconcileVCJob(tensorboardJob) {
+		t.Fatal("TensorBoard auxiliary workloads must not be reconciled as normal jobs")
+	}
+
+	normalJob := &batch.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
+		crclient.LabelKeyTaskType: "jupyter",
+	}}}
+	if !shouldReconcileVCJob(normalJob) {
+		t.Fatal("normal Volcano Jobs must remain managed by the reconciler")
+	}
 }

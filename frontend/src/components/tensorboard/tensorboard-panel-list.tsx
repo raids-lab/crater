@@ -130,7 +130,7 @@ export default function TensorboardPanelList() {
   })
 
   const activeTensorboardCount = (tensorboardsQuery.data ?? []).filter(
-    (board) => new Date(board.expiration).getTime() > Date.now()
+    (board) => board.status !== 'failed' && board.status !== 'expired'
   ).length
   const hasReachedLimit = activeTensorboardCount >= MAX_ACTIVE_TENSORBOARDS
 
@@ -154,7 +154,12 @@ export default function TensorboardPanelList() {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('tensorboard.list.expiration')} />
         ),
-        cell: ({ row }) => <TimeDistance date={row.getValue('expiration')} />,
+        cell: ({ row }) =>
+          row.original.expiration ? (
+            <TimeDistance date={row.original.expiration} />
+          ) : (
+            t('tensorboard.list.expirationAfterStart')
+          ),
       },
       {
         accessorKey: 'status',

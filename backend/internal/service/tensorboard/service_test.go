@@ -1,3 +1,19 @@
+/*
+Copyright 2026 The Crater Project Team, RAIDS-Lab
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package tensorboard
 
 import (
@@ -11,7 +27,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/payload"
-	interutil "github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
 
@@ -39,6 +54,37 @@ func sourceJob(volumes []corev1.Volume, mounts []corev1.VolumeMount, logDir stri
 		},
 	}
 	return &model.Job{Attributes: datatypes.NewJSONType(job)}
+}
+
+func TestIsEligibleSourceJob(t *testing.T) {
+	tests := []struct {
+		name string
+		job  *model.Job
+		want bool
+	}{
+		{
+			name: "regular job",
+			job:  &model.Job{JobType: model.JobTypeCustom},
+			want: true,
+		},
+		{
+			name: "TensorBoard job",
+			job:  &model.Job{JobType: model.JobType(labelKeyTypeTensorboard)},
+			want: false,
+		},
+		{
+			name: "nil job",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isEligibleSourceJob(tt.job); got != tt.want {
+				t.Fatalf("isEligibleSourceJob() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func pvcVolume(name, claim string) corev1.Volume {
@@ -341,9 +387,9 @@ func readyTensorboardDeployment() *appsv1.Deployment {
 			Name:      "tb-panel-1",
 			Namespace: "jobs",
 			Labels: map[string]string{
-				interutil.LabelKeyTensorboardID: "panel-1",
-				crclient.LabelKeyTaskUser:       "alice",
-				crclient.LabelKeyTaskType:       interutil.LabelKeyTypeTensorboard,
+				labelKeyTensorboardID:     "panel-1",
+				crclient.LabelKeyTaskUser: "alice",
+				crclient.LabelKeyTaskType: labelKeyTypeTensorboard,
 			},
 		},
 		Status: appsv1.DeploymentStatus{
@@ -391,10 +437,10 @@ func TestGetStatusUsesDeploymentState(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			status, reason, message := getStatus(tt.deployment)
+			status, reason, message := getDeploymentStatus(tt.deployment)
 			if status != tt.wantStatus || reason != tt.wantReason || message != tt.wantMessage {
 				t.Fatalf(
-					"getStatus() = (%q, %q, %q), want (%q, %q, %q)",
+					"getDeploymentStatus() = (%q, %q, %q), want (%q, %q, %q)",
 					status,
 					reason,
 					message,
@@ -402,6 +448,51 @@ func TestGetStatusUsesDeploymentState(t *testing.T) {
 					tt.wantReason,
 					tt.wantMessage,
 				)
+			}
+		})
+	}
+}
+
+func TestGetJobStatusUsesVolcanoAndPodState(t *testing.T) {
+	readyPod := &corev1.Pod{Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{
+		Type: corev1.PodReady, Status: corev1.ConditionTrue,
+	}}}}
+	expiredPod := &corev1.Pod{Status: corev1.PodStatus{Reason: "DeadlineExceeded"}}
+
+	tests := []struct {
+		name       string
+		phase      batch.JobPhase
+		pod        *corev1.Pod
+		wantStatus payload.TensorboardStatus
+		wantReason payload.TensorboardStatusReason
+	}{
+		{name: "pending", phase: batch.Pending, wantStatus: payload.TensorboardStatusPending,
+			wantReason: payload.TensorboardStatusReasonWaitingForSchedule},
+		{name: "pod starting", phase: batch.Running, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusStarting,
+			wantReason: payload.TensorboardStatusReasonPodStarting},
+		{name: "ready", phase: batch.Running, pod: readyPod, wantStatus: payload.TensorboardStatusReady,
+			wantReason: payload.TensorboardStatusReasonReady},
+		{name: "restarting", phase: batch.Restarting, pod: readyPod, wantStatus: payload.TensorboardStatusStarting,
+			wantReason: payload.TensorboardStatusReasonPodStarting},
+		{name: "runtime expired", phase: batch.Failed, pod: expiredPod, wantStatus: payload.TensorboardStatusExpired,
+			wantReason: payload.TensorboardStatusReasonRuntimeExpired},
+		{name: "job failed", phase: batch.Failed, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusFailed,
+			wantReason: payload.TensorboardStatusReasonJobFailed},
+		{name: "aborting", phase: batch.Aborting, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusFailed,
+			wantReason: payload.TensorboardStatusReasonJobFailed},
+		{name: "completing", phase: batch.Completing, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusFailed,
+			wantReason: payload.TensorboardStatusReasonJobFailed},
+		{name: "terminating", phase: batch.Terminating, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusFailed,
+			wantReason: payload.TensorboardStatusReasonJobFailed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			job := &batch.Job{Status: batch.JobStatus{State: batch.JobState{Phase: tt.phase}}}
+			status, reason, _ := getJobStatus(job, tt.pod)
+			if status != tt.wantStatus || reason != tt.wantReason {
+				t.Fatalf("getJobStatus() = (%q, %q), want (%q, %q)",
+					status, reason, tt.wantStatus, tt.wantReason)
 			}
 		})
 	}

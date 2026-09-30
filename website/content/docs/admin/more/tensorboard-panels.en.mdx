@@ -1,0 +1,54 @@
+---
+title: Deploy and Operate TensorBoard Panels
+description: Configure TensorBoard images, authentication, scheduling, TTL, upgrades, and rollback
+---
+
+<ChartBadge />
+
+## Image and scheduling
+
+Dynamically created TensorBoard Pods use these Helm values:
+
+- `images.tensorboard.repository` and `images.tensorboard.tag`
+- global `imagePullPolicy` and `imagePullSecrets`
+- TensorBoard-only `tensorboard.nodeSelector`, `tensorboard.tolerations`, and `tensorboard.affinity`
+- TensorBoard Ingress authentication switch `tensorboard.ingressAuthEnabled` (default: `true`)
+
+A private-registry pull secret must exist in the job namespace. Panels are submitted to the owner's Volcano queue. The default affinity prefers nodes without GPUs but does not force panels onto control-plane nodes. Override the TensorBoard-only values when dedicated service nodes are available, then verify actual Pod placement and events.
+
+## Access authentication
+
+The TensorBoard Ingress uses ingress-nginx external auth to call Crater. Before a panel opens, a protected API verifies the user and panel owner, then issues a short-lived Secure, HttpOnly, SameSite=Strict cookie scoped to that panel path. Deploy ingress-nginx and configure HTTPS/TLS correctly for the Crater host. A random URL is not a security boundary.
+
+Keep `tensorboard.ingressAuthEnabled: true` in shared, test, and production environments. Setting it to `false` removes the external-auth annotations from the Ingress, so anyone with the URL can bypass Crater login and ownership checks. Disable it only in an explicitly network-isolated local development environment.
+
+Verify with two ordinary users and a signed-out window: another user's panel must be denied, a signed-out client must not open it, and the old URL must stop working immediately after deletion or expiration.
+
+## TTL and status
+
+Each panel is a one-Pod Volcano Job requesting 100m CPU and 256Mi memory. Its Pod may run for four days after it starts. The Job becomes terminal at the active deadline, and Volcano removes it five minutes later through `ttlSecondsAfterFinished`; Service and Ingress resources are removed through owner references. Each user may have ten active or pending panels. Legacy Deployment panels remain supported by the old expiration collector during migration.
+
+API states `pending`, `starting`, `ready`, `failed`, and `expired` are derived from the Volcano Job phase and Pod readiness. `pending` matches the Pending phase used by regular VCJobs. Service, Ingress, and EndpointSlice health are not aggregated. Troubleshooting should also inspect the Volcano queue, Pod events, Service endpoints, and ingress-controller logs.
+
+## Upgrade and rollback
+
+Upgrade **backend → frontend**. Recreate pre-upgrade panels so their Ingress resources carry the current external-auth annotations.
+
+Before rolling back to a backend that only understands Deployment panels, list and confirm both new and legacy resources:
+
+```bash
+kubectl -n <job-namespace> get jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> get deployment -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete deployment -l crater.raids.io/task-type=tensorboard
+```
+
+The delete commands remove every listed TensorBoard panel; confirm the scope first. An older backend cannot list, authorize, or delete VCJob-based panels, while remaining legacy Deployments still require the old GC or manual cleanup.
+
+## Release verification
+
+- Create a panel with a non-default registry, pull secret, and production tag.
+- Confirm Pod placement in a cluster with a control-plane taint.
+- Cover personal directories, single and multiple sources, duplicate display names, TensorFlow PS, pending/ready/failed/expired states, four-day cleanup, quota concurrency, and error paths.
+- Place a large unschedulable GPU job before a panel and confirm the small CPU-only panel can still run when compatible CPU and memory are available.
+- Run Chart lint and template checks, and verify the rendered backend configuration contains the image, pull policy, pull secrets, `ingressAuthEnabled`, and scheduling fields.

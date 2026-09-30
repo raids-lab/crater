@@ -91,6 +91,7 @@ func (r *VcJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Named("vcjob-reconciler").
 		For(&batch.Job{}).
 		Owns(&scheduling.PodGroup{}, builder.WithPredicates(podGroupPhaseChanged())).
+		WithEventFilter(predicate.NewPredicateFuncs(shouldReconcileVCJob)).
 		WithOptions(controller.Options{}).
 		Complete(r)
 }
@@ -108,6 +109,10 @@ func podGroupPhaseChanged() predicate.Predicate {
 			return oldGroup.Status.Phase != newGroup.Status.Phase
 		},
 	}
+}
+
+func shouldReconcileVCJob(object client.Object) bool {
+	return object.GetLabels()[crclient.LabelKeyTaskType] != "tensorboard"
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -129,6 +134,11 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	var job batch.Job
 	err := r.Get(ctx, req.NamespacedName, &job)
+
+	// PodGroup events may enqueue an auxiliary Job without carrying its labels.
+	if err == nil && !shouldReconcileVCJob(&job) {
+		return ctrl.Result{}, nil
+	}
 
 	if err != nil && !k8serrors.IsNotFound(err) {
 		logger.Error(err, "unable to fetch VcJob")

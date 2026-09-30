@@ -153,7 +153,7 @@ function RouteComponent() {
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
-      const defaultLogDir = getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}`, values.jobName)
+      const defaultLogDir = getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}`)
       const tensorboardLogDir = values.tensorboardLogDir?.trim() || defaultLogDir
 
       return apiJupyterCreate({
@@ -342,7 +342,7 @@ function RouteComponent() {
                   render={({ field }) => {
                     const defaultPath = getDefaultTensorboardLogDir(
                       `/home/${user?.name ?? '<user>'}`,
-                      form.watch('jobName') || '<job-name>'
+                      '<unique-job-name>'
                     )
 
                     return (

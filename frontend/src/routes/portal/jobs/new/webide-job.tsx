@@ -130,10 +130,7 @@ function RouteComponent() {
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
-      const defaultLogDir = getDefaultTensorboardLogDir(
-        `/home/${user?.name ?? ''}/workspace`,
-        values.jobName
-      )
+      const defaultLogDir = getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}/workspace`)
       const tensorboardLogDir = values.tensorboardLogDir?.trim() || defaultLogDir
 
       return apiWebIDECreate({
@@ -325,7 +322,7 @@ function RouteComponent() {
                   render={({ field }) => {
                     const defaultPath = getDefaultTensorboardLogDir(
                       `/home/${user?.name ?? '<user>'}/workspace`,
-                      form.watch('jobName') || '<job-name>'
+                      '<unique-job-name>'
                     )
 
                     return (

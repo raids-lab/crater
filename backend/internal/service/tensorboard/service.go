@@ -1,3 +1,19 @@
+/*
+Copyright 2026 The Crater Project Team, RAIDS-Lab
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package tensorboard
 
 import (
@@ -16,6 +32,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -24,6 +41,7 @@ import (
 	interutil "github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
 const (
@@ -71,10 +89,21 @@ func getTensorboardLogDir(jobDB *model.Job) string {
 	return ""
 }
 
+func isEligibleSourceJob(jobDB *model.Job) bool {
+	return jobDB != nil && jobDB.JobType != model.JobType(labelKeyTypeTensorboard)
+}
+
 func getSourceJob(ctx context.Context, jobName string, userID uint) (*model.Job, error) {
-	return query.Job.WithContext(ctx).
+	jobDB, err := query.Job.WithContext(ctx).
 		Where(query.Job.JobName.Eq(jobName), query.Job.UserID.Eq(userID)).
 		First()
+	if err != nil {
+		return nil, err
+	}
+	if !isEligibleSourceJob(jobDB) {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return jobDB, nil
 }
 
 func wrapSourceJobLookupError(err error) error {
@@ -105,7 +134,7 @@ func isActiveTensorboard(deploy *appsv1.Deployment, now time.Time) bool {
 		return false
 	}
 
-	expiration := deploy.Annotations[interutil.AnnotationKeyExpirationTime]
+	expiration := deploy.Annotations[annotationKeyExpirationTime]
 	if expiration == "" {
 		return true
 	}
@@ -116,24 +145,51 @@ func isActiveTensorboard(deploy *appsv1.Deployment, now time.Time) bool {
 	return now.Before(expiresAt)
 }
 
-func isTensorboardOwner(deploy *appsv1.Deployment, username string) bool {
-	return deploy.Labels != nil && deploy.Labels[crclient.LabelKeyTaskUser] == username
+func isTensorboardOwner(object metav1.Object, username string) bool {
+	labels := object.GetLabels()
+	return labels != nil && labels[crclient.LabelKeyTaskUser] == username
+}
+
+func isActiveTensorboardJob(job *batch.Job) bool {
+	if job.DeletionTimestamp != nil {
+		return false
+	}
+	switch string(job.Status.State.Phase) {
+	case "Completed", "Failed", "Aborted", "Terminated":
+		return false
+	default:
+		return true
+	}
 }
 
 func (svc *TensorboardService) activeTensorboardCount(ctx context.Context, username string) (int, error) {
 	cfg := config.GetConfig()
+	labels := client.MatchingLabels{
+		crclient.LabelKeyTaskType: labelKeyTypeTensorboard,
+		crclient.LabelKeyTaskUser: username,
+	}
+	var jobList batch.JobList
+	if err := svc.crClient.List(ctx, &jobList,
+		client.InNamespace(cfg.Namespaces.Job),
+		labels,
+	); err != nil {
+		return 0, err
+	}
+
 	var deployList appsv1.DeploymentList
 	if err := svc.crClient.List(ctx, &deployList,
 		client.InNamespace(cfg.Namespaces.Job),
-		client.MatchingLabels{
-			crclient.LabelKeyTaskType: interutil.LabelKeyTypeTensorboard,
-			crclient.LabelKeyTaskUser: username,
-		},
+		labels,
 	); err != nil {
 		return 0, err
 	}
 
 	count := 0
+	for i := range jobList.Items {
+		if isActiveTensorboardJob(&jobList.Items[i]) {
+			count++
+		}
+	}
 	now := time.Now()
 	for i := range deployList.Items {
 		if isActiveTensorboard(&deployList.Items[i], now) {
@@ -468,13 +524,58 @@ func (svc *TensorboardService) prepareStorage(
 	}
 }
 
+func (svc *TensorboardService) createTensorboardJob(
+	ctx context.Context,
+	token interutil.JWTMessage,
+	tbID string,
+	ingressPrefixPath string,
+	storage *tensorboardStorage,
+) (*batch.Job, error) {
+	cfg := config.GetConfig()
+	if strings.TrimSpace(cfg.Tensorboard.Image) == "" || cfg.Tensorboard.ImagePullPolicy == "" {
+		return nil, bizerr.Internal.K8sServiceError.New("TensorBoard image configuration is incomplete")
+	}
+
+	imagePullSecrets := make([]corev1.LocalObjectReference, 0, len(cfg.Tensorboard.ImagePullSecrets))
+	for _, secret := range cfg.Tensorboard.ImagePullSecrets {
+		imagePullSecrets = append(imagePullSecrets, corev1.LocalObjectReference{Name: secret.Name})
+	}
+	if err := vcqueue.EnsureAccountQueueExists(ctx, svc.crClient, token, token.AccountID); err != nil {
+		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "ensure TensorBoard account queue failed")
+	}
+	if err := vcqueue.EnsureUserQueueExists(ctx, svc.crClient, token, token.AccountID, token.UserID); err != nil {
+		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "ensure TensorBoard user queue failed")
+	}
+
+	builder := newJobBuilder(cfg.Namespaces.Job, &workloadConfig{
+		Image:            cfg.Tensorboard.Image,
+		ImagePullPolicy:  corev1.PullPolicy(cfg.Tensorboard.ImagePullPolicy),
+		ImagePullSecrets: imagePullSecrets,
+		NodeSelector:     cfg.Tensorboard.NodeSelector,
+		Tolerations:      cfg.Tensorboard.Tolerations,
+		Affinity:         cfg.Tensorboard.Affinity,
+	})
+	job := builder.buildJob(
+		tbID,
+		token.Username,
+		vcqueue.ResolveJobQueueName(token),
+		storage.logDir,
+		ingressPrefixPath,
+		storage.volumes,
+		storage.volumeMounts,
+	)
+	if err := svc.crClient.Create(ctx, job); err != nil {
+		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "create TensorBoard Volcano Job failed")
+	}
+	return job, nil
+}
+
 func (svc *TensorboardService) Create(
 	ctx context.Context,
-	userID uint,
-	username string,
+	token interutil.JWTMessage,
 	req *payload.CreateTensorboardReq,
 ) (*payload.CreateTensorboardResp, error) {
-	activeCount, err := svc.activeTensorboardCount(ctx, username)
+	activeCount, err := svc.activeTensorboardCount(ctx, token.Username)
 	if err != nil {
 		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "check TensorBoard panel quota failed")
 	}
@@ -485,7 +586,7 @@ func (svc *TensorboardService) Create(
 		))
 	}
 
-	storage, err := svc.prepareStorage(ctx, userID, req)
+	storage, err := svc.prepareStorage(ctx, token.UserID, req)
 	if err != nil {
 		return nil, err
 	}
@@ -507,69 +608,48 @@ func (svc *TensorboardService) Create(
 	}
 
 	tbID := uuid.New().String()[:8]
-	prefix := fmt.Sprintf("%s-%s", username, tbID) // Use an exclusive route prefix for each panel.
+	prefix := fmt.Sprintf("%s-%s", token.Username, tbID) // Use an exclusive route prefix for each panel.
 	ingressPrefixPath := fmt.Sprintf("/ingress/%s", prefix)
 
-	cfg := config.GetConfig()
-	ns := cfg.Namespaces.Job
-	if strings.TrimSpace(cfg.Tensorboard.Image) == "" ||
-		cfg.Tensorboard.ImagePullPolicy == "" {
-		return nil, bizerr.Internal.K8sServiceError.New("TensorBoard image configuration is incomplete")
-	}
-	imagePullSecrets := make([]corev1.LocalObjectReference, 0, len(cfg.Tensorboard.ImagePullSecrets))
-	for _, secret := range cfg.Tensorboard.ImagePullSecrets {
-		imagePullSecrets = append(imagePullSecrets, corev1.LocalObjectReference{Name: secret.Name})
-	}
-	builder := interutil.NewBuilder(ns, interutil.TensorboardImageConfig{
-		Image:            cfg.Tensorboard.Image,
-		ImagePullPolicy:  corev1.PullPolicy(cfg.Tensorboard.ImagePullPolicy),
-		ImagePullSecrets: imagePullSecrets,
-	})
-
-	// Build the Kubernetes deployment.
-	deploy := builder.BuildDeployment(
-		tbID,
-		username,
-		storage.logDir,
-		ingressPrefixPath,
-		req.TTLHours,
-		storage.volumes,
-		storage.volumeMounts,
-	)
-
-	if err := svc.crClient.Create(ctx, deploy); err != nil {
-		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "create TensorBoard deployment failed")
+	job, err := svc.createTensorboardJob(ctx, token, tbID, ingressPrefixPath, storage)
+	if err != nil {
+		return nil, err
 	}
 
-	// Use owner references so network resources are garbage-collected with the deployment.
+	// Use owner references so network resources are garbage-collected with the Volcano Job.
 	ownerRefs := []metav1.OwnerReference{
-		*metav1.NewControllerRef(deploy, appsv1.SchemeGroupVersion.WithKind("Deployment")),
+		*metav1.NewControllerRef(job, batch.SchemeGroupVersion.WithKind("Job")),
 	}
 
 	// TensorBoard listens on port 6006 inside the container.
 	port := &corev1.ServicePort{
 		Name:       tensorboardHTTPPortName,
-		Port:       interutil.TensorboardPort,
-		TargetPort: intstr.FromInt(interutil.TensorboardPort),
+		Port:       tensorboardPort,
+		TargetPort: intstr.FromInt(tensorboardPort),
 		Protocol:   corev1.ProtocolTCP,
 	}
 
 	// Reuse ServiceManager to create the service and ingress.
+	cfg := config.GetConfig()
 	host := cfg.Host // Global domain mapped from server config
+	ingressOptions := make([]crclient.IngressOptions, 0, 1)
+	if cfg.Tensorboard.IsIngressAuthEnabled() {
+		ingressOptions = append(ingressOptions, crclient.IngressOptions{Annotations: map[string]string{
+			"nginx.ingress.kubernetes.io/auth-url":    "https://$host" + tensorboardAuthPath,
+			"nginx.ingress.kubernetes.io/auth-method": "GET",
+		}})
+	}
 	urlPath, err := svc.serviceManager.CreateIngressWithPrefix(
 		ctx,
 		ownerRefs,
-		deploy.Labels, // Select the pods mapped to the deployment
+		job.Labels,
 		port,
 		host,
 		prefix,
-		crclient.IngressOptions{Annotations: map[string]string{
-			"nginx.ingress.kubernetes.io/auth-url":    "https://$host" + tensorboardAuthPath,
-			"nginx.ingress.kubernetes.io/auth-method": "GET",
-		}},
+		ingressOptions...,
 	)
 	if err != nil {
-		_ = svc.crClient.Delete(ctx, deploy)
+		_ = svc.crClient.Delete(ctx, job)
 		return nil, bizerr.Internal.K8sServiceError.Wrap(
 			err,
 			"create TensorBoard service and ingress failed",
@@ -582,94 +662,122 @@ func (svc *TensorboardService) Create(
 	}, nil
 }
 
-// GetAccessPath verifies panel ownership before an authenticated browser session is created.
+type tensorboardPanel struct {
+	job        *batch.Job
+	deployment *appsv1.Deployment
+}
+
+func (svc *TensorboardService) getTensorboardPanel(ctx context.Context, tbID string) (*tensorboardPanel, error) {
+	cfg := config.GetConfig()
+	key := client.ObjectKey{Namespace: cfg.Namespaces.Job, Name: fmt.Sprintf("tb-%s", tbID)}
+
+	var job batch.Job
+	if err := svc.crClient.Get(ctx, key, &job); err == nil {
+		return &tensorboardPanel{job: &job}, nil
+	} else if !k8serrors.IsNotFound(err) {
+		return nil, wrapTensorboardLookupError(err)
+	}
+
+	var deploy appsv1.Deployment
+	if err := svc.crClient.Get(ctx, key, &deploy); err != nil {
+		return nil, wrapTensorboardLookupError(err)
+	}
+	return &tensorboardPanel{deployment: &deploy}, nil
+}
+
+func (panel *tensorboardPanel) object() client.Object {
+	if panel.job != nil {
+		return panel.job
+	}
+	return panel.deployment
+}
+
+func (svc *TensorboardService) getTensorboardPod(ctx context.Context, tbID string) (*corev1.Pod, error) {
+	var pods corev1.PodList
+	err := svc.crClient.List(ctx, &pods,
+		client.InNamespace(config.GetConfig().Namespaces.Job),
+		client.MatchingLabels{
+			labelKeyTensorboardID:     tbID,
+			crclient.LabelKeyTaskType: labelKeyTypeTensorboard,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	if len(pods.Items) == 0 {
+		return nil, nil
+	}
+	return &pods.Items[0], nil
+}
+
+// GetAccessPath verifies panel ownership and activity before creating a browser session.
 func (svc *TensorboardService) GetAccessPath(
 	ctx context.Context,
 	username string,
 	tbID string,
 ) (string, error) {
 	cfg := config.GetConfig()
-	var deploy appsv1.Deployment
-	err := svc.crClient.Get(ctx, client.ObjectKey{
-		Namespace: cfg.Namespaces.Job,
-		Name:      fmt.Sprintf("tb-%s", tbID),
-	}, &deploy)
+	panel, err := svc.getTensorboardPanel(ctx, tbID)
 	if err != nil {
-		return "", wrapTensorboardLookupError(err)
+		return "", err
 	}
-	if !isTensorboardOwner(&deploy, username) {
+	if !isTensorboardOwner(panel.object(), username) {
 		return "", bizerr.Forbidden.PermissionDenied.New(
 			"you do not have permission to access this TensorBoard panel",
+		)
+	}
+	if panel.job != nil && !isActiveTensorboardJob(panel.job) {
+		return "", bizerr.Conflict.ResourceStatusError.New(
+			"this TensorBoard panel is no longer running",
+		)
+	}
+	if panel.job != nil {
+		pod, podErr := svc.getTensorboardPod(ctx, tbID)
+		if podErr != nil {
+			return "", bizerr.Internal.K8sServiceError.Wrap(
+				podErr,
+				"check TensorBoard Pod failed",
+			)
+		}
+		if tensorboardPodExpired(pod) ||
+			(pod != nil && pod.Status.StartTime != nil &&
+				time.Now().After(pod.Status.StartTime.Add(
+					time.Duration(tensorboardMaxRuntimeSeconds)*time.Second,
+				))) {
+			return "", bizerr.Conflict.ResourceStatusError.New(
+				"this TensorBoard panel has expired",
+			)
+		}
+	}
+	if panel.deployment != nil && !isActiveTensorboard(panel.deployment, time.Now()) {
+		return "", bizerr.Conflict.ResourceStatusError.New(
+			"this TensorBoard panel has expired",
 		)
 	}
 
 	return fmt.Sprintf("https://%s/ingress/%s-%s", cfg.Host, username, tbID), nil
 }
 
-func (svc *TensorboardService) ExtendTTL(
-	ctx context.Context,
-	username string,
-	tbID string,
-	req *payload.ExtendTTLReq,
-) (string, error) {
-	cfg := config.GetConfig()
-	ns := cfg.Namespaces.Job
-
-	// Find the deployment for this panel.
-	var deploy appsv1.Deployment
-	err := svc.crClient.Get(ctx, client.ObjectKey{Namespace: ns, Name: fmt.Sprintf("tb-%s", tbID)}, &deploy)
-	if err != nil {
-		return "", wrapTensorboardLookupError(err)
-	}
-
-	// Verify ownership before mutating the panel.
-	if !isTensorboardOwner(&deploy, username) {
-		return "", bizerr.Forbidden.PermissionDenied.New(
-			"you do not have permission to modify this TensorBoard panel",
-		)
-	}
-
-	// Calculate the new expiration time from now.
-	newExpiration := time.Now().Add(time.Duration(req.TTLHours) * time.Hour).Format(time.RFC3339)
-	if deploy.Annotations == nil {
-		deploy.Annotations = make(map[string]string)
-	}
-	deploy.Annotations["crater.raids.io/expiration-time"] = newExpiration
-
-	if err := svc.crClient.Update(ctx, &deploy); err != nil {
-		return "", bizerr.Internal.K8sServiceError.Wrap(
-			err,
-			"update TensorBoard panel expiration failed",
-		)
-	}
-
-	return newExpiration, nil
-}
-
 func (svc *TensorboardService) Delete(ctx context.Context, username, tbID string) error {
-	cfg := config.GetConfig()
-	ns := cfg.Namespaces.Job
-
-	var deploy appsv1.Deployment
-	err := svc.crClient.Get(ctx, client.ObjectKey{Namespace: ns, Name: fmt.Sprintf("tb-%s", tbID)}, &deploy)
+	panel, err := svc.getTensorboardPanel(ctx, tbID)
 	if err != nil {
-		return wrapTensorboardLookupError(err)
+		return err
 	}
 
-	if !isTensorboardOwner(&deploy, username) {
+	if !isTensorboardOwner(panel.object(), username) {
 		return bizerr.Forbidden.PermissionDenied.New(
 			"you do not have permission to delete this TensorBoard panel",
 		)
 	}
 
-	if err := svc.crClient.Delete(ctx, &deploy); err != nil {
+	if err := svc.crClient.Delete(ctx, panel.object()); err != nil {
 		return bizerr.Internal.K8sServiceError.Wrap(err, "delete TensorBoard panel failed")
 	}
 
 	return nil
 }
 
-func getStatus(deploy *appsv1.Deployment) (payload.TensorboardStatus, payload.TensorboardStatusReason, string) {
+func getDeploymentStatus(deploy *appsv1.Deployment) (payload.TensorboardStatus, payload.TensorboardStatusReason, string) {
 	for _, condition := range deploy.Status.Conditions {
 		if condition.Type == appsv1.DeploymentProgressing && condition.Status == corev1.ConditionFalse {
 			return payload.TensorboardStatusFailed,
@@ -687,6 +795,79 @@ func getStatus(deploy *appsv1.Deployment) (payload.TensorboardStatus, payload.Te
 	return payload.TensorboardStatusReady, payload.TensorboardStatusReasonReady, "The panel is ready."
 }
 
+func tensorboardPodReady(pod *corev1.Pod) bool {
+	if pod == nil {
+		return false
+	}
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func tensorboardPodExpired(pod *corev1.Pod) bool {
+	if pod == nil {
+		return false
+	}
+	if pod.Status.Reason == "DeadlineExceeded" {
+		return true
+	}
+	for i := range pod.Status.ContainerStatuses {
+		containerStatus := &pod.Status.ContainerStatuses[i]
+		if containerStatus.State.Terminated != nil &&
+			containerStatus.State.Terminated.Reason == "DeadlineExceeded" {
+			return true
+		}
+	}
+	return false
+}
+
+func getJobStatus(
+	job *batch.Job,
+	pod *corev1.Pod,
+) (payload.TensorboardStatus, payload.TensorboardStatusReason, string) {
+	switch job.Status.State.Phase {
+	case batch.Completed, batch.Failed, batch.Aborted, batch.Terminated,
+		batch.Aborting, batch.Completing, batch.Terminating:
+		if tensorboardPodExpired(pod) {
+			return payload.TensorboardStatusExpired,
+				payload.TensorboardStatusReasonRuntimeExpired,
+				"The panel reached its four-day runtime limit and is being removed."
+		}
+		return payload.TensorboardStatusFailed,
+			payload.TensorboardStatusReasonJobFailed,
+			"The panel stopped unexpectedly. Check the Pod events or contact an administrator."
+	case batch.Running:
+		if tensorboardPodReady(pod) {
+			return payload.TensorboardStatusReady,
+				payload.TensorboardStatusReasonReady,
+				"The panel is ready."
+		}
+		return payload.TensorboardStatusStarting,
+			payload.TensorboardStatusReasonPodStarting,
+			"The panel was scheduled and TensorBoard is starting."
+	case batch.Restarting:
+		return payload.TensorboardStatusStarting,
+			payload.TensorboardStatusReasonPodStarting,
+			"The panel is restarting."
+	default:
+		return payload.TensorboardStatusPending,
+			payload.TensorboardStatusReasonWaitingForSchedule,
+			"The panel is waiting for resources in your scheduling queue."
+	}
+}
+
+func tensorboardExpiration(pod *corev1.Pod) string {
+	if pod == nil || pod.Status.StartTime == nil {
+		return ""
+	}
+	return pod.Status.StartTime.Add(
+		time.Duration(tensorboardMaxRuntimeSeconds) * time.Second,
+	).Format(time.RFC3339)
+}
+
 func (svc *TensorboardService) List(
 	ctx context.Context,
 	username string,
@@ -694,24 +875,60 @@ func (svc *TensorboardService) List(
 	cfg := config.GetConfig()
 	ns := cfg.Namespaces.Job
 
-	var deployList appsv1.DeploymentList
-	err := svc.crClient.List(ctx, &deployList,
+	selector := client.MatchingLabels{
+		crclient.LabelKeyTaskUser: username,
+		crclient.LabelKeyTaskType: labelKeyTypeTensorboard,
+	}
+	var jobList batch.JobList
+	if err := svc.crClient.List(ctx, &jobList,
 		client.InNamespace(ns),
-		client.MatchingLabels{
-			crclient.LabelKeyTaskUser: username,
-			crclient.LabelKeyTaskType: "tensorboard",
-		},
-	)
-	if err != nil {
+		selector,
+	); err != nil {
+		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "list TensorBoard Volcano Jobs failed")
+	}
+
+	var podList corev1.PodList
+	if err := svc.crClient.List(ctx, &podList,
+		client.InNamespace(ns),
+		selector,
+	); err != nil {
+		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "list TensorBoard Pods failed")
+	}
+	podsByID := make(map[string]*corev1.Pod, len(podList.Items))
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		podsByID[pod.Labels[labelKeyTensorboardID]] = pod
+	}
+
+	var deployList appsv1.DeploymentList
+	if err := svc.crClient.List(ctx, &deployList,
+		client.InNamespace(ns),
+		selector,
+	); err != nil {
 		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "list TensorBoard panels failed")
 	}
 
-	// Build the response from the owned deployments.
-	items := make([]payload.TensorboardInfo, 0, len(deployList.Items))
+	// New panels are Volcano Jobs. Legacy Deployments remain visible during migration.
+	items := make([]payload.TensorboardInfo, 0, len(jobList.Items)+len(deployList.Items))
+	for i := range jobList.Items {
+		job := &jobList.Items[i]
+		tbID := job.Labels[labelKeyTensorboardID]
+		pod := podsByID[tbID]
+		status, statusReason, statusMessage := getJobStatus(job, pod)
+		items = append(items, payload.TensorboardInfo{
+			ID:            tbID,
+			Expiration:    tensorboardExpiration(pod),
+			CreatedAt:     job.CreationTimestamp.Format(time.RFC3339),
+			AccessPath:    fmt.Sprintf("https://%s/ingress/%s-%s", cfg.Host, username, tbID),
+			Status:        status,
+			StatusReason:  statusReason,
+			StatusMessage: statusMessage,
+		})
+	}
 	for i := range deployList.Items {
 		deploy := &deployList.Items[i]
-		tbID := deploy.Labels["crater.raids.io/tensorboard-id"]
-		status, statusReason, statusMessage := getStatus(deploy)
+		tbID := deploy.Labels[labelKeyTensorboardID]
+		status, statusReason, statusMessage := getDeploymentStatus(deploy)
 		items = append(items, payload.TensorboardInfo{
 			ID:            tbID,
 			Expiration:    deploy.Annotations["crater.raids.io/expiration-time"],

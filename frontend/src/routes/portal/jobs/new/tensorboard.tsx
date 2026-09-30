@@ -1,3 +1,18 @@
+/**
+ * Copyright 2026 The Crater Project Team, RAIDS-Lab
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
@@ -7,7 +22,6 @@ import {
   AlertCircleIcon,
   CheckCircle2Icon,
   CircleHelpIcon,
-  ClockIcon,
   FolderOpenIcon,
   HardDriveIcon,
   LayoutGridIcon,
@@ -84,6 +98,29 @@ type TensorboardSearch = {
 // Temporarily disable storage probing and directory browsing while keeping
 // log-dir-only TensorBoard creation available.
 const enableLogDirInspection = false
+const sourceJobsPageSize = 200
+const tensorboardJobType = 'tensorboard'
+
+const getAllTensorboardSourceJobs = async (signal?: AbortSignal) => {
+  const getPage = (page: number) =>
+    apiJobSelfList(
+      {
+        page,
+        page_size: sourceJobsPageSize,
+        filters: {},
+      },
+      signal
+    )
+
+  const firstPage = await getPage(1)
+  const pageCount = Math.ceil(firstPage.data.total / sourceJobsPageSize)
+  const remainingPages = await Promise.all(
+    Array.from({ length: Math.max(pageCount - 1, 0) }, (_, index) => getPage(index + 2))
+  )
+  return [firstPage, ...remainingPages]
+    .flatMap((response) => response.data.items)
+    .filter((job) => String(job.jobType) !== tensorboardJobType)
+}
 
 const validateTensorboardSearch = (search: Record<string, unknown>): TensorboardSearch => ({
   fromTemplate: Number(search.fromTemplate) || undefined,
@@ -135,10 +172,6 @@ const createFormSchema = (t: TFunction) =>
         ),
       logDir: z.string(),
       sourceLogDirs: z.record(z.string()).default({}),
-      ttlHours: z
-        .number()
-        .min(1, t('tensorboard.validation.minTTL'))
-        .max(168, t('tensorboard.validation.maxTTL')),
     })
     .superRefine((data, ctx) => {
       if (data.sourceJobNames.length <= 1) {
@@ -190,7 +223,6 @@ const dataProcessor = (data: FormSchema) => {
     sourceJobNames: data.sourceJobNames ?? [],
     logDir: data.logDir ?? '',
     sourceLogDirs: data.sourceLogDirs ?? {},
-    ttlHours: Number(data.ttlHours) || 24,
   }
 }
 
@@ -219,13 +251,7 @@ function RouteComponent() {
 
   const { data: jobList } = useQuery({
     queryKey: ['job', 'self', 'tensorboard-source'],
-    queryFn: () =>
-      apiJobSelfList({
-        page: 1,
-        page_size: 200,
-        filters: {},
-      }),
-    select: (res) => res.data.items,
+    queryFn: ({ signal }) => getAllTensorboardSourceJobs(signal),
   })
 
   const formSchema = useMemo(() => createFormSchema(t), [t])
@@ -236,7 +262,6 @@ function RouteComponent() {
       sourceJobNames: [],
       logDir: '',
       sourceLogDirs: {},
-      ttlHours: 24,
     },
   })
   const selectedSourceJobNames = form.watch('sourceJobNames')
@@ -407,7 +432,6 @@ function RouteComponent() {
       })),
       // Keep the top-level value for compatibility with exported legacy configurations.
       logDir: hasMultipleSources ? '' : data.logDir.trim(),
-      ttlHours: data.ttlHours,
     })
   }
 
@@ -691,32 +715,6 @@ function RouteComponent() {
                     )}
                   />
                 )}
-
-                <FormField
-                  control={form.control}
-                  name="ttlHours"
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex items-center gap-1">
-                        <FormLabel>
-                          <ClockIcon className="mr-2 inline-block h-4 w-4" />
-                          {t('tensorboard.create.ttl')} <FormLabelMust />
-                        </FormLabel>
-                        <FormHelpTooltip content={t('tensorboard.create.ttlDescription')} />
-                      </div>
-                      <FormDescription>{t('tensorboard.create.ttlDescription')}</FormDescription>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="24"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 
@@ -746,12 +744,9 @@ function RouteComponent() {
             <AlertDialogTitle>{t('tensorboard.create.confirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               {(pendingCreateRequest?.sourceJobs?.length ?? 0) === 0
-                ? t('tensorboard.create.confirmDescriptionWithoutSource', {
-                    ttl: pendingCreateRequest?.ttlHours ?? 0,
-                  })
+                ? t('tensorboard.create.confirmDescriptionWithoutSource')
                 : t('tensorboard.create.confirmDescription', {
                     count: pendingCreateRequest?.sourceJobs?.length ?? 0,
-                    ttl: pendingCreateRequest?.ttlHours ?? 0,
                   })}
             </AlertDialogDescription>
           </AlertDialogHeader>
