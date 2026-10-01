@@ -203,7 +203,7 @@ crater file mv --help
 -- en/15-file-mv-help/exit --
 0
 -- en/15-file-mv-help/stdout --
-Move one remote storage entry to an exact destination path without replacing an existing entry.
+Move one remote storage entry to an exact destination path. Reject destinations that exist when checked; atomic no-clobber depends on filesystem support.
 
 Usage:
   crater file mv <source-path> <destination-path> [flags]

@@ -24,9 +24,8 @@ type MoveFileReq struct {
 }
 
 var (
-	errMoveSourceNotFound       = errors.New("move source does not exist")
-	errMoveTargetExists         = errors.New("move destination exists")
-	errMoveNoReplaceUnsupported = errors.New("atomic no-replace move is unsupported")
+	errMoveSourceNotFound = errors.New("move source does not exist")
+	errMoveTargetExists   = errors.New("move destination exists")
 )
 
 type moveFileHandlerDeps struct {
@@ -159,7 +158,7 @@ func handleMoveTargetOpenError(c *gin.Context, err error, source bool, message s
 	resputil.HandleError(c, bizerr.Internal.FileSystemError.Wrap(err, "failed to access storage"))
 }
 
-//nolint:gocyclo // The explicit checks preserve no-clobber and source-not-found semantics around one rename.
+//nolint:gocyclo // The explicit checks classify destination conflicts and missing sources around one rename.
 func moveStorageEntry(
 	sourceParent *os.Root,
 	sourceName string,
@@ -183,7 +182,7 @@ func moveStorageEntry(
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	if err := renameStorageNoReplace(sourceParent, sourceName, destinationParent, destinationName); err != nil {
+	if err := renameStorageEntry(sourceParent, sourceName, destinationParent, destinationName); err != nil {
 		if os.IsExist(err) {
 			return errMoveTargetExists
 		}

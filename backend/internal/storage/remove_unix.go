@@ -20,7 +20,7 @@ func removeStorageNonDirectory(parent *os.Root, name string) error {
 	return unlinkatRetry(int(parentDirectory.Fd()), name, 0)
 }
 
-func removeStorageDirectoryRecursive(parent *os.Root, name string) error {
+func removeStorageDirectoryRecursive(parent *os.Root, name string, expected os.FileInfo) error {
 	parentDirectory, err := parent.Open(".")
 	if err != nil {
 		return err
@@ -40,6 +40,15 @@ func removeStorageDirectoryRecursive(parent *os.Root, name string) error {
 	if target == nil {
 		_ = unix.Close(targetDirectory)
 		return errors.New("failed to create directory handle")
+	}
+	opened, err := target.Stat()
+	if err != nil {
+		_ = target.Close()
+		return err
+	}
+	if expected == nil || !os.SameFile(expected, opened) {
+		_ = target.Close()
+		return errRemoveTargetChanged
 	}
 
 	var targetStat unix.Stat_t
@@ -81,7 +90,7 @@ func removeDirectoryContents(directory *os.File, rootDevice *unix.Stat_t) error 
 		}
 
 		var entryStat unix.Stat_t
-		err := fstatatRetry(directoryFD, name, &entryStat, unix.AT_SYMLINK_NOFOLLOW)
+		err := fstatatRetry(directoryFD, name, &entryStat)
 		if errors.Is(err, unix.ENOENT) {
 			continue
 		}
@@ -93,7 +102,7 @@ func removeDirectoryContents(directory *os.File, rootDevice *unix.Stat_t) error 
 		}
 
 		if entryStat.Mode&unix.S_IFMT == unix.S_IFDIR {
-			if err := removeDirectoryEntry(directoryFD, name, rootDevice); errors.Is(err, errRemoveTargetNotFound) {
+			if err := removeDirectoryEntry(directoryFD, name, rootDevice, &entryStat); errors.Is(err, errRemoveTargetNotFound) {
 				continue
 			} else if err != nil {
 				return err
@@ -114,7 +123,7 @@ func removeDirectoryContents(directory *os.File, rootDevice *unix.Stat_t) error 
 	return nil
 }
 
-func removeDirectoryEntry(parentFD int, name string, rootDevice *unix.Stat_t) error {
+func removeDirectoryEntry(parentFD int, name string, rootDevice, expected *unix.Stat_t) error {
 	childFD, err := openDirectoryAt(parentFD, name)
 	if err != nil {
 		return classifyRecursiveOpenError(err)
@@ -129,6 +138,10 @@ func removeDirectoryEntry(parentFD int, name string, rootDevice *unix.Stat_t) er
 	if err := fstatRetry(childFD, &childStat); err != nil {
 		_ = child.Close()
 		return err
+	}
+	if expected == nil || childStat.Dev != expected.Dev || childStat.Ino != expected.Ino {
+		_ = child.Close()
+		return errRemoveTargetChanged
 	}
 	if err := requireRecursiveStorageDevice(rootDevice, &childStat); err != nil {
 		_ = child.Close()
@@ -174,9 +187,9 @@ func fstatRetry(fd int, stat *unix.Stat_t) error {
 	}
 }
 
-func fstatatRetry(fd int, name string, stat *unix.Stat_t, flags int) error {
+func fstatatRetry(fd int, name string, stat *unix.Stat_t) error {
 	for {
-		err := unix.Fstatat(fd, name, stat, flags)
+		err := unix.Fstatat(fd, name, stat, unix.AT_SYMLINK_NOFOLLOW)
 		if !errors.Is(err, unix.EINTR) {
 			return err
 		}
@@ -194,7 +207,7 @@ func unlinkatRetry(fd int, name string, flags int) error {
 
 func verifyDirectoryIdentityAt(parentFD int, name string, opened *unix.Stat_t) error {
 	var current unix.Stat_t
-	if err := fstatatRetry(parentFD, name, &current, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+	if err := fstatatRetry(parentFD, name, &current); err != nil {
 		if errors.Is(err, unix.ENOENT) {
 			return errRemoveTargetNotFound
 		}

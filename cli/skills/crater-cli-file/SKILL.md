@@ -124,8 +124,9 @@ Use `crater file upload` when a user wants to copy one local regular file into C
 
 - Create exactly one directory: `crater file mkdir user/jobs/new-run`. Its parent must exist.
 - Move one entry to an exact destination: `crater file mv user/jobs/train.py user/archive/train.py`.
-- The destination must not exist. There is no overwrite mode for `mv`.
-- Do not move an entry to itself or below itself. Unsupported atomic no-clobber rename fails safely.
+- The destination must not exist when checked. There is no overwrite mode for `mv`.
+- Do not move an entry to itself or below itself. Filesystems supporting atomic no-clobber rename also reject destinations created concurrently.
+- On NFS and some kernel CephFS versions, the server instead serializes compatibility moves within one process, rechecks the destination, and performs an ordinary rename. This is best-effort no-clobber: other service replicas, WebDAV writes, or jobs writing directly to the PVC can create a destination after the check and have it overwritten. Avoid concurrent writes to the same destination on these filesystems.
 - These commands require backend API contract 2. Inspect JSON error metadata for permission, missing-parent, or destination-conflict errors.
 
 ## Remove an entry

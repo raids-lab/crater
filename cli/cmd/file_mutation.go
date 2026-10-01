@@ -29,7 +29,7 @@ var fileMkdirCmd = &cobra.Command{
 var fileMoveCmd = &cobra.Command{
 	Use:   "mv <source-path> <destination-path>",
 	Short: "Move one remote file or directory",
-	Long:  "Move one remote storage entry to an exact destination path without replacing an existing entry.",
+	Long:  "Move one remote storage entry to an exact destination path. Reject destinations that exist when checked; atomic no-clobber depends on filesystem support.",
 	Args:  fileMoveArgs,
 	RunE:  runFileMove,
 }

@@ -195,7 +195,7 @@ func normalizeRemoveLogicalPath(raw string) (string, error) {
 type removeStorageEntryDeps struct {
 	lstat              func(*os.Root, string) (os.FileInfo, error)
 	unlinkNonDirectory func(*os.Root, string) error
-	removeDirectory    func(*os.Root, string) error
+	removeDirectory    func(*os.Root, string, os.FileInfo) error
 }
 
 func defaultRemoveStorageEntryDeps() removeStorageEntryDeps {
@@ -235,7 +235,7 @@ func removeStorageEntryWithDeps(
 		if !recursive {
 			return errRemoveRecursiveRequired
 		}
-		return deps.removeDirectory(parent, name)
+		return deps.removeDirectory(parent, name, info)
 	}
 
 	err = deps.unlinkNonDirectory(parent, name)

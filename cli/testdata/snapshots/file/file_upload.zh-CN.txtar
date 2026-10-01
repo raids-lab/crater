@@ -203,7 +203,7 @@ crater file mv --help
 -- zh-CN/15-file-mv-help/exit --
 0
 -- zh-CN/15-file-mv-help/stdout --
-将单个远端存储条目移动到指定目标路径，且不会覆盖已存在的条目。
+将单个远端存储条目移动到指定目标路径。检查时目标已存在则拒绝；能否原子禁止并发覆盖取决于文件系统。
 
 Usage:
   crater file mv <source-path> <destination-path> [flags]

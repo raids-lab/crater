@@ -177,7 +177,7 @@ func TestRemoveStorageEntryDoesNotUpgradeFileRaceToRecursiveDelete(t *testing.T)
 		unlinkNonDirectory: func(*os.Root, string) error {
 			return syscall.EISDIR
 		},
-		removeDirectory: func(*os.Root, string) error {
+		removeDirectory: func(*os.Root, string, os.FileInfo) error {
 			recursiveCalled = true
 			return nil
 		},
@@ -214,7 +214,7 @@ func TestRemoveStorageEntryPreservesRegularFilePermissionError(t *testing.T) {
 		unlinkNonDirectory: func(*os.Root, string) error {
 			return syscall.EPERM
 		},
-		removeDirectory: func(*os.Root, string) error {
+		removeDirectory: func(*os.Root, string, os.FileInfo) error {
 			t.Fatal("recursive removal called for a regular file")
 			return nil
 		},

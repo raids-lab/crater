@@ -8,6 +8,6 @@ func removeStorageNonDirectory(*os.Root, string) error {
 	return errRemoveOperationUnsupported
 }
 
-func removeStorageDirectoryRecursive(*os.Root, string) error {
+func removeStorageDirectoryRecursive(*os.Root, string, os.FileInfo) error {
 	return errRemoveOperationUnsupported
 }

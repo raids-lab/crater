@@ -127,3 +127,69 @@ func TestRecursiveRemoveDetectsDirectoryNameSubstitution(t *testing.T) {
 		t.Fatalf("substitution error = %v, want errRemoveTargetChanged", err)
 	}
 }
+
+func TestRecursiveRemoveRejectsTopLevelReplacementBeforeOpen(t *testing.T) {
+	storage := t.TempDir()
+	makeRemoveIdentityTestDirectory(t, filepath.Join(storage, "target"), "original")
+	root, err := os.OpenRoot(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+
+	deps := defaultRemoveStorageEntryDeps()
+	deps.lstat = func(parent *os.Root, name string) (os.FileInfo, error) {
+		info, err := parent.Lstat(name)
+		if err != nil {
+			return nil, err
+		}
+		if err := os.Rename(filepath.Join(storage, name), filepath.Join(storage, "saved")); err != nil {
+			t.Fatal(err)
+		}
+		makeRemoveIdentityTestDirectory(t, filepath.Join(storage, name), "replacement")
+		return info, nil
+	}
+	if err := removeStorageEntryWithDeps(root, "target", true, deps); !errors.Is(err, errRemoveTargetChanged) {
+		t.Fatalf("replacement error = %v, want errRemoveTargetChanged", err)
+	}
+	assertStoredFile(t, filepath.Join(storage, "target", "keep.txt"), []byte("replacement"))
+	assertStoredFile(t, filepath.Join(storage, "saved", "keep.txt"), []byte("original"))
+}
+
+func TestRecursiveRemoveRejectsNestedReplacementBeforeOpen(t *testing.T) {
+	storage := t.TempDir()
+	makeRemoveIdentityTestDirectory(t, filepath.Join(storage, "child"), "original")
+	parent, err := os.Open(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer parent.Close()
+	parentFD := int(parent.Fd())
+	var rootDevice, expected unix.Stat_t
+	if err := fstatRetry(parentFD, &rootDevice); err != nil {
+		t.Fatal(err)
+	}
+	if err := fstatatRetry(parentFD, "child", &expected); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(storage, "child"), filepath.Join(storage, "saved")); err != nil {
+		t.Fatal(err)
+	}
+	makeRemoveIdentityTestDirectory(t, filepath.Join(storage, "child"), "replacement")
+
+	if err := removeDirectoryEntry(parentFD, "child", &rootDevice, &expected); !errors.Is(err, errRemoveTargetChanged) {
+		t.Fatalf("replacement error = %v, want errRemoveTargetChanged", err)
+	}
+	assertStoredFile(t, filepath.Join(storage, "child", "keep.txt"), []byte("replacement"))
+	assertStoredFile(t, filepath.Join(storage, "saved", "keep.txt"), []byte("original"))
+}
+
+func makeRemoveIdentityTestDirectory(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(path, "keep.txt"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}

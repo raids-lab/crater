@@ -46,7 +46,8 @@ func (c *Client) CreateDirectory(ctx context.Context, remotePath string) error {
 }
 
 // MoveFile moves one file or directory to the exact destination path. The
-// storage service must reject an existing destination.
+// storage service rejects a destination found to exist before the rename.
+// Atomic no-clobber is available only on filesystems supporting it.
 func (c *Client) MoveFile(ctx context.Context, sourcePath, destinationPath string) error {
 	requestPath := FileMovePath + "/" + escapeRemotePath(sourcePath)
 	resp, err := c.httpClient.R().

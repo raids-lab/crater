@@ -3,9 +3,10 @@
 package storage
 
 import (
+	"errors"
 	"os"
 )
 
-func renameStorageNoReplace(*os.Root, string, *os.Root, string) error {
-	return errMoveNoReplaceUnsupported
+func renameStorageEntry(*os.Root, string, *os.Root, string) error {
+	return errors.New("FD-relative move is unsupported on this platform")
 }
