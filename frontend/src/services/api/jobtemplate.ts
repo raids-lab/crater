@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
-import { IResponse } from '@/services/types'
+import { IPage, IResponse } from '@/services/types'
 
 import { IUserInfo } from './vcjob'
 
@@ -33,8 +33,31 @@ export interface JobTemplateReq {
   document: string
   template: string
 }
-export const listJobTemplate = () => {
-  return apiV1Get<IResponse<JobTemplate[]>>('jobtemplate/list')
+
+export interface JobTemplateListParams {
+  page: number
+  pageSize: number
+  search: string
+  owner: 'all' | 'mine' | 'others'
+  sort: 'ascending' | 'descending'
+}
+
+export const listJobTemplate = (params: JobTemplateListParams, signal?: AbortSignal) => {
+  const searchParams = new URLSearchParams({
+    page: String(params.page),
+    page_size: String(params.pageSize),
+    owner: params.owner,
+    sort: params.sort === 'ascending' ? 'createdAt' : '-createdAt',
+  })
+  const search = params.search.trim()
+  if (search) {
+    searchParams.set('search', search)
+  }
+
+  return apiV1Get<IResponse<IPage<JobTemplate>>>('jobtemplate', {
+    searchParams,
+    signal,
+  })
 }
 export const createJobTemplate = (data: JobTemplateReq) => {
   return apiV1Post<IResponse<string>>('jobtemplate/create', data)

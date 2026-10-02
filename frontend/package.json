@@ -9,6 +9,7 @@
     "build": "vite build",
     "build-testing": "tsc && vite build --mode testing",
     "lint": "tsc && eslint .",
+    "test:data-list": "node --test src/components/layout/data-list-remote.test.ts",
     "fix": "eslint . --fix",
     "eslint": "eslint . --max-warnings 0",
     "preview": "vite preview"
