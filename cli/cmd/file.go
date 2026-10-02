@@ -20,8 +20,8 @@ var fileRemoteRoots = []string{"user", "public", "account"}
 
 var fileCmd = &cobra.Command{
 	Use:   "file",
-	Short: "View remote files",
-	Long:  "List and download files in user, public, and account storage spaces.",
+	Short: "Manage remote files",
+	Long:  "List, transfer, create, move, and remove entries in user, public, and account storage spaces.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) > 0 {
 			return errUnknownSubcommand(cmd, args[0])

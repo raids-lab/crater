@@ -879,3 +879,88 @@ This section records the read-only API surface covered by the CLI after the broa
   - `bytes`（整数）：写入字节数。
   - `overwrite`（布尔）：本次是否启用了显式覆盖选项。
 - **状态**：[x] Completed
+
+### `crater file upload <local-file> <remote-path>`
+
+- **描述**：把一个本地普通文件流式上传到远端逻辑路径。
+- **位置参数**：
+  - `<local-file>`（必填）：本地普通文件。目录、管道、设备和 socket 会在请求前被拒绝。
+  - `<remote-path>`（必填）：`user`、`public` 或 `account` 下的完整目标文件路径，不能只给逻辑根。
+- **选项**：
+  - `--overwrite`（bool）：允许替换已存在的远端普通文件；默认拒绝覆盖。
+- **处理逻辑**：
+  - 调用 `POST /api/ss/upload/*path?overwrite=<bool>`，请求体直接流式读取本地文件，不把完整内容载入内存。
+  - storage service 在目标同目录写入临时文件，完成 `chmod`、`sync` 和 `close` 后才发布。新文件通过原子 no-clobber 链接发布；显式覆盖通过同目录原子重命名替换。服务端仅在支持安全 FD 相对发布的平台执行上传，其他平台明确失败。
+  - 服务端是覆盖策略的最终裁决者：即使预检后并发出现同名文件，未指定 `--overwrite` 也不会覆盖；上传失败不会暴露部分新文件或截断旧文件。
+  - 父目录必须预先存在，本命令不会自动创建目录。
+  - 不支持递归目录、glob、多文件、断点续传、分片或进度条。
+- **输出格式**：
+  - 默认模式：成功后展示本地路径、远端路径和已上传字节数。
+  - `--json`：stdout 仅输出结果元数据，不包含文件内容。
+- **`--json` 的 `data`**：
+  - `local_path`（字符串）：本地输入路径。
+  - `remote_path`（字符串）：规范化后的远端逻辑路径。
+  - `bytes`（整数）：服务端完整接收并发布的字节数。
+  - `overwrite`（布尔）：本次是否显式启用了覆盖选项。
+  - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
+- **兼容性**：安全上传端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 2。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **状态**：[x] Completed
+
+### `crater file mkdir <remote-path>`
+
+- **描述**：在远端逻辑文件空间创建一个目录。
+- **位置参数**：
+  - `<remote-path>`（必填）：`user`、`public` 或 `account` 下的完整目标目录路径，不能只给逻辑根。
+- **处理逻辑**：
+  - 调用 `MKCOL /api/ss/*path`。
+  - 只创建目标目录；父目录必须预先存在，不会递归补齐。
+  - 已存在的文件或目录按冲突处理，不会被修改。
+  - 权限和目标路径由 storage service 再次校验；CLI 只有在收到精确的 HTTP 201 后才报告成功。
+- **输出格式**：
+  - 默认模式：展示规范化后的已创建目录路径。
+  - `--json`：stdout 仅输出成功信封。
+- **`--json` 的 `data`**：`remote_path`（字符串）。
+- **兼容性**：要求后端 API 契约 2；CLI 不回退到旧语义。
+- **状态**：[x] Completed
+
+### `crater file mv <source-path> <destination-path>`
+
+- **描述**：把一个远端文件或目录移动到另一个精确目标路径。
+- **位置参数**：
+  - `<source-path>`（必填）：现有文件或目录的完整逻辑路径。
+  - `<destination-path>`（必填）：移动后的完整目标路径，不是仅包含目标父目录的路径。
+- **处理逻辑**：
+  - 调用 `POST /api/ss/move/*source-path`，请求体中的 `dst` 为完整目标路径。
+  - 源和目标都必须位于 `user`、`public` 或 `account` 下，且必须具备写权限。
+  - 拒绝同路径移动，也拒绝把目录移动到自身的后代路径。
+  - 目标父目录必须预先存在，不会自动创建。
+  - 不提供覆盖选项；检查到目标已存在时返回冲突。文件系统支持原生原子 no-clobber rename 时，移动不会覆盖并发创建的目标。
+  - NFS、部分内核 CephFS 等文件系统不支持该能力时，服务端串行处理同一进程内的兼容移动请求，重新检查目标后执行普通重命名，以保持 CLI 和 Web 的移动功能可用。该路径提供 best-effort 禁止覆盖：其他服务副本、WebDAV 写入或任务直接写入 PVC 仍可能在检查后创建目标并被覆盖；调用方应避免这些写入者并发操作同一目标。
+- **输出格式**：
+  - 默认模式：展示源路径和目标路径。
+  - `--json`：stdout 仅输出成功信封。
+- **`--json` 的 `data`**：`source_path`（字符串）、`destination_path`（字符串）。
+- **兼容性**：要求后端 API 契约 2；CLI 不回退到旧语义。
+- **状态**：[x] Completed
+
+### `crater file rm <remote-path>`
+
+- **描述**：删除普通用户逻辑空间中的一个精确远端路径。
+- **位置参数**：
+  - `<remote-path>`（必填）：`user`、`public` 或 `account` 下的完整目标路径；不能是逻辑根，也不能包含原始 `.`、`..`、反斜杠、控制字符或平台保留根。
+- **选项**：
+  - `--recursive`（bool）：允许删除目录及其内容；删除目录时必须显式提供。
+  - `--yes, -y`（bool）：跳过交互确认。`--json` 或 `--no-interactive` 模式下必须显式提供。
+- **处理逻辑**：
+  - 调用专用安全接口 `DELETE /api/ss/files/*path?recursive=<bool>`，不会回退到旧的无条件递归删除接口。
+  - 交互模式在发送请求前展示规范化后的精确目标，默认选择 No；取消时不创建 API client，也不发送请求。
+  - 普通文件和最终 symlink 只删除该条目且不跟随链接；目录（包括空目录）必须显式提供 `--recursive`，并通过交互确认或显式 `--yes` 确认删除。
+  - 权限、授权根和条目类型由 storage service 再次校验；删除过程中类型发生变化时安全失败，不会自动升级为递归删除。
+  - 递归删除遇到条目变化、跨文件系统边界或底层错误时安全失败，可能已删除部分内容，无法回滚。
+  - 仅支持单目标，不支持 glob、批量删除、Trash、恢复或管理员跨用户删除。
+- **输出格式**：
+  - 默认模式：展示已删除的规范化远端路径。
+  - `--json`：stdout 仅输出成功信封；失败时 stdout 为空。
+- **`--json` 的 `data`**：`remote_path`（字符串）、`recursive`（布尔）。
+- **兼容性**：安全删除端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 2，不回退到旧 `/delete` 端点。
+- **状态**：[x] Completed
