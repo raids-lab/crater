@@ -15,6 +15,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	. "github.com/bytedance/mockey"
@@ -148,7 +149,10 @@ func TestLoadQuotaSet(t *testing.T) {
 			Quota: datatypes.NewJSONType(map[string]string{" " + cpuName + " ": " 4 ", "": "1", "memory": " "}),
 		}}, nil).Build()
 
-		set, err := svc.LoadQuotaSet(t.Context(), &model.SchedulerExtenderConfig{QueueQuotaEnabled: true})
+		set, err := svc.LoadQuotaSet(t.Context(), &model.SchedulerExtenderConfig{
+			SchedulerExtenderEnabled: true,
+			QueueQuotaEnabled:        true,
+		})
 		So(err, ShouldBeNil)
 		resolved := set.Resolve(quotaQueue)
 		So(resolved.Enabled, ShouldBeTrue)
@@ -173,6 +177,31 @@ func TestLoadQuotaSet(t *testing.T) {
 
 		var nilSet *QueueQuotaSet
 		So(nilSet.Resolve(quotaQueue).Enabled, ShouldBeFalse)
+	})
+}
+
+func TestResolveQueueQuota(t *testing.T) {
+	PatchConvey("the limit applies only while both switches are on", t, func() {
+		svc := detachedQuotaService(t)
+		svc.configService = &ConfigService{}
+		cfg := &model.SchedulerExtenderConfig{SchedulerExtenderEnabled: true, QueueQuotaEnabled: true}
+		Mock((*ConfigService).GetSchedulerExtenderConfig).To(
+			func(_ *ConfigService, _ context.Context) (*model.SchedulerExtenderConfig, error) { return cfg, nil },
+		).Build()
+		Mock((*gen.DO).First).Return(&model.QueueQuotaLimit{
+			Name:  quotaQueue,
+			Quota: datatypes.NewJSONType(map[string]string{cpuName: "1"}),
+		}, nil).Build()
+
+		resolved, err := svc.ResolveQueueQuota(t.Context(), 7, 1, quotaQueue)
+		So(err, ShouldBeNil)
+		So(resolved.Enabled, ShouldBeTrue)
+
+		cfg.SchedulerExtenderEnabled = false
+		resolved, err = svc.ResolveQueueQuota(t.Context(), 7, 1, quotaQueue)
+		So(err, ShouldBeNil)
+		So(resolved.Enabled, ShouldBeFalse)
+		So(resolved.Quota, ShouldResemble, map[string]string{cpuName: "1"})
 	})
 }
 

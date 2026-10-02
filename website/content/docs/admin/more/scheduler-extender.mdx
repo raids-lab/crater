@@ -8,7 +8,10 @@ crater 以 volcano 的 extender 插件参与作业准入：volcano 在每个调�
 ## 部署前置条件
 
 - Helm values 的 `backendConfig.schedulerExtenderPort` 默认为 `:8089`。设置后 chart 会为后端创建专用的 ClusterIP Service `crater-volcano-extender-svc`；在 volcano configmap 指向它且总开关打开之前，该端点不做任何判断。留空则不部署该端点。
-- 在 volcano 调度器的 configmap 中，把 `extender` 插件追加到现有 tier 2 的末尾，与 `capacity` 同层。放到更后的 tier 不会被询问，因为前一层放行后 volcano 不再征询后续 tier。
+- 在 volcano 调度器的 configmap 中，把 `extender` 插件放进 tier 2，紧挨在 `capacity` 之前。位置不对会改变准入结果：
+  - 放在 `capacity` 之后：capacity 放行作业时会把它计入队列本轮的入队额度，crater 随后拒绝也不会撤销。被拒作业排在前面时，同队列后面的作业每轮都会因额度不足被 capacity 拒绝。
+  - 放进 tier 1：crater 端点不可用时（`extender.ignorable: true`）会被当作放行，volcano 不再询问 tier 2，`capacity` 的队列容量检查随之跳过。
+  - 放到 tier 2 之后的层：不会被询问，因为前一层放行后 volcano 不再征询后续 tier。
 
 ```yaml
 actions: "enqueue, allocate, backfill, reclaim"
@@ -22,9 +25,6 @@ tiers:
   - name: drf
     enablePreemptable: false
   - name: predicates
-  - name: capacity
-  - name: nodeorder
-  - name: binpack
   - name: extender
     arguments:
       extender.urlPrefix: http://crater-volcano-extender-svc.<namespace>.svc:8089
@@ -32,6 +32,9 @@ tiers:
       extender.onSessionCloseVerb: onSessionClose
       extender.httpTimeout: 1s
       extender.ignorable: true
+  - name: capacity
+  - name: nodeorder
+  - name: binpack
 ```
 
 - `onSessionCloseVerb` 建议配置：配置后 crater 只在每轮调度结束时重建集群快照，一轮内不变；不配置时退化为每 2 秒重建一次，后端日志会提示一次。不要配置 `onSessionOpenVerb`，它会阻塞每个调度会话的开始。
@@ -41,7 +44,7 @@ tiers:
 ## 配置项
 
 - **启用 extender 调度插件**：总开关。关闭后 crater 对 volcano 的准入询问一律弃权，配额与超时阻塞同时停止生效。
-- **启用用户资源限制**：开启后准入时检查用户在队列内已占用的资源。限额在账户设置的资源配额中按队列填写“队内上限”，未填写的队列不检查。
+- **启用用户资源限制**：总开关打开后才显示。开启后准入时检查用户在队列内已占用的资源。限额在账户设置的资源配额中按队列填写“队内上限”，未填写的队列不检查。
 - **作业等待忍耐时间（秒）**：作业提交时未指定忍耐时间则使用该默认值。忍耐时间在提交时写入作业注解，未携带忍耐时间的作业永不超时。
 
 配置保存后立即生效，无需重启后端，下一个调度会话即按新配置判断。

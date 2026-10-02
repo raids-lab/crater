@@ -322,7 +322,7 @@ func (s *QueueQuotaService) ResolveQueueQuota(
 	}
 
 	resolved.Quota = sanitizeQueueQuota(record.Quota.Data())
-	resolved.Enabled = cfg.QueueQuotaEnabled && len(resolved.Quota) > 0
+	resolved.Enabled = cfg.IsQueueQuotaActive() && len(resolved.Quota) > 0
 	return resolved, nil
 }
 
@@ -344,7 +344,7 @@ func (s *QueueQuotaService) LoadQuotaSet(
 	}
 
 	set := &QueueQuotaSet{
-		Enabled: cfg != nil && cfg.QueueQuotaEnabled,
+		Enabled: cfg.IsQueueQuotaActive(),
 		quotas:  make(map[string]map[string]string, len(records)),
 	}
 	for _, record := range records {

@@ -33,3 +33,8 @@ func (cfg *SchedulerExtenderConfig) Validate() error {
 	}
 	return nil
 }
+
+// IsQueueQuotaActive also gates the submission pre-check, which exists only because admission would hold the job.
+func (cfg *SchedulerExtenderConfig) IsQueueQuotaActive() bool {
+	return cfg != nil && cfg.SchedulerExtenderEnabled && cfg.QueueQuotaEnabled
+}

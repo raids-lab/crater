@@ -37,7 +37,6 @@ export function SchedulerExtenderSettings({
   onSubmit,
 }: SchedulerExtenderSettingsProps) {
   const { t } = useTranslation()
-  const hasEnabledFeature = queueQuotaEnabled || schedulerExtenderEnabled
 
   return (
     <>
@@ -46,7 +45,7 @@ export function SchedulerExtenderSettings({
           <div className="flex items-center gap-2">
             <Layers3Icon
               className={
-                hasEnabledFeature ? 'h-5 w-5 text-blue-500' : 'text-muted-foreground h-5 w-5'
+                schedulerExtenderEnabled ? 'h-5 w-5 text-blue-500' : 'text-muted-foreground h-5 w-5'
               }
             />
             <CardTitle>{t('systemConfig.schedulerExtender.title')}</CardTitle>
@@ -56,26 +55,6 @@ export function SchedulerExtenderSettings({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm">
-            <div>
-              <Label htmlFor="scheduler-extender-quota-enabled" className="text-base">
-                {t('systemConfig.schedulerExtender.queueQuotaSwitchLabel')}
-              </Label>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {t('systemConfig.schedulerExtender.queueQuotaSwitchDescription')}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {isPending && <Loader2Icon className="text-muted-foreground h-4 w-4 animate-spin" />}
-              <Switch
-                id="scheduler-extender-quota-enabled"
-                checked={queueQuotaEnabled}
-                onCheckedChange={onQueueQuotaEnabledChange}
-                disabled={isPending}
-              />
-            </div>
-          </div>
-
           <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm">
             <div>
               <Label htmlFor="scheduler-extender-enabled" className="text-base">
@@ -95,6 +74,30 @@ export function SchedulerExtenderSettings({
               />
             </div>
           </div>
+
+          {schedulerExtenderEnabled && (
+            <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm">
+              <div>
+                <Label htmlFor="scheduler-extender-quota-enabled" className="text-base">
+                  {t('systemConfig.schedulerExtender.queueQuotaSwitchLabel')}
+                </Label>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {t('systemConfig.schedulerExtender.queueQuotaSwitchDescription')}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {isPending && (
+                  <Loader2Icon className="text-muted-foreground h-4 w-4 animate-spin" />
+                )}
+                <Switch
+                  id="scheduler-extender-quota-enabled"
+                  checked={queueQuotaEnabled}
+                  onCheckedChange={onQueueQuotaEnabledChange}
+                  disabled={isPending}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
