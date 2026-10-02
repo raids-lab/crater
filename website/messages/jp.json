@@ -2,7 +2,8 @@
   "Links": {
     "userGuide": "ユーザーガイド",
     "adminGuide": "管理者ガイド",
-    "getStarted": "利用開始"
+    "getStarted": "利用開始",
+    "latestOnlineDocs": "ここをクリックして最新のオンラインドキュメントを見る"
   },
   "Fumadocs": {
     "search": "検索",
@@ -14,7 +15,8 @@
     "nextPage": "次のページ",
     "previousPage": "前のページ",
     "chooseTheme": "テーマを選択",
-    "editOnGithub": "GitHub で編集"
+    "editOnGithub": "GitHub で編集",
+    "viewLatestDocs": "最新のドキュメントを見る"
   },
   "HeroSection": {
     "title": "Crater・クラウドネイティブ AI コンピューティングプラットフォーム",
@@ -250,5 +252,9 @@
     "message": "このバージョン番号は Helm Chart の設定バージョンであり、<link>Chart.yaml</link> から抽出されたものです。システムが正常に動作するには、Crater 関連コンポーネントのイメージバージョンと一致する必要があります。",
     "version": "（現在のバージョン：{version}）",
     "fallback": "バージョン番号を自動的に取得できません。バージョンの一致を確認するには、<link>Chart.yaml</link> を参照してください。"
+  },
+  "EmbeddedDocsNotice": {
+    "description": "このドキュメントは現在のシステムとともにデプロイされています。最新のオンラインドキュメントには更新内容が含まれる場合がありますが、現在のシステムバージョンとは異なる場合があります。",
+    "viewLatest": "最新のオンラインドキュメントを見る"
   }
 }
