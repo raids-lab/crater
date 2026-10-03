@@ -18,7 +18,7 @@ Use this file when you change chart metadata, `values.yaml`, Helm templates, dep
 1. **Identify the user-facing configuration impact**. If you add, remove, rename, or change behavior/defaults for a value, treat it as a configuration change.
 2. **Update the chart and docs together**. Changes to `values.yaml` parameters must be reflected in `charts/crater/README.md`.
 3. **Bump the chart release fields when required**. Template, dependency, configuration-logic, or configuration-behavior changes require a version bump.
-4. **Validate rendering and docs**. PRs trigger `.github/workflows/helm-chart-validate.yml` (`helm lint`, `helm template`, version bump check for release-impacting chart changes, and a packaging smoke test). After merging to `main`, `.github/workflows/helm-chart-publish.yml` publishes the chart to GHCR OCI. Run `helm lint` / `helm template` locally when useful.
+4. **Validate rendering and docs**. PRs trigger `.github/workflows/helm-chart-validate.yml` (`helm lint`, `helm template`, version bump check for release-impacting chart changes, and a packaging smoke test). Chart publishing follows the root [Publish Workflows](../CONTRIBUTING.md#publish-workflows) split: after merging a Chart change to `main`, `.github/workflows/helm-chart-publish.yml` publishes the chart to GHCR OCI; an exact `vX.Y.Z` tag publishes the matching Chart version and requires `version` and `appVersion` to equal that tag. Do not trigger chart publishing from a GitHub Release. Run `helm lint` / `helm template` locally when useful.
 
 ## Versioning
 
@@ -49,7 +49,7 @@ Use this file when you change chart metadata, `values.yaml`, Helm templates, dep
 
 ## Before Submitting Chart Changes
 
-- PRs that change `charts/**` automatically run the **Validate Helm Chart** workflow. After merging to `main`, the **Publish Helm Chart** workflow packages and pushes the chart to `oci://ghcr.io/raids-lab/crater`.
+- PRs that change `charts/**` automatically run the **Validate Helm Chart** workflow. After merging a Chart change to `main`, and again for its matching exact `vX.Y.Z` formal-release tag, the **Publish Helm Chart** workflow packages and pushes the chart to `oci://ghcr.io/raids-lab/crater`. Do not add GitHub Release events as chart publish triggers.
 - The root pre-commit hook delegates staged `charts/**` changes to `cd charts && make pre-commit-check`. It requires a higher shared `version` / `appVersion` only when release-impacting chart files change (`Chart.yaml`, `values.yaml`, templates, dependencies, or `Chart.lock`).
 - Run `helm lint crater/` and `helm template crater crater/ --dry-run` locally when useful; `charts/` does not currently have a dedicated `make` target.
 - Include exact commands and results in the PR description when you ran local checks.

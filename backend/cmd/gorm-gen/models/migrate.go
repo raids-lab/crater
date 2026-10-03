@@ -1573,6 +1573,7 @@ func main() {
 			},
 		},
 		modelDownloadSubmissionMigration(),
+		storageQuotaMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1609,6 +1610,7 @@ func main() {
 			&model.PrequeueConfig{},
 			&model.QueueQuotaLimit{},
 			&model.UserBanRecord{},
+			&model.UserSpaceSize{},
 		)
 		if err != nil {
 			return err
@@ -1732,6 +1734,36 @@ func main() {
 
 	if err := m.Migrate(); err != nil {
 		panic(fmt.Errorf("could not migrate: %w", err))
+	}
+}
+
+func storageQuotaMigration() *gormigrate.Migration {
+	type userStorageColumns struct {
+		SpaceQuota int64 `gorm:"type:bigint;default:-1"`
+	}
+
+	return &gormigrate.Migration{
+		ID: "202608020001",
+		Migrate: func(tx *gorm.DB) error {
+			if err := tx.AutoMigrate(&model.UserSpaceSize{}); err != nil {
+				return err
+			}
+
+			migrator := tx.Table("users").Migrator()
+			if !migrator.HasColumn(&userStorageColumns{}, "SpaceQuota") {
+				return migrator.AddColumn(&userStorageColumns{}, "SpaceQuota")
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			migrator := tx.Table("users").Migrator()
+			if migrator.HasColumn(&userStorageColumns{}, "SpaceQuota") {
+				if err := migrator.DropColumn(&userStorageColumns{}, "SpaceQuota"); err != nil {
+					return err
+				}
+			}
+			return tx.Migrator().DropTable(&model.UserSpaceSize{})
+		},
 	}
 }
 

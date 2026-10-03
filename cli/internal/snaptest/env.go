@@ -3,19 +3,21 @@ package snaptest
 import (
 	"os"
 	"strings"
+
+	"github.com/raids-lab/crater/cli/internal/testutil"
 )
 
-// EnvMinimal returns a snapshot-friendly environment: isolated HOME, fixed
-// language-related locale, and PATH inherited when set so the real binary can run.
+// EnvMinimal returns a snapshot-friendly environment: isolated user config
+// paths, fixed language-related locale, and PATH inherited when set so the
+// real binary can run.
 func EnvMinimal(home, craterLang string) []string {
-	out := []string{
-		"HOME=" + home,
-		"CRATER_LANG=" + craterLang,
+	out := append(testutil.UserConfigEnv(home),
+		"CRATER_LANG="+craterLang,
 		"CRATER_TEST_SANDBOX=1",
 		"LANG=C",
 		"LC_ALL=C",
 		"TERM=dumb",
-	}
+	)
 	if p := os.Getenv("PATH"); p != "" {
 		out = append(out, "PATH="+p)
 	}

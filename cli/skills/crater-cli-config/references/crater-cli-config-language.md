@@ -74,7 +74,7 @@ crater config language en --json
 
 ## 安全注意
 
-- 不要要求用户手动编辑 `state.json`。
+- 不要要求用户手动编辑 `state.json`，也不要把文件内容发到聊天里；其中可能含明文 token。
 - 不要在没有明确目标语言时，替用户猜测并执行非交互切换。
 
 ## 排查重点

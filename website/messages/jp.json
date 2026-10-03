@@ -27,7 +27,7 @@
     "altText": "Crater プラットフォーム"
   },
   "Footer": {
-    "copyright": "© {year} Crater. All rights reserved.",
+    "copyright": "著作権 2023-{year} The Crater Project Team, RAIDS-Lab。",
     "product": {
       "title": "製品",
       "features": "機能",
@@ -243,7 +243,7 @@
     "close": "検索を閉じる",
     "select": "選択",
     "noResults": "結果が見つかりませんでした",
-    "poweredBy": "検索エンジン: ",
+    "poweredBy": "検索エンジン：",
     "untitled": "タイトルなし"
   },
   "CraterChartVersionNotice": {

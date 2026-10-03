@@ -30,14 +30,21 @@ export function GpuAnalysis({ enabled, isPending, onToggle }: GpuAnalysisProps) 
       <CardContent>
         <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm">
           <div className="space-y-0.5">
-            <Label className="text-base">{t('systemConfig.gpuAnalysis.switchLabel')}</Label>
+            <Label htmlFor="gpu-analysis-enabled" className="text-base">
+              {t('systemConfig.gpuAnalysis.switchLabel')}
+            </Label>
             <p className="text-muted-foreground text-[0.8rem]">
               {t('systemConfig.gpuAnalysis.switchDescription')}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {isPending && <Loader2Icon className="text-muted-foreground h-4 w-4 animate-spin" />}
-            <Switch checked={enabled} onCheckedChange={onToggle} disabled={isPending} />
+            <Switch
+              id="gpu-analysis-enabled"
+              checked={enabled}
+              onCheckedChange={onToggle}
+              disabled={isPending}
+            />
           </div>
         </div>
 

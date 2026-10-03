@@ -11,8 +11,8 @@ const (
 	// 请求阶段的网络不可达（当前实现里 Login 等 API 错误均归此类）。
 	CategoryAPI = "api_error"
 
-	// CategorySystem 表示本机环境与本地依赖问题：读写配置文件、系统安全存储（Keyring）、
-	// 本地权限等。不是「业务 API 返回 4xx/5xx」那类问题。
+	// CategorySystem covers local environment and dependency failures such as
+	// configuration access, local permissions, and JSON encoding.
 	CategorySystem = "system_error"
 
 	// CategoryCancelled 表示用户在交互中主动中止（例如确认选 No），与可重试的
@@ -71,11 +71,10 @@ const (
 	ErrNotFound = "ERR_NOT_FOUND"
 
 	// System Errors
-	ErrConfigWriteFailed  = "ERR_CONFIG_WRITE_FAILED"
-	ErrSecureStorageError = "ERR_SECURE_STORAGE_ERROR"
-	ErrBinaryNotFound     = "ERR_BINARY_NOT_FOUND"
-	ErrJSONEncodeFailed   = "ERR_JSON_ENCODE_FAILED" // 成功体写 stdout 时 json.Encode 失败
-	ErrCommandExecution   = "ERR_COMMAND_EXECUTION"
+	ErrConfigWriteFailed = "ERR_CONFIG_WRITE_FAILED"
+	ErrBinaryNotFound    = "ERR_BINARY_NOT_FOUND"
+	ErrJSONEncodeFailed  = "ERR_JSON_ENCODE_FAILED" // 成功体写 stdout 时 json.Encode 失败
+	ErrCommandExecution  = "ERR_COMMAND_EXECUTION"
 
 	// User cancellation
 	ErrOperationCancelled = "ERR_OPERATION_CANCELLED"

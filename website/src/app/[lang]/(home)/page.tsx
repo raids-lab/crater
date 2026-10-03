@@ -23,7 +23,7 @@ import { GetStarted } from "@/components/get-started";
 import { FaqSection } from "@/components/faq-section";
 import {use} from 'react';
 import {setRequestLocale} from 'next-intl/server';
-import {useTranslations } from "next-intl";
+import {useTranslations} from 'next-intl';
 import { locales } from '@/i18n/config';
 
 export async function generateStaticParams() {
@@ -35,7 +35,8 @@ export async function generateStaticParams() {
 export default function HomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
   setRequestLocale(lang);
-  const tFooter = useTranslations("Footer");
+  const tFooter = useTranslations('Footer');
+  const currentYear = new Date().getFullYear();
 
   return (
     <div className="min-h-screen text-gray-900 dark:text-gray-100">
@@ -58,7 +59,7 @@ export default function HomePage({ params }: { params: Promise<{ lang: string }>
                 <span className="text-lg font-bold">Crater</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                {tFooter("copyright", {year: new Date().getFullYear()})}
+                {tFooter('copyright', { year: currentYear })}
               </p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-8">

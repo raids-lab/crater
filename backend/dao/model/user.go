@@ -66,6 +66,7 @@ type User struct {
 	Status              Status                                  `gorm:"index:status;not null;comment:用户状态 (pending, active, inactive)"`
 	Space               string                                  `gorm:"uniqueIndex;type:varchar(256);not null;comment:用户空间绝对路径"`
 	ImageQuota          int64                                   `gorm:"type:bigint;default:-1;comment:用户在镜像仓库的配额"`
+	SpaceQuota          int64                                   `gorm:"type:bigint;default:-1;comment:User storage quota in bytes"`
 	ExtraBalance        int64                                   `gorm:"type:bigint;not null;default:0;comment:用户额外点数余额(内部微点, 充值/奖励)"`
 	LastEmailVerifiedAt *time.Time                              `gorm:"comment:最后一次邮箱验证时间"`
 	BannedTimestamp     *time.Time                              `gorm:"index;comment:用户封禁截止时间，晚于当前时间表示封禁中"`

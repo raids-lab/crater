@@ -51,6 +51,52 @@ A regular user image only provides the container runtime environment. It does no
 
 Here, `nfs` is only the default StorageClass name; it does not mean that Crater installs NFS. If the cluster uses CephFS, set both locations to the actual CephFS `StorageClass`. Crater uses the volume in the same way.
 
+#### Enable CephFS User Quotas
+
+Crater's user-space usage and quota management works only with CephFS and is disabled by default. Do not enable it for NFS, RBD, or local volumes. A dedicated quota-agent reads directory usage and writes `ceph.quota.max_bytes`; the regular storage-server and user workloads do not need permission to change quotas.
+
+Before enabling it, verify that:
+
+- The shared PVC named by `storage.pvcName` is provided by the Rook CephFS CSI driver and exposes `fsName` and `subvolumePath`.
+- The Rook Operator is installed and administrators can create a `CephClient`, Secret, static PV, and PVC.
+- The quota-agent uses a dedicated CephX identity whose MDS capability grants the `p` permission only for the shared PVC's subvolume path.
+
+Run the bootstrap script from a source checkout that matches the Chart version being deployed. It creates a path-scoped CephClient and a dedicated static PVC for the original CephFS subvolume; it does not copy any files. The script also changes the original PV reclaim policy to `Retain`, so confirm that this matches the cluster's data-lifecycle policy before running it.
+
+```bash
+APP_NAMESPACE=crater-workspace \
+ROOK_NAMESPACE=rook-ceph \
+SOURCE_PVC=crater-rw-storage \
+bash backend/hack/bootstrap-cephfs-quota-agent.sh
+```
+
+Enable the component in the cluster values. When enabled, the Chart selects the internal `storageServer` provider for the backend. Do not expose quota-agent through an Ingress.
+
+```yaml
+quotaAgent:
+  enabled: true
+  existingClaim: crater-quota-storage
+
+backendConfig:
+  storage:
+    quota:
+      rookNamespace: rook-ceph
+      cephFSCSIDriver: rook-ceph.cephfs.csi.ceph.com
+      cephFSName: cephfs
+```
+
+<CraterChartVersionNotice />
+
+```bash
+helm upgrade crater oci://ghcr.io/raids-lab/crater \
+  --version <chart-version> \
+  --values values.yaml
+```
+
+After the upgrade, verify that the dedicated PVC is `Bound`, `deployment/crater-quota-agent` rolls out successfully, the administrator capability API returns the expected `usage_readable`, `quota_readable`, and `quota_writable` values, and the storage administration page loads correctly. Before production use, test with a non-production user: save the original quota, set a temporary quota, read it back, verify an over-quota write, and restore the original value.
+
+To roll back, first set affected users to unlimited if their limits must be removed. Then set both `quotaAgent.enabled` and `backendConfig.storage.quota.enabled` to `false` and upgrade again. Disabling the component does not delete files or clear existing CephFS directory quotas. For permanent cleanup, delete the dedicated quota-agent PVC, static PV, CSI Secret, and CephClient in that order. Do not delete the original shared PVC or the underlying CephFS subvolume.
+
 ### Distributed Block Storage
 
 [Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html) provides virtual block devices from a Ceph cluster. Kubernetes formats them on a node and mounts them into a Pod. As with CephFS, administrators must deploy the Ceph cluster, Rook, and the RBD CSI driver in advance; Crater does not install them automatically.

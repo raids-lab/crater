@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -52,6 +53,7 @@ type SparseJobMgr struct {
 	name       string
 	jobclient  *crclient.RecommendDLJobController
 	kubeClient kubernetes.Interface
+	kubeConfig *rest.Config
 	banService *service.UserBanService
 }
 
@@ -60,6 +62,7 @@ func NewSparseJobMgr(conf *handler.RegisterConfig) handler.Manager {
 		name:       "spjobs",
 		jobclient:  &crclient.RecommendDLJobController{Client: conf.Client},
 		kubeClient: conf.KubeClient,
+		kubeConfig: conf.KubeConfig,
 		banService: conf.UserBanService,
 	}
 }
@@ -125,6 +128,11 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 
 	token := util.GetToken(c)
 	if !handler.RequireUserBanCapability(c, mgr.banService, service.UserBanCapabilityJobSubmission) {
+		return
+	}
+
+	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.kubeConfig); err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 

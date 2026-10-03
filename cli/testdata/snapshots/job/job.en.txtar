@@ -371,52 +371,96 @@ crater job ls --page 2 --page-size 2 --json --no-interactive
   "status": "OK"
 }
 -- en/21-ls-page-success-json/stderr --
--- en/22-logs-missing-name-nojson/argv --
-crater job logs --no-interactive
--- en/22-logs-missing-name-nojson/exit --
+-- en/22-ls-invalid-multi-filters-json/argv --
+crater job ls --status Running,bad --type custom,nope --schedule normal,0 --no-interactive --json
+-- en/22-ls-invalid-multi-filters-json/exit --
 2
--- en/22-logs-missing-name-nojson/stdout --
--- en/22-logs-missing-name-nojson/stderr --
+-- en/22-ls-invalid-multi-filters-json/stdout --
+-- en/22-ls-invalid-multi-filters-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "invalid job status: bad\ninvalid job type: nope\ninvalid schedule type \"0\": use normal or backfill",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "status",
+        "message": "invalid job status: bad"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "type",
+        "message": "invalid job type: nope"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "schedule",
+        "message": "invalid schedule type \"0\": use normal or backfill"
+      }
+    ]
+  }
+}
+-- en/23-ls-valid-multi-filters-timeout-json/argv --
+crater job ls --search demo --status Running,Pending --type pytorch,tensorflow --schedule normal,backfill --no-interactive --json
+-- en/23-ls-valid-multi-filters-timeout-json/exit --
+4
+-- en/23-ls-valid-multi-filters-timeout-json/stdout --
+-- en/23-ls-valid-multi-filters-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Get \"https://example.invalid/api/v1/vcjobs?job_type=pytorch\u0026job_type=tensorflow\u0026page=1\u0026page_size=15\u0026schedule_type=1\u0026schedule_type=0\u0026search=demo\u0026status=Running\u0026status=Pending\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/vcjobs?job_type=pytorch\u0026job_type=tensorflow\u0026page=1\u0026page_size=15\u0026schedule_type=1\u0026schedule_type=0\u0026search=demo\u0026status=Running\u0026status=Pending\": context deadline exceeded"
+  }
+}
+-- en/24-logs-missing-name-nojson/argv --
+crater job logs --no-interactive
+-- en/24-logs-missing-name-nojson/exit --
+2
+-- en/24-logs-missing-name-nojson/stdout --
+-- en/24-logs-missing-name-nojson/stderr --
 Error:
   job name is required (<name>)
--- en/23-logs-negative-tail-json/argv --
+-- en/25-logs-negative-tail-json/argv --
 crater job logs job-123 --tail -1 --no-interactive --json
--- en/23-logs-negative-tail-json/exit --
+-- en/25-logs-negative-tail-json/exit --
 2
--- en/23-logs-negative-tail-json/stdout --
--- en/23-logs-negative-tail-json/stderr --
+-- en/25-logs-negative-tail-json/stdout --
+-- en/25-logs-negative-tail-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "tail must not be negative"
 }
--- en/24-logs-pod-all-pods-conflict-json/argv --
+-- en/26-logs-pod-all-pods-conflict-json/argv --
 crater job logs job-123 --pod pod-1 --all-pods --no-interactive --json
--- en/24-logs-pod-all-pods-conflict-json/exit --
+-- en/26-logs-pod-all-pods-conflict-json/exit --
 2
--- en/24-logs-pod-all-pods-conflict-json/stdout --
--- en/24-logs-pod-all-pods-conflict-json/stderr --
+-- en/26-logs-pod-all-pods-conflict-json/stdout --
+-- en/26-logs-pod-all-pods-conflict-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "--pod and --all-pods cannot be used together"
 }
--- en/25-logs-follow-json-conflict/argv --
+-- en/27-logs-follow-json-conflict/argv --
 crater job logs job-123 --follow --no-interactive --json
--- en/25-logs-follow-json-conflict/exit --
+-- en/27-logs-follow-json-conflict/exit --
 2
--- en/25-logs-follow-json-conflict/stdout --
--- en/25-logs-follow-json-conflict/stderr --
+-- en/27-logs-follow-json-conflict/stdout --
+-- en/27-logs-follow-json-conflict/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "--follow cannot be used with --json"
 }
--- en/26-logs-follow-previous-conflict-nojson/argv --
+-- en/28-logs-follow-previous-conflict-nojson/argv --
 crater job logs job-123 --follow --previous --no-interactive
--- en/26-logs-follow-previous-conflict-nojson/exit --
+-- en/28-logs-follow-previous-conflict-nojson/exit --
 2
--- en/26-logs-follow-previous-conflict-nojson/stdout --
--- en/26-logs-follow-previous-conflict-nojson/stderr --
+-- en/28-logs-follow-previous-conflict-nojson/stdout --
+-- en/28-logs-follow-previous-conflict-nojson/stderr --
 Error:
   --follow cannot be used with --previous

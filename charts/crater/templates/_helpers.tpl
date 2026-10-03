@@ -82,6 +82,15 @@ Generate backend config with images from top-level images section
   ) -}}
   {{- $_ := set $config.registry "buildTools" $buildTools -}}
 {{- end -}}
+{{- if .Values.quotaAgent.enabled -}}
+  {{- $storage := get $config "storage" -}}
+  {{- $quota := default (dict) (get $storage "quota") -}}
+  {{- $_ := set $quota "enabled" true -}}
+  {{- $_ := set $quota "provider" "storageServer" -}}
+  {{- $_ := set $quota "storageServerURL" (printf "http://crater-quota-agent.%s.svc:7320" .Values.namespaces.job) -}}
+  {{- $_ := set $storage "quota" $quota -}}
+  {{- $_ := set $config "storage" $storage -}}
+{{- end -}}
 {{- $_ := set $config "host" .Values.host -}}
 {{- $_ := set $config "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image) -}}
 {{- $config | toYaml -}}
@@ -93,12 +102,18 @@ Avoid rendering full backend config into ss-config.
 */}}
 {{- define "crater.storageServerConfig" -}}
 {{- $backend := .Values.backendConfig -}}
+{{- $storage := deepCopy $backend.storage -}}
+{{- if .Values.quotaAgent.enabled -}}
+  {{- $quota := default (dict) (get $storage "quota") -}}
+  {{- $_ := set $quota "enabled" true -}}
+  {{- $_ := set $storage "quota" $quota -}}
+{{- end -}}
 {{- $config := dict
   "host" .Values.host
   "port" $backend.port
   "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image)
   "postgres" $backend.postgres
-  "storage" $backend.storage
+  "storage" $storage
   "secrets" $backend.secrets
   "auth" (dict
     "token" $backend.auth.token

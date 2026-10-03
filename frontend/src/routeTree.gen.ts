@@ -21,6 +21,7 @@ import { Route as PortalOverviewRouteRouteImport } from './routes/portal/overvie
 import { Route as PortalMoreRouteRouteImport } from './routes/portal/more/route'
 import { Route as PortalAccountRouteRouteImport } from './routes/portal/account/route'
 import { Route as AdminUsersRouteRouteImport } from './routes/admin/users/route'
+import { Route as AdminStorageRouteRouteImport } from './routes/admin/storage/route'
 import { Route as AdminStatisticsRouteRouteImport } from './routes/admin/statistics/route'
 import { Route as AdminJobsRouteRouteImport } from './routes/admin/jobs/route'
 import { Route as AdminGpuAnalysisRouteRouteImport } from './routes/admin/gpu-analysis/route'
@@ -31,6 +32,7 @@ import { Route as PortalTemplatesIndexRouteImport } from './routes/portal/templa
 import { Route as PortalOverviewIndexRouteImport } from './routes/portal/overview/index'
 import { Route as PortalMoreIndexRouteImport } from './routes/portal/more/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
+import { Route as AdminStorageIndexRouteImport } from './routes/admin/storage/index'
 import { Route as AdminStatisticsIndexRouteImport } from './routes/admin/statistics/index'
 import { Route as AdminOperationLogsIndexRouteImport } from './routes/admin/operation-logs/index'
 import { Route as AdminMoreIndexRouteImport } from './routes/admin/more/index'
@@ -168,6 +170,11 @@ const AdminUsersRouteRoute = AdminUsersRouteRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminStorageRouteRoute = AdminStorageRouteRouteImport.update({
+  id: '/storage',
+  path: '/storage',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminStatisticsRouteRoute = AdminStatisticsRouteRouteImport.update({
   id: '/statistics',
   path: '/statistics',
@@ -217,6 +224,11 @@ const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminUsersRouteRoute,
+} as any)
+const AdminStorageIndexRoute = AdminStorageIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminStorageRouteRoute,
 } as any)
 const AdminStatisticsIndexRoute = AdminStatisticsIndexRouteImport.update({
   id: '/',
@@ -619,6 +631,7 @@ export interface FileRoutesByFullPath {
   '/admin/gpu-analysis': typeof AdminGpuAnalysisRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/statistics': typeof AdminStatisticsRouteRouteWithChildren
+  '/admin/storage': typeof AdminStorageRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/account': typeof PortalAccountRouteRouteWithChildren
   '/portal/more': typeof PortalMoreRouteRouteWithChildren
@@ -668,6 +681,7 @@ export interface FileRoutesByFullPath {
   '/admin/more': typeof AdminMoreIndexRoute
   '/admin/operation-logs': typeof AdminOperationLogsIndexRoute
   '/admin/statistics/': typeof AdminStatisticsIndexRoute
+  '/admin/storage/': typeof AdminStorageIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
   '/portal/more/': typeof PortalMoreIndexRoute
   '/portal/overview/': typeof PortalOverviewIndexRoute
@@ -747,6 +761,7 @@ export interface FileRoutesByTo {
   '/admin/more': typeof AdminMoreIndexRoute
   '/admin/operation-logs': typeof AdminOperationLogsIndexRoute
   '/admin/statistics': typeof AdminStatisticsIndexRoute
+  '/admin/storage': typeof AdminStorageIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
   '/portal/more': typeof PortalMoreIndexRoute
   '/portal/overview': typeof PortalOverviewIndexRoute
@@ -799,6 +814,7 @@ export interface FileRoutesById {
   '/admin/gpu-analysis': typeof AdminGpuAnalysisRouteRouteWithChildren
   '/admin/jobs': typeof AdminJobsRouteRouteWithChildren
   '/admin/statistics': typeof AdminStatisticsRouteRouteWithChildren
+  '/admin/storage': typeof AdminStorageRouteRouteWithChildren
   '/admin/users': typeof AdminUsersRouteRouteWithChildren
   '/portal/account': typeof PortalAccountRouteRouteWithChildren
   '/portal/more': typeof PortalMoreRouteRouteWithChildren
@@ -848,6 +864,7 @@ export interface FileRoutesById {
   '/admin/more/': typeof AdminMoreIndexRoute
   '/admin/operation-logs/': typeof AdminOperationLogsIndexRoute
   '/admin/statistics/': typeof AdminStatisticsIndexRoute
+  '/admin/storage/': typeof AdminStorageIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
   '/portal/more/': typeof PortalMoreIndexRoute
   '/portal/overview/': typeof PortalOverviewIndexRoute
@@ -901,6 +918,7 @@ export interface FileRouteTypes {
     | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/statistics'
+    | '/admin/storage'
     | '/admin/users'
     | '/portal/account'
     | '/portal/more'
@@ -950,6 +968,7 @@ export interface FileRouteTypes {
     | '/admin/more'
     | '/admin/operation-logs'
     | '/admin/statistics/'
+    | '/admin/storage/'
     | '/admin/users/'
     | '/portal/more/'
     | '/portal/overview/'
@@ -1029,6 +1048,7 @@ export interface FileRouteTypes {
     | '/admin/more'
     | '/admin/operation-logs'
     | '/admin/statistics'
+    | '/admin/storage'
     | '/admin/users'
     | '/portal/more'
     | '/portal/overview'
@@ -1080,6 +1100,7 @@ export interface FileRouteTypes {
     | '/admin/gpu-analysis'
     | '/admin/jobs'
     | '/admin/statistics'
+    | '/admin/storage'
     | '/admin/users'
     | '/portal/account'
     | '/portal/more'
@@ -1129,6 +1150,7 @@ export interface FileRouteTypes {
     | '/admin/more/'
     | '/admin/operation-logs/'
     | '/admin/statistics/'
+    | '/admin/storage/'
     | '/admin/users/'
     | '/portal/more/'
     | '/portal/overview/'
@@ -1267,6 +1289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/storage': {
+      id: '/admin/storage'
+      path: '/storage'
+      fullPath: '/admin/storage'
+      preLoaderRoute: typeof AdminStorageRouteRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/statistics': {
       id: '/admin/statistics'
       path: '/statistics'
@@ -1336,6 +1365,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users/'
       preLoaderRoute: typeof AdminUsersIndexRouteImport
       parentRoute: typeof AdminUsersRouteRoute
+    }
+    '/admin/storage/': {
+      id: '/admin/storage/'
+      path: '/'
+      fullPath: '/admin/storage/'
+      preLoaderRoute: typeof AdminStorageIndexRouteImport
+      parentRoute: typeof AdminStorageRouteRoute
     }
     '/admin/statistics/': {
       id: '/admin/statistics/'
@@ -1937,6 +1973,17 @@ const AdminStatisticsRouteRouteChildren: AdminStatisticsRouteRouteChildren = {
 const AdminStatisticsRouteRouteWithChildren =
   AdminStatisticsRouteRoute._addFileChildren(AdminStatisticsRouteRouteChildren)
 
+interface AdminStorageRouteRouteChildren {
+  AdminStorageIndexRoute: typeof AdminStorageIndexRoute
+}
+
+const AdminStorageRouteRouteChildren: AdminStorageRouteRouteChildren = {
+  AdminStorageIndexRoute: AdminStorageIndexRoute,
+}
+
+const AdminStorageRouteRouteWithChildren =
+  AdminStorageRouteRoute._addFileChildren(AdminStorageRouteRouteChildren)
+
 interface AdminUsersRouteRouteChildren {
   AdminUsersNameRoute: typeof AdminUsersNameRoute
   AdminUsersIndexRoute: typeof AdminUsersIndexRoute
@@ -2015,6 +2062,7 @@ interface AdminRouteRouteChildren {
   AdminGpuAnalysisRouteRoute: typeof AdminGpuAnalysisRouteRouteWithChildren
   AdminJobsRouteRoute: typeof AdminJobsRouteRouteWithChildren
   AdminStatisticsRouteRoute: typeof AdminStatisticsRouteRouteWithChildren
+  AdminStorageRouteRoute: typeof AdminStorageRouteRouteWithChildren
   AdminUsersRouteRoute: typeof AdminUsersRouteRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
   AdminClusterNodesRouteRoute: typeof AdminClusterNodesRouteRouteWithChildren
@@ -2038,6 +2086,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminGpuAnalysisRouteRoute: AdminGpuAnalysisRouteRouteWithChildren,
   AdminJobsRouteRoute: AdminJobsRouteRouteWithChildren,
   AdminStatisticsRouteRoute: AdminStatisticsRouteRouteWithChildren,
+  AdminStorageRouteRoute: AdminStorageRouteRouteWithChildren,
   AdminUsersRouteRoute: AdminUsersRouteRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
   AdminClusterNodesRouteRoute: AdminClusterNodesRouteRouteWithChildren,

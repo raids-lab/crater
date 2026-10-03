@@ -27,7 +27,7 @@
     "altText": "Crater Platform"
   },
   "Footer": {
-    "copyright": "© {year} Crater. All Rights Reserved.",
+    "copyright": "Copyright 2023-{year} The Crater Project Team, RAIDS-Lab.",
     "product": {
       "title": "Product",
       "features": "Features",

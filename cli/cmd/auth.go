@@ -195,7 +195,7 @@ var lsCmd = &cobra.Command{
 		if outputJSON {
 			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
 				"active_context": active,
-				"auth_infos":     filtered,
+				"auth_infos":     session.PublicAuthInfos(filtered),
 			}))
 		}
 
@@ -277,7 +277,6 @@ var rmCmd = &cobra.Command{
 		}
 
 		for _, r := range toRemove {
-			_ = session.DeleteToken(session.ActiveContext{PlatformURL: r.PlatformURL, Username: r.Username, Method: r.Method})
 			if r.PlatformURL == st.ActiveContext.PlatformURL && r.Username == st.ActiveContext.Username && r.Method == st.ActiveContext.Method {
 				st.ActiveContext = session.ActiveContext{}
 			}
@@ -329,8 +328,6 @@ var logoutCmd = &cobra.Command{
 				return errOperationCancelled()
 			}
 		}
-
-		_ = session.DeleteToken(active)
 
 		var remaining []session.AuthInfo
 		for _, info := range st.AuthInfos {

@@ -371,52 +371,96 @@ crater job ls --page 2 --page-size 2 --json --no-interactive
   "status": "OK"
 }
 -- zh-CN/21-ls-page-success-json/stderr --
--- zh-CN/22-logs-missing-name-nojson/argv --
-crater job logs --no-interactive
--- zh-CN/22-logs-missing-name-nojson/exit --
+-- zh-CN/22-ls-invalid-multi-filters-json/argv --
+crater job ls --status Running,bad --type custom,nope --schedule normal,0 --no-interactive --json
+-- zh-CN/22-ls-invalid-multi-filters-json/exit --
 2
--- zh-CN/22-logs-missing-name-nojson/stdout --
--- zh-CN/22-logs-missing-name-nojson/stderr --
+-- zh-CN/22-ls-invalid-multi-filters-json/stdout --
+-- zh-CN/22-ls-invalid-multi-filters-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "无效的作业状态：bad\n无效的作业类型：nope\n无效的调度类型 \"0\"：请使用 normal 或 backfill",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "status",
+        "message": "无效的作业状态：bad"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "type",
+        "message": "无效的作业类型：nope"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "schedule",
+        "message": "无效的调度类型 \"0\"：请使用 normal 或 backfill"
+      }
+    ]
+  }
+}
+-- zh-CN/23-ls-valid-multi-filters-timeout-json/argv --
+crater job ls --search demo --status Running,Pending --type pytorch,tensorflow --schedule normal,backfill --no-interactive --json
+-- zh-CN/23-ls-valid-multi-filters-timeout-json/exit --
+4
+-- zh-CN/23-ls-valid-multi-filters-timeout-json/stdout --
+-- zh-CN/23-ls-valid-multi-filters-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/vcjobs?job_type=pytorch\u0026job_type=tensorflow\u0026page=1\u0026page_size=15\u0026schedule_type=1\u0026schedule_type=0\u0026search=demo\u0026status=Running\u0026status=Pending\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/vcjobs?job_type=pytorch\u0026job_type=tensorflow\u0026page=1\u0026page_size=15\u0026schedule_type=1\u0026schedule_type=0\u0026search=demo\u0026status=Running\u0026status=Pending\": context deadline exceeded"
+  }
+}
+-- zh-CN/24-logs-missing-name-nojson/argv --
+crater job logs --no-interactive
+-- zh-CN/24-logs-missing-name-nojson/exit --
+2
+-- zh-CN/24-logs-missing-name-nojson/stdout --
+-- zh-CN/24-logs-missing-name-nojson/stderr --
 Error:
   缺少必要参数：作业名称 (<name>)
--- zh-CN/23-logs-negative-tail-json/argv --
+-- zh-CN/25-logs-negative-tail-json/argv --
 crater job logs job-123 --tail -1 --no-interactive --json
--- zh-CN/23-logs-negative-tail-json/exit --
+-- zh-CN/25-logs-negative-tail-json/exit --
 2
--- zh-CN/23-logs-negative-tail-json/stdout --
--- zh-CN/23-logs-negative-tail-json/stderr --
+-- zh-CN/25-logs-negative-tail-json/stdout --
+-- zh-CN/25-logs-negative-tail-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "tail 不能为负数"
 }
--- zh-CN/24-logs-pod-all-pods-conflict-json/argv --
+-- zh-CN/26-logs-pod-all-pods-conflict-json/argv --
 crater job logs job-123 --pod pod-1 --all-pods --no-interactive --json
--- zh-CN/24-logs-pod-all-pods-conflict-json/exit --
+-- zh-CN/26-logs-pod-all-pods-conflict-json/exit --
 2
--- zh-CN/24-logs-pod-all-pods-conflict-json/stdout --
--- zh-CN/24-logs-pod-all-pods-conflict-json/stderr --
+-- zh-CN/26-logs-pod-all-pods-conflict-json/stdout --
+-- zh-CN/26-logs-pod-all-pods-conflict-json/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "--pod 与 --all-pods 不能同时使用"
 }
--- zh-CN/25-logs-follow-json-conflict/argv --
+-- zh-CN/27-logs-follow-json-conflict/argv --
 crater job logs job-123 --follow --no-interactive --json
--- zh-CN/25-logs-follow-json-conflict/exit --
+-- zh-CN/27-logs-follow-json-conflict/exit --
 2
--- zh-CN/25-logs-follow-json-conflict/stdout --
--- zh-CN/25-logs-follow-json-conflict/stderr --
+-- zh-CN/27-logs-follow-json-conflict/stdout --
+-- zh-CN/27-logs-follow-json-conflict/stderr --
 {
   "category": "usage_error",
   "code": "ERR_INVALID_FLAG_VALUE",
   "message": "--follow 不能与 --json 同时使用"
 }
--- zh-CN/26-logs-follow-previous-conflict-nojson/argv --
+-- zh-CN/28-logs-follow-previous-conflict-nojson/argv --
 crater job logs job-123 --follow --previous --no-interactive
--- zh-CN/26-logs-follow-previous-conflict-nojson/exit --
+-- zh-CN/28-logs-follow-previous-conflict-nojson/exit --
 2
--- zh-CN/26-logs-follow-previous-conflict-nojson/stdout --
--- zh-CN/26-logs-follow-previous-conflict-nojson/stderr --
+-- zh-CN/28-logs-follow-previous-conflict-nojson/stdout --
+-- zh-CN/28-logs-follow-previous-conflict-nojson/stderr --
 Error:
   --follow 不能与 --previous 同时使用

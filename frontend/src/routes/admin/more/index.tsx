@@ -2,12 +2,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
+import { BotIcon, CoinsIcon, NetworkIcon, Settings2Icon, SlidersHorizontalIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import WarningAlert from '@/components/custom/warning-alert'
 
@@ -50,6 +52,29 @@ export const Route = createFileRoute('/admin/more/')({
 function RouteComponent() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const [activeSection, setActiveSection] = useState('general')
+  const settingSections = [
+    {
+      value: 'general',
+      label: t('systemSetting.page.tabs.general'),
+      icon: SlidersHorizontalIcon,
+    },
+    {
+      value: 'ai',
+      label: t('systemSetting.page.tabs.ai'),
+      icon: BotIcon,
+    },
+    {
+      value: 'scheduling',
+      label: t('systemSetting.page.tabs.scheduling'),
+      icon: NetworkIcon,
+    },
+    {
+      value: 'quotas',
+      label: t('systemSetting.page.tabs.quotas'),
+      icon: CoinsIcon,
+    },
+  ]
 
   const llmForm = useForm<LlmFormSchema>({
     resolver: zodResolver(createLlmSettingsSchema(t)),
@@ -336,83 +361,121 @@ function RouteComponent() {
   const isPrequeueConfigPending = updatePrequeueMutation.isPending
 
   return (
-    <div className="space-y-6">
-      <WarningAlert
-        title={t('systemSetting.warning.title')}
-        description={t('systemSetting.warning.description')}
-      />
+    <Tabs
+      value={activeSection}
+      onValueChange={setActiveSection}
+      className="mx-auto w-full max-w-[1440px] gap-5"
+    >
+      <Card className="gap-4 shadow-none">
+        <CardHeader className="gap-4">
+          <div className="flex items-center gap-2">
+            <Settings2Icon className="text-primary size-5" />
+            <CardTitle>{t('navigation.platformSettings')}</CardTitle>
+          </div>
+          <CardDescription>{t('systemSetting.page.description')}</CardDescription>
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:inline-flex sm:w-fit">
+            {settingSections.map(({ icon: Icon, label, value }) => (
+              <TabsTrigger key={value} value={value} className="min-h-9 px-4">
+                <Icon />
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </CardHeader>
+        <CardContent>
+          <WarningAlert
+            className="grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0 border-orange-500/30 bg-orange-500/5 py-2 [&_[data-slot=alert-description]]:col-start-2 [&_[data-slot=alert-title]]:col-start-1"
+            title={t('systemSetting.warning.title')}
+            description={t('systemSetting.warning.description')}
+          />
+        </CardContent>
+      </Card>
 
-      <Card>
+      <TabsContent value="general" forceMount className="mt-0 data-[state=inactive]:hidden">
         <BasicSettings />
-      </Card>
+      </TabsContent>
 
-      <Card>
-        <LlmSettings
-          form={llmForm}
-          isPending={updateLLMMutation.isPending || resetLLMMutation.isPending}
-          onSubmit={handleLlmSubmit}
-          onReset={handleLlmReset}
-        />
+      <TabsContent value="ai" forceMount className="mt-0 data-[state=inactive]:hidden">
+        <Card>
+          <LlmSettings
+            form={llmForm}
+            isPending={updateLLMMutation.isPending || resetLLMMutation.isPending}
+            onSubmit={handleLlmSubmit}
+            onReset={handleLlmReset}
+          />
 
-        <GpuAnalysis
-          enabled={gpuStatusData?.enabled || false}
-          isPending={toggleGpuMutation.isPending || updateLLMMutation.isPending}
-          onToggle={handleGpuToggle}
-        />
-      </Card>
+          <GpuAnalysis
+            enabled={gpuStatusData?.enabled || false}
+            isPending={toggleGpuMutation.isPending || updateLLMMutation.isPending}
+            onToggle={handleGpuToggle}
+          />
+        </Card>
+      </TabsContent>
 
-      <Card>
-        <PrequeueSettings
-          backfillEnabled={backfillEnabled}
-          queueQuotaEnabled={queueQuotaEnabled}
-          isPending={isPrequeueConfigPending}
-          waitingToleranceSeconds={prequeueWaitingToleranceSeconds}
-          activateTickerIntervalSeconds={activateTickerIntervalSeconds}
-          maxTotalActivationsPerRound={maxTotalActivationsPerRound}
-          prequeueCandidateSize={prequeueCandidateSize}
-          onBackfillEnabledChange={setBackfillEnabled}
-          onQueueQuotaEnabledChange={setQueueQuotaEnabled}
-          onWaitingToleranceSecondsChange={setPrequeueWaitingToleranceSeconds}
-          onActivateTickerIntervalSecondsChange={setActivateTickerIntervalSeconds}
-          onMaxTotalActivationsPerRoundChange={setMaxTotalActivationsPerRound}
-          onPrequeueCandidateSizeChange={setPrequeueCandidateSize}
-          onSubmit={handlePrequeueSubmit}
-        />
-      </Card>
+      <TabsContent
+        value="scheduling"
+        forceMount
+        className="mt-0 space-y-4 data-[state=inactive]:hidden"
+      >
+        <Card>
+          <PrequeueSettings
+            backfillEnabled={backfillEnabled}
+            queueQuotaEnabled={queueQuotaEnabled}
+            isPending={isPrequeueConfigPending}
+            waitingToleranceSeconds={prequeueWaitingToleranceSeconds}
+            activateTickerIntervalSeconds={activateTickerIntervalSeconds}
+            maxTotalActivationsPerRound={maxTotalActivationsPerRound}
+            prequeueCandidateSize={prequeueCandidateSize}
+            onBackfillEnabledChange={setBackfillEnabled}
+            onQueueQuotaEnabledChange={setQueueQuotaEnabled}
+            onWaitingToleranceSecondsChange={setPrequeueWaitingToleranceSeconds}
+            onActivateTickerIntervalSecondsChange={setActivateTickerIntervalSeconds}
+            onMaxTotalActivationsPerRoundChange={setMaxTotalActivationsPerRound}
+            onPrequeueCandidateSizeChange={setPrequeueCandidateSize}
+            onSubmit={handlePrequeueSubmit}
+          />
+        </Card>
 
-      <Card className="gap-0">
-        <PodBandwidthSettings
-          config={podBandwidthConfig}
-          isPending={updatePodBandwidthMutation.isPending}
-          isLoading={isPodBandwidthLoading}
-          isError={isPodBandwidthError}
-          onRetry={() => void refetchPodBandwidth()}
-          onSubmit={(config) => updatePodBandwidthMutation.mutateAsync(config)}
-        />
-      </Card>
+        <Card className="gap-0">
+          <PodBandwidthSettings
+            config={podBandwidthConfig}
+            isPending={updatePodBandwidthMutation.isPending}
+            isLoading={isPodBandwidthLoading}
+            isError={isPodBandwidthError}
+            onRetry={() => void refetchPodBandwidth()}
+            onSubmit={(config) => updatePodBandwidthMutation.mutateAsync(config)}
+          />
+        </Card>
+      </TabsContent>
 
-      <Card>
-        <ModelDownloadLimitSettings
-          config={modelDownloadLimitConfig}
-          isPending={updateModelDownloadLimitMutation.isPending}
-          isLoading={isModelDownloadLimitLoading}
-          isError={isModelDownloadLimitError}
-          onRetry={() => void refetchModelDownloadLimit()}
-          onSubmit={(config) => updateModelDownloadLimitMutation.mutateAsync(config)}
-        />
-      </Card>
+      <TabsContent
+        value="quotas"
+        forceMount
+        className="mt-0 space-y-4 data-[state=inactive]:hidden"
+      >
+        <Card>
+          <ModelDownloadLimitSettings
+            config={modelDownloadLimitConfig}
+            isPending={updateModelDownloadLimitMutation.isPending}
+            isLoading={isModelDownloadLimitLoading}
+            isError={isModelDownloadLimitError}
+            onRetry={() => void refetchModelDownloadLimit()}
+            onSubmit={(config) => updateModelDownloadLimitMutation.mutateAsync(config)}
+          />
+        </Card>
 
-      <Card>
-        <BillingSettings
-          status={billingStatusData}
-          isSaving={updateBillingMutation.isPending}
-          isResettingAll={resetAllBillingMutation.isPending}
-          isGrantingAllExtra={grantAllUsersExtraMutation.isPending}
-          onSave={(payload) => updateBillingMutation.mutate(payload)}
-          onResetAll={() => resetAllBillingMutation.mutate()}
-          onGrantAllExtra={(payload) => grantAllUsersExtraMutation.mutate(payload)}
-        />
-      </Card>
-    </div>
+        <Card>
+          <BillingSettings
+            status={billingStatusData}
+            isSaving={updateBillingMutation.isPending}
+            isResettingAll={resetAllBillingMutation.isPending}
+            isGrantingAllExtra={grantAllUsersExtraMutation.isPending}
+            onSave={(payload) => updateBillingMutation.mutate(payload)}
+            onResetAll={() => resetAllBillingMutation.mutate()}
+            onGrantAllExtra={(payload) => grantAllUsersExtraMutation.mutate(payload)}
+          />
+        </Card>
+      </TabsContent>
+    </Tabs>
   )
 }

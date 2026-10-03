@@ -20,6 +20,7 @@ import (
 var (
 	noInteractive bool
 	outputJSON    bool
+	rootVersion   bool
 )
 
 func exitCodeFor(err error) int {
@@ -34,6 +35,8 @@ var rootCmd = &cobra.Command{
 	Use:   "crater",
 	Short: "Crater CLI",
 	Long:  "Crater CLI is an AI-friendly command line tool.",
+	Args:  validateRootArgs,
+	RunE:  runRoot,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Language is initialized before Execute(), so no need to set it here.
 
@@ -130,6 +133,7 @@ func bootstrapJSONFlagFromArgs() {
 }
 
 func init() {
+	rootCmd.Flags().BoolVarP(&rootVersion, "version", "v", false, "Show the CLI version")
 	rootCmd.PersistentFlags().BoolVar(&noInteractive, "no-interactive", false, "Disable interactive prompts")
 	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "Output in raw JSON format")
 	rootCmd.PersistentFlags().BoolP("help", "h", false, "Help for crater")

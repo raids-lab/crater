@@ -205,12 +205,17 @@ func TestListJobsSendsPagingAndServerFilters(t *testing.T) {
 		if query.Get("page") != "2" || query.Get("page_size") != "25" || query.Get("sort") != "-createdAt" {
 			t.Fatalf("unexpected paging query: %v", query)
 		}
-		if query.Get("days") != "14" || query.Get("status") != "Running" ||
-			query.Get("node") != "gpu-01" || query.Get("search") != "trainer" {
+		if query.Get("days") != "14" || query.Get("search") != "demo" || query.Get("node") != "gpu-01" {
 			t.Fatalf("unexpected filters: %v", query)
 		}
-		if !reflect.DeepEqual(query["job_type"], []string{"jupyter", "webide"}) {
+		if !reflect.DeepEqual(query["status"], []string{"Running", "Pending"}) {
+			t.Fatalf("unexpected statuses: %v", query["status"])
+		}
+		if !reflect.DeepEqual(query["job_type"], []string{"jupyter", "pytorch"}) {
 			t.Fatalf("unexpected job types: %v", query["job_type"])
+		}
+		if !reflect.DeepEqual(query["schedule_type"], []string{"1", "0"}) {
+			t.Fatalf("unexpected schedule types: %v", query["schedule_type"])
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(writer).Encode(Response[Page[JobInfo]]{
@@ -219,19 +224,54 @@ func TestListJobsSendsPagingAndServerFilters(t *testing.T) {
 	})
 
 	page, err := client.ListJobs(JobListOptions{
-		ListOptions: ListOptions{Page: 2, PageSize: 25, Sort: "-createdAt"},
-		All:         true,
-		Days:        14,
-		Status:      "Running",
-		Node:        "gpu-01",
-		Search:      "trainer",
-		Interactive: true,
+		ListOptions:   ListOptions{Page: 2, PageSize: 25, Sort: "-createdAt"},
+		All:           true,
+		Days:          14,
+		Search:        "demo",
+		Statuses:      []string{"Running", "Pending"},
+		JobTypes:      []string{"jupyter", "pytorch"},
+		ScheduleTypes: []int{1, 0},
+		Node:          "gpu-01",
 	})
 	if err != nil {
 		t.Fatalf("ListJobs returned error: %v", err)
 	}
 	if page.Total != 1 || len(page.Items) != 1 {
 		t.Fatalf("unexpected page: %#v", page)
+	}
+}
+
+func TestListJobsSendsShortcutJobTypes(t *testing.T) {
+	tests := []struct {
+		name    string
+		options JobListOptions
+		want    []string
+	}{
+		{
+			name:    "interactive",
+			options: JobListOptions{Interactive: true},
+			want:    []string{"jupyter", "webide"},
+		},
+		{
+			name:    "batch",
+			options: JobListOptions{Batch: true},
+			want:    []string{"custom", "pytorch", "tensorflow", "kuberay", "deepspeed", "openmpi"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := jobTestClient(t, func(writer http.ResponseWriter, request *http.Request) {
+				if got := request.URL.Query()["job_type"]; !reflect.DeepEqual(got, tt.want) {
+					t.Fatalf("job_type = %v, want %v", got, tt.want)
+				}
+				writeJobTestResponse(t, writer, Page[JobInfo]{})
+			})
+
+			if _, err := client.ListJobs(tt.options); err != nil {
+				t.Fatalf("ListJobs returned error: %v", err)
+			}
+		})
 	}
 }
 

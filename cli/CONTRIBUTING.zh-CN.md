@@ -63,19 +63,47 @@ make snapshot-update
 
 然后按 `docs/SPEC.md` 和 `docs/REVIEW.md` 人工审查 `cli/testdata/snapshots/` 的 diff。Golden 文件必须通过这种方式生成，不要手工编辑。
 
-除纯文档改动且不影响生成文件或代码外，创建或更新 PR 前应运行完整 CLI 测试目标。该目标会同时运行单元测试与快照校验：
+npm 打包辅助脚本有独立的单元测试：
 
 ```bash
-make test
+make npm-test
 ```
 
-为与其他子项目保持一致，`make pre-commit-check` 也可用，目前等价于 `make test`：
+除纯文档改动且不影响生成文件或代码外，创建或更新 PR 前应运行本地和 CI 共用的检查入口。它会在交叉编译前运行单元测试、快照校验和 npm 打包脚本测试：
 
 ```bash
 make pre-commit-check
 ```
 
-## 4. 提交前检查
+## 4. 发布维护
+
+全仓库发布触发见根文档 [发布 Workflow](../docs/zh-CN/CONTRIBUTING.md#发布-workflow)。CLI 遵守同一划分：`main` 更新不发布 CLI 产物；只有精确 `vX.Y.Z` tag 才发布 npm 包。不要用 GitHub Release 挂 CLI 资产，也不要用它启动其它 workflow。
+
+CLI 发布自动化包含两个入口：
+
+- `cli-pr.yml` 运行 `make pre-commit-check`，在独立 job 中交叉编译六个目标，打包全部七个 npm 包，并在 Linux 上对入口包进行安装冒烟测试。PR 不会暂存或发布包。
+- `cli-release.yml` 只接受精确的 `vX.Y.Z` tag，执行相同的提交前与打包检查，然后通过 Trusted Publishing 暂存 npm 包。它不会创建或更新 GitHub Release。
+
+精确的正式发布 tag 是唯一发布入口，同时还会启动现有的前端、后端、Storage 和 Helm workflow，后者会立即发布产物。只推送一次 tag，等待 npm 暂存及维护者审批完成后再推送下一个；不要移动已经用于正式发布的 tag。若需要 GitHub Release，只用于人工撰写更新说明，不会触发任何 workflow，也不再挂 CLI 二进制。
+
+npm 分发包含入口包 `@raids-lab/crater-cli` 和以下可选原生平台包：
+
+- `@raids-lab/crater-cli-darwin-arm64`
+- `@raids-lab/crater-cli-darwin-x64`
+- `@raids-lab/crater-cli-linux-arm64`
+- `@raids-lab/crater-cli-linux-x64`
+- `@raids-lab/crater-cli-win32-arm64`
+- `@raids-lab/crater-cli-win32-x64`
+
+### npm 暂存发布
+
+七个包都已在 npm 存在。推送下一次正式发布 tag 前，应分别为每个包配置 GitHub Actions Trusted Publisher：组织 `raids-lab`、仓库 `crater`、workflow 文件名 `cli-release.yml`、环境名留空，并且只允许 `npm stage publish`。维护者 npm 账号需要发布权限和 2FA。workflow 使用 Node 24、npm 11.19.1 和 GitHub OIDC，不再使用首发时的 `NPM_TOKEN`。
+
+workflow 会先打包七个 tarball，并用入口包和 Linux x64 包完成安装验证。六个平台包由独立 job 暂存；全部成功后，入口包 job 才会暂存。workflow 成功表示所有包**已暂存**，此时用户还不能安装新版本。维护者应在 npm 查看暂存内容，先通过 2FA 逐一批准六个平台包，最后批准 `@raids-lab/crater-cli`。npm 对每个包分别审批，这不是原子发布。
+
+不要用 `npm view` 判断暂存版本是否存在：暂存包尚未公开。GitHub 的 OIDC 凭据也不能调用 `npm stage list`。如果某个暂存 job 失败且 npm 可能已经接收该包，重跑前先查看 npm 的 Staged Packages 页面；重复提交相同 package/version 会冲突。完整验证一次经审批的暂存发布后，再删除 GitHub secret `NPM_TOKEN`、吊销首发 token，并将每个包设为要求 2FA 且禁止传统 token 发布。
+
+## 5. 提交前检查
 
 确认以下事项：
 
