@@ -1,0 +1,54 @@
+---
+title: 部署与运维 TensorBoard 面板
+description: 配置 TensorBoard 镜像、鉴权、调度、TTL、升级与回滚
+---
+
+<ChartBadge />
+
+## 镜像与调度
+
+动态创建的 TensorBoard Pod 使用以下 Helm values：
+
+- `images.tensorboard.repository` 与 `images.tensorboard.tag`
+- 全局 `imagePullPolicy` 与 `imagePullSecrets`
+- TensorBoard 专用的 `tensorboard.nodeSelector`、`tensorboard.tolerations` 与 `tensorboard.affinity`
+- TensorBoard Ingress 鉴权开关 `tensorboard.ingressAuthEnabled`（默认 `true`）
+
+私有镜像的 pull secret 必须存在于作业命名空间。面板会提交到所有者对应的 Volcano 队列。默认 affinity 倾向无 GPU 节点，但不会强制落到 control-plane；如有专用服务节点，请覆盖 TensorBoard 专用调度值，并通过 Pod 的实际节点与事件验证配置。
+
+## 访问鉴权
+
+TensorBoard Ingress 通过 ingress-nginx external auth 回调 Crater。每次打开面板时，受保护 API 先校验用户与面板所有权，再签发 Secure、HttpOnly、SameSite=Strict 且限定到面板路径的短期 Cookie。必须部署 ingress-nginx，并为 Crater 域名正确配置 HTTPS/TLS；随机 URL 不是安全边界。
+
+共享、测试和生产环境必须保持 `tensorboard.ingressAuthEnabled: true`。将其设为 `false` 会移除 Ingress 的 external-auth 注解，使持有 URL 的访问者绕过 Crater 登录态和所有权校验；该值仅可用于网络明确隔离的本地开发环境。
+
+建议使用两个普通用户和未登录窗口验证：他人的面板返回拒绝，未登录窗口无法访问，删除或过期后原 URL 立即失效。
+
+## TTL 与状态
+
+每个面板是一个申请 100m CPU、256Mi 内存的单 Pod Volcano Job。Pod 启动后最多运行四天；达到 active deadline 后 Job 进入终止态，Volcano 再通过 `ttlSecondsAfterFinished` 于五分钟后删除 Job，Service 和 Ingress 则由 owner reference 级联清理。每个用户最多保有 10 个等待中或活动面板。迁移期间，旧 Deployment 面板仍由原过期 GC 兼容处理。
+
+API 的 `pending`、`starting`、`ready`、`failed`、`expired` 状态来自 Volcano Job 阶段与 Pod Ready 条件；其中 `pending` 与普通 VCJob 的 Pending 阶段一致。目前不综合 Service、Ingress 或 EndpointSlice 健康度。故障排查还应检查 Volcano 队列、Pod 事件、Service endpoints 和 Ingress controller 日志。
+
+## 升级与回滚
+
+按 **backend → frontend** 顺序升级。升级后建议重新创建旧面板，使其 Ingress 带有当前的 external-auth 注解。
+
+回滚到只识别 Deployment 面板的旧 backend 前，应先记录并确认新旧两类资源：
+
+```bash
+kubectl -n <job-namespace> get jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> get deployment -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete deployment -l crater.raids.io/task-type=tensorboard
+```
+
+两条 delete 命令都会删除列出的全部 TensorBoard 面板，执行前必须确认影响范围。旧 backend 无法列出、鉴权或删除 VCJob 面板；残留旧 Deployment 仍需旧 GC 或人工清理。
+
+## 发布前验证
+
+- 使用非默认镜像仓库、pull secret 和实际目标 tag 创建面板。
+- 在带 control-plane taint 的集群确认 Pod 落点。
+- 覆盖个人目录、单/多来源、同名作业、TensorFlow PS、排队/就绪/失败/过期状态、四天回收、并发配额和异常路径。
+- 在面板前放置无法调度的大 GPU 作业，确认集群仍有兼容 CPU/内存时，小型 CPU 面板可以启动。
+- 对 Chart 执行 lint 和 template，并确认渲染后的 backend 配置包含镜像、pull policy、pull secrets、`ingressAuthEnabled` 与调度字段。

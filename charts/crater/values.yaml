@@ -23,9 +23,11 @@ firstUser:
   password: "Masked@Password"
 
 # -- Image configuration
-# -- Image pull policy ("IfNotPresent" | "Always", for development, use Always)
+# -- Image pull policy for chart workloads and dynamically created TensorBoard panels
+# Allowed values: "Always", "IfNotPresent", or "Never"
 imagePullPolicy: Always
-# -- Image pull secrets
+# -- Image pull secrets for chart workloads and dynamically created TensorBoard panels
+# TensorBoard secrets must also exist in namespaces.job
 imagePullSecrets: []
 # -- Container images configuration
 images:
@@ -79,6 +81,29 @@ images:
     repository: "docker.io/library/postgres"
     # -- DBBackup image tag
     tag: "16.4"
+  tensorboard:
+    # -- TensorBoard image repository used by dynamically created panels
+    repository: "docker.io/tensorflow/tensorflow"
+    # -- TensorBoard image tag
+    tag: "2.20.0"
+
+# Scheduling policy for dynamically created TensorBoard Volcano Jobs
+tensorboard:
+  # -- Protect every TensorBoard Ingress request through the Crater authentication endpoint
+  ingressAuthEnabled: true
+  # -- Node selector applied only to TensorBoard Pods
+  nodeSelector: {}
+  # -- Tolerations applied only to TensorBoard Pods
+  tolerations: []
+  # -- Prefer nodes without GPUs while still allowing the scheduler to use other eligible nodes
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: DoesNotExist
 
 # -- Periodically refresh public model and dataset metadata from configured source endpoints
 modelMetadataRefresh:
@@ -177,13 +202,13 @@ quotaAgent:
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 
-# -- Pod tolerations
+# -- Pod tolerations for chart Deployments
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
 
-# -- Pod affinity configuration
+# -- Pod affinity for chart Deployments
 affinity:
   nodeAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:

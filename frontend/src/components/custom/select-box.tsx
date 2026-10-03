@@ -101,6 +101,7 @@ const SelectBox = ({
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
+            type="button"
             variant={'outline'}
             disabled={disabled}
             className={cn(

@@ -25,6 +25,7 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
+	craterUtils "github.com/raids-lab/crater/pkg/utils"
 )
 
 var (
@@ -276,7 +277,8 @@ func GenerateArchitectureNodeAffinity(imageInfo ImageBaseInfo, baseAffinity *v1.
 // NB_USER: username
 // NB_GID: group ID
 // NB_UID: user ID
-func GenerateEnvs(ctx context.Context, token util.JWTMessage, customEnvs []v1.EnvVar) []v1.EnvVar {
+func GenerateEnvs(ctx context.Context, token util.JWTMessage, jobName string, customEnvs []v1.EnvVar) []v1.EnvVar {
+	customEnvs = craterUtils.ResolveTensorboardLogDirEnv(customEnvs, jobName)
 	u := query.User
 	user, err := u.WithContext(ctx).Where(u.ID.Eq(token.UserID)).First()
 	if err != nil {
@@ -599,6 +601,7 @@ func collectMountedDatasetIDs(mounts []util.VolumeMount) []uint {
 func generateInteractivePodSpec(
 	c context.Context,
 	token util.JWTMessage,
+	jobName string,
 	req *CreateJobCommon,
 	resourceList v1.ResourceList,
 	image ImageBaseInfo,
@@ -634,7 +637,7 @@ func generateInteractivePodSpec(
 	})
 
 	// 2. Env Vars
-	envs := GenerateEnvs(c, token, req.Envs)
+	envs := GenerateEnvs(c, token, jobName, req.Envs)
 
 	// 3. Node Affinity and Tolerations
 	baseAffinity := GenerateNodeAffinity(req.Selectors, resourceList)
