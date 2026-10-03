@@ -75,6 +75,21 @@ postgres:
 # Persistent volume claim and path prefix configurations
 # Required: All PVC names and prefix paths must be specified
 storage:
+  quota:
+    # CephFS-only feature. Keep false for NFS and other storage backends.
+    enabled: false
+    # auto prefers storage-server and falls back to a Rook Ceph toolbox.
+    provider: auto
+    # Optional; defaults to http://webdav-service.<job namespace>.svc:7320
+    storageServerURL: ""
+    # Rook Ceph namespace. Other fields derive compatible defaults from this value.
+    rookNamespace: rook-ceph
+    # Optional override for clusters using a custom CephFS CSI driver name.
+    cephFSCSIDriver: ""
+    # Label selector for the optional toolbox fallback Pod.
+    toolboxLabelSelector: app=rook-ceph-tools
+    # Fallback filesystem name when the PV does not expose volumeAttributes.fsName.
+    cephFSName: cephfs
   # Path prefixes for different types of storage locations
   # Required: All prefix paths must be specified
   prefix:

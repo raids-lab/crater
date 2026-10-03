@@ -115,8 +115,9 @@ func readJobListOptions(cmd *cobra.Command, admin bool) (api.JobListOptions, err
 	username = strings.TrimSpace(username)
 	search, _ := cmd.Flags().GetString("search")
 	days, _ := cmd.Flags().GetInt("days")
-	status, _ := cmd.Flags().GetString("status")
-	jobType, _ := cmd.Flags().GetString("type")
+	statuses := readListFlagValues(cmd, "status")
+	requestedTypes := readListFlagValues(cmd, "type")
+	schedules := readListFlagValues(cmd, "schedule")
 	node, _ := cmd.Flags().GetString("node")
 	interactive, _ := cmd.Flags().GetBool("interactive")
 	batch, _ := cmd.Flags().GetBool("batch")
@@ -124,18 +125,24 @@ func readJobListOptions(cmd *cobra.Command, admin bool) (api.JobListOptions, err
 	if len(issues) > 0 {
 		return api.JobListOptions{}, errUsageFromIssues(issues)
 	}
+	scheduleTypes := make([]int, 0, len(schedules))
+	for _, schedule := range normalizeListFlagValues(schedules) {
+		value, _ := parseJobListScheduleType(schedule)
+		scheduleTypes = append(scheduleTypes, value)
+	}
 	return api.JobListOptions{
-		ListOptions: listOptions,
-		All:         all,
-		Admin:       admin,
-		Username:    username,
-		Search:      strings.TrimSpace(search),
-		Days:        days,
-		Status:      strings.TrimSpace(status),
-		JobType:     strings.TrimSpace(jobType),
-		Node:        strings.TrimSpace(node),
-		Interactive: interactive,
-		Batch:       batch,
+		ListOptions:   listOptions,
+		All:           all,
+		Admin:         admin,
+		Username:      username,
+		Days:          days,
+		Search:        strings.TrimSpace(search),
+		Statuses:      normalizeListFlagValues(statuses),
+		JobTypes:      normalizeListFlagValues(requestedTypes),
+		ScheduleTypes: scheduleTypes,
+		Node:          strings.TrimSpace(node),
+		Interactive:   interactive,
+		Batch:         batch,
 	}, nil
 }
 
@@ -1115,8 +1122,10 @@ func filterJobs(cmd *cobra.Command, jobs []api.JobInfo) ([]api.JobInfo, error) {
 	if err := validateJobListFilters(cmd); err != nil {
 		return nil, err
 	}
-	status, _ := cmd.Flags().GetString("status")
-	jobType, _ := cmd.Flags().GetString("type")
+	statuses := readListFlagValues(cmd, "status")
+	requestedTypes := readListFlagValues(cmd, "type")
+	statuses = normalizeListFlagValues(statuses)
+	requestedTypes = normalizeListFlagValues(requestedTypes)
 	node, _ := cmd.Flags().GetString("node")
 	owner, _ := cmd.Flags().GetString("owner")
 	interactive, _ := cmd.Flags().GetBool("interactive")
@@ -1134,10 +1143,10 @@ func filterJobs(cmd *cobra.Command, jobs []api.JobInfo) ([]api.JobInfo, error) {
 
 	out := jobs[:0]
 	for _, job := range jobs {
-		if status != "" && job.Status != status {
+		if len(statuses) > 0 && !slices.Contains(statuses, job.Status) {
 			continue
 		}
-		if jobType != "" && job.JobType != jobType {
+		if len(requestedTypes) > 0 && !slices.Contains(requestedTypes, job.JobType) {
 			continue
 		}
 		if node != "" && !slices.Contains(job.Nodes, node) {
@@ -1177,14 +1186,13 @@ func jobListFilterIssues(cmd *cobra.Command) []usageIssue {
 	days, _ := cmd.Flags().GetInt("days")
 	search, _ := cmd.Flags().GetString("search")
 	sortFields, _ := cmd.Flags().GetString("sort")
-	status, _ := cmd.Flags().GetString("status")
-	jobType, _ := cmd.Flags().GetString("type")
+	statuses := readListFlagValues(cmd, "status")
+	requestedTypes := readListFlagValues(cmd, "type")
+	schedules := readListFlagValues(cmd, "schedule")
 	interactive, _ := cmd.Flags().GetBool("interactive")
 	batch, _ := cmd.Flags().GetBool("batch")
 	from, _ := cmd.Flags().GetString("from")
 	to, _ := cmd.Flags().GetString("to")
-	status = strings.TrimSpace(status)
-	jobType = strings.TrimSpace(jobType)
 	issues := []usageIssue{}
 	if days < -1 {
 		issues = append(issues, invalidIssue("days", i18n.T("err_invalid_job_days")))
@@ -1196,11 +1204,23 @@ func jobListFilterIssues(cmd *cobra.Command) []usageIssue {
 		))
 	}
 	issues = append(issues, jobSortIssues(strings.TrimSpace(sortFields))...)
-	if status != "" && !slices.Contains(jobStatuses, status) {
-		issues = append(issues, invalidIssue("status", i18n.T("err_invalid_job_status", status)))
+	issues = append(issues, validateJobListValues("status", statuses)...)
+	issues = append(issues, validateJobListValues("type", requestedTypes)...)
+	issues = append(issues, validateJobListValues("schedule", schedules)...)
+	for _, status := range normalizeListFlagValues(statuses) {
+		if !slices.Contains(jobStatuses, status) {
+			issues = append(issues, invalidIssue("status", i18n.T("err_invalid_job_status", status)))
+		}
 	}
-	if jobType != "" && !slices.Contains(jobTypes, jobType) {
-		issues = append(issues, invalidIssue("type", i18n.T("err_invalid_job_type", jobType)))
+	for _, jobType := range normalizeListFlagValues(requestedTypes) {
+		if !slices.Contains(jobTypes, jobType) {
+			issues = append(issues, invalidIssue("type", i18n.T("err_invalid_job_type", jobType)))
+		}
+	}
+	for _, schedule := range normalizeListFlagValues(schedules) {
+		if _, ok := parseJobListScheduleType(schedule); !ok {
+			issues = append(issues, invalidIssue("schedule", i18n.T("err_invalid_job_schedule", schedule)))
+		}
 	}
 	if interactive && batch {
 		issues = append(issues, invalidIssue("interactive", i18n.T("err_job_interactive_batch_conflict")))
@@ -1258,6 +1278,58 @@ func jobSortIssues(raw string) []usageIssue {
 		seen[field] = struct{}{}
 	}
 	return issues
+}
+
+func readListFlagValues(cmd *cobra.Command, name string) []string {
+	flag := cmd.Flags().Lookup(name)
+	if flag == nil {
+		return nil
+	}
+	if flag.Value.Type() == "stringSlice" {
+		values, _ := cmd.Flags().GetStringSlice(name)
+		return values
+	}
+	value, _ := cmd.Flags().GetString(name)
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	return []string{value}
+}
+
+func validateJobListValues(field string, values []string) []usageIssue {
+	issues := []usageIssue{}
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			issues = append(issues, invalidIssue(field, i18n.T("err_job_filter_empty", field)))
+		}
+	}
+	if len(values) > 20 {
+		issues = append(issues, invalidIssue(field, i18n.T("err_job_filter_too_many", field)))
+	}
+	return issues
+}
+
+func normalizeListFlagValues(values []string) []string {
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || slices.Contains(normalized, value) {
+			continue
+		}
+		normalized = append(normalized, value)
+	}
+	return normalized
+}
+
+func parseJobListScheduleType(raw string) (int, bool) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "normal":
+		return scheduleNormal, true
+	case "backfill":
+		return scheduleBackfill, true
+	default:
+		return 0, false
+	}
 }
 
 func parseOptionalTime(value string) (*time.Time, error) {
@@ -1506,8 +1578,9 @@ func init() {
 	jobLsCmd.Flags().String("user", "", "List jobs for a username")
 	jobLsCmd.Flags().String("search", "", i18n.T("flag_search"))
 	jobLsCmd.Flags().Int("days", 0, i18n.T("flag_days"))
-	jobLsCmd.Flags().String("status", "", "Filter by job status")
-	jobLsCmd.Flags().String("type", "", "Filter by job type")
+	jobLsCmd.Flags().StringSlice("status", nil, "Filter by job status, repeatable or comma-separated")
+	jobLsCmd.Flags().StringSlice("type", nil, "Filter by job type, repeatable or comma-separated")
+	jobLsCmd.Flags().StringSlice("schedule", nil, "Filter by schedule type: normal or backfill")
 	jobLsCmd.Flags().String("node", "", "Filter by node name")
 	jobLsCmd.Flags().String("owner", "", "Filter by owner username or display name")
 	jobLsCmd.Flags().String("from", "", "Filter createdAt from time, RFC3339 or YYYY-MM-DD")
@@ -1562,8 +1635,9 @@ func init() {
 	} {
 		cleanCmd.Flags().BoolP("yes", "y", false, "Run cleanup without confirmation")
 	}
-	completion.RegisterFlagValue([]string{"job", "ls"}, "status", staticValueCompleter(jobStatuses, nil))
-	completion.RegisterFlagValue([]string{"job", "ls"}, "type", staticValueCompleter(jobTypes, nil))
+	completion.RegisterFlagValue([]string{"job", "ls"}, "status", commaSeparatedValueCompleter(jobStatuses, nil))
+	completion.RegisterFlagValue([]string{"job", "ls"}, "type", commaSeparatedValueCompleter(jobTypes, nil))
+	completion.RegisterFlagValue([]string{"job", "ls"}, "schedule", commaSeparatedValueCompleter([]string{"normal", "backfill"}, nil))
 	completion.RegisterFlagValue([]string{"job", "pods"}, "status", staticValueCompleter(podStatuses, nil))
 	completion.RegisterFlagValue([]string{"admin", "job", "ls"}, "status", staticValueCompleter(jobStatuses, nil))
 	completion.RegisterFlagValue([]string{"admin", "job", "ls"}, "type", staticValueCompleter(jobTypes, nil))

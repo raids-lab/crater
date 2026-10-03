@@ -174,6 +174,8 @@ const getHeader = (name: string, t: (key: string) => string): string => {
       return t('nodeDetail.table.headers.status')
     case 'createTime':
       return t('nodeDetail.table.headers.createTime')
+    case 'startTime':
+      return t('nodeDetail.table.headers.startTime')
     case 'resources':
       return t('nodeDetail.table.headers.resources')
     default:
@@ -441,6 +443,16 @@ const getColumns = (
     ),
     cell: ({ row }) => {
       return <TimeDistance date={row.getValue('createTime')}></TimeDistance>
+    },
+    enableSorting: false,
+  },
+  {
+    accessorKey: 'startTime',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title={getHeader('startTime', t)} />
+    ),
+    cell: ({ row }) => {
+      return <TimeDistance date={row.getValue('startTime')}></TimeDistance>
     },
     enableSorting: false,
   },

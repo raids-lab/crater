@@ -21,11 +21,10 @@ import { AlarmClockIcon } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-
-import TipBadge from '@/components/badge/tip-badge'
 
 import {
   apiAdminGetBillingStatus,
@@ -159,9 +158,9 @@ function CronPolicy({ className }: { className?: string }) {
   const renderJobCards = (jobs: typeof JOB_CONFIGS) => {
     if (jobsQuery.isLoading) {
       return (
-        <div className="space-y-4">
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-64 w-full" />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-56 w-full" />
+          <Skeleton className="h-56 w-full" />
         </div>
       )
     }
@@ -169,7 +168,7 @@ function CronPolicy({ className }: { className?: string }) {
     const jobData = jobsQuery.data || {}
 
     return (
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {jobs.map((job) => {
           const config = jobData[job.jobId]
           if (!config) return null
@@ -198,23 +197,35 @@ function CronPolicy({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn('flex flex-col gap-6', className)}>
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5">
-              <AlarmClockIcon className="text-primary" />
-              {t('cronPolicy.title')}
-              <TipBadge />
-            </CardTitle>
-            <TabsList className={cn('grid w-full', showPatrolTab ? 'grid-cols-2' : 'grid-cols-1')}>
-              <TabsTrigger value="cleaner_function">{t('cronPolicy.cleanerJobsTitle')}</TabsTrigger>
+    <div className={cn('mx-auto flex w-full max-w-[1440px] flex-col gap-5', className)}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-4">
+        <Card className="shadow-none">
+          <CardHeader className="gap-4">
+            <div className="flex items-center gap-2">
+              <AlarmClockIcon className="text-primary size-5" />
+              <CardTitle>{t('cronPolicy.title')}</CardTitle>
+            </div>
+            <CardDescription>{t('cronPolicy.description')}</CardDescription>
+            <TabsList
+              className={cn('grid w-full max-w-md', showPatrolTab ? 'grid-cols-2' : 'grid-cols-1')}
+            >
+              <TabsTrigger value="cleaner_function">
+                {t('cronPolicy.cleanerJobsTitle')}
+                <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
+                  {cleanerJobs.length}
+                </Badge>
+              </TabsTrigger>
               {showPatrolTab && (
-                <TabsTrigger value="patrol_function">{t('cronPolicy.patrolJobsTitle')}</TabsTrigger>
+                <TabsTrigger value="patrol_function">
+                  {t('cronPolicy.patrolJobsTitle')}
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
+                    {patrolJobs.length}
+                  </Badge>
+                </TabsTrigger>
               )}
             </TabsList>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent>
             <TabsContent value="cleaner_function" className="mt-0">
               {renderJobCards(cleanerJobs)}
             </TabsContent>

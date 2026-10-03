@@ -602,7 +602,6 @@ export interface CronJobConfig {
   type: string
   spec: string
   config: object
-  lastExecuteTime: string
   status: CronJobConfigStatusType
   entry_id: number
 }

@@ -57,7 +57,7 @@ crater auth switch --help
 `--json` 成功数据：
 
 - `data.active_context`：当前激活三元组。
-- `data.auth_infos`：筛选后的身份摘要数组。
+- `data.auth_infos`：筛选后的身份摘要数组，**不含** `token`。磁盘上的 `state.json` 会保存 token，但命令输出会过滤掉。
 
 ## `crater auth switch`
 
@@ -85,6 +85,7 @@ crater auth switch --help
 ## 常见判断
 
 - 要确认“当前登录的是谁”：用 `crater auth ls --json`，看 `active_context`。
+- `auth ls --json` 的身份条目**不含** `token`。这是输出过滤，不能用来判断磁盘上有没有 token。若后续命令提示未保存 token，按 `crater-cli-auth-login` 对同一三元组重新登录，不要去读 `state.json`。
 - 要切到另一个已保存身份：先 `ls` 再 `switch`，避免误切。
 - `switch` 失败且提示多个候选时，补齐更精确的 `--platform`、`--username`、`--mode`。
 - `auth_infos` 中没有目标身份时，需要先登录，而不是切换。

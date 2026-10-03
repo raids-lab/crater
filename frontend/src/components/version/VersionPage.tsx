@@ -33,6 +33,7 @@ export default function VersionPage() {
   const [backendVersion] = useAtom(atomBackendVersion)
 
   // Get frontend environment variables
+  const currentYear = new Date().getFullYear()
   const frontendAppVersion = import.meta.env.VITE_APP_VERSION
   const frontendCommitSha = import.meta.env.VITE_APP_COMMIT_SHA
   const frontendBuildType = import.meta.env.VITE_APP_BUILD_TYPE
@@ -195,7 +196,7 @@ export default function VersionPage() {
         {/* Fourth section: Copyright information */}
         <div className="space-y-2 text-center">
           <div className="text-muted-foreground flex items-center justify-center gap-4 text-sm">
-            <span>{t('about.copyright')}</span>
+            <span>{t('about.copyright', { year: currentYear })}</span>
             <span>•</span>
             <a
               href="https://github.com/raids-lab/crater"

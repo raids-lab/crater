@@ -11,7 +11,7 @@
 在以下情况完成后，应按本文档进行 review：
 
 - 新增或修改命令、flag、位置参数、输出、错误、退出码或交互行为。
-- 修改 `internal/api`、`internal/state`、`internal/credential`、`internal/output`、`internal/completion`、`internal/i18n` 等影响多个命令的公共模块。
+- 修改 `internal/api`、`internal/state`、`internal/session`、`internal/output`、`internal/completion`、`internal/i18n` 等影响多个命令的公共模块。
 - 新增或修改快照测试、测试沙箱、golden 文件或 Makefile 测试入口。
 - 新增或修改 `cli/skills/`、`cli/skill-template/` 或面向 AI Agent 的调用说明。
 - 执行阶段性开发收尾，即使改动看似只在一个命令域内。
@@ -64,14 +64,14 @@
 
 ### 4. 外部访问与模块边界
 
-- `cmd/` 负责命令编排、flag 读取、成功输出与错误返回，不应散落 HTTP path、Keyring 细节、状态文件路径或自定义 JSON 编码。
+- `cmd/` 负责命令编排、flag 读取、成功输出与错误返回，不应散落 HTTP path、状态文件路径或自定义 JSON 编码。
 - `internal/api` 只处理 HTTP 与 API 语义，不应输出 stdout/stderr、调用 i18n 或构造 `*clierror.Error`。
 - `internal/output` 负责渲染，不负责业务判断或进程退出。
 - 访问 Crater 后端应通过 `internal/api` 的客户端、path 常量与领域方法；review 时应留意是否出现临时 HTTP client、手写 URL path、重复 DTO 或绕过统一错误类型的实现。
 - 对依赖后端的命令，应确认对应后端版本真实支持该 API 和语义，请求中的 flag、query、body 字段确实被后端消费，展示给用户的信息来自有效后端响应或明确的本地状态来源。
 - 读写本地状态应通过统一的 session/state 入口；不应在命令代码里直接拼配置目录、读写 `state.json`，或绕开测试沙箱。
-- 读写 token、密码等敏感凭据应通过 `internal/credential` 或现有 session 抽象；不应在命令代码、测试或 golden 中暴露 token 明文，也不应直接调用 Keyring 库绕过封装。
-- 测试或补全路径中的网络、存储与凭据访问应遵守 sandbox 和快路径约束；新增访问点需要确认不会触达真实 HOME、真实 Keyring 或真实网络。
+- 读写 token、密码等敏感凭据应通过 `internal/session`；命令成功/错误 JSON、人类可读输出、测试与 golden 不得暴露 `state.json` 中的 token 明文。序列化 `AuthInfo` 给用户看之前必须去掉 `token`。
+- 测试或补全路径中的网络、存储与凭据访问应遵守 sandbox 和快路径约束；新增访问点需要确认不会触达真实 HOME、真实 `state.json` 或真实网络。
 - 新增公共逻辑应放在既有职责匹配的包中；若需要改变边界，应同步更新 `ARCHITECTURE.md`。
 
 ### 5. 测试与可复现性
@@ -80,7 +80,7 @@
 - 新增纯逻辑、解析、筛选、映射、补全或 sandbox 行为时，应有对应单元测试或说明风险。
 - 阶段性开发收尾应确认已按 `SPEC.md`「快照测试」与 `cli/Makefile` 中定义的入口完成相应测试；若未运行，应说明原因与剩余风险。
 - golden 文件必须由规定命令生成，不得手工编辑；若 golden diff 很大，应确认是契约变化而不是环境漂移。
-- 快照测试不得依赖真实 HOME、真实 Keyring、真实网络、真实登录态或开发者本机状态；隔离要求见 `SPEC.md`「快照测试」与 `ARCHITECTURE.md`「测试沙箱」。
+- 快照测试不得依赖真实 HOME、真实 `state.json`、真实网络、真实登录态或开发者本机状态；隔离要求见 `SPEC.md`「快照测试」与 `ARCHITECTURE.md`「测试沙箱」。
 - Review golden 文件时应直接读取 `cli/testdata/snapshots/**/*.txtar`，不要只相信测试通过；重点检查 argv、stdout、stderr 与 exit 是否共同表达了预期契约。
 - Golden 输出应避免本机或运行时状态漂移，例如真实配置路径、登录身份、时间戳、live 集群记录或会随后端状态变化的文本。若命令展示状态字段，应使用确定性 fixture，并确认这些状态值属于命令契约而不是测试环境残留。
 - 对带 `--json` 的 golden 用例，stdout 或 stderr 中对应输出必须是合法 JSON，且不得混入提示语、表格、help 页面或其它装饰性文本。

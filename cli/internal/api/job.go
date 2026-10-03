@@ -36,16 +36,17 @@ type JobClient interface {
 
 type JobListOptions struct {
 	ListOptions
-	All         bool
-	Admin       bool
-	Username    string
-	Search      string
-	Days        int
-	Status      string
-	JobType     string
-	Node        string
-	Interactive bool
-	Batch       bool
+	All           bool
+	Admin         bool
+	Username      string
+	Days          int
+	Search        string
+	Statuses      []string
+	JobTypes      []string
+	ScheduleTypes []int
+	Node          string
+	Interactive   bool
+	Batch         bool
 }
 
 type UserInfo struct {
@@ -253,8 +254,8 @@ func jobListValues(options JobListOptions) url.Values {
 	if options.Search != "" {
 		values.Set("search", options.Search)
 	}
-	if options.Status != "" {
-		values.Set("status", options.Status)
+	for _, status := range options.Statuses {
+		values.Add("status", status)
 	}
 	if options.Node != "" {
 		values.Set("node", options.Node)
@@ -263,12 +264,15 @@ func jobListValues(options JobListOptions) url.Values {
 	for _, jobType := range types {
 		values.Add("job_type", jobType)
 	}
+	for _, scheduleType := range options.ScheduleTypes {
+		values.Add("schedule_type", strconv.Itoa(scheduleType))
+	}
 	return values
 }
 
 func selectedJobTypes(options JobListOptions) []string {
-	if options.JobType != "" {
-		return []string{options.JobType}
+	if len(options.JobTypes) > 0 {
+		return options.JobTypes
 	}
 	if options.Interactive {
 		return []string{"jupyter", "webide"}

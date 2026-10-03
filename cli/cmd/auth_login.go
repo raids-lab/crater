@@ -151,14 +151,14 @@ func runAuthLogin(cmd *cobra.Command, _ []string) error {
 	if err := session.SaveLogin(newAuth, loginResp.AccessToken); err != nil {
 		return &clierror.Error{
 			Category: errorcodes.CategorySystem,
-			Code:     errorcodes.ErrSecureStorageError,
-			Message:  err.Error(),
+			Code:     errorcodes.ErrConfigWriteFailed,
+			Message:  i18n.T("err_config_write", err.Error()),
 		}
 	}
 
 	if outputJSON {
 		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
-			"user": newAuth,
+			"user": session.PublicAuthInfo(newAuth),
 		}))
 	}
 	fmt.Printf("%s\n", i18n.T("login_success", in.platformURL, in.username, in.mode, roleForAuthInfo(newAuth.Role)))

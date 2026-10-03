@@ -1,4 +1,4 @@
-import { Layers3Icon, Loader2Icon, SaveIcon } from 'lucide-react'
+import { CircleHelpIcon, Layers3Icon, Loader2Icon, SaveIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+
+import SimpleTooltip from '@/components/label/simple-tooltip'
 
 interface PrequeueSettingsProps {
   backfillEnabled: boolean
@@ -68,11 +70,17 @@ export function PrequeueSettings({
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm">
             <div>
-              <Label className="text-base">{t('systemConfig.prequeue.backfillSwitchLabel')}</Label>
+              <Label htmlFor="prequeue-backfill-enabled" className="text-base">
+                {t('systemConfig.prequeue.backfillSwitchLabel')}
+              </Label>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {t('systemConfig.prequeue.backfillSwitchDescription')}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               {isPending && <Loader2Icon className="text-muted-foreground h-4 w-4 animate-spin" />}
               <Switch
+                id="prequeue-backfill-enabled"
                 checked={backfillEnabled}
                 onCheckedChange={onBackfillEnabledChange}
                 disabled={isPending}
@@ -82,13 +90,17 @@ export function PrequeueSettings({
 
           <div className="flex items-center justify-between rounded-lg border p-4 shadow-sm">
             <div>
-              <Label className="text-base">
+              <Label htmlFor="prequeue-quota-enabled" className="text-base">
                 {t('systemConfig.prequeue.queueQuotaSwitchLabel')}
               </Label>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {t('systemConfig.prequeue.queueQuotaSwitchDescription')}
+              </p>
             </div>
             <div className="flex items-center gap-2">
               {isPending && <Loader2Icon className="text-muted-foreground h-4 w-4 animate-spin" />}
               <Switch
+                id="prequeue-quota-enabled"
                 checked={queueQuotaEnabled}
                 onCheckedChange={onQueueQuotaEnabledChange}
                 disabled={isPending}
@@ -100,6 +112,12 @@ export function PrequeueSettings({
         <div className="space-y-2">
           <Label htmlFor="prequeue-waiting-tolerance">
             {t('systemConfig.prequeue.waitingToleranceLabel')}
+            <SimpleTooltip
+              tooltip={t('systemConfig.prequeue.waitingToleranceDescription')}
+              ariaLabel={t('systemConfig.prequeue.waitingToleranceLabel')}
+            >
+              <CircleHelpIcon className="text-muted-foreground size-4" />
+            </SimpleTooltip>
           </Label>
           <Input
             id="prequeue-waiting-tolerance"
@@ -112,56 +130,70 @@ export function PrequeueSettings({
           />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="prequeue-activate-ticker">
-              {t('systemConfig.prequeue.activateTickerLabel')}
-            </Label>
-            <Input
-              id="prequeue-activate-ticker"
-              type="number"
-              min={1}
-              value={activateTickerIntervalSeconds}
-              onChange={(event) => onActivateTickerIntervalSecondsChange(event.target.value)}
-              disabled={isPending}
-              placeholder={t('systemConfig.prequeue.positiveIntegerPlaceholder')}
-            />
-          </div>
+        <details className="rounded-lg border p-4">
+          <summary className="cursor-pointer text-sm font-medium">
+            {t('systemConfig.prequeue.advanced')}
+          </summary>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="prequeue-activate-ticker">
+                {t('systemConfig.prequeue.activateTickerLabel')}
+              </Label>
+              <p className="text-muted-foreground text-xs">
+                {t('systemConfig.prequeue.activateTickerDescription')}
+              </p>
+              <Input
+                id="prequeue-activate-ticker"
+                type="number"
+                min={1}
+                value={activateTickerIntervalSeconds}
+                onChange={(event) => onActivateTickerIntervalSecondsChange(event.target.value)}
+                disabled={isPending}
+                placeholder={t('systemConfig.prequeue.positiveIntegerPlaceholder')}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="prequeue-max-activations">
-              {t('systemConfig.prequeue.maxActivationsLabel')}
-            </Label>
-            <Input
-              id="prequeue-max-activations"
-              type="number"
-              min={1}
-              value={maxTotalActivationsPerRound}
-              onChange={(event) => onMaxTotalActivationsPerRoundChange(event.target.value)}
-              disabled={isPending}
-              placeholder={t('systemConfig.prequeue.positiveIntegerPlaceholder')}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="prequeue-max-activations">
+                {t('systemConfig.prequeue.maxActivationsLabel')}
+              </Label>
+              <p className="text-muted-foreground text-xs">
+                {t('systemConfig.prequeue.maxActivationsDescription')}
+              </p>
+              <Input
+                id="prequeue-max-activations"
+                type="number"
+                min={1}
+                value={maxTotalActivationsPerRound}
+                onChange={(event) => onMaxTotalActivationsPerRoundChange(event.target.value)}
+                disabled={isPending}
+                placeholder={t('systemConfig.prequeue.positiveIntegerPlaceholder')}
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="prequeue-candidate-size">
-              {t('systemConfig.prequeue.candidateSizeLabel')}
-            </Label>
-            <Input
-              id="prequeue-candidate-size"
-              type="number"
-              min={1}
-              value={prequeueCandidateSize}
-              onChange={(event) => onPrequeueCandidateSizeChange(event.target.value)}
-              disabled={isPending}
-              placeholder={t('systemConfig.prequeue.positiveIntegerPlaceholder')}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="prequeue-candidate-size">
+                {t('systemConfig.prequeue.candidateSizeLabel')}
+              </Label>
+              <p className="text-muted-foreground text-xs">
+                {t('systemConfig.prequeue.candidateSizeDescription')}
+              </p>
+              <Input
+                id="prequeue-candidate-size"
+                type="number"
+                min={1}
+                value={prequeueCandidateSize}
+                onChange={(event) => onPrequeueCandidateSizeChange(event.target.value)}
+                disabled={isPending}
+                placeholder={t('systemConfig.prequeue.positiveIntegerPlaceholder')}
+              />
+            </div>
           </div>
-        </div>
+        </details>
       </CardContent>
-      <CardFooter className="bg-muted/10 px-6 py-4">
+      <CardFooter className="bg-muted/10 justify-end border-t px-6 py-4">
         <Button type="button" onClick={onSubmit} disabled={isPending}>
-          <SaveIcon className="mr-2 h-4 w-4" />
+          <SaveIcon />
           {t('systemConfig.prequeue.save')}
         </Button>
       </CardFooter>

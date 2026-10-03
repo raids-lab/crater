@@ -56,6 +56,7 @@ export interface IClusterPodInfo {
   ownerReference: V1OwnerReference[]
   ip: string
   createTime: string
+  startTime?: string
   status: string
   resources: Record<string, string>
   requestResources?: Record<string, string> // 添加 requests 资源

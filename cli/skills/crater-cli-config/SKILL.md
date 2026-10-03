@@ -1,6 +1,6 @@
 ---
 name: crater-cli-config
-version: 1.0.0
+version: 1.0.1
 description: "Crater CLI 配置域：指导 AI Agent 帮用户查看和修改 CLI 本地配置，当前重点支持显示语言切换。用户提到 crater config、language、语言、中文、英文、切换语言、显示语言、配置项、state.json 时使用。"
 metadata:
   requires:
@@ -25,11 +25,13 @@ metadata:
 
 - `crater config language` 会修改用户本地 CLI 状态；执行前确认用户确实要切换语言。
 - 配置命令只应通过 `crater config ...` 操作，不要要求用户手动编辑 `state.json`。
+- 不要读取或粘贴 `state.json` 内容；该文件可能含明文登录 token。
 - 如果用户要求精确语法，先运行 `crater config --help` 或 `crater config language --help`。
 
 ## 配置模型
 
-- Crater CLI 的本地状态保存在 `state.json` 中。
+- Crater CLI 的本地状态保存在 `state.json` 中，其中也可能包含登录 token。
+- 语言切换只改 `language` 字段；查看认证状态应使用 `crater auth ls --json`，不要打开该文件。
 - `language` 字段控制 CLI 的显示语言。
 - 当前支持语言代码：`en`、`zh-CN`。
 

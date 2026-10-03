@@ -85,6 +85,7 @@ type Pod struct {
 	OwnerReference   []metav1.OwnerReference `json:"ownerReference"`
 	IP               string                  `json:"ip"`
 	CreateTime       metav1.Time             `json:"createTime"`
+	StartTime        *metav1.Time            `json:"startTime,omitempty"`
 	Status           corev1.PodPhase         `json:"status"`
 	Resources        corev1.ResourceList     `json:"resources"`        // Limits
 	RequestResources corev1.ResourceList     `json:"requestResources"` // Requests
@@ -98,6 +99,22 @@ type Pod struct {
 	AccountName     string `json:"accountName,omitempty"`     // 账户昵称（用于显示）
 	AccountID       uint   `json:"accountID,omitempty"`       // 账户ID（用于跳转）
 	AccountRealName string `json:"accountRealName,omitempty"` // 账户真实名称（用于tooltip）
+}
+
+func podInfoFromKubePod(pod *corev1.Pod) Pod {
+	return Pod{
+		Name:             pod.Name,
+		Namespace:        pod.Namespace,
+		IP:               pod.Status.PodIP,
+		CreateTime:       pod.CreationTimestamp,
+		StartTime:        pod.Status.StartTime,
+		Status:           pod.Status.Phase,
+		OwnerReference:   pod.OwnerReferences,
+		Resources:        utils.CalculateLimitsByContainers(pod.Spec.Containers),
+		RequestResources: utils.CalculateRequsetsByContainers(pod.Spec.Containers),
+		Locked:           false,
+		LockedTimestamp:  metav1.Time{},
+	}
 }
 
 type ClusterNodeDetail struct {
@@ -451,18 +468,7 @@ func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Po
 	pods := make([]Pod, len(podList.Items))
 	for i := range podList.Items {
 		pod := &podList.Items[i]
-		pods[i] = Pod{
-			Name:             pod.Name,
-			Namespace:        pod.Namespace,
-			IP:               pod.Status.PodIP,
-			CreateTime:       pod.CreationTimestamp,
-			Status:           pod.Status.Phase,
-			OwnerReference:   pod.OwnerReferences,
-			Resources:        utils.CalculateLimitsByContainers(pod.Spec.Containers),
-			RequestResources: utils.CalculateRequsetsByContainers(pod.Spec.Containers),
-			Locked:           false,
-			LockedTimestamp:  metav1.Time{},
-		}
+		pods[i] = podInfoFromKubePod(pod)
 		if len(pod.OwnerReferences) == 0 {
 			continue
 		}
@@ -501,18 +507,7 @@ func (nc *NodeClient) AdminGetPodsForNode(ctx context.Context, nodeName string) 
 	for i := range podList.Items {
 		pod := &podList.Items[i]
 
-		pods[i] = Pod{
-			Name:             pod.Name,
-			Namespace:        pod.Namespace,
-			IP:               pod.Status.PodIP,
-			CreateTime:       pod.CreationTimestamp,
-			Status:           pod.Status.Phase,
-			OwnerReference:   pod.OwnerReferences,
-			Resources:        utils.CalculateLimitsByContainers(pod.Spec.Containers),
-			RequestResources: utils.CalculateRequsetsByContainers(pod.Spec.Containers),
-			Locked:           false,
-			LockedTimestamp:  metav1.Time{},
-		}
+		pods[i] = podInfoFromKubePod(pod)
 
 		// 如果是 crater 作业命名空间中的 VolcanoJob Pod，查询作业和用户信息
 		if pod.Namespace == jobNamespace && len(pod.OwnerReferences) > 0 {

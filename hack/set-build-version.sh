@@ -20,15 +20,16 @@ commit_sha="${BUILD_COMMIT_SHA:-${GITHUB_SHA:-}}"
 ref_type="${BUILD_REF_TYPE:-${GITHUB_REF_TYPE:-branch}}"
 ref_name="${BUILD_REF_NAME:-${GITHUB_REF_NAME:-}}"
 build_time="${BUILD_TIME:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
-release_tag_pattern='^v[0-9]+\.[0-9]+\.[0-9]+$'
+release_tag_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 
 if [[ -z "$commit_sha" ]]; then
 	echo "BUILD_COMMIT_SHA or GITHUB_SHA is required" >&2
 	exit 1
 fi
 
-if ! git rev-parse --verify "${commit_sha}^{commit}" >/dev/null 2>&1; then
-	echo "Commit does not exist in the checkout: $commit_sha" >&2
+commit_sha_input="$commit_sha"
+if ! commit_sha="$(git rev-parse --verify "${commit_sha_input}^{commit}" 2>/dev/null)"; then
+	echo "Commit does not exist in the checkout: $commit_sha_input" >&2
 	exit 1
 fi
 

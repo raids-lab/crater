@@ -200,6 +200,7 @@ helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 
 - 📗 管理员指南（中文）: https://raids-lab.github.io/crater/zh/docs/admin/
 - 📘 管理员指南（English）: https://raids-lab.github.io/crater/en/docs/admin/
+- 📙 [CephFS 配额管理与 quota-agent 设计说明](cephfs-quota-agent.md)：PR 架构、部署、真实 CephFS 测试与排障
 
 ## 📁 仓库结构
 

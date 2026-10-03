@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -90,16 +91,18 @@ func TestValidMountPath(t *testing.T) {
 func TestJobListFilterIssuesAggregate(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().Int("days", 0, "")
-	cmd.Flags().String("status", "", "")
-	cmd.Flags().String("type", "", "")
+	cmd.Flags().StringSlice("status", nil, "")
+	cmd.Flags().StringSlice("type", nil, "")
+	cmd.Flags().StringSlice("schedule", nil, "")
 	cmd.Flags().Bool("interactive", false, "")
 	cmd.Flags().Bool("batch", false, "")
 	cmd.Flags().String("from", "", "")
 	cmd.Flags().String("to", "", "")
 	for name, value := range map[string]string{
 		"days":        "-2",
-		"status":      "invalid",
+		"status":      "invalid,also-invalid",
 		"type":        "invalid",
+		"schedule":    "invalid",
 		"interactive": "true",
 		"batch":       "true",
 		"from":        "2026-07-12",
@@ -110,7 +113,89 @@ func TestJobListFilterIssuesAggregate(t *testing.T) {
 		}
 	}
 	issues := jobListFilterIssues(cmd)
-	if len(issues) != 5 {
-		t.Fatalf("issues = %#v, want 5 aggregated issues", issues)
+	if len(issues) != 7 {
+		t.Fatalf("issues = %#v, want 7 aggregated issues", issues)
+	}
+}
+
+func TestNormalizeListFlagValuesTrimsAndDeduplicates(t *testing.T) {
+	got := normalizeListFlagValues([]string{" Running ", "Pending", "Running", ""})
+	want := []string{"Running", "Pending"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("normalizeListFlagValues() = %#v, want %#v", got, want)
+	}
+}
+
+func TestReadListFlagValuesSupportsSingleRepeatedAndCommaSeparatedValues(t *testing.T) {
+	for name, test := range map[string]struct {
+		args []string
+		want []string
+	}{
+		"single": {
+			args: []string{"--status", "Running"},
+			want: []string{"Running"},
+		},
+		"repeated and comma-separated": {
+			args: []string{"--status", "Running", "--status", "Pending,Failed"},
+			want: []string{"Running", "Pending", "Failed"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			cmd := &cobra.Command{}
+			cmd.Flags().StringSlice("status", nil, "")
+			if err := cmd.Flags().Parse(test.args); err != nil {
+				t.Fatal(err)
+			}
+			got := normalizeListFlagValues(readListFlagValues(cmd, "status"))
+			if !slices.Equal(got, test.want) {
+				t.Fatalf("status values = %#v, want %#v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestJobListFilterIssuesEnforcesBackendLimits(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().Int("days", 0, "")
+	cmd.Flags().String("search", "", "")
+	cmd.Flags().StringSlice("status", nil, "")
+	cmd.Flags().StringSlice("type", nil, "")
+	cmd.Flags().StringSlice("schedule", nil, "")
+	cmd.Flags().Bool("interactive", false, "")
+	cmd.Flags().Bool("batch", false, "")
+	cmd.Flags().String("from", "", "")
+	cmd.Flags().String("to", "", "")
+
+	tooMany := make([]string, 21)
+	for index := range tooMany {
+		tooMany[index] = jobStatuses[index%len(jobStatuses)]
+	}
+	if err := cmd.Flags().Set("status", strings.Join(tooMany, ",")); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Flags().Set("search", strings.Repeat("界", 129)); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Flags().Set("schedule", "0"); err != nil {
+		t.Fatal(err)
+	}
+
+	issues := jobListFilterIssues(cmd)
+	if len(issues) != 3 {
+		t.Fatalf("issues = %#v, want search, status count, and schedule errors", issues)
+	}
+}
+
+func TestParseJobListScheduleTypeUsesNamesOnly(t *testing.T) {
+	for input, want := range map[string]int{"normal": scheduleNormal, "Backfill": scheduleBackfill} {
+		got, ok := parseJobListScheduleType(input)
+		if !ok || got != want {
+			t.Fatalf("parseJobListScheduleType(%q) = (%d, %t), want (%d, true)", input, got, ok, want)
+		}
+	}
+	for _, input := range []string{"", "0", "1", "invalid"} {
+		if _, ok := parseJobListScheduleType(input); ok {
+			t.Fatalf("parseJobListScheduleType(%q) unexpectedly succeeded", input)
+		}
 	}
 }

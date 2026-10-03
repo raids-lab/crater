@@ -20,13 +20,14 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 type SimpleTooltip = {
   tooltip: ReactNode
   children?: ReactNode
+  ariaLabel?: string
 }
 
-export default function SimpleTooltip({ children, tooltip }: SimpleTooltip) {
+export default function SimpleTooltip({ ariaLabel, children, tooltip }: SimpleTooltip) {
   return (
     <TooltipProvider delayDuration={50}>
       <Tooltip>
-        <TooltipTrigger>{children}</TooltipTrigger>
+        <TooltipTrigger aria-label={ariaLabel}>{children}</TooltipTrigger>
         <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
     </TooltipProvider>

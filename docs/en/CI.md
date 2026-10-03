@@ -12,21 +12,27 @@ Before open-sourcing to GitHub, this project was hosted on a GitLab instance dep
 
 Crater's CI process is built on GitHub Actions, primarily serving code quality assurance and artifact publishing. Unlike traditional CI/CD processes, we only retain the continuous integration (CI) part, leaving continuous deployment (CD) to users to handle according to their own environments. This design ensures code quality and standardized build artifacts while giving users flexibility in deployment.
 
-The inputs of the CI process mainly include source code, Dockerfiles, documentation files, and Helm Chart configurations in the repository; the outputs are build artifacts, including multi-platform Docker images, static websites, and Helm Chart packages. All Docker images and Helm Charts are stored in GitHub Container Registry (GHCR), and the documentation website is deployed on GitHub Pages. Users can access these artifacts through the corresponding addresses.
+The inputs of the CI process mainly include source code, Dockerfiles, documentation files, Helm Chart configurations, and CLI packaging scripts in the repository; the outputs are build artifacts, including multi-platform Docker images, static websites, Helm Chart packages, and CLI npm packages. All Docker images and Helm Charts are stored in GitHub Container Registry (GHCR), the documentation website is deployed on GitHub Pages, and the CLI is published to the npm registry. Users can access these artifacts through the corresponding addresses.
 
 ### Goals
 
-Crater's CI process aims to ensure code quality, standardize build artifacts, and provide users with ready-to-use images and Charts through automation. It ensures code quality through PR checks, reduces manual intervention through automated builds and publishing, meets different environment needs through multi-platform support, and ensures artifact traceability and storage efficiency through version management and cleanup strategies.
+Crater's CI process aims to ensure code quality, standardize build artifacts, and provide users with ready-to-use images, Charts, and a CLI through automation. It ensures code quality through PR checks, reduces manual intervention through automated builds and publishing, meets different environment needs through multi-platform support, and ensures artifact traceability and storage efficiency through version management and cleanup strategies.
 
 ### Technology Stack
 
-Crater's CI process is built on GitHub Actions, Docker Buildx, and GitHub Container Registry (GHCR). GitHub Actions provides deeply integrated CI capabilities with the repository without requiring additional third-party service configuration; Docker Buildx enables cross-platform builds through QEMU emulation, building both amd64 and arm64 architecture images simultaneously to meet different hardware environment needs; GHCR serves as a unified storage for container images and Helm Charts, integrates with GitHub's permission system, supports OCI standards, and enables automated authentication through `GITHUB_TOKEN`.
+Crater's CI process is built on GitHub Actions, Docker Buildx, GitHub Container Registry (GHCR), and the npm registry. GitHub Actions provides deeply integrated CI capabilities with the repository without requiring additional third-party service configuration; Docker Buildx enables cross-platform builds through QEMU emulation, building both amd64 and arm64 architecture images simultaneously to meet different hardware environment needs; GHCR serves as a unified storage for container images and Helm Charts, integrates with GitHub's permission system, supports OCI standards, and enables automated authentication through `GITHUB_TOKEN`. The CLI does not go to GHCR: it cross-compiles native binaries and publishes them to the npm registry as one entry package plus platform packages.
+
+### Publish triggers
+
+Formal publication is started by Git tags, not by GitHub Releases. Pushes to `main` publish development artifacts according to each workflow's existing path filters; an exact `vX.Y.Z` tag then publishes versioned artifacts. A GitHub Release, if a maintainer writes one, is only human-authored notes: it must not trigger any workflow and must not carry published binaries, images, or charts. Do not reintroduce events such as `release.published` as triggers, and do not let one component's Release start other components. Do not move a published release tag. Repository-wide rules are in [Publish Workflows](../../CONTRIBUTING.md#publish-workflows).
 
 ### CI Process Categories
 
-Crater's CI process is divided into four main categories based on different build targets, each with independent trigger conditions and build processes:
+Crater's CI process is divided into five main categories based on different build targets, each with independent trigger conditions and build processes:
 
 - **Frontend & Backend** is the core of the CI process, responsible for code quality checks and image build publishing for application services (Backend, Frontend, Storage). It adopts a two-stage design: the PR check stage performs code style checks (Lint) and build verification to ensure code quality; the build and publish stage builds multi-platform images and pushes them to GHCR after code merge, while managing storage space through automatic cleanup strategies.
+
+- **CLI** handles checks and npm publication for the independently distributed command-line client. PR checks run `make pre-commit-check`, cross-build six targets, and verify all seven npm packages without submitting them. An exact `vX.Y.Z` tag starts the formal workflow, which stages the packages through npm Trusted Publishing for maintainer approval. Updates to `main` do not publish CLI artifacts.
 
 - **Dependency Images** are responsible for building and pushing Docker images related to build tools (buildx-client, envd-client, nerdctl-client), providing necessary runtime environments for application builds. These images also support multi-platform builds and are managed uniformly through GHCR.
 
@@ -510,7 +516,7 @@ Helm Chart is used to deploy the Crater platform to Kubernetes clusters, providi
 
 ### Overview
 
-Helm Chart's CI process adopts a two-stage design: the Chart validation stage executes during PRs, performing syntax validation, template validation, and version number checks; the Chart publishing stage executes when code is merged to the main branch or when Releases are created, packaging Charts and pushing them to the GHCR OCI repository. Inputs are Chart source code (located in the `charts/crater/` directory), outputs are packaged Helm Charts (`.tgz` files), and artifacts are stored in GHCR's `ghcr.io/raids-lab/crater` OCI repository.
+Helm Chart's CI process adopts a two-stage design: the Chart validation stage executes during PRs, performing syntax validation, template validation, and version number checks; the Chart publishing stage executes when `charts/**` lands on `main` or when an exact `vX.Y.Z` tag is pushed, packaging Charts and pushing them to the GHCR OCI repository. Inputs are Chart source code (located in the `charts/crater/` directory), outputs are packaged Helm Charts (`.tgz` files), and artifacts are stored in GHCR's `ghcr.io/raids-lab/crater` OCI repository.
 
 Chart validation ensures Chart correctness and completeness, including syntax checks, template rendering validation, and version number update checks. Chart publishing packages validated Charts and pushes them to GHCR. Users can install Charts via `helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>`.
 
@@ -557,7 +563,7 @@ Packaging test uses `helm package` to test whether Charts can be packaged normal
 
 ### Chart Publishing
 
-Chart publishing executes when code is pushed to the main branch, when Releases are created, or when manually triggered, listening to changes in the `charts/**` directory. The publishing process includes two steps: packaging and pushing.
+Chart publishing executes when code is pushed to the main branch, when an exact `vX.Y.Z` tag is pushed, or when manually triggered. Path filters on `main` listen to `charts/**`; tag pushes are not path-filtered, but the publish job requires `Chart.yaml` `version` and `appVersion` to equal the tag version. The publishing process includes two steps: packaging and pushing.
 
 The packaging stage uses `helm package` to package Charts into `.tgz` files and reads version numbers from `Chart.yaml`:
 
@@ -613,3 +619,53 @@ Helm Chart uses Semantic Versioning to manage version numbers, with version numb
 The PR check stage enforces version number updates, ensuring each Chart change has a corresponding version number update. This helps users track Chart change history and select appropriate versions when upgrading.
 
 When Charts are published, version numbers are pushed to GHCR as tags. Users can install specific Chart versions through version numbers. The cleanup mechanism keeps at most 10 Chart versions, ensuring users can access historical versions while controlling storage space.
+
+---
+
+## CLI
+
+The CLI is an independently installed command-line client that is not deployed with the platform. Its CI differs from frontend, backend, and Storage image publishing: CLI pull requests targeting `main` run checks, while pushes to `main` do not start a CLI-specific workflow. Only an exact `vX.Y.Z` release tag starts npm staging; packages become public after maintainer approval. Repository-wide trigger rules are defined in [Publish Workflows](../../CONTRIBUTING.md#publish-workflows).
+
+### Overview
+
+CLI CI uses a two-stage design: PR checks run in `.github/workflows/cli-pr.yml`, and release staging runs in `.github/workflows/cli-release.yml`. Inputs are `cli/` source, `cli/npm/` packaging scripts, and the root `hack/set-build-version.sh` helper. After approval, the npm distribution consists of the `@raids-lab/crater-cli` entry package plus six platform packages:
+
+- `@raids-lab/crater-cli-darwin-arm64`
+- `@raids-lab/crater-cli-darwin-x64`
+- `@raids-lab/crater-cli-linux-arm64`
+- `@raids-lab/crater-cli-linux-x64`
+- `@raids-lab/crater-cli-win32-arm64`
+- `@raids-lab/crater-cli-win32-x64`
+
+The entry package pins the six platform packages as same-version `optionalDependencies`. At install time a Node launcher selects the native binary for the current `os` / `cpu`. Artifacts do not go to GHCR.
+
+Version fields are produced by the same `hack/set-build-version.sh` helper used by frontend and backend. An exact tag `v1.2.3` yields `AppVersion=1.2.3` and `BuildType=release`. Prerelease tags such as `v1.2.3-rc.1` are not supported. The workflow tag glob is `v*.*.*`; the script enforces SemVer and rejects numeric identifiers with leading zeroes.
+
+### PR Check
+
+CLI PR Check runs on pull requests targeting `main`, filtered to `cli/**`, `hack/set-build-version.sh`, and the two CLI workflow files. Its checks follow the release build and packaging path:
+
+1. **Check and resolve version**: independent jobs run in parallel. `check` uses `make pre-commit-check` in `cli/` for unit tests, snapshot checks, and npm packaging-script tests; `resolve-version` obtains development build metadata from `hack/set-build-version.sh`.
+2. **Cross-build**: after both jobs succeed, six independent matrix jobs use `cli/hack/build-release-artifact.sh` to build Linux, macOS, and Windows `amd64` / `arm64` binaries with `CGO_ENABLED=0`, then upload the build artifacts.
+3. **Prepare npm packages**: downloads all six artifacts, generates the seven package directories with placeholder npm version `0.0.0`, checks each with `npm pack --dry-run`, and packs all seven tarballs. On the Linux runner it installs the entry and `linux-x64` tarballs offline, then checks `crater -v`, `crater --version`, `crater version --json`, and `crater --help`. The tested tarballs are retained as workflow artifacts.
+
+The PR workflow never stages or publishes to npm. Its smoke test proves the packaging path and Linux x64 launcher, not execution on every target platform. Because the workflow is path-filtered, it cannot be configured as a required status check for every PR without accounting for PRs that do not trigger it.
+
+### Formal release
+
+The CLI release workflow listens only to tag pushes:
+
+```yaml
+on:
+  push:
+    tags:
+      - "v*.*.*"
+```
+
+It does not run on `main`. The same exact tag also starts the existing frontend, backend, storage, and Helm publish workflows, which publish immediately. Maintainers should push a tag once, wait for CLI staging and approval, and must not move a published release tag.
+
+The tag glob selects candidate events; `hack/set-build-version.sh` rejects anything outside the exact `vX.Y.Z` format. The release workflow runs the same `make pre-commit-check` entry point and six-target build matrix as the PR workflow. Its npm preparation job downloads all six artifacts, verifies that the remote tag still points to the built commit, packs all seven packages at the tag's version, and smoke-tests an offline Linux x64 installation. The seven tested tarballs are uploaded as workflow artifacts.
+
+Six independent platform jobs then run `npm stage publish` using GitHub OIDC and each package's npm Trusted Publisher configuration. Only after all six succeed does the entry-package job stage `@raids-lab/crater-cli`. The workflow uses Node 24 and npm 11.19.1 for staging; it does not use `NPM_TOKEN` or wait for staged packages to appear in the public registry. A successful workflow means the packages are staged, **not yet publicly installable**. A maintainer reviews them on npm and approves the six platform packages with 2FA before approving the entry package. Approval is per package, not atomic.
+
+If a staging job fails after npm may have accepted its package, check npm's Staged Packages page before rerunning it. Repeating a staged submission of the same package/version can conflict. Details and post-migration token cleanup are in [CLI release maintenance](../../cli/CONTRIBUTING.md#4-release-maintenance).

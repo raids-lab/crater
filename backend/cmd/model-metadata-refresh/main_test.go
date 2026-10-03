@@ -144,6 +144,64 @@ func TestFetchModelScopeAvatarFromRepositoryPage(t *testing.T) {
 	}
 }
 
+func TestFetchModelScopeMetadataUsesExplicitRevisionReadme(t *testing.T) {
+	client := testHTTPClient(func(request *http.Request) (*http.Response, error) {
+		switch request.URL.Path {
+		case "/openapi/v1/models/owner/model":
+			return testResponse(http.StatusOK, "application/json", []byte(`{
+                "success": true,
+                "data": {"display_name":"model","description":"default description","readme":"default README"}
+            }`)), nil
+		case "/models/owner/model/resolve/v2/README.md":
+			return testResponse(http.StatusOK, "text/markdown", []byte("# v2 README")), nil
+		default:
+			t.Fatalf("unexpected ModelScope request path %q", request.URL.Path)
+			return nil, nil
+		}
+	})
+	download := &model.ModelDownload{
+		Name: "owner/model", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "v2",
+	}
+
+	metadata, endpoint, err := fetchMetadata(client, sourceEndpoints{ModelScope: []string{"https://modelscope.cn"}}, download)
+	if err != nil {
+		t.Fatalf("fetchMetadata() error = %v", err)
+	}
+	if endpoint != "https://modelscope.cn" || metadata.Readme != "# v2 README" {
+		t.Fatalf("endpoint = %q, metadata = %#v", endpoint, metadata)
+	}
+}
+
+func TestFetchModelScopeMetadataPreservesCapturedReadmeWhenRevisionUnavailable(t *testing.T) {
+	client := testHTTPClient(func(request *http.Request) (*http.Response, error) {
+		switch request.URL.Path {
+		case "/openapi/v1/models/owner/model":
+			return testResponse(http.StatusOK, "application/json", []byte(`{
+                "success": true,
+                "data": {"display_name":"model","readme":"default README"}
+            }`)), nil
+		case "/models/owner/model/resolve/v2/README.md":
+			return testResponse(http.StatusNotFound, "text/plain", []byte("missing")), nil
+		default:
+			t.Fatalf("unexpected ModelScope request path %q", request.URL.Path)
+			return nil, nil
+		}
+	})
+	download := &model.ModelDownload{
+		Name: "owner/model", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "v2", SourceReadme: "# captured v2 README",
+	}
+
+	metadata, _, err := fetchMetadata(client, sourceEndpoints{ModelScope: []string{"https://modelscope.cn"}}, download)
+	if err != nil {
+		t.Fatalf("fetchMetadata() error = %v", err)
+	}
+	if metadata.Readme != download.SourceReadme {
+		t.Fatalf("metadata.Readme = %q, want captured README %q", metadata.Readme, download.SourceReadme)
+	}
+}
+
 func TestFetchLogoFollowsOnlyAllowedRedirects(t *testing.T) {
 	var requestedHosts []string
 	client := testHTTPClient(func(request *http.Request) (*http.Response, error) {

@@ -25,12 +25,10 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
-	xhtml "golang.org/x/net/html"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 
@@ -46,7 +44,7 @@ const (
 	defaultRequestDelay       = 100 * time.Millisecond
 	maxSourceDescriptionBytes = 500
 	maxMetadataTags           = 4
-	maxStoredReadmeBytes      = 64 * 1024
+	maxStoredReadmeBytes      = modeldataset.MaxStoredReadmeBytes
 	maxModelScopePageBytes    = 2 * 1024 * 1024
 	maxLogoRedirects          = 5
 )
@@ -227,7 +225,6 @@ func refreshDownload(
 		"source_url":            sourceURL,
 		"display_name":          metadata.DisplayName,
 		"source_description":    metadata.Description,
-		"source_readme":         metadata.Readme,
 		"license":               metadata.License,
 		"task":                  metadata.Task,
 		"library":               metadata.Library,
@@ -239,6 +236,9 @@ func refreshDownload(
 		"source_downloads":      metadata.Downloads,
 		"source_likes":          metadata.Likes,
 		"metadata_refreshed_at": time.Now(),
+	}
+	if strings.TrimSpace(metadata.Readme) != "" {
+		updates["source_readme"] = metadata.Readme
 	}
 	if logo.URL != "" {
 		updates["logo_url"] = logo.URL
@@ -503,10 +503,22 @@ func fetchMetadata(
 	}
 	library := tagValue(payload.Data.Tags, "library:")
 	modelType := tagValue(payload.Data.Tags, "model_type:")
+	readme := cleanReadme(payload.Data.Readme)
+	if strings.TrimSpace(download.Revision) != "" {
+		// The repository metadata endpoint is not revision-aware. Prefer the
+		// README from the exact downloaded revision, and fall back to the
+		// already captured README instead of replacing it with the default one.
+		revisionReadme, readmeErr := fetchModelScopeRevisionReadme(client, selectedEndpoint, download)
+		if readmeErr == nil && strings.TrimSpace(revisionReadme) != "" {
+			readme = cleanReadme(revisionReadme)
+		} else {
+			readme = download.SourceReadme
+		}
+	}
 	return sourceMetadata{
 		DisplayName:    payload.Data.DisplayName,
-		Description:    sourceDescription(payload.Data.Description, cleanReadme(payload.Data.Readme)),
-		Readme:         cleanReadme(payload.Data.Readme),
+		Description:    sourceDescription(payload.Data.Description, readme),
+		Readme:         readme,
 		License:        payload.Data.License,
 		Task:           task,
 		Library:        library,
@@ -522,6 +534,16 @@ func fetchMetadata(
 		UpdatedAt:      &payload.Data.LastModified,
 		Tags:           limitTags(append(payload.Data.Tasks, payload.Data.Tags...)),
 	}, selectedEndpoint, nil
+}
+
+func fetchModelScopeRevisionReadme(
+	client *http.Client, baseEndpoint string, download *model.ModelDownload,
+) (string, error) {
+	if download == nil || strings.TrimSpace(download.Revision) == "" {
+		return "", errors.New("model download revision is required")
+	}
+	endpoint := repositoryURL(download, baseEndpoint) + "/resolve/" + url.PathEscape(strings.TrimSpace(download.Revision)) + "/README.md"
+	return fetchOptionalText(client, endpoint, maxStoredReadmeBytes)
 }
 
 func fetchOptionalText(client *http.Client, endpoint string, limit int) (string, error) {
@@ -551,128 +573,7 @@ func truncateText(text string, limit int) string {
 }
 
 func cleanReadme(text string) string {
-	text = strings.TrimSpace(text)
-	if strings.HasPrefix(text, "---\n") {
-		if end := strings.Index(text[4:], "\n---"); end >= 0 {
-			text = text[end+8:]
-		}
-	}
-	text = sourceUnsafeHTMLBlockPattern.ReplaceAllString(text, "")
-	text = sourceHTMLTablePattern.ReplaceAllStringFunc(text, htmlTableToMarkdown)
-	text = sourceHTMLTagPattern.ReplaceAllString(text, " ")
-	text = stdhtml.UnescapeString(text)
-	return truncateText(strings.TrimSpace(text), maxStoredReadmeBytes)
-}
-
-func htmlTableToMarkdown(tableHTML string) string {
-	document, err := xhtml.Parse(strings.NewReader(tableHTML))
-	if err != nil {
-		return tableHTML
-	}
-	table := findHTMLNode(document, "table")
-	if table == nil {
-		return tableHTML
-	}
-
-	rows := make([][]string, 0)
-	collectHTMLTableRows(table, &rows)
-	columnCount := 0
-	for _, row := range rows {
-		if len(row) > columnCount {
-			columnCount = len(row)
-		}
-	}
-	if len(rows) == 0 || columnCount == 0 {
-		return tableHTML
-	}
-
-	var result strings.Builder
-	result.WriteString("\n\n")
-	writeMarkdownTableRow(&result, rows[0], columnCount)
-	separator := make([]string, columnCount)
-	for i := range separator {
-		separator[i] = "---"
-	}
-	writeMarkdownTableRow(&result, separator, columnCount)
-	for _, row := range rows[1:] {
-		writeMarkdownTableRow(&result, row, columnCount)
-	}
-	result.WriteString("\n")
-	return result.String()
-}
-
-func findHTMLNode(node *xhtml.Node, tag string) *xhtml.Node {
-	if node.Type == xhtml.ElementNode && node.Data == tag {
-		return node
-	}
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		if found := findHTMLNode(child, tag); found != nil {
-			return found
-		}
-	}
-	return nil
-}
-
-func collectHTMLTableRows(node *xhtml.Node, rows *[][]string) {
-	if node.Type == xhtml.ElementNode && node.Data == "tr" {
-		row := make([]string, 0)
-		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			if child.Type != xhtml.ElementNode || child.Data != "th" && child.Data != "td" {
-				continue
-			}
-			cell := strings.Join(strings.Fields(htmlNodeText(child)), " ")
-			cell = strings.ReplaceAll(cell, "|", `\|`)
-			row = append(row, cell)
-			for i := 1; i < htmlColSpan(child); i++ {
-				row = append(row, "")
-			}
-		}
-		if len(row) > 0 {
-			*rows = append(*rows, row)
-		}
-		return
-	}
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		collectHTMLTableRows(child, rows)
-	}
-}
-
-func htmlNodeText(node *xhtml.Node) string {
-	if node.Type == xhtml.TextNode {
-		return node.Data
-	}
-	var result strings.Builder
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		result.WriteString(htmlNodeText(child))
-		result.WriteByte(' ')
-	}
-	return result.String()
-}
-
-func htmlColSpan(node *xhtml.Node) int {
-	for _, attribute := range node.Attr {
-		if attribute.Key == "colspan" {
-			span, err := strconv.Atoi(attribute.Val)
-			if err == nil && span > 1 {
-				return span
-			}
-		}
-	}
-	return 1
-}
-
-func writeMarkdownTableRow(result *strings.Builder, row []string, columnCount int) {
-	result.WriteString("| ")
-	for column := 0; column < columnCount; column++ {
-		if column < len(row) {
-			result.WriteString(row[column])
-		}
-		result.WriteString(" |")
-		if column < columnCount-1 {
-			result.WriteByte(' ')
-		}
-	}
-	result.WriteByte('\n')
+	return modeldataset.CleanReadme(text, maxStoredReadmeBytes)
 }
 
 func sourceFlag(value any) bool {
@@ -720,10 +621,8 @@ func sourceDescription(description, readme string) string {
 }
 
 var (
-	sourceHTMLTagPattern         = regexp.MustCompile(`<[^>]+>`)
-	sourceHTMLTablePattern       = regexp.MustCompile(`(?is)<table\b[^>]*>.*?</table>`)
-	sourceMarkdownLinkPattern    = regexp.MustCompile(`!?\[([^]]+)]\([^)]+\)`)
-	sourceUnsafeHTMLBlockPattern = regexp.MustCompile(`(?is)<(script|style)[^>]*>.*?</(script|style)>`)
+	sourceHTMLTagPattern      = regexp.MustCompile(`<[^>]+>`)
+	sourceMarkdownLinkPattern = regexp.MustCompile(`!?\[([^]]+)]\([^)]+\)`)
 )
 
 func isGeneratedDescription(description string, download *model.ModelDownload) bool {

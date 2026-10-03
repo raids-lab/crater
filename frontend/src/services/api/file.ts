@@ -56,3 +56,34 @@ export const apiGetDatasetFiles = (datasetID: number, path: string) =>
   apiGet<IResponse<FileItem[]>>(
     path === '' ? `ss/dataset/${datasetID}` : `ss/dataset/${datasetID}/${path.replace(/^\//, '')}`
   )
+
+export interface DirectorySize {
+  size: number
+  unit: string
+  formatted: string
+}
+
+export const apiGetDirectorySize = (path: string) =>
+  apiGet<IResponse<DirectorySize>>(
+    `v1/storage/dirsize/${path
+      .replace(/^\//, '')
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/')}`
+  )
+
+export interface MyQuota {
+  space_quota: number
+  space_quota_formatted: string
+}
+
+export const apiGetMyQuota = () => apiGet<IResponse<MyQuota>>('v1/storage/my-quota')
+
+export interface StorageCapabilities {
+  quota_enabled: boolean
+  usage_readable: boolean
+  quota_readable: boolean
+}
+
+export const apiGetStorageCapabilities = () =>
+  apiGet<IResponse<StorageCapabilities>>('v1/storage/capabilities')
