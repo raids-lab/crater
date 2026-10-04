@@ -18,7 +18,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { CirclePlus, GlobeIcon, XIcon } from 'lucide-react'
-import { ArrayPath, UseFormReturn, useFieldArray } from 'react-hook-form'
+import { ArrayPath, FieldValues, UseFormReturn, useFieldArray } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -31,22 +31,20 @@ import FormLabelMust from '@/components/form/form-label-must'
 
 import { cn } from '@/lib/utils'
 
-export function EnvFormCard<
-  T extends {
-    envs: Array<{ name: string; value: string }>
-  },
->({
+export function EnvFormCard<T extends FieldValues>({
   form,
   open,
   setOpen,
   className,
   cardTitle = '环境变量',
+  envPath = 'envs',
 }: {
   form: UseFormReturn<T>
   open: boolean
   setOpen: (open: boolean) => void
   className?: string
   cardTitle?: string
+  envPath?: string
 }) {
   const { t } = useTranslation()
   // Field array for environment variables
@@ -55,7 +53,7 @@ export function EnvFormCard<
     append: envAppend,
     remove: envRemove,
   } = useFieldArray({
-    name: 'envs' as ArrayPath<T>,
+    name: envPath as ArrayPath<T>,
     control: form.control,
   })
 
@@ -74,10 +72,11 @@ export function EnvFormCard<
             <div className="space-y-5">
               <FormField
                 control={form.control}
-                name={`envs.${index}.name`}
+                name={`${envPath}.${index}.name`}
                 render={({ field }) => (
                   <FormItem className="relative">
                     <button
+                      type="button"
                       onClick={() => envRemove(index)}
                       className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
                     >
@@ -97,7 +96,7 @@ export function EnvFormCard<
               />
               <FormField
                 control={form.control}
-                name={`envs.${index}.value`}
+                name={`${envPath}.${index}.value`}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>

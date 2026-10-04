@@ -50,7 +50,7 @@ func TestDecideSkips(t *testing.T) {
 		s := seededServer(newSnapshot())
 		result := s.decide(t.Context(), nil)
 		So(result.status, ShouldEqual, voteAbstain)
-		So(fieldValue(result, fieldSkip), ShouldEqual, "not owned by a vcjob")
+		So(fieldValue(result, fieldSkip), ShouldEqual, "not a managed workload")
 
 		req := vcjobRequest(jobA)
 		req.PodGroup.OwnerReferences[0].Controller = ptr.To(false)

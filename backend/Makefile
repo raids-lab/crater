@@ -161,7 +161,7 @@ curd: ## Generate Gorm CURD code.
 .PHONY: migrate
 migrate: ## Migrate database.
 	@echo "$(MAGENTA)Migrating database...$(RESET)"
-	go run cmd/gorm-gen/models/migrate.go
+	go run ./cmd/gorm-gen/models
 	@echo "$(GREEN)✅ Database migration completed$(RESET)"
 
 .PHONY: docs
@@ -189,7 +189,7 @@ build: fmt lint docs ## Build manager binary.
 .PHONY: build-migrate
 build-migrate: fmt lint ## Build migration binary.
 	@echo "$(YELLOW)🔨 Building migration binary...$(RESET)"
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/migrate cmd/gorm-gen/models/migrate.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/migrate ./cmd/gorm-gen/models
 	@echo "$(GREEN)✅ Migration binary built successfully: bin/migrate$(RESET)"
 
 .PHONY: build-model-metadata-refresh

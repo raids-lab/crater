@@ -58,11 +58,13 @@ const blockedNonNegativeIntegerInputKeys = new Set(['-', '+', 'e', 'E', '.'])
 
 interface ResourceFormFieldsProps<T extends FieldValues> {
   form: UseFormReturn<T>
+  allowFractionalCPUAndMemory?: boolean
   cpuPath: FieldPath<T>
   memoryPath: FieldPath<T>
   gpuCountPath: FieldPath<T>
   gpuModelPath: FieldPath<T>
   rdmaPath?: {
+    rdmaCount?: FieldPath<T>
     rdmaEnabled: FieldPath<T>
     rdmaLabel: FieldPath<T>
   }
@@ -74,6 +76,7 @@ interface ResourceFormFieldsProps<T extends FieldValues> {
 
 export function ResourceFormFields<T extends FieldValues>({
   form,
+  allowFractionalCPUAndMemory = false,
   cpuPath,
   memoryPath,
   gpuCountPath,
@@ -87,6 +90,7 @@ export function ResourceFormFields<T extends FieldValues>({
   const memory = form.watch(memoryPath)
   const gpuModel = form.watch(gpuModelPath)
   const rdmaEnabled = rdmaPath ? form.watch(rdmaPath.rdmaEnabled) : false
+  const rdmaCount = rdmaPath?.rdmaCount ? form.watch(rdmaPath.rdmaCount) : 1
   const rdmaLabel = rdmaPath ? form.watch(rdmaPath.rdmaLabel) : undefined
   const vgpuEnabled = vgpuPath ? form.watch(vgpuPath.vgpuEnabled) : false
   const vgpuModels = (vgpuPath ? form.watch(vgpuPath.vgpuModels) : undefined) as
@@ -95,13 +99,17 @@ export function ResourceFormFields<T extends FieldValues>({
   const grafanaOverview = useAtomValue(configGrafanaOverviewAtom)
   const registerNonNegativeIntegerInput = (path: FieldPath<T>) => {
     const registration = form.register(path, { valueAsNumber: true })
+    const fractional = allowFractionalCPUAndMemory && (path === cpuPath || path === memoryPath)
 
     return {
       ...registration,
       min: 0,
-      step: 1,
+      step: fractional ? 'any' : 1,
       onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
-        if (blockedNonNegativeIntegerInputKeys.has(event.key)) {
+        if (
+          blockedNonNegativeIntegerInputKeys.has(event.key) &&
+          !(fractional && event.key === '.')
+        ) {
           event.preventDefault()
         }
       },
@@ -149,7 +157,7 @@ export function ResourceFormFields<T extends FieldValues>({
       resourceList[gpuModel] = `${gpuCount}`
     }
     if (rdmaEnabled && typeof rdmaLabel === 'string' && rdmaLabel) {
-      resourceList[rdmaLabel] = '1'
+      resourceList[rdmaLabel] = String(rdmaCount)
     }
     if (vgpuEnabled && Array.isArray(vgpuModels)) {
       vgpuModels.forEach((model: { label?: string; value?: number }) => {
@@ -165,7 +173,7 @@ export function ResourceFormFields<T extends FieldValues>({
         resourceList,
       },
     ]
-  }, [cpu, memory, gpuCount, gpuModel, rdmaEnabled, rdmaLabel, vgpuEnabled, vgpuModels])
+  }, [cpu, memory, gpuCount, gpuModel, rdmaEnabled, rdmaCount, rdmaLabel, vgpuEnabled, vgpuModels])
 
   return (
     <>
@@ -313,6 +321,7 @@ function RDMAFormFields<T extends FieldValues>({
   resourcesLoaded: boolean
   gpuModelPath: FieldPath<T>
   rdmaPath: {
+    rdmaCount?: FieldPath<T>
     rdmaEnabled: FieldPath<T>
     rdmaLabel: FieldPath<T>
   }

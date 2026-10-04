@@ -17,6 +17,10 @@ export interface IGpuAnalysisStatus {
   enabled: boolean
 }
 
+export interface IKthenaInferenceStatus {
+  enabled: boolean
+}
+
 export interface ISchedulerExtenderConfig {
   schedulerExtenderEnabled: boolean
   queueQuotaEnabled: boolean
@@ -117,6 +121,18 @@ export const apiAdminGetGpuAnalysisStatus = () =>
 /** 设置 GPU 分析开关状态 */
 export const apiAdminSetGpuAnalysisStatus = (enable: boolean) =>
   apiV1Put<IResponse<string>>('admin/system-config/gpu-analysis', { enable })
+
+/** 获取模型部署开关状态 */
+export const apiGetKthenaInferenceStatus = () =>
+  apiV1Get<IResponse<IKthenaInferenceStatus>>('system-config/kthena-inference')
+
+/** 管理员获取模型部署开关状态 */
+export const apiAdminGetKthenaInferenceStatus = () =>
+  apiV1Get<IResponse<IKthenaInferenceStatus>>('admin/system-config/kthena-inference')
+
+/** 管理员设置模型部署开关状态 */
+export const apiAdminSetKthenaInferenceStatus = (enabled: boolean) =>
+  apiV1Put<IResponse<string>>('admin/system-config/kthena-inference', { enabled })
 
 /** 获取调度插件配置 */
 export const apiAdminGetSchedulerExtenderConfig = () =>
