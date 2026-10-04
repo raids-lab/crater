@@ -39,6 +39,7 @@ import { showErrorToast } from '@/utils/toast'
 import { BasicSettings } from './-components/basic-settings'
 import { BillingSettings } from './-components/billing-settings'
 import { GpuAnalysis } from './-components/gpu-analysis'
+import { KthenaInferenceSettings } from './-components/kthena-inference-settings'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
 import { ModelDownloadLimitSettings } from './-components/model-download-limit-settings'
 import { PodBandwidthSettings } from './-components/pod-bandwidth-settings'
@@ -395,7 +396,7 @@ function RouteComponent() {
         <BasicSettings />
       </TabsContent>
 
-      <TabsContent value="ai" forceMount className="mt-0 data-[state=inactive]:hidden">
+      <TabsContent value="ai" forceMount className="mt-0 space-y-4 data-[state=inactive]:hidden">
         <Card>
           <LlmSettings
             form={llmForm}
@@ -409,6 +410,10 @@ function RouteComponent() {
             isPending={toggleGpuMutation.isPending || updateLLMMutation.isPending}
             onToggle={handleGpuToggle}
           />
+        </Card>
+
+        <Card>
+          <KthenaInferenceSettings />
         </Card>
       </TabsContent>
 

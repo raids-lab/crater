@@ -9,13 +9,15 @@ type SystemConfig struct {
 }
 
 const (
+	ConfigKeyServingBillingEpoch = "SERVING_BILLING_EPOCH"
 	// LLM 相关配置键
 	ConfigKeyLLMBaseURL   = "LLM_API_BASE_URL" // 例如: https://api.openai.com/v1
 	ConfigKeyLLMAPIKey    = "LLM_API_KEY"      // #nosec G101
 	ConfigKeyLLMModelName = "LLM_MODEL_NAME"
 
 	// 功能开关配置键
-	ConfigKeyEnableGpuAnalysis = "ENABLE_GPU_ANALYSIS" // 值: "true" or "false"
+	ConfigKeyEnableGpuAnalysis     = "ENABLE_GPU_ANALYSIS"     // 值: "true" or "false"
+	ConfigKeyEnableKthenaInference = "ENABLE_KTHENA_INFERENCE" // 值: "true" or "false"
 
 	// Billing 功能与调度配置键
 	ConfigKeyEnableBillingFeature                     = "ENABLE_BILLING_FEATURE"
@@ -48,6 +50,7 @@ var DefaultConfigKeys = []string{
 	ConfigKeyLLMAPIKey,
 	ConfigKeyLLMModelName,
 	ConfigKeyEnableGpuAnalysis,
+	ConfigKeyEnableKthenaInference,
 	ConfigKeyEnableBillingFeature,
 	ConfigKeyEnableBillingActive,
 	ConfigKeyEnableRunningSettlement,

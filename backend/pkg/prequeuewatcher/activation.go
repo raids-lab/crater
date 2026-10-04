@@ -63,28 +63,34 @@ func (w *PrequeueWatcher) activateNextPrequeueBatch(ctx context.Context, remaini
 
 // claimAndActivatePrequeueJob atomically claims a prequeue row before submitting it to Volcano.
 func (w *PrequeueWatcher) claimAndActivatePrequeueJob(ctx context.Context, candidate *model.Job) (activated bool, err error) {
-	err = w.q.Transaction(func(tx *query.Query) error {
-		info, err := tx.Job.WithContext(ctx).
-			Where(tx.Job.ID.Eq(candidate.ID), tx.Job.Status.Eq(string(model.Prequeue))).
-			Updates(model.Job{Status: batch.Pending})
-		if err != nil {
+	err = service.WithWorkloadAdmission(ctx, candidate.UserID, candidate.AccountID, func() error {
+		fits, err := w.candidateFitsQueueQuota(ctx, candidate, map[string]v1.ResourceList{})
+		if err != nil || !fits {
 			return err
 		}
-		if info.RowsAffected == 0 {
+		return w.q.Transaction(func(tx *query.Query) error {
+			info, err := tx.Job.WithContext(ctx).
+				Where(tx.Job.ID.Eq(candidate.ID), tx.Job.Status.Eq(string(model.Prequeue))).
+				Updates(model.Job{Status: batch.Pending})
+			if err != nil {
+				return err
+			}
+			if info.RowsAffected == 0 {
+				return nil
+			}
+
+			job, err := w.restoreJobForActivation(ctx, candidate)
+			if err != nil {
+				return err
+			}
+			err = vcjobservice.ActivateJob(ctx, w.k8sClient, w.serviceMgr, job)
+			if err != nil && !apierrors.IsAlreadyExists(err) {
+				return err
+			}
+
+			activated = true
 			return nil
-		}
-
-		job, err := w.restoreJobForActivation(ctx, candidate)
-		if err != nil {
-			return err
-		}
-		err = vcjobservice.ActivateJob(ctx, w.k8sClient, w.serviceMgr, job)
-		if err != nil && !apierrors.IsAlreadyExists(err) {
-			return err
-		}
-
-		activated = true
-		return nil
+		})
 	})
 	return activated, err
 }

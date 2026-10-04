@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { useQuery } from '@tanstack/react-query'
 import { Outlet, createFileRoute, redirect, useLocation } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import {
@@ -22,6 +23,7 @@ import {
   FlaskConicalIcon,
   FolderIcon,
   LayoutDashboard,
+  RocketIcon,
   SettingsIcon,
   ShoppingBagIcon,
   SquareChartGanttIcon,
@@ -31,6 +33,8 @@ import { useTranslation } from 'react-i18next'
 import AppLayout from '@/components/layout/app-layout'
 import NotFound from '@/components/placeholder/not-found'
 import { NavGroupProps } from '@/components/sidebar/types'
+
+import { apiGetKthenaInferenceStatus } from '@/services/api/system-config'
 
 import { atomUserInfo } from '@/utils/store'
 
@@ -68,6 +72,12 @@ function RouteComponent() {
 const useUserSidebarGroups = (): NavGroupProps[] => {
   const { t } = useTranslation()
   const user = useAtomValue(atomUserInfo)
+  const { data: kthenaInferenceStatus } = useQuery({
+    queryKey: ['system-config', 'kthena-inference'],
+    queryFn: () => apiGetKthenaInferenceStatus().then((res) => res.data),
+    retry: false,
+    staleTime: 30_000,
+  })
 
   return [
     {
@@ -125,6 +135,15 @@ const useUserSidebarGroups = (): NavGroupProps[] => {
           url: '/portal/templates',
           icon: ShoppingBagIcon,
         },
+        ...(kthenaInferenceStatus?.enabled
+          ? [
+              {
+                title: t('navigation.modelDeployments'),
+                url: '/portal/inference-services',
+                icon: RocketIcon,
+              },
+            ]
+          : []),
       ],
     },
     {

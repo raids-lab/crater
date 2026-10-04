@@ -11,6 +11,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/service"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/internal/util"
@@ -23,12 +24,27 @@ func (mgr *VolcanojobMgr) submitJob(
 	token util.JWTMessage,
 	job *batch.Job,
 ) error {
+	return service.WithWorkloadAdmission(
+		ctx,
+		token.UserID,
+		token.AccountID,
+		func() error { return mgr.submitJobLocked(ctx, token, job) },
+	)
+}
+func (mgr *VolcanojobMgr) submitJobLocked(ctx context.Context, token util.JWTMessage, job *batch.Job) error {
 	scheduleType, err := model.ParseScheduleType(job.Annotations[vcjobservice.AnnotationKeyScheduleType])
 	if err != nil {
 		klog.Errorf("invalid schedule type annotation for job %s: %v", job.Name, err)
 		return err
 	}
 
+	if mgr.queueQuotaSvc != nil {
+		if err := service.CheckWorkloadSubmission(
+			ctx, mgr.userBanService, mgr.billingService, mgr.queueQuotaSvc, token.UserID, token.AccountID, scheduleType,
+		); err != nil {
+			return err
+		}
+	}
 	jobResources := vcjobservice.CalculateJobResources(job)
 	jobResourceStringMap := utils.ToStringMap(jobResources)
 
@@ -103,7 +119,9 @@ func (mgr *VolcanojobMgr) checkSubmissionQuota(
 		return false, err
 	}
 	if requestLimitCheck.Enabled && requestLimitCheck.Exceeded {
-		return false, fmt.Errorf("requested resources exceed user queue quota: %s", formatExceededResourceLimitDetails(requestLimitCheck.Details))
+		return false, bizerr.BadRequest.ParameterError.New(
+			"requested resources exceed user queue quota: " + formatExceededResourceLimitDetails(requestLimitCheck.Details),
+		)
 	}
 
 	limitCheck, err := mgr.queueQuotaSvc.CheckUserResourceLimit(

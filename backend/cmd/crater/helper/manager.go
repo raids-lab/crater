@@ -93,6 +93,10 @@ func (ms *ManagerSetup) SetupCustomCRDAddon(
 		return err
 	}
 
+	if err := mgr.Add(handler.NewKthenaReconciler(registerConfig)); err != nil {
+		return err
+	}
+
 	// Setup Indexeres
 	if err := indexer.SetupIndexers(mgr); err != nil {
 		return err

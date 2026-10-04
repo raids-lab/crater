@@ -142,6 +142,36 @@ func modelDownloadSubmissionMigration() *gormigrate.Migration {
 	}
 }
 
+func kthenaChatMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202608021430",
+		Migrate: func(tx *gorm.DB) error {
+			if err := createTableIfMissing(tx, &model.KthenaChatSession{}); err != nil {
+				return err
+			}
+			return createTableIfMissing(tx, &model.KthenaChatMessage{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			if err := dropTableIfPresent(tx, &model.KthenaChatMessage{}); err != nil {
+				return err
+			}
+			return dropTableIfPresent(tx, &model.KthenaChatSession{})
+		},
+	}
+}
+
+func kthenaInferenceTemplateMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202608021500",
+		Migrate: func(tx *gorm.DB) error {
+			return createTableIfMissing(tx, &model.KthenaInferenceTemplate{})
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return dropTableIfPresent(tx, &model.KthenaInferenceTemplate{})
+		},
+	}
+}
+
 func createTableIfMissing(db *gorm.DB, value any) error {
 	if db.Migrator().HasTable(value) {
 		return nil
@@ -1572,6 +1602,10 @@ func main() {
 				return dropColumnIfPresent(tx, "users", &User{}, "BannedTimestamp")
 			},
 		},
+		kthenaChatMigration(),
+		kthenaInferenceTemplateMigration(),
+		kthenaTurnLeaseMigration(),
+		servingUsageMigration(),
 		modelDownloadSubmissionMigration(),
 		storageQuotaMigration(),
 	})
@@ -1610,7 +1644,11 @@ func main() {
 			&model.PrequeueConfig{},
 			&model.QueueQuotaLimit{},
 			&model.UserBanRecord{},
+			&model.KthenaChatSession{},
+			&model.KthenaChatMessage{},
+			&model.KthenaInferenceTemplate{},
 			&model.UserSpaceSize{},
+			&model.ServingUsage{},
 		)
 		if err != nil {
 			return err

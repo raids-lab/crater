@@ -122,6 +122,67 @@ func TestModelDownloadLimitConfigRoutesHideWhitelistFromProtectedUsers(t *testin
 	}
 }
 
+func TestKthenaInferenceStatusRoutes(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:kthena_inference_status_handlers?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	configService := service.NewConfigService(query.Use(db))
+	mgr := &SystemConfigMgr{service: configService}
+	router := gin.New()
+	mgr.RegisterProtected(router.Group("/v1/system-config"))
+	mgr.RegisterAdmin(router.Group("/v1/admin/system-config"))
+
+	assertKthenaInferenceStatus(t, router, "/v1/system-config/kthena-inference", false)
+	assertKthenaInferenceStatus(t, router, "/v1/admin/system-config/kthena-inference", false)
+	setKthenaInferenceStatus(t, router, true)
+	assertKthenaInferenceStatus(t, router, "/v1/system-config/kthena-inference", true)
+	setKthenaInferenceStatus(t, router, false)
+	assertKthenaInferenceStatus(t, router, "/v1/admin/system-config/kthena-inference", false)
+}
+
+func assertKthenaInferenceStatus(t *testing.T, router http.Handler, path string, wantEnabled bool) {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET %s returned HTTP %d: %s", path, recorder.Code, recorder.Body.String())
+	}
+
+	var response struct {
+		Data KthenaInferenceStatusResp `json:"data"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Data.Enabled != wantEnabled {
+		t.Fatalf("GET %s enabled = %t, want %t", path, response.Data.Enabled, wantEnabled)
+	}
+}
+
+func setKthenaInferenceStatus(t *testing.T, router http.Handler, enabled bool) {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	body := `{"enabled":false}`
+	if enabled {
+		body = `{"enabled":true}`
+	}
+	request := httptest.NewRequest(
+		http.MethodPut,
+		"/v1/admin/system-config/kthena-inference",
+		bytes.NewBufferString(body),
+	)
+	request.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("PUT returned HTTP %d: %s", recorder.Code, recorder.Body.String())
+	}
+}
+
 func requestModelDownloadLimitConfig(
 	t *testing.T, router http.Handler, path string,
 ) map[string]json.RawMessage {

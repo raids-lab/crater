@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
@@ -71,8 +73,10 @@ type UserResourceUsageSummary struct {
 }
 
 type PrequeueService struct {
-	q             *query.Query
-	configService *ConfigService
+	servingClient    client.Reader
+	servingNamespace string
+	q                *query.Query
+	configService    *ConfigService
 }
 
 type resourceUsageMetric struct {
@@ -486,6 +490,16 @@ func (s *PrequeueService) listUserQueueOccupiedNormalJobs(
 	if err != nil {
 		return nil, fmt.Errorf("failed to query jobs: %w", err)
 	}
+
+	jobs, err = s.liveJobReservations(ctx, userID, accountID, jobs, false)
+	if err != nil {
+		return nil, err
+	}
+	serving, err := s.servingUsage(ctx, userID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	jobs = append(jobs, serving...)
 
 	return jobs, nil
 }

@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
-import { Trash2Icon } from 'lucide-react'
+import { RocketIcon, Trash2Icon } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
 
 import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
@@ -38,13 +41,14 @@ import { buildFacetQueryKey, buildRemoteQueryKey } from '@/components/query-tabl
 
 import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
-  IJobInfo,
+  IWorkloadInfo,
   JobPhase,
   JobType,
   ScheduleType,
-  apiJobBatchFacets,
-  apiJobBatchList,
+  WorkloadKind,
   apiJobDelete,
+  apiWorkloadBatchFacets,
+  apiWorkloadBatchList,
   batchJobTypes,
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
@@ -58,7 +62,47 @@ import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import ListedNewJobButton from '../new-job-button'
 
-type JobTableRow = IJobInfo
+type JobTableRow = IWorkloadInfo
+
+function WorkloadNameCell({ workload }: { workload: IWorkloadInfo }) {
+  const { t } = useTranslation()
+  if (workload.workloadKind !== WorkloadKind.KthenaInference) {
+    return <JobNameCell jobInfo={workload} />
+  }
+
+  return (
+    <Link
+      to="/portal/inference-services/$name"
+      params={{ name: workload.jobName }}
+      preload="intent"
+      className="text-primary hover:underline"
+      title={t('kthena.workloads.viewNamed', { name: workload.name })}
+    >
+      <span className="max-w-44 truncate">{workload.name}</span>
+    </Link>
+  )
+}
+
+function WorkloadActions({
+  workload,
+  onDelete,
+}: {
+  workload: IWorkloadInfo
+  onDelete: (name: string) => void
+}) {
+  const { t } = useTranslation()
+  if (workload.workloadKind !== WorkloadKind.KthenaInference) {
+    return <JobActionsMenu jobInfo={workload} onDelete={onDelete} />
+  }
+
+  return (
+    <Button variant="ghost" size="icon" title={t('kthena.workloads.view')} asChild>
+      <Link to="/portal/inference-services/$name" params={{ name: workload.jobName }}>
+        <RocketIcon className="text-primary size-4" />
+      </Link>
+    </Button>
+  )
+}
 
 const VolcanoOverview = () => {
   const { t } = useTranslation()
@@ -73,14 +117,14 @@ const VolcanoOverview = () => {
   })
 
   const batchQuery = useQuery({
-    queryKey: buildRemoteQueryKey('jobs-batch', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobBatchList(tableState.params, signal)).data,
+    queryKey: buildRemoteQueryKey('workloads-batch', tableState.params),
+    queryFn: async ({ signal }) => (await apiWorkloadBatchList(tableState.params, signal)).data,
     placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
   const facetsQuery = useQuery({
-    queryKey: buildFacetQueryKey('jobs-batch', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobBatchFacets(tableState.params, signal)).data,
+    queryKey: buildFacetQueryKey('workloads-batch', tableState.params),
+    queryFn: async ({ signal }) => (await apiWorkloadBatchFacets(tableState.params, signal)).data,
   })
   const toolbarConfig = useMemo(
     () => getRemoteJobToolbarConfig(facetsQuery.data, batchJobTypes),
@@ -91,8 +135,8 @@ const VolcanoOverview = () => {
     try {
       // 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['remote-list', 'jobs-batch'] }),
-        queryClient.invalidateQueries({ queryKey: ['remote-list-facets', 'jobs-batch'] }),
+        queryClient.invalidateQueries({ queryKey: ['remote-list', 'workloads-batch'] }),
+        queryClient.invalidateQueries({ queryKey: ['remote-list-facets', 'workloads-batch'] }),
         queryClient.invalidateQueries({ queryKey: ['job'] }),
         queryClient.invalidateQueries({ queryKey: ['job', 'billing'] }),
         queryClient.invalidateQueries({ queryKey: ['aitask', 'quota'] }),
@@ -135,7 +179,7 @@ const VolcanoOverview = () => {
       {
         accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
-        cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
+        cell: ({ row }) => <WorkloadNameCell workload={row.original} />,
       },
       {
         accessorFn: (row) => getDisplayJobPhase(row.status),
@@ -177,7 +221,12 @@ const VolcanoOverview = () => {
             {
               accessorKey: 'billedPointsTotal',
               header: ({ column }) => <DataTableColumnHeader column={column} title="累计点数" />,
-              cell: ({ row }) => <BillingPointsBadge value={row.original.billedPointsTotal ?? 0} />,
+              cell: ({ row }) =>
+                row.original.workloadKind === WorkloadKind.KthenaInference ? (
+                  <span className="text-muted-foreground">-</span>
+                ) : (
+                  <BillingPointsBadge value={row.original.billedPointsTotal ?? 0} />
+                ),
             } as ColumnDef<JobTableRow>,
           ]
         : []),
@@ -215,8 +264,7 @@ const VolcanoOverview = () => {
         id: 'actions',
         enableHiding: false,
         cell: ({ row }) => {
-          const jobInfo = row.original
-          return <JobActionsMenu jobInfo={jobInfo} onDelete={deleteTask} />
+          return <WorkloadActions workload={row.original} onDelete={deleteTask} />
         },
       },
     ],
@@ -226,14 +274,15 @@ const VolcanoOverview = () => {
   return (
     <RemoteDataTable
       info={{
-        title: '自定义作业',
-        description: '使用自定义作业进行训练、推理等任务',
+        title: t('kthena.workloads.title'),
+        description: t('kthena.workloads.description'),
       }}
       query={batchQuery}
       state={tableState}
       columns={batchColumns}
-      getRowId={(row) => row.jobName}
+      getRowId={(row) => row.workloadID}
       toolbarConfig={toolbarConfig}
+      canSelectRow={(row) => row.workloadKind !== WorkloadKind.KthenaInference}
       briefChildren={<JobResourceSummary />}
       multipleHandlers={[
         {

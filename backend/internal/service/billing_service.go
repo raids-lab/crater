@@ -196,6 +196,9 @@ func (s *BillingService) applyStatusUpdateTx(
 			return err
 		}
 	}
+	if shouldIssueOnActivation || (!currentFeatureEnabled && targetFeatureEnabled) {
+		updates[model.ConfigKeyServingBillingEpoch] = settleAt.UTC().Format(time.RFC3339Nano)
+	}
 	if err := applySystemConfigUpdates(ctx, tx, updates); err != nil {
 		return err
 	}
@@ -698,7 +701,8 @@ func (s *BillingService) settleAllRunningJobsAtTx(ctx context.Context, tx *gorm.
 			settledJobs++
 		}
 	}
-	return settledJobs, nil
+	servings, err := settleServingUsagesTx(ctx, tx, 0, priceMap)
+	return settledJobs + servings, err
 }
 
 func (s *BillingService) UpdateResourceUnitPrice(ctx context.Context, resourceID uint, unitPrice int64) error {
@@ -1153,7 +1157,8 @@ func settleRunningJobsForAccountAtTx(ctx context.Context, tx *gorm.DB, accountID
 		}
 	}
 
-	return settledJobs, nil
+	servings, err := settleServingUsagesTx(ctx, tx, accountID, priceMap)
+	return settledJobs + servings, err
 }
 
 func persistJobSettlementState(tx *gorm.DB, jobID uint, billedUntil time.Time, newTotalMicro int64) error {

@@ -155,6 +155,13 @@ type Config struct {
 		ImagePullSecretName string `json:"imagePullSecretName"`
 	}
 
+	// Kthena configures Crater-managed native inference pod templates.
+	Kthena struct {
+		DownloaderImage string              `json:"downloaderImage"`
+		EnabledProfiles []string            `json:"enabledProfiles"`
+		RuntimeImages   map[string][]string `json:"runtimeImages"`
+	} `json:"kthena"`
+
 	// ModelDownload contains configurations for model download functionality.
 	// Optional: If not specified, default values will be used.
 	ModelDownload struct {

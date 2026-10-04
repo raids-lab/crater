@@ -1,0 +1,36 @@
+---
+title: Model Deployments
+description: Create, inspect, and use Kthena online inference services.
+---
+
+After installing the Kthena controllers and CRDs, an administrator can enable model deployments in the AI tab of platform settings. The feature is disabled by default. Disabling it hides the entry points and rejects inference API access; it does not delete existing deployments. Contact your administrator if the entry point is unavailable.
+
+## Create and inspect a deployment
+
+Create a deployment through four steps: model, engine/topology, role resources, and preflight. Choose vLLM or SGLang with combined inference or Prefill/Decode separation. vLLM also supports Ray per role, including P/D + Ray. Administrators enable distributed combinations through `backendConfig.kthena.enabledProfiles`; unavailable choices display their reason.
+
+Platform models mount their authorized directory read-only on every node. External hf/ms/s3 models download into each Pod's temporary storage. Distributed hf/ms deployments require a fixed 40-character commit revision; save S3 models to the platform first. Credentials use Secret references owned by the current user and account. Use `HF_AUTH_TOKEN` for Hugging Face downloads.
+
+Each serving group contains role instances; each instance contains one Entry and optional Workers. Configure CPU, memory, GPU, RDMA, image, and placement per role. Workers inherit Entry settings unless explicitly overridden. Ray requires matching images and GPU allocations across nodes, TP equal to GPUs per node, and PP equal to nodes per instance. Pod anti-affinity spreads each instance across physical nodes. P/D roles use matching model revisions, images, tokenizer settings, and KV data types.
+
+Total reservations are `groups × sum(instances × (Entry resources + Worker count × Worker resources))`. Preflight shows these totals, the account queue, quota waiting status, and all three native resources. Submission revalidates permissions and quota. Volcano schedules every Pod alongside training jobs in the same account queue. Insufficient quota leaves the deployment at zero groups until admission can resume.
+
+Templates, import/export, and cloning preserve the complete roles configuration. Details organize Pods and logs by group, role, instance, and Entry/Worker. Scale groups, suspend, resume, or edit templates from the detail page. Active updates must preserve the resource budget; suspend before changing allocations. Engine, layout, port, served model, and role instance counts are immutable; clone to change these fields. Routing repair preserves P/D and engine configuration.
+
+Role settings show the approved runtime images and KV connector. Administrators add private images to the corresponding profile in `runtimeImages`. Cloning restores node selection and RDMA settings; disabling a control removes its request. Additional selectors and extended resources can be edited separately. After suspension, scale-down or deletion, terminating Pods continue to count against quota until their resources are released.
+
+## Call the service
+
+Use the access information shown on the detail page. Through the Crater proxy, `model` is the deployment route name; omitting it selects that route automatically. It may differ from the model's own name. The proxy supports streaming responses; clients should process the returned content type.
+
+Chat supports streaming and cancellation. Only complete answers are persisted. Reuse the same `sessionId`, `clientTurnId`, and request content when retrying to retrieve an already saved result. An active turn prevents concurrent turns in the same conversation; retry after cancellation or timeout.
+
+Ordinary users can access only deployments and conversations they are authorized to use. Do not include tokens, private model credentials, or sensitive conversation content in issue reports or screenshots.
+
+## Continuous billing and inference metrics
+
+Running models participate in resource-hour settlement using their Pod requests, existing prices, free-time allowance, and account balance rules. The usage tab shows settled points and the latest settlement time. Request and token counts are monitoring data and do not incur separate charges.
+
+Five-minute metrics include successful request rate, generated-token throughput, P95 time to first token and end-to-end latency, waiting/running requests, and HTTP error ratio. Missing samples appear as “—”. Request rate, errors, and end-to-end latency use the Kthena Router boundary. Engine metrics are shown per role for vLLM and SGLang; P/D aggregate token throughput comes from Decode. Enable `inferenceMonitoring.enabled` and `inferenceMonitoring.router.enabled`, with labels matching the Prometheus monitor selectors.
+
+Usage is observed every 15 seconds and charged on the platform's existing settlement interval. Deletion persists and settles usage before releasing the billing finalizer. When billing is enabled, metering gates and finalizers coordinate startup and deletion with settlement. Billing-disabled deployments do not receive metering gates.

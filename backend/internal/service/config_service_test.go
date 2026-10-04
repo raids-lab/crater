@@ -54,6 +54,33 @@ func TestModelDownloadLimitConfigDefaultsAndUpdate(t *testing.T) {
 	}
 }
 
+func TestKthenaInferenceEnabledDefaultsOffAndUpdates(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:kthena_inference_config?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	service := NewConfigService(query.Use(db))
+
+	if service.IsKthenaInferenceEnabled(t.Context()) {
+		t.Fatal("Kthena inference feature should default to disabled")
+	}
+	if err := service.SetKthenaInferenceEnabled(t.Context(), true); err != nil {
+		t.Fatal(err)
+	}
+	if !service.IsKthenaInferenceEnabled(t.Context()) {
+		t.Fatal("Kthena inference feature should be enabled after update")
+	}
+	if err := service.SetKthenaInferenceEnabled(t.Context(), false); err != nil {
+		t.Fatal(err)
+	}
+	if service.IsKthenaInferenceEnabled(t.Context()) {
+		t.Fatal("Kthena inference feature should be disabled after update")
+	}
+}
+
 func TestParsePrequeueRuntimeConfig(t *testing.T) {
 	t.Parallel()
 
