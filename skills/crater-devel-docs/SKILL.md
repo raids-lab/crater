@@ -1,6 +1,6 @@
 ---
 name: crater-devel-docs
-version: 0.1.0
+version: 1.0.0
 description: "Crater 文档开发：在 website/、docs/ 及仓库各级 Markdown 中维护平台用户文档、开发者文档、i18n、术语与 Chart 版本占位。用户修改文档、文档站、多语言文档或文档规范时使用；开始前须应用 crater-devel-shared。"
 ---
 
