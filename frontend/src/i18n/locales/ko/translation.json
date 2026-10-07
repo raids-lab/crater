@@ -607,6 +607,8 @@
   "imageSettingsForm.tagLabel": "태그",
   "imageSettingsForm.tagPlaceholder": "기본 이미지 태그",
   "imageSettingsForm.tipBadgeTitle": "이미지 링크",
+  "jobAdmission.errors.description": "리소스 요청이 사용 가능한 모든 노드의 리소스 한도를 초과합니다. 노드 리소스 현황을 확인하세요.",
+  "jobAdmission.errors.title": "작업을 제출할 수 없습니다",
   "jobResourceSummary.accelerators": "가속 카드",
   "jobResourceSummary.collapse": "접기",
   "jobResourceSummary.cpu": "CPU",

@@ -150,7 +150,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	}
 
 	if err = mgr.submitJob(c, token, &job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		handleJobSubmissionError(c, err)
 		return
 	}
 

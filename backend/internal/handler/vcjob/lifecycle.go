@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/internal/util"
@@ -76,7 +79,7 @@ func (mgr *VolcanojobMgr) ensureJobAdmitted(ctx context.Context, job *batch.Job)
 		return err
 	}
 	if !admission.Accepted {
-		return fmt.Errorf("job admission failed: %s", admission.Reason)
+		return bizerr.Conflict.JobAdmissionFailed.New(admission.Reason)
 	}
 	return nil
 }
@@ -194,4 +197,13 @@ func shouldPrequeueSubmittedJob(
 	}
 
 	return false
+}
+
+// handleJobSubmissionError preserves business codes and classifies other submission errors.
+func handleJobSubmissionError(c *gin.Context, err error) {
+	if _, ok := bizerr.FromError(err); ok {
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(err, err.Error()))
 }
