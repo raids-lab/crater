@@ -484,6 +484,20 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 		completedTimestamp = job.Status.State.LastTransitionTime.Time
 	}
 
+	var terminatedStatesPtr *datatypes.JSONType[[]v1.ContainerStateTerminated]
+	var terminatedStates []v1.ContainerStateTerminated
+	if isReleasedJobPhase(status) {
+		if oldRecord.TerminatedStates != nil {
+			terminatedStates = oldRecord.TerminatedStates.Data()
+		} else {
+			terminatedStates = r.getTerminatedStates(ctx, job, oldRecord)
+			if len(terminatedStates) > 0 {
+				terminatedStatesPtr = ptr.To(datatypes.NewJSONType(terminatedStates))
+			}
+		}
+	}
+	runningTimestamp = resolveJobRunningTimestamp(runningTimestamp, oldRecord.RunningTimestamp, terminatedStates)
+
 	nodes := make([]string, 0)
 	for i := range job.Spec.Tasks {
 		task := &job.Spec.Tasks[i]
@@ -519,7 +533,6 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 	// do not update nodes info if job is not running on any node
 	if len(nodes) == 0 {
 		var profilePtr *datatypes.JSONType[*monitor.ProfileData]
-		var terminatedStatesPtr *datatypes.JSONType[[]v1.ContainerStateTerminated]
 		var eventsPtr *datatypes.JSONType[[]v1.Event]
 
 		if !completedTimestamp.IsZero() {
@@ -538,10 +551,6 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 				events := r.getNewEventsForJob(ctx, job, oldRecord)
 				if len(events) > 0 {
 					eventsPtr = ptr.To(datatypes.NewJSONType(events))
-				}
-				terminatedStates := r.getTerminatedStates(ctx, job, oldRecord)
-				if len(terminatedStates) > 0 {
-					terminatedStatesPtr = ptr.To(datatypes.NewJSONType(terminatedStates))
 				}
 			}
 		}
@@ -598,6 +607,7 @@ func (r *VcJobReconciler) generateUpdateJobModel(ctx context.Context, job *batch
 		RunningTimestamp:        runningTimestamp,
 		CompletedTimestamp:      completedTimestamp,
 		Nodes:                   datatypes.NewJSONType(nodes),
+		TerminatedStates:        terminatedStatesPtr,
 		ScheduleType:            ptr.To(scheduleType),
 		WaitingToleranceSeconds: waitingToleranceSeconds,
 	}
