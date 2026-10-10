@@ -19,7 +19,7 @@ spec:
       labels:
         app: crater-agent
       annotations:
-        checksum/agent-secret-config: {{ printf "%s:%s" .Values.agent.existingSecretName .Values.agent.internalToken | sha256sum }}
+        checksum/agent-secret-config: {{ printf "%s:%s:%s" .Values.agent.existingSecretName .Values.agent.internalToken .Values.agent.secretRevision | sha256sum }}
     spec:
       automountServiceAccountToken: false
       {{- with .Values.imagePullSecrets }}

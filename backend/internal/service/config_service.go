@@ -275,14 +275,22 @@ func (s *ConfigService) GetLLMConfig(ctx context.Context) (*LLMConfig, error) {
 	encryptedKey := configMap[model.ConfigKeyLLMAPIKey]
 	plainKey := ""
 
-	// 尝试解密
 	if encryptedKey != "" {
-		decrypted, err := crypto.Decrypt(encryptedKey)
+		decrypted, needsRotation, err := crypto.DecryptWithRotation(encryptedKey)
 		if err != nil {
-			klog.Errorf("Failed to decrypt API Key: %v, assuming plain text or empty", err)
-			plainKey = encryptedKey
-		} else {
-			plainKey = decrypted
+			return nil, bizerr.Internal.ServiceError.Wrap(err, "failed to decrypt platform LLM API key")
+		}
+		plainKey = decrypted
+		if needsRotation {
+			rotated, encryptErr := crypto.Encrypt(decrypted)
+			if encryptErr != nil {
+				return nil, bizerr.Internal.ServiceError.Wrap(encryptErr, "failed to rotate platform LLM API key")
+			}
+			if _, updateErr := s.q.SystemConfig.WithContext(ctx).
+				Where(s.q.SystemConfig.Key.Eq(model.ConfigKeyLLMAPIKey)).
+				Update(s.q.SystemConfig.Value, rotated); updateErr != nil {
+				return nil, bizerr.Internal.DatabaseError.Wrap(updateErr, "failed to save rotated platform LLM API key")
+			}
 		}
 	}
 

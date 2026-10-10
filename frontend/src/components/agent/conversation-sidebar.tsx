@@ -56,7 +56,6 @@ export function ConversationSidebar({
   const [editingID, setEditingID] = useState<string>()
   const [editingTitle, setEditingTitle] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<AgentConversation>()
-  const [hoveredID, setHoveredID] = useState<string>()
   const [menuOpenID, setMenuOpenID] = useState<string>()
 
   const beginRename = (conversation: AgentConversation) => {
@@ -153,15 +152,11 @@ export function ConversationSidebar({
               <div
                 key={conversation.id}
                 className={cn(
-                  'relative flex items-center rounded-lg transition-colors',
+                  'group relative flex items-center rounded-lg transition-colors',
                   conversation.id === activeConversationID
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent/60'
                 )}
-                onMouseEnter={() => setHoveredID(conversation.id)}
-                onMouseLeave={() => {
-                  if (menuOpenID !== conversation.id) setHoveredID(undefined)
-                }}
               >
                 <button
                   type="button"
@@ -176,7 +171,6 @@ export function ConversationSidebar({
                   open={menuOpenID === conversation.id}
                   onOpenChange={(menuOpen) => {
                     setMenuOpenID(menuOpen ? conversation.id : undefined)
-                    if (!menuOpen) setHoveredID(undefined)
                   }}
                 >
                   <DropdownMenuTrigger asChild>
@@ -184,15 +178,13 @@ export function ConversationSidebar({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="bg-accent absolute right-1 z-20 size-7 shrink-0 transition-opacity"
-                      style={{
-                        opacity:
-                          hoveredID === conversation.id || menuOpenID === conversation.id ? 1 : 0,
-                        pointerEvents:
-                          hoveredID === conversation.id || menuOpenID === conversation.id
-                            ? 'auto'
-                            : 'none',
-                      }}
+                      className={cn(
+                        'bg-accent pointer-events-none absolute right-1 z-20 size-7 shrink-0 opacity-0',
+                        'transition-opacity group-hover:pointer-events-auto group-hover:opacity-100',
+                        'group-focus-within:pointer-events-auto group-focus-within:opacity-100',
+                        'focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2',
+                        'focus-visible:ring-ring data-[state=open]:pointer-events-auto data-[state=open]:opacity-100'
+                      )}
                       disabled={busy}
                       aria-label={t('craterAgent.conversationActions')}
                       title={t('craterAgent.conversationActions')}
