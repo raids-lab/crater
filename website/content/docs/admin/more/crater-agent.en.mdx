@@ -1,0 +1,24 @@
+---
+title: Crater-Agent Administration
+description: Configure the platform model and review Agent conversations
+---
+
+Crater-Agent uses the platform default LLM configuration for users without a personal model. Administrators maintain the OpenAI-compatible API base URL, model name, and API key under **Platform Settings / LLM Configuration**.
+
+## Configuration precedence
+
+The platform default is available to every user. After a user saves a complete personal configuration, AI features in both portal and admin views prefer that configuration. Removing it restores the platform default.
+
+API keys are encrypted at rest and the complete value is not displayed again. Updating a model configuration affects subsequent requests and does not rewrite existing conversation messages.
+
+## Conversation review
+
+**Intelligent Operations / Agent Conversations** lists Agent conversations across the platform. Administrators can filter by username, nickname, user ID, title, and identity scope before viewing messages.
+
+Portal and admin conversations belonging to the same login user remain separate and are labeled with their identity scope. Review access is read-only; it does not let an administrator continue or alter a conversation as its owner.
+
+Agent conversations may contain user input and model output. Access them only for platform administration, troubleshooting, or compliance in accordance with organizational data-access policies.
+
+## Deployment requirement
+
+The Helm Chart deploys Crater-Agent as a cluster-internal service that accepts authenticated requests only from the Crater backend. Backend and Agent must share the same internal token, which must never be exposed to browsers or platform users.
