@@ -135,12 +135,13 @@ func (mgr *AgentMgr) UserDeleteAgentConversation(c *gin.Context) {
 }
 
 func (mgr *AgentMgr) CompleteAgentRun(c *gin.Context) {
-	secret := strings.TrimSpace(os.Getenv("CRATER_AGENT_INTERNAL_TOKEN"))
-	if !constantTimeTokenEqual(bearerToken(c.GetHeader("Authorization")), secret) {
+	serviceToken := strings.TrimSpace(os.Getenv(service.AgentInternalTokenEnv))
+	if !constantTimeTokenEqual(bearerToken(c.GetHeader("Authorization")), serviceToken) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid Agent service token"})
 		return
 	}
-	claims, err := service.ParseAgentContext(c.GetHeader("X-Crater-Agent-Context"), secret)
+	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
+	claims, err := service.ParseAgentContext(c.GetHeader("X-Crater-Agent-Context"), contextSigningKey)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid Agent context"})
 		return

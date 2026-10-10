@@ -33,6 +33,8 @@ services:
       CRATER_BE_PORT: :8098
       CRATER_AGENT_URL: http://agent:8000
       CRATER_AGENT_INTERNAL_TOKEN: ${CRATER_AGENT_INTERNAL_TOKEN:?required}
+      CRATER_AGENT_CONTEXT_SIGNING_KEY: ${CRATER_AGENT_CONTEXT_SIGNING_KEY:?required}
+      SYSTEM_SECRET_KEY: ${SYSTEM_SECRET_KEY:?required}
       KUBECONFIG: /etc/crater/kubeconfig
     volumes:
       - ${CRATER_LOCAL_BACKEND_CONFIG:?required}:/etc/config/config.yaml:ro
