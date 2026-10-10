@@ -1,0 +1,53 @@
+host: crater.localhost
+protocol: http
+
+firstUser:
+  username: crater-admin
+  # Injected by crater-agent-up.sh from a local Kubernetes Secret.
+  password: <SET_BY_CRATER_AGENT_UP>
+
+imagePullPolicy: IfNotPresent
+images:
+  agent:
+    repository: crater-agent
+    tag: dev
+  backend:
+    repository: crater-backend
+    tag: dev
+  frontend:
+    repository: crater-frontend
+    tag: dev
+
+agent:
+  enabled: true
+
+modelMetadataRefresh:
+  enabled: false
+
+storage:
+  create: false
+  storageClass: crater-kind-hostpath
+
+# Clear the production control-plane placement policy for the local Kind worker.
+nodeSelector: {}
+tolerations: []
+affinity: null
+
+backendConfig:
+  prometheusAPI: ""
+  postgres:
+    host: crater-postgresql.crater-system.svc.cluster.local
+    port: 5432
+    dbname: postgres
+    user: postgres
+    # Injected by crater-agent-up.sh from a local Kubernetes Secret.
+    password: <SET_BY_CRATER_AGENT_UP>
+    sslmode: disable
+    TimeZone: Asia/Shanghai
+  auth:
+    token:
+      accessTokenSecret: crater-agent-local-access-token-secret
+      refreshTokenSecret: crater-agent-local-refresh-token-secret
+
+dbBackup:
+  enabled: false

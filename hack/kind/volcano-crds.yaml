@@ -1,0 +1,91 @@
+# Minimal Volcano API compatibility layer for local Agent deployment tests.
+# It intentionally does not install the scheduler or controllers.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: jobs.batch.volcano.sh
+spec:
+  group: batch.volcano.sh
+  names:
+    kind: Job
+    listKind: JobList
+    plural: jobs
+    singular: job
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: commands.bus.volcano.sh
+spec:
+  group: bus.volcano.sh
+  names:
+    kind: Command
+    listKind: CommandList
+    plural: commands
+    singular: command
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: podgroups.scheduling.volcano.sh
+spec:
+  group: scheduling.volcano.sh
+  names:
+    kind: PodGroup
+    listKind: PodGroupList
+    plural: podgroups
+    singular: podgroup
+  scope: Namespaced
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: queues.scheduling.volcano.sh
+spec:
+  group: scheduling.volcano.sh
+  names:
+    kind: Queue
+    listKind: QueueList
+    plural: queues
+    singular: queue
+  scope: Cluster
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      subresources:
+        status: {}
