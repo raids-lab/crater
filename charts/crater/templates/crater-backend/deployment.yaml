@@ -30,9 +30,7 @@ spec:
         app: crater-backend
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/crater-backend/configmap.yaml") . | sha256sum }}
-        {{- if .Values.agent.enabled }}
-        checksum/agent-secret-config: {{ printf "%s:%s" .Values.agent.existingSecretName .Values.agent.internalToken | sha256sum }}
-        {{- end }}
+        checksum/agent-secret-config: {{ printf "%s:%s:%s" .Values.agent.existingSecretName .Values.agent.internalToken .Values.agent.secretRevision | sha256sum }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -62,8 +60,19 @@ spec:
         - name: crater-backend-container
           image: {{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
-          {{- if .Values.agent.enabled }}
           env:
+            - name: SYSTEM_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default "crater-agent-secret" .Values.agent.existingSecretName }}
+                  key: encryption-key
+            - name: SYSTEM_SECRET_KEY_PREVIOUS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default "crater-agent-secret" .Values.agent.existingSecretName }}
+                  key: previous-encryption-keys
+                  optional: true
+            {{- if .Values.agent.enabled }}
             - name: CRATER_AGENT_URL
               value: http://crater-agent:8000
             - name: CRATER_AGENT_INTERNAL_TOKEN
@@ -71,7 +80,12 @@ spec:
                 secretKeyRef:
                   name: {{ default "crater-agent-secret" .Values.agent.existingSecretName }}
                   key: internal-token
-          {{- end }}
+            - name: CRATER_AGENT_CONTEXT_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ default "crater-agent-secret" .Values.agent.existingSecretName }}
+                  key: context-signing-key
+            {{- end }}
           command:
             - /controller
             - --config-file=/etc/config/config.yaml
