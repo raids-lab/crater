@@ -104,6 +104,25 @@ prepare: ## Prepare development environment with updated configs
 	else \
 		echo "$(GREEN)✅ .debug.env already exists$(RESET)"; \
 	fi
+	@if ! grep -q '^CRATER_AGENT_URL=' .debug.env; then \
+		echo 'CRATER_AGENT_URL=http://localhost:8000' >> .debug.env; \
+	fi
+	@token="$$(awk -F= '/^CRATER_AGENT_INTERNAL_TOKEN=/{sub(/^[^=]*=/, ""); print; exit}' .debug.env)"; \
+	if [ "$${#token}" -lt 32 ]; then \
+		if ! command -v openssl >/dev/null 2>&1; then \
+			echo "$(RED)❌ openssl is required to generate CRATER_AGENT_INTERNAL_TOKEN$(RESET)"; \
+			exit 1; \
+		fi; \
+		generated_token="$$(openssl rand -hex 32)"; \
+		temp_file="$$(mktemp)"; \
+		awk -v token="$$generated_token" 'BEGIN { updated = 0 } \
+			/^CRATER_AGENT_INTERNAL_TOKEN=/ { print "CRATER_AGENT_INTERNAL_TOKEN=" token; updated = 1; next } \
+			{ print } \
+			END { if (!updated) print "CRATER_AGENT_INTERNAL_TOKEN=" token }' \
+			.debug.env > "$$temp_file"; \
+		mv "$$temp_file" .debug.env; \
+		echo "$(GREEN)✅ Generated shared Crater-Agent internal token$(RESET)"; \
+	fi
 
 ##@ Development
 
