@@ -25,6 +25,7 @@ import { IBackendVersionInfo, IUserContext } from '@/services/api/auth'
 const LAST_VIEW_KEY = 'last_view'
 const SETTINGS_KEY = 'settings'
 const PRIVACY_ACCEPTED_KEY = 'privacy_accepted' // 新增：隐私政策同意状态
+const AGENT_FLOATING_BUTTON_PREFERENCES_KEY = 'agent_floating_button_preferences'
 
 export const ACCESS_TOKEN_KEY = 'access_token'
 export const REFRESH_TOKEN_KEY = 'refresh_token'
@@ -53,6 +54,35 @@ export type UserInfo = IUserAttributes & {
 export const atomUserInfo = atom<UserInfo>()
 export const atomUserContext = atom<IUserContext>()
 export const atomBackendVersion = atom<IBackendVersionInfo>()
+
+/**
+ * Crater-Agent panel state and per-user browser-local floating entry preferences.
+ * Portal and admin identities share the same preference for one user, while
+ * different users on the same browser remain isolated.
+ */
+export const atomAgentPanelOpen = atom(false)
+const atomAgentFloatingButtonPreferences = atomWithStorage<Record<string, boolean>>(
+  AGENT_FLOATING_BUTTON_PREFERENCES_KEY,
+  {},
+  undefined,
+  { getOnInit: true }
+)
+export const atomAgentUserFloatingButtonEnabled = atom(
+  (get) => {
+    const userID = get(atomUserInfo)?.id
+    if (!userID) return true
+    return get(atomAgentFloatingButtonPreferences)[String(userID)] ?? true
+  },
+  (get, set, enabled: boolean) => {
+    const userID = get(atomUserInfo)?.id
+    if (!userID) return
+    const preferences = get(atomAgentFloatingButtonPreferences)
+    set(atomAgentFloatingButtonPreferences, {
+      ...preferences,
+      [String(userID)]: enabled,
+    })
+  }
+)
 
 /**
  * Remember the last view.
