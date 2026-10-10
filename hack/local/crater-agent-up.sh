@@ -62,9 +62,15 @@ prepare_runtime_config() {
   chmod 600 "$FLAT_KUBECONFIG"
 
   local internal_token
+  local context_signing_key
+  local encryption_key
   internal_token="$(openssl rand -hex 32)"
+  context_signing_key="$(openssl rand -hex 32)"
+  encryption_key="$(openssl rand -hex 16)"
   {
     printf 'CRATER_AGENT_INTERNAL_TOKEN=%s\n' "$internal_token"
+    printf 'CRATER_AGENT_CONTEXT_SIGNING_KEY=%s\n' "$context_signing_key"
+    printf 'SYSTEM_SECRET_KEY=%s\n' "$encryption_key"
     printf 'CRATER_LOCAL_BACKEND_CONFIG=%s\n' "$backend_config"
     printf 'CRATER_LOCAL_KUBECONFIG=%s\n' "$FLAT_KUBECONFIG"
     printf 'CRATER_LOCAL_HTTP_PORT=%s\n' "${CRATER_LOCAL_HTTP_PORT:-5180}"
@@ -115,6 +121,7 @@ run_database_migrations() {
   local backend_config="${CRATER_LOCAL_BACKEND_CONFIG:-$ROOT_DIR/backend/etc/debug-config.yaml}"
   docker run --rm \
     --entrypoint /migrate \
+    --env-file "$RUNTIME_ENV" \
     --volume "$backend_config:/etc/config/config.yaml:ro" \
     crater-backend:local
 }

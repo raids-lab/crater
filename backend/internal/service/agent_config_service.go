@@ -116,6 +116,9 @@ func (s *AgentConfigService) SavePersonalConfig(
 	cfg *LLMConfig,
 	validate bool,
 ) error {
+	if err := crypto.ValidateKeyConfiguration(); err != nil {
+		return bizerr.ServiceError.ServiceUnavailable.Wrap(err, "Agent credential encryption is not configured")
+	}
 	resolved, err := s.resolveSubmittedConfig(ctx, userID, cfg)
 	if err != nil {
 		return err
@@ -220,9 +223,21 @@ func (s *AgentConfigService) getPersonalConfig(
 		}
 		return nil, false, bizerr.Internal.DatabaseError.Wrap(err, "failed to load personal LLM configuration")
 	}
-	apiKey, err := crypto.Decrypt(record.EncryptedAPIKey)
+	apiKey, needsRotation, err := crypto.DecryptWithRotation(record.EncryptedAPIKey)
 	if err != nil {
 		return nil, false, bizerr.Internal.ServiceError.Wrap(err, "failed to decrypt personal API key")
+	}
+	if needsRotation {
+		rotated, encryptErr := crypto.Encrypt(apiKey)
+		if encryptErr != nil {
+			return nil, false, bizerr.Internal.ServiceError.Wrap(encryptErr, "failed to rotate personal API key")
+		}
+		if updateErr := s.db.WithContext(ctx).
+			Model(&model.UserLLMConfig{}).
+			Where("user_id = ?", userID).
+			Update("encrypted_api_key", rotated).Error; updateErr != nil {
+			return nil, false, bizerr.Internal.DatabaseError.Wrap(updateErr, "failed to rotate personal API key")
+		}
 	}
 	return &LLMConfig{BaseURL: record.BaseURL, APIKey: apiKey, ModelName: record.ModelName}, true, nil
 }
@@ -257,6 +272,7 @@ func NewLLMHTTPClient(source LLMConfigSource, timeout time.Duration) *http.Clien
 		return client
 	}
 	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil
 	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
 	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(address)
@@ -284,6 +300,77 @@ func NewLLMHTTPClient(source LLMConfigSource, timeout time.Duration) *http.Clien
 		return validatePersonalLLMURL(req.URL)
 	}
 	return client
+}
+
+// RotateStoredLLMCredentials re-encrypts all model credentials with the active
+// deployment key before the backend starts accepting Agent requests.
+func RotateStoredLLMCredentials(ctx context.Context, db *gorm.DB) error {
+	if err := crypto.ValidateKeyConfiguration(); err != nil {
+		return bizerr.ServiceError.ServiceUnavailable.Wrap(err, "Agent credential encryption is not configured")
+	}
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := rotatePlatformLLMCredential(tx); err != nil {
+			return err
+		}
+		var personalConfigs []model.UserLLMConfig
+		if err := tx.Find(&personalConfigs).Error; err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to load personal LLM credentials for rotation")
+		}
+		for _, config := range personalConfigs {
+			rotated, changed, err := rotateEncryptedCredential(config.EncryptedAPIKey)
+			if err != nil {
+				return bizerr.Internal.ServiceError.Wrap(err, "failed to rotate personal LLM credential")
+			}
+			if !changed {
+				continue
+			}
+			if err := tx.Model(&model.UserLLMConfig{}).
+				Where("user_id = ?", config.UserID).
+				Update("encrypted_api_key", rotated).Error; err != nil {
+				return bizerr.Internal.DatabaseError.Wrap(err, "failed to save rotated personal LLM credential")
+			}
+		}
+		return nil
+	})
+}
+
+func rotatePlatformLLMCredential(tx *gorm.DB) error {
+	var config model.SystemConfig
+	err := tx.Where("key = ?", model.ConfigKeyLLMAPIKey).First(&config).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil
+	}
+	if err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "failed to load platform LLM credential for rotation")
+	}
+	if config.Value == "" {
+		return nil
+	}
+	rotated, changed, err := rotateEncryptedCredential(config.Value)
+	if err != nil {
+		return bizerr.Internal.ServiceError.Wrap(err, "failed to rotate platform LLM credential")
+	}
+	if !changed {
+		return nil
+	}
+	if err := tx.Model(&model.SystemConfig{}).
+		Where("key = ?", model.ConfigKeyLLMAPIKey).
+		Update("value", rotated).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "failed to save rotated platform LLM credential")
+	}
+	return nil
+}
+
+func rotateEncryptedCredential(encrypted string) (rotated string, changed bool, err error) {
+	plainText, needsRotation, err := crypto.DecryptWithRotation(encrypted)
+	if err != nil || !needsRotation {
+		return encrypted, false, err
+	}
+	rotated, err = crypto.Encrypt(plainText)
+	if err != nil {
+		return "", false, err
+	}
+	return rotated, true, nil
 }
 
 func checkPersonalLLMConnection(ctx context.Context, cfg *LLMConfig) error {

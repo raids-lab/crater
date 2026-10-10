@@ -27,7 +27,6 @@ const (
 	agentStreamBufferSize      = 32 << 10
 	agentRuntimeRequestTimeout = 5 * time.Minute
 	llmRequestTimeout          = 5 * time.Minute
-	defaultAgentRuntimeURL     = "http://localhost:8000"
 	agentIdentityHeader        = "X-Crater-Agent-Identity"
 )
 
@@ -371,8 +370,9 @@ func (mgr *AgentMgr) requestAgentRuntime(
 	body []byte,
 	endpoint string,
 ) (*http.Response, error) {
-	secret := strings.TrimSpace(os.Getenv("CRATER_AGENT_INTERNAL_TOKEN"))
-	contextToken, err := service.SignAgentContext(util.GetToken(c).UserID, identity, secret)
+	serviceToken := strings.TrimSpace(os.Getenv(service.AgentInternalTokenEnv))
+	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
+	contextToken, err := service.SignAgentContext(util.GetToken(c).UserID, identity, contextSigningKey)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +384,7 @@ func (mgr *AgentMgr) requestAgentRuntime(
 	if err != nil {
 		return nil, bizerr.Internal.ServiceError.Wrap(err, "failed to build Crater-Agent request")
 	}
-	req.Header.Set("Authorization", "Bearer "+secret)
+	req.Header.Set("Authorization", "Bearer "+serviceToken)
 	req.Header.Set("X-Crater-Agent-Context", contextToken)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := (&http.Client{Timeout: agentRuntimeRequestTimeout}).Do(req)
@@ -404,8 +404,8 @@ func validateAgentRuntimeResponse(resp *http.Response) error {
 
 func (mgr *AgentMgr) ProxyLLMChatCompletion(c *gin.Context) {
 	contextToken := bearerToken(c.GetHeader("Authorization"))
-	secret := strings.TrimSpace(os.Getenv("CRATER_AGENT_INTERNAL_TOKEN"))
-	claims, err := service.ParseAgentContext(contextToken, secret)
+	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
+	claims, err := service.ParseAgentContext(contextToken, contextSigningKey)
 	if err != nil {
 		writeOpenAIError(c, http.StatusUnauthorized, "invalid Agent context", "authentication_error")
 		return
@@ -461,7 +461,7 @@ func readLimitedBody(body io.ReadCloser, limit int64) ([]byte, error) {
 
 func buildAgentRuntimeURL(raw, endpoint string) (string, error) {
 	if strings.TrimSpace(raw) == "" {
-		raw = defaultAgentRuntimeURL
+		return "", bizerr.ServiceError.ServiceUnavailable.New("CRATER_AGENT_URL is not configured")
 	}
 	parsed, err := url.Parse(strings.TrimRight(raw, "/"))
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
