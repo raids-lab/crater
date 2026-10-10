@@ -1,17 +1,25 @@
 package service
 
 import (
+	"os"
 	"strings"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/pkg/crypto"
 )
 
 // The token must remain valid for the four-minute Agent run plus its terminal
 // persistence callback, while still being short-lived if intercepted.
 const agentContextLifetime = 6 * time.Minute
+
+const (
+	AgentInternalTokenEnv     = "CRATER_AGENT_INTERNAL_TOKEN" // #nosec G101 -- environment variable name only.
+	AgentContextSigningKeyEnv = "CRATER_AGENT_CONTEXT_SIGNING_KEY"
+	minimumAgentSecretLength  = 32
+)
 
 type AgentContextClaims struct {
 	UserID        uint          `json:"userId"`
@@ -20,8 +28,9 @@ type AgentContextClaims struct {
 }
 
 func SignAgentContext(userID uint, identity AgentIdentity, secret string) (string, error) {
-	if strings.TrimSpace(secret) == "" {
-		return "", bizerr.ServiceError.ServiceUnavailable.New("Crater-Agent internal authentication is not configured")
+	secret = strings.TrimSpace(secret)
+	if err := validateAgentSecret(secret, AgentContextSigningKeyEnv); err != nil {
+		return "", err
 	}
 	now := time.Now()
 	claims := AgentContextClaims{
@@ -43,8 +52,9 @@ func SignAgentContext(userID uint, identity AgentIdentity, secret string) (strin
 }
 
 func ParseAgentContext(tokenString, secret string) (*AgentContextClaims, error) {
-	if strings.TrimSpace(secret) == "" {
-		return nil, bizerr.ServiceError.ServiceUnavailable.New("Crater-Agent internal authentication is not configured")
+	secret = strings.TrimSpace(secret)
+	if err := validateAgentSecret(secret, AgentContextSigningKeyEnv); err != nil {
+		return nil, err
 	}
 	claims := &AgentContextClaims{}
 	token, err := jwt.ParseWithClaims(
@@ -70,4 +80,28 @@ func ParseAgentContext(tokenString, secret string) (*AgentContextClaims, error) 
 		return nil, bizerr.Auth.TokenInvalid.Wrap(err, "invalid Agent identity")
 	}
 	return claims, nil
+}
+
+// ValidateAgentRuntimeSecurity rejects Agent startup with missing or weak
+// service authentication, context signing, or credential encryption keys.
+func ValidateAgentRuntimeSecurity() error {
+	if err := validateAgentSecret(strings.TrimSpace(os.Getenv(AgentInternalTokenEnv)), AgentInternalTokenEnv); err != nil {
+		return err
+	}
+	if err := validateAgentSecret(
+		strings.TrimSpace(os.Getenv(AgentContextSigningKeyEnv)), AgentContextSigningKeyEnv,
+	); err != nil {
+		return err
+	}
+	if err := crypto.ValidateKeyConfiguration(); err != nil {
+		return bizerr.ServiceError.ServiceUnavailable.Wrap(err, "Agent credential encryption key is invalid")
+	}
+	return nil
+}
+
+func validateAgentSecret(secret, name string) error {
+	if len(secret) < minimumAgentSecretLength {
+		return bizerr.ServiceError.ServiceUnavailable.New(name + " must contain at least 32 characters")
+	}
+	return nil
 }
