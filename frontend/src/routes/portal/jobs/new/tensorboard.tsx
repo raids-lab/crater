@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { type TFunction, t as i18nT } from 'i18next'
 import { useAtomValue } from 'jotai'
@@ -98,28 +98,21 @@ type TensorboardSearch = {
 // Temporarily disable storage probing and directory browsing while keeping
 // log-dir-only TensorBoard creation available.
 const enableLogDirInspection = false
-const sourceJobsPageSize = 200
+const sourceJobsPageSize = 50
+const sourceJobSearchDebounceMs = 300
 const tensorboardJobType = 'tensorboard'
 
-const getAllTensorboardSourceJobs = async (signal?: AbortSignal) => {
-  const getPage = (page: number) =>
-    apiJobSelfList(
-      {
-        page,
-        page_size: sourceJobsPageSize,
-        filters: {},
-      },
-      signal
-    )
-
-  const firstPage = await getPage(1)
-  const pageCount = Math.ceil(firstPage.data.total / sourceJobsPageSize)
-  const remainingPages = await Promise.all(
-    Array.from({ length: Math.max(pageCount - 1, 0) }, (_, index) => getPage(index + 2))
+const getTensorboardSourceJobs = async (search: string, signal?: AbortSignal) => {
+  const response = await apiJobSelfList(
+    {
+      page: 1,
+      page_size: sourceJobsPageSize,
+      ...(search ? { search } : {}),
+      filters: {},
+    },
+    signal
   )
-  return [firstPage, ...remainingPages]
-    .flatMap((response) => response.data.items)
-    .filter((job) => String(job.jobType) !== tensorboardJobType)
+  return response.data.items.filter((job) => String(job.jobType) !== tensorboardJobType)
 }
 
 const validateTensorboardSearch = (search: Record<string, unknown>): TensorboardSearch => ({
@@ -249,9 +242,15 @@ function RouteComponent() {
   const searchParams = Route.useSearch()
   const currentUser = useAtomValue(atomUserInfo)
 
-  const { data: jobList } = useQuery({
-    queryKey: ['job', 'self', 'tensorboard-source'],
-    queryFn: ({ signal }) => getAllTensorboardSourceJobs(signal),
+  const [sourceJobSearch, setSourceJobSearch] = useState('')
+  const [debouncedSourceJobSearch] = useDebounceValue(
+    sourceJobSearch.trim(),
+    sourceJobSearchDebounceMs
+  )
+  const { data: jobList = [], isPlaceholderData: isUsingPreviousSourceJobs } = useQuery({
+    queryKey: ['job', 'self', 'tensorboard-source', debouncedSourceJobSearch],
+    queryFn: ({ signal }) => getTensorboardSourceJobs(debouncedSourceJobSearch, signal),
+    placeholderData: keepPreviousData,
   })
 
   const formSchema = useMemo(() => createFormSchema(t), [t])
@@ -266,6 +265,26 @@ function RouteComponent() {
   })
   const selectedSourceJobNames = form.watch('sourceJobNames')
   const selectedSourceLogDirs = form.watch('sourceLogDirs')
+  const sourceJobOptions = useMemo(() => {
+    const options: Array<{
+      value: string
+      label: string
+      labelNote?: string
+    }> = jobList.map((job) => ({
+      value: job.jobName,
+      label: job.jobName,
+      labelNote: job.status,
+    }))
+    const loadedJobNames = new Set(options.map((option) => option.value))
+    selectedSourceJobNames.forEach((jobName) => {
+      if (!loadedJobNames.has(jobName)) {
+        options.push({ value: jobName, label: jobName, labelNote: undefined })
+      }
+    })
+    return options
+  }, [jobList, selectedSourceJobNames])
+  const shouldFilterSourceJobs =
+    sourceJobSearch.trim() !== debouncedSourceJobSearch || isUsingPreviousSourceJobs
   const selectedLogDir = form.watch('logDir').trim()
   const [debouncedLogDir] = useDebounceValue(selectedLogDir, 400)
   const isMultiSource = selectedSourceJobNames.length > 1
@@ -502,13 +521,11 @@ function RouteComponent() {
                       </FormDescription>
                       <FormControl>
                         <SelectBox
+                          shouldFilter={shouldFilterSourceJobs}
                           withDialogOverlay={false}
-                          options={(jobList ?? []).map((job) => ({
-                            value: job.jobName,
-                            label: job.jobName,
-                            labelNote: job.status,
-                          }))}
+                          options={sourceJobOptions}
                           value={field.value}
+                          onInputChange={setSourceJobSearch}
                           onChange={(values) => {
                             if (values.length > MAX_TENSORBOARD_SOURCE_JOBS) {
                               toast.warning(

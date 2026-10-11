@@ -50,6 +50,7 @@ interface SelectBoxProps {
   className?: string
   withDialogOverlay?: boolean
   disabled?: boolean
+  shouldFilter?: boolean
 }
 
 const OptionalDialogOverlay = ({
@@ -72,6 +73,7 @@ const SelectBox = ({
   onInputChange,
   withDialogOverlay = true,
   disabled = false,
+  shouldFilter = true,
 }: SelectBoxProps & {
   ref?: React.RefObject<HTMLInputElement>
 }) => {
@@ -157,7 +159,7 @@ const SelectBox = ({
         </PopoverTrigger>
         <OptionalDialogOverlay enabled={withDialogOverlay}>
           <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-            <Command>
+            <Command shouldFilter={shouldFilter}>
               <div className="relative">
                 <CommandInput
                   value={searchTerm}
