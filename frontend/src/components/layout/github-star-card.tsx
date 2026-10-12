@@ -52,7 +52,7 @@ export function GitHubStarCard() {
   if (isDismissed) return null
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 border-t border-orange-500/20 bg-orange-500/10 px-5 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:px-6">
+    <div className="mx-auto mb-6 grid w-full max-w-3xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 rounded-lg border border-orange-500/20 bg-orange-500/10 px-5 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:px-6">
       <div className="flex min-w-0 items-start gap-3">
         <StarIcon
           className="mt-0.5 size-5 shrink-0 fill-amber-500 text-amber-500"
