@@ -29,6 +29,13 @@ var datasetQueuesOutCmd = &cobra.Command{Use: "queues-out <id>", Short: "List qu
 var adminDatasetCmd = &cobra.Command{Use: "dataset", Short: "View admin datasets and models"}
 var adminDatasetLsCmd = &cobra.Command{Use: "ls", Short: "List datasets and models", Args: noArgs, RunE: runAdminDatasetLs}
 
+const (
+	datasetUsersInSuffix   = "usersIn"
+	datasetQueuesInSuffix  = "queuesIn"
+	datasetUsersOutSuffix  = "usersNotIn"
+	datasetQueuesOutSuffix = "queuesNotIn"
+)
+
 func runDatasetLs(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "datasets", Path: api.DatasetPrefix + "/mydataset", Params: noParams, Table: printDatasetTable})
 }
@@ -46,19 +53,19 @@ func runDatasetGet(cmd *cobra.Command, args []string) error {
 }
 
 func runDatasetUsers(cmd *cobra.Command, args []string) error {
-	return runDatasetShareList(cmd, args, "users", "users")
+	return runDatasetShareList(cmd, args, "users", datasetUsersInSuffix)
 }
 
 func runDatasetQueues(cmd *cobra.Command, args []string) error {
-	return runDatasetShareList(cmd, args, "queues", "queues")
+	return runDatasetShareList(cmd, args, "queues", datasetQueuesInSuffix)
 }
 
 func runDatasetUsersOut(cmd *cobra.Command, args []string) error {
-	return runDatasetShareList(cmd, args, "users", "usersNotIn")
+	return runDatasetShareList(cmd, args, "users", datasetUsersOutSuffix)
 }
 
 func runDatasetQueuesOut(cmd *cobra.Command, args []string) error {
-	return runDatasetShareList(cmd, args, "queues", "queuesNotIn")
+	return runDatasetShareList(cmd, args, "queues", datasetQueuesOutSuffix)
 }
 
 func runDatasetShareList(cmd *cobra.Command, args []string, payloadKey string, suffix string) error {
@@ -66,7 +73,11 @@ func runDatasetShareList(cmd *cobra.Command, args []string, payloadKey string, s
 	if err != nil {
 		return err
 	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: payloadKey, Path: fmt.Sprintf("%s/%s/%s", api.DatasetPrefix, api.UintPath(id), suffix), Params: noParams, Table: printSimpleTableWrapper("id", "name", "nickname", "isowner")})
+	return runRawRead(cmd, rawReadSpec{PayloadKey: payloadKey, Path: datasetShareListPath(id, suffix), Params: noParams, Table: printSimpleTableWrapper("id", "name", "nickname", "isowner")})
+}
+
+func datasetShareListPath(id uint, suffix string) string {
+	return fmt.Sprintf("%s/%s/%s", api.DatasetPrefix, api.UintPath(id), suffix)
 }
 
 func printDatasetTable(data interface{}) {

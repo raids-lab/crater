@@ -62,8 +62,21 @@ export function reduceDataListRemoteQuery(
 // Moves an out-of-range page to the last valid page after the total changes.
 export function clampDataListRemotePage(
   query: DataListRemoteQuery,
-  total: number
+  total: number | undefined
 ): DataListRemoteQuery {
+  if (total === undefined) {
+    return query
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / query.pageSize))
   return query.page > totalPages ? { ...query, page: totalPages } : query
+}
+
+// Only a completed request for the current query may change the page bounds.
+export function confirmedDataListRemoteTotal(
+  total: number | undefined,
+  isSuccess: boolean,
+  isPlaceholderData: boolean
+): number | undefined {
+  return isSuccess && !isPlaceholderData ? total : undefined
 }

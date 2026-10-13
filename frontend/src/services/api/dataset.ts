@@ -180,28 +180,8 @@ export const apiListQueuesNotInDataset = (datasetID: number) =>
 export const apiListUsersInDataset = (datasetID: number) =>
   apiV1Get<IResponse<UserDatasetResp[]>>(`dataset/${datasetID}/usersIn`)
 
-export const apiListUsersInDatasetPaged = (
-  datasetID: number,
-  params: RemoteTableParams,
-  signal?: AbortSignal
-) =>
-  apiV1Get<IResponse<IPage<UserDatasetResp>>>(`dataset/${datasetID}/usersIn/page`, {
-    searchParams: buildRemoteSearchParams(params),
-    signal,
-  })
-
 export const apiListQueuesInDataset = (datasetID: number) =>
   apiV1Get<IResponse<QueueDatasetGetResp[]>>(`dataset/${datasetID}/queuesIn`)
-
-export const apiListQueuesInDatasetPaged = (
-  datasetID: number,
-  params: RemoteTableParams,
-  signal?: AbortSignal
-) =>
-  apiV1Get<IResponse<IPage<QueueDatasetGetResp>>>(`dataset/${datasetID}/queuesIn/page`, {
-    searchParams: buildRemoteSearchParams(params),
-    signal,
-  })
 
 export const apiCancelShareWithUser = (CSU: cancelSharedUserResp) =>
   apiV1Post<IResponse<string>>('dataset/cancelshare/user', CSU)

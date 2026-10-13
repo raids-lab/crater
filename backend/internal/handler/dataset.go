@@ -52,10 +52,8 @@ func (mgr *DatasetMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/mydataset", mgr.GetDatasets)
 	g.GET("/mydataset/page", mgr.GetDatasetsPage)
 	g.GET("/:datasetId/usersNotIn", mgr.ListUsersOutOfDataset)
-	g.GET("/:datasetId/usersIn/page", mgr.ListUsersInDatasetPage)
 	g.GET("/:datasetId/usersIn", mgr.ListUserOfDataset)
 	g.GET("/:datasetId/queuesNotIn", mgr.ListQueuesOutOfDataset)
-	g.GET("/:datasetId/queuesIn/page", mgr.ListQueuesInDatasetPage)
 	g.GET("/:datasetId/queuesIn", mgr.ListQueueOfDataset)
 	g.POST("/create", mgr.CreateDataset)
 	g.DELETE("/delete/:id", mgr.DeleteDataset)
@@ -1091,6 +1089,7 @@ func (mgr *DatasetMgr) ListUserOfDataset(c *gin.Context) {
 		user, err := u.WithContext(c).Where(u.ID.Eq(uids[i])).First()
 		if err != nil {
 			resputil.Error(c, fmt.Sprintf("Can't find user :%v", err), resputil.InvalidRequest)
+			return
 		}
 		res := UserOfDatasetResp{
 			ID:       uids[i],

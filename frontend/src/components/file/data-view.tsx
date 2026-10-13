@@ -26,6 +26,7 @@ import DocsButton from '@/components/button/docs-button'
 import ListedButton from '@/components/button/listed-button'
 import { DataCreateForm } from '@/components/file/data-create-form'
 import DataList, { DataListRemoteQuery } from '@/components/layout/data-list'
+import { confirmedDataListRemoteTotal } from '@/components/layout/data-list-remote'
 import { ModelDownloadDialog } from '@/components/model/model-download-dialog'
 import RepositorySourceMark from '@/components/model/repository-source-mark'
 import SandwichSheet from '@/components/sheet/sandwich-sheet'
@@ -304,8 +305,14 @@ export function DataView({
         isRemote
           ? {
               query: remoteQuery,
-              total: remoteData.data?.total ?? 0,
+              total: confirmedDataListRemoteTotal(
+                remoteData.data?.total,
+                remoteData.isSuccess,
+                remoteData.isPlaceholderData
+              ),
               isLoading: remoteData.isFetching,
+              isError: remoteData.isError,
+              onRetry: () => void remoteData.refetch(),
               availableSortFields: ['createdAt', 'mountCount'],
               onQueryChange: setRemoteQuery,
             }

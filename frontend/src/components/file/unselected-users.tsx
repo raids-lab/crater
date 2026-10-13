@@ -60,7 +60,7 @@ export default function ShareWithUsers({ datasetId, apiShareDatasetwithUser }: U
     onSuccess: () => {
       toast.success(t('shareDatasetToUserDialog.toastSuccess'))
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['remote-list', 'dataset-user-shares'] }),
+        queryClient.invalidateQueries({ queryKey: ['data', 'userdataset', datasetId] }),
         queryClient.invalidateQueries({ queryKey: ['dataset', 'userOutList', { datasetId }] }),
       ])
     },

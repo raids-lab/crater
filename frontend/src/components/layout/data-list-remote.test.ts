@@ -17,7 +17,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import type { DataListRemoteQuery } from './data-list-remote.ts'
-import { clampDataListRemotePage, reduceDataListRemoteQuery } from './data-list-remote.ts'
+import {
+  clampDataListRemotePage,
+  confirmedDataListRemoteTotal,
+  reduceDataListRemoteQuery,
+} from './data-list-remote.ts'
 
 const baseQuery: DataListRemoteQuery = {
   page: 3,
@@ -68,6 +72,23 @@ test('filter and sort changes reset the current page', () => {
 test('empty result moves an out-of-range query back to page one', () => {
   const next = clampDataListRemotePage(baseQuery, 0)
   assert.equal(next.page, 1)
+})
+
+test('unknown total keeps the requested page after a failed request', () => {
+  const next = clampDataListRemotePage(baseQuery, undefined)
+  assert.equal(next, baseQuery)
+  assert.equal(next.page, 3)
+})
+
+test('failed and placeholder requests cannot reset the current page', () => {
+  assert.equal(confirmedDataListRemoteTotal(0, false, false), undefined)
+  assert.equal(confirmedDataListRemoteTotal(13, true, true), undefined)
+  assert.equal(confirmedDataListRemoteTotal(13, true, false), 13)
+})
+
+test('deleting the last item on a page moves to the previous valid page', () => {
+  const next = clampDataListRemotePage({ ...baseQuery, page: 3 }, 20)
+  assert.equal(next.page, 2)
 })
 
 test('valid page keeps the same query object', () => {

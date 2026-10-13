@@ -165,7 +165,8 @@ format-translation: ## 🌐 Format translation files
 .PHONY: test
 test: ## 🧪 Run tests
 	@echo "$(CYAN)Running tests...$(RESET)"
-	@echo "$(YELLOW)Note: Add test command to package.json if needed$(RESET)"
+	pnpm test:data-list
+	pnpm test:pod-read-policy
 
 ## 🛡️  Code Generation & Backend Integration
 .PHONY: generate-error-code

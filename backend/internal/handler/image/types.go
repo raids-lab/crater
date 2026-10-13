@@ -237,6 +237,7 @@ type (
 
 	ImageInfo struct {
 		ID               uint                  `json:"ID"`
+		ImageBuildID     *uint                 `json:"imageBuildID,omitempty"`
 		ImageLink        string                `json:"imageLink"`
 		Description      *string               `json:"description"`
 		CreatedAt        time.Time             `json:"createdAt"`

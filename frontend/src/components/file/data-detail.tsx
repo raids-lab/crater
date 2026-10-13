@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 // i18n-processed-v1.1.0
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
@@ -71,9 +71,6 @@ import { NavBreadcrumb } from '@/components/layout/app-breadcrumb'
 import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page'
 import RepositorySourceMark from '@/components/model/repository-source-mark'
 import { DataTable } from '@/components/query-table'
-import { RemoteDataTable } from '@/components/query-table/remote'
-import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
-import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
   IDataset,
@@ -81,8 +78,8 @@ import {
   QueueDatasetGetResp,
   UserDataset,
   UserDatasetResp,
-  apiListQueuesInDatasetPaged,
-  apiListUsersInDatasetPaged,
+  apiListQueuesInDataset,
+  apiListUsersInDataset,
   cancelSharedQueueResp,
   cancelSharedUserResp,
 } from '@/services/api/dataset'
@@ -90,7 +87,6 @@ import { FileItem, apiGetDatasetFiles } from '@/services/api/file'
 import { IResponse } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
-import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { formatFileSize } from '@/utils/file-size'
 import { formatParameterCount } from '@/utils/model-metadata'
@@ -163,29 +159,17 @@ export function SharedResourceTable({
     }
   })()
   const activeTab = props.currentTab || 'datasetinfo'
-  const userShareState = useRemoteTableState(`dataset_${datasetId}_user_shares`, {
-    sorting: [{ id: 'name', desc: false }],
-  })
-  const accountShareState = useRemoteTableState(`dataset_${datasetId}_account_shares`, {
-    sorting: [{ id: 'name', desc: false }],
-  })
   const userDatasetData = useQuery({
-    queryKey: [...buildRemoteQueryKey('dataset-user-shares', userShareState.params), datasetId],
-    queryFn: ({ signal }) => apiListUsersInDatasetPaged(datasetId, userShareState.params, signal),
+    queryKey: ['data', 'userdataset', datasetId],
+    queryFn: () => apiListUsersInDataset(datasetId),
     select: (res) => res.data,
     enabled: activeTab === 'usershare',
-    placeholderData: keepPreviousData,
   })
   const queueDatasetData = useQuery({
-    queryKey: [
-      ...buildRemoteQueryKey('dataset-account-shares', accountShareState.params),
-      datasetId,
-    ],
-    queryFn: ({ signal }) =>
-      apiListQueuesInDatasetPaged(datasetId, accountShareState.params, signal),
+    queryKey: ['data', 'queuedataset', datasetId],
+    queryFn: () => apiListQueuesInDataset(datasetId),
     select: (res) => res.data,
     enabled: activeTab === 'accountshare',
-    placeholderData: keepPreviousData,
   })
   const queryClient = useQueryClient()
   const [pathname, setPathname] = useState<string>('')
@@ -289,7 +273,7 @@ export function SharedResourceTable({
       apiCancelDatasetSharewithUser({ datasetID: datasetId, userID: userId }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ['remote-list', 'dataset-user-shares'],
+        queryKey: ['data', 'userdataset', datasetId],
       })
       toast.success(t('sharedResource.shareCanceled'))
     },
@@ -316,7 +300,7 @@ export function SharedResourceTable({
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ['remote-list', 'dataset-account-shares'],
+        queryKey: ['data', 'queuedataset', datasetId],
       })
       toast.success(t('sharedResource.shareCanceled'))
     },
@@ -339,44 +323,14 @@ export function SharedResourceTable({
     data?.task || data?.modelType || data?.library || data?.license || data?.parameterCount
   )
 
-  const userShareToolbar = useMemo<DataTableToolbarConfig>(
-    () => ({
-      globalSearch: {
-        enabled: true,
-        placeholder: t('sharedResource.userName'),
-      },
-      filterOptions: [],
-      getHeader: (key) => key,
-    }),
-    [t]
-  )
-  const accountShareToolbar = useMemo<DataTableToolbarConfig>(
-    () => ({
-      globalSearch: {
-        enabled: true,
-        placeholder: t('sharedResource.accountName'),
-      },
-      filterOptions: [],
-      getHeader: (key) => key,
-    }),
-    [t]
-  )
-
   const userDatasetColumns = useMemo<ColumnDef<UserDatasetResp>[]>(() => {
     return [
       {
         accessorKey: 'index',
-        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('sharedResource.serialNumber')} />
         ),
-        cell: ({ row }) => (
-          <div>
-            {userShareState.pagination.pageIndex * userShareState.pagination.pageSize +
-              row.index +
-              1}
-          </div>
-        ),
+        cell: ({ row }) => <div>{row.index + 1}</div>,
       },
       {
         accessorKey: 'name',
@@ -429,23 +383,16 @@ export function SharedResourceTable({
         ),
       },
     ]
-  }, [cancelShareWithUser, dataTypeLabel, t, userShareState.pagination])
+  }, [cancelShareWithUser, dataTypeLabel, t])
 
   const queueDatasetColumns = useMemo<ColumnDef<QueueDatasetGetResp>[]>(
     () => [
       {
         accessorKey: 'index',
-        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('sharedResource.serialNumber')} />
         ),
-        cell: ({ row }) => (
-          <div>
-            {accountShareState.pagination.pageIndex * accountShareState.pagination.pageSize +
-              row.index +
-              1}
-          </div>
-        ),
+        cell: ({ row }) => <div>{row.index + 1}</div>,
       },
       {
         accessorKey: 'name',
@@ -498,7 +445,7 @@ export function SharedResourceTable({
         ),
       },
     ],
-    [accountShareState.pagination, cancelShareWithQueue, dataTypeLabel, t]
+    [cancelShareWithQueue, dataTypeLabel, t]
   )
 
   const datasetFilescolumns = useMemo<ColumnDef<FileItem>[]>(() => {
@@ -889,12 +836,10 @@ export function SharedResourceTable({
           icon: User,
           label: t('sharedResource.userShares', { type: dataTypeLabel }),
           children: (
-            <RemoteDataTable
+            <DataTable
+              storageKey="file_share_user"
               query={userDatasetData}
-              state={userShareState}
-              getRowId={(row) => String(row.id)}
               columns={userDatasetColumns}
-              toolbarConfig={userShareToolbar}
             />
           ),
           scrollable: true,
@@ -904,12 +849,10 @@ export function SharedResourceTable({
           icon: Users,
           label: t('sharedResource.accountShares', { type: dataTypeLabel }),
           children: (
-            <RemoteDataTable
+            <DataTable
+              storageKey="file_share_queue"
               query={queueDatasetData}
-              state={accountShareState}
-              getRowId={(row) => String(row.id)}
               columns={queueDatasetColumns}
-              toolbarConfig={accountShareToolbar}
             />
           ),
           scrollable: true,

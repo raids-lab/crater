@@ -763,8 +763,8 @@ This section records the read-only API surface covered by the CLI after the broa
 ### Dataset And Template Reads
 - `crater dataset ls`: `/api/v1/dataset/mydataset`.
 - `crater dataset get <id>`: `/api/v1/dataset/detail/{id}`.
-- `crater dataset users <id>` / `queues <id>`: current share relationship reads.
-- `crater dataset users-out <id>` / `queues-out <id>`: unshared user/account candidate reads.
+- `crater dataset users <id>`: `/api/v1/dataset/{id}/usersIn`; `crater dataset queues <id>`: `/api/v1/dataset/{id}/queuesIn`.
+- `crater dataset users-out <id>`: `/api/v1/dataset/{id}/usersNotIn`; `crater dataset queues-out <id>`: `/api/v1/dataset/{id}/queuesNotIn`.
 - `crater admin dataset ls`: `/api/v1/admin/dataset/alldataset`.
 - `crater template ls`: `/api/v1/jobtemplate/list`.
 - `crater template get <id>`: `/api/v1/jobtemplate/{id}`.

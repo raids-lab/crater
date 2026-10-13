@@ -113,8 +113,10 @@ export interface DataItem {
 
 export interface DataListRemoteConfig {
   query: DataListRemoteQuery
-  total: number
+  total?: number
   isLoading?: boolean
+  isError?: boolean
+  onRetry?: () => void
   availableTags?: string[]
   availableSortFields?: DataListSortField[]
   onQueryChange: (query: DataListRemoteQuery) => void
@@ -273,9 +275,12 @@ export default function DataList({
       )
   }, [isRemote, items, modelType, ownerFilter, searchTerm, sortDirection, sortField, user?.name])
 
+  const hasRemoteTotal = !isRemote || (remote?.total !== undefined && !remote.isError)
   const totalItems = remote?.total ?? filteredItems.length
-  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
-  const currentPage = Math.min(pageIndex + 1, totalPages)
+  const totalPages = hasRemoteTotal
+    ? Math.max(1, Math.ceil(totalItems / pageSize))
+    : Math.max(1, pageIndex + 1)
+  const currentPage = hasRemoteTotal ? Math.min(pageIndex + 1, totalPages) : pageIndex + 1
   const paginatedItems = useMemo(
     () =>
       isRemote
@@ -286,14 +291,14 @@ export default function DataList({
 
   useEffect(() => {
     const lastPageIndex = totalPages - 1
-    if (pageIndex > lastPageIndex) {
+    if (pageIndex > lastPageIndex && hasRemoteTotal) {
       if (remoteQuery && onRemoteQueryChange) {
-        onRemoteQueryChange(clampDataListRemotePage(remoteQuery, totalItems))
+        onRemoteQueryChange(clampDataListRemotePage(remoteQuery, remote?.total))
       } else {
         setLocalPageIndex(lastPageIndex)
       }
     }
-  }, [onRemoteQueryChange, pageIndex, remoteQuery, totalItems, totalPages])
+  }, [hasRemoteTotal, onRemoteQueryChange, pageIndex, remote?.total, remoteQuery, totalPages])
 
   return (
     <div aria-busy={remote?.isLoading}>
@@ -438,7 +443,19 @@ export default function DataList({
         </div>
       </div>
       <Separator />
-      {remote?.isLoading && filteredItems.length === 0 ? (
+      {remote?.isError ? (
+        <div
+          role="alert"
+          className="text-muted-foreground flex min-h-48 flex-col items-center justify-center gap-3 text-sm"
+        >
+          <span>{t('dataList.loadError')}</span>
+          {remote.onRetry && (
+            <Button type="button" variant="outline" onClick={remote.onRetry}>
+              {t('dataList.retry')}
+            </Button>
+          )}
+        </div>
+      ) : remote?.isLoading && filteredItems.length === 0 ? (
         <div className="text-muted-foreground flex min-h-48 items-center justify-center gap-2 text-sm">
           <LoaderCircleIcon className="size-4 animate-spin" />
           <span>{t('common.loading')}</span>
@@ -622,7 +639,9 @@ export default function DataList({
                 ))}
               </SelectContent>
             </Select>
-            <span>{t('dataTablePagination.totalItems', { count: totalItems })}</span>
+            {hasRemoteTotal && (
+              <span>{t('dataTablePagination.totalItems', { count: totalItems })}</span>
+            )}
           </div>
           <PaginationNav
             currentPage={currentPage}

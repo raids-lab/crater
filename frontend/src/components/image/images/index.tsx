@@ -234,7 +234,11 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       accessorKey: 'image',
       header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('image')} />,
       cell: ({ row }) => {
-        if (row.original.imageBuildSource == 1) {
+        if (
+          row.original.imageBuildSource === 1 &&
+          row.original.imageBuildID &&
+          (isAdminView || row.original.userInfo.username === user?.name)
+        ) {
           return (
             <TooltipLink
               name={
@@ -246,7 +250,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
               }
               {...(isAdminView ? adminDetailLinkOptions : portalDetailLinkOptions)}
               params={{ name: row.original.imagepackName }}
-              search={{ tab: '', id: row.original.ID }}
+              search={{ tab: '', id: row.original.imageBuildID }}
               tooltip={`查看镜像详情`}
             />
           )

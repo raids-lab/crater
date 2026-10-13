@@ -39,10 +39,10 @@ import (
 	"github.com/raids-lab/crater/pkg/crclient"
 )
 
-func snapshotTestToken(userID, accountID uint) util.JWTMessage {
+func snapshotTestToken() util.JWTMessage {
 	return util.JWTMessage{
-		UserID:            userID,
-		AccountID:         accountID,
+		UserID:            1,
+		AccountID:         1,
 		RoleAccount:       model.RoleUser,
 		RolePlatform:      model.RoleUser,
 		AccountAccessMode: model.AccessModeRW,
@@ -117,18 +117,18 @@ func createSnapshotJob(t *testing.T, db *gorm.DB, userID, accountID uint) {
 	}
 }
 
-func snapshotContext(t *testing.T, method, path string, token util.JWTMessage) (*gin.Context, *httptest.ResponseRecorder) {
+func snapshotContext(t *testing.T, path string, token util.JWTMessage) (*gin.Context, *httptest.ResponseRecorder) {
 	t.Helper()
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
-	ctx.Request = httptest.NewRequest(method, path, http.NoBody)
+	ctx.Request = httptest.NewRequest(http.MethodGet, path, http.NoBody)
 	util.SetJWTContext(ctx, token)
 	return ctx, recorder
 }
 
 func TestListNodeSnapshotRejectsInvalidLimit(t *testing.T) {
 	handler := &ResourceMgr{nodeClient: &crclient.NodeClient{KubeClient: fake.NewSimpleClientset()}}
-	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/resources/snapshot?limit=201", snapshotTestToken(1, 1))
+	ctx, recorder := snapshotContext(t, "/v1/resources/snapshot?limit=201", snapshotTestToken())
 	handler.ListNodeSnapshot(ctx)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("invalid node snapshot limit returned HTTP %d, want 400", recorder.Code)
@@ -141,7 +141,7 @@ func TestListNodeSnapshotReturnsSnapshotPage(t *testing.T) {
 		&corev1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node-b"}},
 	)
 	handler := &ResourceMgr{nodeClient: &crclient.NodeClient{KubeClient: kubeClient}}
-	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/resources/snapshot?limit=1", snapshotTestToken(1, 1))
+	ctx, recorder := snapshotContext(t, "/v1/resources/snapshot?limit=1", snapshotTestToken())
 	handler.ListNodeSnapshot(ctx)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("node snapshot returned HTTP %d: %s", recorder.Code, recorder.Body.String())
@@ -161,7 +161,7 @@ func TestListNodeSnapshotMapsExpiredCursor(t *testing.T) {
 		return true, nil, apierrors.NewResourceExpired("expired cursor")
 	})
 	handler := &ResourceMgr{nodeClient: &crclient.NodeClient{KubeClient: kubeClient}}
-	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/resources/snapshot?cursor=expired", snapshotTestToken(1, 1))
+	ctx, recorder := snapshotContext(t, "/v1/resources/snapshot?cursor=expired", snapshotTestToken())
 	handler.ListNodeSnapshot(ctx)
 	if recorder.Code != http.StatusConflict {
 		t.Fatalf("expired node cursor returned HTTP %d, want 409", recorder.Code)
@@ -179,7 +179,7 @@ func TestListJobPodsEnforcesOwnership(t *testing.T) {
 	db := setupSnapshotTestDB(t)
 	createSnapshotJob(t, db, 2, 1)
 	handler := NewPodSnapshotHandler(&RegisterConfig{KubeClient: fake.NewSimpleClientset()})
-	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/vcjobs/snapshot-job/pods/snapshot", snapshotTestToken(1, 1))
+	ctx, recorder := snapshotContext(t, "/v1/vcjobs/snapshot-job/pods/snapshot", snapshotTestToken())
 	ctx.Params = gin.Params{{Key: "name", Value: "snapshot-job"}}
 	handler.ListJobPods(ctx)
 	if recorder.Code != http.StatusForbidden {
@@ -209,7 +209,7 @@ func TestListJobPodsReturnsSnapshotPage(t *testing.T) {
 		},
 	)
 	handler := NewPodSnapshotHandler(&RegisterConfig{KubeClient: kubeClient})
-	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/vcjobs/snapshot-job/pods/snapshot", snapshotTestToken(1, 1))
+	ctx, recorder := snapshotContext(t, "/v1/vcjobs/snapshot-job/pods/snapshot", snapshotTestToken())
 	ctx.Params = gin.Params{{Key: "name", Value: "snapshot-job"}}
 	handler.ListJobPods(ctx)
 	if recorder.Code != http.StatusOK {
@@ -232,7 +232,7 @@ func TestListJobPodsMapsExpiredCursor(t *testing.T) {
 		return true, nil, apierrors.NewResourceExpired("expired cursor")
 	})
 	handler := NewPodSnapshotHandler(&RegisterConfig{KubeClient: kubeClient})
-	ctx, recorder := snapshotContext(t, http.MethodGet, "/v1/vcjobs/snapshot-job/pods/snapshot?cursor=expired", snapshotTestToken(1, 1))
+	ctx, recorder := snapshotContext(t, "/v1/vcjobs/snapshot-job/pods/snapshot?cursor=expired", snapshotTestToken())
 	ctx.Params = gin.Params{{Key: "name", Value: "snapshot-job"}}
 	handler.ListJobPods(ctx)
 	if recorder.Code != http.StatusConflict {

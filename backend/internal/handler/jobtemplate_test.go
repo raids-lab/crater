@@ -1,12 +1,22 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/util"
 )
 
 func newJobTemplateListTestContext(rawQuery string) *gin.Context {
@@ -63,4 +73,145 @@ func TestBindJobTemplateListQueryRejectsInvalidValues(t *testing.T) {
 			}
 		})
 	}
+}
+
+func newJobTemplateRoutesTestRouter(t *testing.T) (router *gin.Engine, username string) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("get test database: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := db.AutoMigrate(&model.User{}, &model.Jobtemplate{}); err != nil {
+		t.Fatalf("migrate test database: %v", err)
+	}
+	query.SetDefault(db)
+	user := model.User{
+		Model:  gorm.Model{ID: 1},
+		Name:   "template-owner",
+		Role:   model.RoleUser,
+		Status: model.StatusActive,
+		Space:  "/tmp/template-owner",
+	}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatalf("create template owner: %v", err)
+	}
+	createdAt := time.Date(2026, time.October, 13, 0, 0, 0, 0, time.UTC)
+	for id := uint(1); id <= 3; id++ {
+		template := model.Jobtemplate{
+			Model:    gorm.Model{ID: id, CreatedAt: createdAt},
+			Name:     fmt.Sprintf("template-%d", id),
+			Template: "{}",
+			UserID:   user.ID,
+		}
+		if err := db.Create(&template).Error; err != nil {
+			t.Fatalf("create template: %v", err)
+		}
+	}
+
+	router = gin.New()
+	router.Use(func(c *gin.Context) {
+		util.SetJWTContext(c, util.JWTMessage{
+			UserID:       user.ID,
+			Username:     user.Name,
+			RolePlatform: model.RoleUser,
+		})
+		c.Next()
+	})
+	(&JobTemplateMgr{}).RegisterProtected(router.Group("/v1/jobtemplate"))
+	return router, user.Name
+}
+
+func TestJobTemplateRoutesPreserveLegacyAndPaginatedResponses(t *testing.T) {
+	router, username := newJobTemplateRoutesTestRouter(t)
+	t.Run("legacy list remains an unpaginated array", func(t *testing.T) {
+		response := requestJobTemplateRoute(t, router, "/v1/jobtemplate/list?page=2&page_size=1&owner=others")
+		var result resputil.Response[[]JobTemplateresp]
+		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+			t.Fatalf("decode legacy template list: %v", err)
+		}
+		if len(result.Data) != 3 {
+			t.Fatalf("legacy list has %d templates, want all 3", len(result.Data))
+		}
+		for _, item := range result.Data {
+			if item.Template != "{}" || item.UserInfo.Username != username {
+				t.Fatalf("legacy template fields changed: %+v", item)
+			}
+		}
+	})
+	t.Run("frontend list returns the requested page", func(t *testing.T) {
+		response := requestJobTemplateRoute(t, router, "/v1/jobtemplate?page=2&page_size=1&sort=createdAt")
+		var result resputil.Response[resputil.Page[JobTemplateresp]]
+		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+			t.Fatalf("decode template page: %v", err)
+		}
+		page := result.Data
+		if page.Page != 2 || page.PageSize != 1 || page.Total != 3 || len(page.Items) != 1 {
+			t.Fatalf("unexpected template page: %+v", page)
+		}
+		if page.Items[0].ID != 2 {
+			t.Fatalf("template page item = %d, want 2", page.Items[0].ID)
+		}
+	})
+	t.Run("legacy detail route remains available", func(t *testing.T) {
+		response := requestJobTemplateRoute(t, router, "/v1/jobtemplate/1")
+		var result resputil.Response[JobTemplateresp]
+		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+			t.Fatalf("decode template detail: %v", err)
+		}
+		if result.Data.ID != 1 || result.Data.Template != "{}" {
+			t.Fatalf("unexpected template detail: %+v", result.Data)
+		}
+	})
+}
+
+func TestJobTemplateEmptyRoutesPreserveResponseShapes(t *testing.T) {
+	router, _ := newJobTemplateRoutesTestRouter(t)
+	j := query.Jobtemplate
+	if _, err := j.WithContext(t.Context()).Where(j.ID.IsNotNull()).Delete(); err != nil {
+		t.Fatalf("clear isolated template fixture: %v", err)
+	}
+
+	t.Run("legacy empty list remains null", func(t *testing.T) {
+		response := requestJobTemplateRoute(t, router, "/v1/jobtemplate/list")
+		var result resputil.Response[json.RawMessage]
+		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+			t.Fatalf("decode empty legacy template list: %v", err)
+		}
+		if result.Code != resputil.OK || string(result.Data) != "null" {
+			t.Fatalf("unexpected empty legacy response: %s", response.Body.String())
+		}
+	})
+	t.Run("empty page items remain an array", func(t *testing.T) {
+		response := requestJobTemplateRoute(t, router, "/v1/jobtemplate?page=1&page_size=10")
+		var result resputil.Response[struct {
+			Items    json.RawMessage `json:"items"`
+			Total    int64           `json:"total"`
+			Page     int             `json:"page"`
+			PageSize int             `json:"page_size"`
+		}]
+		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
+			t.Fatalf("decode empty template page: %v", err)
+		}
+		page := result.Data
+		if result.Code != resputil.OK || string(page.Items) != "[]" || page.Total != 0 ||
+			page.Page != 1 || page.PageSize != 10 {
+			t.Fatalf("unexpected empty page response: %s", response.Body.String())
+		}
+	})
+}
+
+func requestJobTemplateRoute(t *testing.T, router *gin.Engine, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, path, http.NoBody))
+	if response.Code != http.StatusOK {
+		t.Fatalf("GET %s returned %d: %s", path, response.Code, response.Body.String())
+	}
+	return response
 }

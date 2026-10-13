@@ -241,6 +241,9 @@ func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			id	query	uint	true	"镜像构建记录 ID"
+//	@Success		200	{object}	resputil.Response[GetKanikoResponse]	"Image build details"
+//	@Failure		400	{object}	resputil.Response[any]	"Invalid request parameter"
+//	@Failure		404	{object}	resputil.Response[any]	"Image build not found or inaccessible"
 //	@Router			/v1/images/getbyid [GET]
 func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
 	var req GetKanikoPodRequest
@@ -263,6 +266,9 @@ func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			id	query	uint	true	"镜像构建记录 ID"
+//	@Success		200	{object}	resputil.Response[GetKanikoResponse]	"Image build details"
+//	@Failure		400	{object}	resputil.Response[any]	"Invalid request parameter"
+//	@Failure		404	{object}	resputil.Response[any]	"Image build not found"
 //	@Router			/v1/admin/images/getbyid [GET]
 func (mgr *ImagePackMgr) AdminGetKanikoByID(c *gin.Context) {
 	var req GetKanikoPodRequest

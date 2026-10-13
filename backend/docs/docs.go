@@ -483,75 +483,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/accounts/{aid}/users/page": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Project"
-                ],
-                "summary": "分页获取账户成员",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Account ID",
-                        "name": "aid",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size, 1-200",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search username or nickname",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Role filter; repeatable",
-                        "name": "role",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Access mode filter; repeatable",
-                        "name": "accessmode",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sort fields",
-                        "name": "sort",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserProjectGetResp"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/accounts/{aid}/users/{uid}": {
             "put": {
                 "security": [
@@ -865,75 +796,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ListAllResp"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/admin/accounts/userIn/{aid}/page": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Project"
-                ],
-                "summary": "管理员分页获取账户成员",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Account ID",
-                        "name": "aid",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size, 1-200",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search username or nickname",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Role filter; repeatable",
-                        "name": "role",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Access mode filter; repeatable",
-                        "name": "accessmode",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sort fields",
-                        "name": "sort",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserProjectGetResp"
                         }
                     }
                 }
@@ -2059,7 +1921,26 @@ const docTemplate = `{
                         "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "Image build details",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameter",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Image build not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/admin/images/image": {
@@ -6632,63 +6513,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/dataset/{datasetId}/queuesIn/page": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Dataset"
-                ],
-                "summary": "分页获取数据共享账户",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Dataset ID",
-                        "name": "datasetId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size, 1-200",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search account name or nickname",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sort by name or -name",
-                        "name": "sort",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_QueueDatasetGetResp"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/dataset/{datasetId}/queuesNotIn": {
             "get": {
                 "security": [
@@ -6780,63 +6604,6 @@ const docTemplate = `{
                         "description": "Other errors",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/dataset/{datasetId}/usersIn/page": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Dataset"
-                ],
-                "summary": "分页获取数据共享用户",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Dataset ID",
-                        "name": "datasetId",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size, 1-200",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search username or nickname",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sort by name or -name",
-                        "name": "sort",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserOfDatasetResp"
                         }
                     }
                 }
@@ -7242,7 +7009,26 @@ const docTemplate = `{
                         "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "Image build details",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameter",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Image build not found or inaccessible",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/images/getbyname": {
@@ -7987,7 +7773,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "展示所有作业模板",
+                "description": "Legacy unpaginated job template list retained for CLI compatibility",
                 "consumes": [
                     "application/json"
                 ],
@@ -13017,26 +12803,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.Page-internal_handler_QueueDatasetGetResp": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_handler.QueueDatasetGetResp"
-                    }
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
         "github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ResourceResp": {
             "type": "object",
             "properties": {
@@ -13044,46 +12810,6 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/internal_handler.ResourceResp"
-                    }
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserOfDatasetResp": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_handler.UserOfDatasetResp"
-                    }
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserProjectGetResp": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_handler.UserProjectGetResp"
                     }
                 },
                 "page": {
@@ -13480,21 +13206,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_QueueDatasetGetResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_QueueDatasetGetResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ResourceResp": {
             "type": "object",
             "properties": {
@@ -13504,36 +13215,6 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ResourceResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserOfDatasetResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserOfDatasetResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserProjectGetResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserProjectGetResp"
                 },
                 "msg": {
                     "type": "string"
@@ -14164,6 +13845,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.VisibleUserBanStatusResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_image.GetKanikoResponse"
                 },
                 "msg": {
                     "type": "string"
@@ -15866,20 +15562,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handler.QueueDatasetGetResp": {
-            "type": "object",
-            "properties": {
-                "attributes": {
-                    "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "internal_handler.QueueQuotaConfigItemResp": {
             "type": "object",
             "properties": {
@@ -16572,46 +16254,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handler.UserOfDatasetResp": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "isowner": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "userInfo": {
-                    "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute"
-                }
-            }
-        },
-        "internal_handler.UserProjectGetResp": {
-            "type": "object",
-            "properties": {
-                "accessmode": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "quota": {
-                    "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "userInfo": {
-                    "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute"
-                }
-            }
-        },
         "internal_handler.UserPutUserInProjectReq": {
             "type": "object",
             "properties": {
@@ -16937,6 +16579,44 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_image.GetKanikoResponse": {
+            "type": "object",
+            "properties": {
+                "ID": {
+                    "type": "integer"
+                },
+                "buildSource": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.BuildSource"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dockerfile": {
+                    "type": "string"
+                },
+                "imageLink": {
+                    "type": "string"
+                },
+                "imagepackName": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "podName": {
+                    "type": "string"
+                },
+                "podNameSpace": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus"
+                }
+            }
+        },
         "internal_handler_image.ImageInfo": {
             "type": "object",
             "properties": {
@@ -16954,6 +16634,9 @@ const docTemplate = `{
                 },
                 "description": {
                     "type": "string"
+                },
+                "imageBuildID": {
+                    "type": "integer"
                 },
                 "imageBuildSource": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ImageSourceType"

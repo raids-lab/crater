@@ -35,8 +35,8 @@ func (mgr *JobTemplateMgr) GetName() string { return mgr.name }
 func (mgr *JobTemplateMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *JobTemplateMgr) RegisterProtected(g *gin.RouterGroup) {
-	g.GET("", mgr.ListJobTemplates)
-	g.GET("/list", mgr.ListJobTemplate)
+	g.GET("", mgr.UserListJobTemplatesPage)
+	g.GET("/list", mgr.UserListJobTemplatesLegacy)
 	g.POST("/create", mgr.CreateJobTemplate)
 	g.DELETE("/delete/:id", mgr.DeleteJobTemplate)
 	g.GET("/:id", mgr.GetJobTemplate)
@@ -87,7 +87,8 @@ func (request jobTemplateListQuery) offset() int {
 }
 
 func convertJobTemplateResp(templates []*model.Jobtemplate) []JobTemplateresp {
-	result := make([]JobTemplateresp, 0, len(templates))
+	// Preserve the legacy null response for empty lists; NewPage normalizes page items separately.
+	var result []JobTemplateresp
 	for _, template := range templates {
 		result = append(result, JobTemplateresp{
 			ID:        template.ID,
@@ -105,7 +106,7 @@ func convertJobTemplateResp(templates []*model.Jobtemplate) []JobTemplateresp {
 	return result
 }
 
-// ListJobTemplates godoc
+// UserListJobTemplatesPage returns a filtered page for the frontend template list.
 //
 //	@Summary		List job templates
 //	@Description	List job templates with server-side pagination, search, owner filtering, and sorting
@@ -122,7 +123,7 @@ func convertJobTemplateResp(templates []*model.Jobtemplate) []JobTemplateresp {
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/jobtemplate [get]
-func (mgr *JobTemplateMgr) ListJobTemplates(c *gin.Context) {
+func (mgr *JobTemplateMgr) UserListJobTemplatesPage(c *gin.Context) {
 	request, err := bindJobTemplateListQuery(c)
 	if err != nil {
 		resputil.HandleError(c, err)
@@ -151,10 +152,10 @@ func (mgr *JobTemplateMgr) ListJobTemplates(c *gin.Context) {
 	))
 }
 
-// swagger
+// UserListJobTemplatesLegacy preserves the unpaginated array response used by the CLI.
 //
 //	@Summary		展示所有作业模板
-//	@Description	展示所有作业模板
+//	@Description	Legacy unpaginated job template list retained for CLI compatibility
 //	@Tags			jobtemplate
 //	@Accept			json
 //	@Produce		json
@@ -163,7 +164,7 @@ func (mgr *JobTemplateMgr) ListJobTemplates(c *gin.Context) {
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/jobtemplate/list [get]
-func (mgr *JobTemplateMgr) ListJobTemplate(c *gin.Context) {
+func (mgr *JobTemplateMgr) UserListJobTemplatesLegacy(c *gin.Context) {
 	j := query.Jobtemplate
 	templates, err := j.WithContext(c).
 		Preload(j.User).

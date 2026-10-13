@@ -53,6 +53,7 @@ export type ListImageResponse = {
 
 export type ImageInfoResponse = {
   ID: number
+  imageBuildID?: number
   imageLink: string
   description: string
   status: string

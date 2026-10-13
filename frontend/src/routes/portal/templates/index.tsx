@@ -22,6 +22,7 @@ import DocsButton from '@/components/button/docs-button'
 import { getNewJobLink } from '@/components/job/new-job-button'
 import TooltipLink from '@/components/label/tooltip-link'
 import DataList, { DataListRemoteQuery } from '@/components/layout/data-list'
+import { confirmedDataListRemoteTotal } from '@/components/layout/data-list-remote'
 
 import { deleteJobTemplate, listJobTemplate } from '@/services/api/jobtemplate'
 import { JobType } from '@/services/api/vcjob'
@@ -73,7 +74,14 @@ function RouteComponent() {
     search: debouncedSearch,
   }
 
-  const { data: templatePage, isFetching } = useQuery({
+  const {
+    data: templatePage,
+    isFetching,
+    isError,
+    isSuccess,
+    isPlaceholderData,
+    refetch,
+  } = useQuery({
     queryKey: ['data', 'jobtemplate', requestQuery],
     queryFn: ({ signal }) =>
       listJobTemplate(
@@ -113,8 +121,10 @@ function RouteComponent() {
       }
       remote={{
         query: listQuery,
-        total: templatePage?.total ?? 0,
+        total: confirmedDataListRemoteTotal(templatePage?.total, isSuccess, isPlaceholderData),
         isLoading: isFetching,
+        isError,
+        onRetry: () => void refetch(),
         availableSortFields: ['createdAt'],
         onQueryChange: setListQuery,
       }}

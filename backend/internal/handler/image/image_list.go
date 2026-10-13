@@ -100,6 +100,78 @@ type visibleImageRow struct {
 	ImageShareStatus model.ImageShareType `gorm:"column:image_share_status"`
 }
 
+func imageBuildIDsByImagePackName(kanikos []*model.Kaniko) map[string]uint {
+	buildIDs := make(map[string]uint, len(kanikos))
+	for _, kaniko := range kanikos {
+		buildIDs[kaniko.ImagePackName] = kaniko.ID
+	}
+	return buildIDs
+}
+
+func imageBuildIDsForImages(c *gin.Context, images []*model.Image) (map[string]uint, error) {
+	imagePackNames := make([]string, 0, len(images))
+	for _, image := range images {
+		if image.ImageSource == model.ImageCreateType && image.ImagePackName != nil && *image.ImagePackName != "" {
+			imagePackNames = append(imagePackNames, *image.ImagePackName)
+		}
+	}
+	if len(imagePackNames) == 0 {
+		return map[string]uint{}, nil
+	}
+
+	kanikoQuery := query.Kaniko
+	kanikos, err := kanikoQuery.WithContext(c).
+		Select(kanikoQuery.ID, kanikoQuery.ImagePackName).
+		Where(kanikoQuery.ImagePackName.In(imagePackNames...)).
+		Find()
+	if err != nil {
+		return nil, err
+	}
+	return imageBuildIDsByImagePackName(kanikos), nil
+}
+
+func (mgr *ImagePackMgr) imageItemsForRows(c *gin.Context, rows []visibleImageRow) ([]*ImageInfo, error) {
+	if len(rows) == 0 {
+		return []*ImageInfo{}, nil
+	}
+	ids := make([]uint, len(rows))
+	for i, row := range rows {
+		ids[i] = row.ID
+	}
+	imageQuery := query.Image
+	images, err := imageQuery.WithContext(c).
+		Preload(imageQuery.User).
+		Where(imageQuery.ID.In(ids...)).
+		Find()
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "load visible images failed")
+	}
+	imagesByID := make(map[uint]*model.Image, len(images))
+	for _, image := range images {
+		imagesByID[image.ID] = image
+	}
+	buildIDsByImagePackName, err := imageBuildIDsForImages(c, images)
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "load image build IDs failed")
+	}
+
+	items := make([]*ImageInfo, 0, len(rows))
+	for _, row := range rows {
+		image := imagesByID[row.ID]
+		if image == nil {
+			continue
+		}
+		item := mgr.imageInfoFromModel(image, row.ImageShareStatus)
+		if image.ImageSource == model.ImageCreateType && image.ImagePackName != nil {
+			if buildID, ok := buildIDsByImagePackName[*image.ImagePackName]; ok {
+				item.ImageBuildID = &buildID
+			}
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
 func (mgr *ImagePackMgr) listImagePage(c *gin.Context, isAdmin bool) {
 	request, shareStatuses, err := bindImageListPageQuery(c)
 	if err != nil {
@@ -153,31 +225,11 @@ func (mgr *ImagePackMgr) listImagePage(c *gin.Context, isAdmin bool) {
 		return
 	}
 
-	items := make([]*ImageInfo, 0, len(rows))
-	if len(rows) > 0 {
-		ids := make([]uint, len(rows))
-		for i, row := range rows {
-			ids[i] = row.ID
-		}
-		imageQuery := query.Image
-		images, err := imageQuery.WithContext(c).
-			Preload(imageQuery.User).
-			Where(imageQuery.ID.In(ids...)).
-			Find()
-		if err != nil {
-			klog.Errorf("failed to load visible images: %v", err)
-			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "load visible images failed"))
-			return
-		}
-		imagesByID := make(map[uint]*model.Image, len(images))
-		for _, image := range images {
-			imagesByID[image.ID] = image
-		}
-		for _, row := range rows {
-			if image := imagesByID[row.ID]; image != nil {
-				items = append(items, mgr.imageInfoFromModel(image, row.ImageShareStatus))
-			}
-		}
+	items, err := mgr.imageItemsForRows(c, rows)
+	if err != nil {
+		klog.Errorf("failed to load visible image details: %v", err)
+		resputil.HandleError(c, err)
+		return
 	}
 
 	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))

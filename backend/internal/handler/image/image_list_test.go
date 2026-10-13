@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/dao/model"
+	"gorm.io/gorm"
 )
 
 func TestBindImageListPageQuery(t *testing.T) {
@@ -56,6 +58,16 @@ func TestImageListSortClausesAlwaysHaveTieBreaker(t *testing.T) {
 	want := []string{"images.created_at DESC", "images.image_link ASC", "images.id DESC"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("imageListSortClauses() = %v, want %v", got, want)
+	}
+}
+
+func TestImageBuildIDIsResolvedByImagePackName(t *testing.T) {
+	kanikos := []*model.Kaniko{
+		{Model: gorm.Model{ID: 5814}, ImagePackName: "test-build-001"},
+	}
+	got := imageBuildIDsByImagePackName(kanikos)
+	if got["test-build-001"] != 5814 {
+		t.Fatalf("build ID = %d, want 5814", got["test-build-001"])
 	}
 }
 

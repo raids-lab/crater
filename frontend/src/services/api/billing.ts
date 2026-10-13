@@ -124,22 +124,11 @@ export const apiUpdateAccountBillingConfig = (
   data: { issueAmount?: number; issuePeriodMinutes?: number }
 ) => apiV1Put<IResponse<AccountBillingConfig>>(`accounts/${accountId}/billing/config`, data)
 
-function billingMemberSearchParams(userIds?: number[]) {
-  if (!userIds?.length) return undefined
-  const searchParams = new URLSearchParams()
-  userIds.forEach((userId) => searchParams.append('user_id', String(userId)))
-  return searchParams
-}
+export const apiAdminGetAccountBillingMembers = (accountId: number) =>
+  apiV1Get<IResponse<AccountBillingMember[]>>(`admin/accounts/${accountId}/billing/members`)
 
-export const apiAdminGetAccountBillingMembers = (accountId: number, userIds?: number[]) =>
-  apiV1Get<IResponse<AccountBillingMember[]>>(`admin/accounts/${accountId}/billing/members`, {
-    searchParams: billingMemberSearchParams(userIds),
-  })
-
-export const apiGetAccountBillingMembers = (accountId: number, userIds?: number[]) =>
-  apiV1Get<IResponse<AccountBillingMember[]>>(`accounts/${accountId}/billing/members`, {
-    searchParams: billingMemberSearchParams(userIds),
-  })
+export const apiGetAccountBillingMembers = (accountId: number) =>
+  apiV1Get<IResponse<AccountBillingMember[]>>(`accounts/${accountId}/billing/members`)
 
 export const apiAdminUpdateAccountBillingMemberIssueAmount = (
   accountId: number,
