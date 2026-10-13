@@ -5864,7 +5864,8 @@ const docTemplate = `{
                             "kuberay",
                             "deepspeed",
                             "openmpi",
-                            "custom"
+                            "custom",
+                            "tensorboard"
                         ],
                         "type": "string",
                         "x-enum-varnames": [
@@ -5876,7 +5877,8 @@ const docTemplate = `{
                             "JobTypeKubeRay",
                             "JobTypeDeepSpeed",
                             "JobTypeOpenMPI",
-                            "JobTypeCustom"
+                            "JobTypeCustom",
+                            "JobTypeTensorboard"
                         ],
                         "name": "type",
                         "in": "query",
@@ -9037,7 +9039,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "从当前用户个人空间的日志目录创建面板，也可关联一个或多个来源任务",
+                "description": "Create a named TensorBoard panel from a personal log directory or owned source jobs.\nName is required (1-40 characters); duplicate names are allowed.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10963,7 +10965,8 @@ const docTemplate = `{
                 "kuberay",
                 "deepspeed",
                 "openmpi",
-                "custom"
+                "custom",
+                "tensorboard"
             ],
             "x-enum-varnames": [
                 "JobTypeAll",
@@ -10974,7 +10977,8 @@ const docTemplate = `{
                 "JobTypeKubeRay",
                 "JobTypeDeepSpeed",
                 "JobTypeOpenMPI",
-                "JobTypeCustom"
+                "JobTypeCustom",
+                "JobTypeTensorboard"
             ]
         },
         "github_com_raids-lab_crater_dao_model.ReviewStatus": {
@@ -11143,10 +11147,17 @@ const docTemplate = `{
         },
         "github_com_raids-lab_crater_internal_payload.CreateTensorboardReq": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
                 "logDir": {
                     "type": "string",
                     "example": "/mnt/vol0/logs"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Training comparison"
                 },
                 "sourceJobName": {
                     "type": "string",
@@ -11171,6 +11182,10 @@ const docTemplate = `{
             "properties": {
                 "accessPath": {
                     "description": "Relative route prefix used to access the panel.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "User-defined display name.",
                     "type": "string"
                 },
                 "tensorboardId": {
@@ -11240,6 +11255,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "status": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardStatus"
                 },
@@ -11277,6 +11295,7 @@ const docTemplate = `{
                 "starting",
                 "ready",
                 "failed",
+                "completed",
                 "expired"
             ],
             "x-enum-varnames": [
@@ -11284,27 +11303,28 @@ const docTemplate = `{
                 "TensorboardStatusStarting",
                 "TensorboardStatusReady",
                 "TensorboardStatusFailed",
+                "TensorboardStatusCompleted",
                 "TensorboardStatusExpired"
             ]
         },
         "github_com_raids-lab_crater_internal_payload.TensorboardStatusReason": {
             "type": "string",
             "enum": [
-                "deployment_failed",
-                "deployment_starting",
                 "waiting_for_schedule",
                 "pod_starting",
                 "job_failed",
                 "runtime_expired",
+                "idle_expired",
+                "completed",
                 "ready"
             ],
             "x-enum-varnames": [
-                "TensorboardStatusReasonDeploymentFailed",
-                "TensorboardStatusReasonDeploymentStarting",
                 "TensorboardStatusReasonWaitingForSchedule",
                 "TensorboardStatusReasonPodStarting",
                 "TensorboardStatusReasonJobFailed",
                 "TensorboardStatusReasonRuntimeExpired",
+                "TensorboardStatusReasonIdleExpired",
+                "TensorboardStatusReasonCompleted",
                 "TensorboardStatusReasonReady"
             ]
         },

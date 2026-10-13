@@ -19,6 +19,7 @@ package tensorboard
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +34,24 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
+
+func TestCreateRejectsMissingName(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	mgr := &TensorboardMgr{}
+	for _, body := range []string{`{"logDir":"/home/alice/logs"}`, `{"name":"","logDir":"/home/alice/logs"}`} {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = httptest.NewRequest(http.MethodPost, "/api/v1/tensorboard", strings.NewReader(body))
+		ctx.Request.Header.Set("Content-Type", "application/json")
+		mgr.UserCreate(ctx)
+		if recorder.Code != http.StatusBadRequest {
+			t.Fatalf("missing name returned %d, want 400", recorder.Code)
+		}
+		if !strings.Contains(recorder.Body.String(), "name is required") {
+			t.Fatalf("missing name response lacks an actionable message: %s", recorder.Body.String())
+		}
+	}
+}
 
 func TestBearerToken(t *testing.T) {
 	tests := []struct {

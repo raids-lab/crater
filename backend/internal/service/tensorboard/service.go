@@ -18,15 +18,17 @@ package tensorboard
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,6 +52,7 @@ const (
 	personalVolumeName       = "tensorboard-personal"
 	maxTensorboardSourceJobs = 10
 	maxActiveTensorboards    = 10
+	maxTensorboardNameLength = 40
 	tensorboardHTTPPortName  = "http"
 	tensorboardAuthPath      = "/api/tensorboard/auth"
 )
@@ -129,22 +132,6 @@ func isLogDirMounted(logDir string, volumeMounts []corev1.VolumeMount) bool {
 	return false
 }
 
-func isActiveTensorboard(deploy *appsv1.Deployment, now time.Time) bool {
-	if deploy.DeletionTimestamp != nil {
-		return false
-	}
-
-	expiration := deploy.Annotations[annotationKeyExpirationTime]
-	if expiration == "" {
-		return true
-	}
-	expiresAt, err := time.Parse(time.RFC3339, expiration)
-	if err != nil {
-		return true
-	}
-	return now.Before(expiresAt)
-}
-
 func isTensorboardOwner(object metav1.Object, username string) bool {
 	labels := object.GetLabels()
 	return labels != nil && labels[crclient.LabelKeyTaskUser] == username
@@ -176,23 +163,9 @@ func (svc *TensorboardService) activeTensorboardCount(ctx context.Context, usern
 		return 0, err
 	}
 
-	var deployList appsv1.DeploymentList
-	if err := svc.crClient.List(ctx, &deployList,
-		client.InNamespace(cfg.Namespaces.Job),
-		labels,
-	); err != nil {
-		return 0, err
-	}
-
 	count := 0
 	for i := range jobList.Items {
 		if isActiveTensorboardJob(&jobList.Items[i]) {
-			count++
-		}
-	}
-	now := time.Now()
-	for i := range deployList.Items {
-		if isActiveTensorboard(&deployList.Items[i], now) {
 			count++
 		}
 	}
@@ -528,6 +501,7 @@ func (svc *TensorboardService) createTensorboardJob(
 	ctx context.Context,
 	token interutil.JWTMessage,
 	tbID string,
+	name string,
 	ingressPrefixPath string,
 	storage *tensorboardStorage,
 ) (*batch.Job, error) {
@@ -548,15 +522,17 @@ func (svc *TensorboardService) createTensorboardJob(
 	}
 
 	builder := newJobBuilder(cfg.Namespaces.Job, &workloadConfig{
-		Image:            cfg.Tensorboard.Image,
-		ImagePullPolicy:  corev1.PullPolicy(cfg.Tensorboard.ImagePullPolicy),
-		ImagePullSecrets: imagePullSecrets,
-		NodeSelector:     cfg.Tensorboard.NodeSelector,
-		Tolerations:      cfg.Tensorboard.Tolerations,
-		Affinity:         cfg.Tensorboard.Affinity,
+		Image:              cfg.Tensorboard.Image,
+		ImagePullPolicy:    corev1.PullPolicy(cfg.Tensorboard.ImagePullPolicy),
+		ImagePullSecrets:   imagePullSecrets,
+		NodeSelector:       cfg.Tensorboard.NodeSelector,
+		Tolerations:        cfg.Tensorboard.Tolerations,
+		Affinity:           cfg.Tensorboard.Affinity,
+		IdleTimeoutSeconds: cfg.Tensorboard.GetIdleTimeoutSeconds(),
 	})
 	job := builder.buildJob(
 		tbID,
+		name,
 		token.Username,
 		vcqueue.ResolveJobQueueName(token),
 		storage.logDir,
@@ -570,11 +546,29 @@ func (svc *TensorboardService) createTensorboardJob(
 	return job, nil
 }
 
+func normalizeTensorboardName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", bizerr.BadRequest.MissingParameter.New("name is required")
+	}
+	if utf8.RuneCountInString(name) > maxTensorboardNameLength {
+		return "", bizerr.BadRequest.ParameterError.New("name accepts at most 40 characters")
+	}
+	if strings.ContainsFunc(name, unicode.IsControl) {
+		return "", bizerr.BadRequest.ParameterError.New("name must not contain control characters")
+	}
+	return name, nil
+}
+
 func (svc *TensorboardService) Create(
 	ctx context.Context,
 	token interutil.JWTMessage,
 	req *payload.CreateTensorboardReq,
 ) (*payload.CreateTensorboardResp, error) {
+	name, err := normalizeTensorboardName(req.Name)
+	if err != nil {
+		return nil, err
+	}
 	activeCount, err := svc.activeTensorboardCount(ctx, token.Username)
 	if err != nil {
 		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "check TensorBoard panel quota failed")
@@ -611,7 +605,7 @@ func (svc *TensorboardService) Create(
 	prefix := fmt.Sprintf("%s-%s", token.Username, tbID) // Use an exclusive route prefix for each panel.
 	ingressPrefixPath := fmt.Sprintf("/ingress/%s", prefix)
 
-	job, err := svc.createTensorboardJob(ctx, token, tbID, ingressPrefixPath, storage)
+	job, err := svc.createTensorboardJob(ctx, token, tbID, name, ingressPrefixPath, storage)
 	if err != nil {
 		return nil, err
 	}
@@ -657,39 +651,21 @@ func (svc *TensorboardService) Create(
 	}
 
 	return &payload.CreateTensorboardResp{
+		Name:          name,
 		TensorboardID: tbID,
 		AccessPath:    urlPath,
 	}, nil
 }
 
-type tensorboardPanel struct {
-	job        *batch.Job
-	deployment *appsv1.Deployment
-}
-
-func (svc *TensorboardService) getTensorboardPanel(ctx context.Context, tbID string) (*tensorboardPanel, error) {
+func (svc *TensorboardService) getTensorboardJob(ctx context.Context, tbID string) (*batch.Job, error) {
 	cfg := config.GetConfig()
 	key := client.ObjectKey{Namespace: cfg.Namespaces.Job, Name: fmt.Sprintf("tb-%s", tbID)}
 
 	var job batch.Job
-	if err := svc.crClient.Get(ctx, key, &job); err == nil {
-		return &tensorboardPanel{job: &job}, nil
-	} else if !k8serrors.IsNotFound(err) {
+	if err := svc.crClient.Get(ctx, key, &job); err != nil {
 		return nil, wrapTensorboardLookupError(err)
 	}
-
-	var deploy appsv1.Deployment
-	if err := svc.crClient.Get(ctx, key, &deploy); err != nil {
-		return nil, wrapTensorboardLookupError(err)
-	}
-	return &tensorboardPanel{deployment: &deploy}, nil
-}
-
-func (panel *tensorboardPanel) object() client.Object {
-	if panel.job != nil {
-		return panel.job
-	}
-	return panel.deployment
+	return &job, nil
 }
 
 func (svc *TensorboardService) getTensorboardPod(ctx context.Context, tbID string) (*corev1.Pod, error) {
@@ -717,39 +693,34 @@ func (svc *TensorboardService) GetAccessPath(
 	tbID string,
 ) (string, error) {
 	cfg := config.GetConfig()
-	panel, err := svc.getTensorboardPanel(ctx, tbID)
+	job, err := svc.getTensorboardJob(ctx, tbID)
 	if err != nil {
 		return "", err
 	}
-	if !isTensorboardOwner(panel.object(), username) {
+	if !isTensorboardOwner(job, username) {
 		return "", bizerr.Forbidden.PermissionDenied.New(
 			"you do not have permission to access this TensorBoard panel",
 		)
 	}
-	if panel.job != nil && !isActiveTensorboardJob(panel.job) {
+	if !isActiveTensorboardJob(job) {
 		return "", bizerr.Conflict.ResourceStatusError.New(
 			"this TensorBoard panel is no longer running",
 		)
 	}
-	if panel.job != nil {
-		pod, podErr := svc.getTensorboardPod(ctx, tbID)
-		if podErr != nil {
-			return "", bizerr.Internal.K8sServiceError.Wrap(
-				podErr,
-				"check TensorBoard Pod failed",
-			)
-		}
-		if tensorboardPodExpired(pod) ||
-			(pod != nil && pod.Status.StartTime != nil &&
-				time.Now().After(pod.Status.StartTime.Add(
-					time.Duration(tensorboardMaxRuntimeSeconds)*time.Second,
-				))) {
-			return "", bizerr.Conflict.ResourceStatusError.New(
-				"this TensorBoard panel has expired",
-			)
-		}
+	pod, podErr := svc.getTensorboardPod(ctx, tbID)
+	if podErr != nil {
+		return "", bizerr.Internal.K8sServiceError.Wrap(
+			podErr,
+			"check TensorBoard Pod failed",
+		)
 	}
-	if panel.deployment != nil && !isActiveTensorboard(panel.deployment, time.Now()) {
+	_, completed := tensorboardCompletionReason(pod)
+	startedAt := tensorboardStartedAt(pod)
+	if completed || tensorboardPodExpired(pod) ||
+		(startedAt != nil &&
+			time.Now().After(startedAt.Add(
+				time.Duration(tensorboardMaxRuntimeSeconds)*time.Second,
+			))) {
 		return "", bizerr.Conflict.ResourceStatusError.New(
 			"this TensorBoard panel has expired",
 		)
@@ -759,40 +730,22 @@ func (svc *TensorboardService) GetAccessPath(
 }
 
 func (svc *TensorboardService) Delete(ctx context.Context, username, tbID string) error {
-	panel, err := svc.getTensorboardPanel(ctx, tbID)
+	job, err := svc.getTensorboardJob(ctx, tbID)
 	if err != nil {
 		return err
 	}
 
-	if !isTensorboardOwner(panel.object(), username) {
+	if !isTensorboardOwner(job, username) {
 		return bizerr.Forbidden.PermissionDenied.New(
 			"you do not have permission to delete this TensorBoard panel",
 		)
 	}
 
-	if err := svc.crClient.Delete(ctx, panel.object()); err != nil {
+	if err := svc.crClient.Delete(ctx, job); err != nil {
 		return bizerr.Internal.K8sServiceError.Wrap(err, "delete TensorBoard panel failed")
 	}
 
 	return nil
-}
-
-func getDeploymentStatus(deploy *appsv1.Deployment) (payload.TensorboardStatus, payload.TensorboardStatusReason, string) {
-	for _, condition := range deploy.Status.Conditions {
-		if condition.Type == appsv1.DeploymentProgressing && condition.Status == corev1.ConditionFalse {
-			return payload.TensorboardStatusFailed,
-				payload.TensorboardStatusReasonDeploymentFailed,
-				"The panel failed to start. Check the Pod events or contact an administrator."
-		}
-	}
-
-	if deploy.Status.AvailableReplicas == 0 || deploy.Status.ReadyReplicas == 0 {
-		return payload.TensorboardStatusStarting,
-			payload.TensorboardStatusReasonDeploymentStarting,
-			"The panel is starting. The first startup may take several minutes."
-	}
-
-	return payload.TensorboardStatusReady, payload.TensorboardStatusReasonReady, "The panel is ready."
 }
 
 func tensorboardPodReady(pod *corev1.Pod) bool {
@@ -828,6 +781,9 @@ func getJobStatus(
 	job *batch.Job,
 	pod *corev1.Pod,
 ) (payload.TensorboardStatus, payload.TensorboardStatusReason, string) {
+	if reason, completed := tensorboardCompletionReason(pod); completed {
+		return completedTensorboardStatus(reason)
+	}
 	switch job.Status.State.Phase {
 	case batch.Completed, batch.Failed, batch.Aborted, batch.Terminated,
 		batch.Aborting, batch.Completing, batch.Terminating:
@@ -835,6 +791,9 @@ func getJobStatus(
 			return payload.TensorboardStatusExpired,
 				payload.TensorboardStatusReasonRuntimeExpired,
 				"The panel reached its four-day runtime limit and is being removed."
+		}
+		if job.Status.State.Phase == batch.Completed || job.Status.State.Phase == batch.Completing {
+			return completedTensorboardStatus(payload.TensorboardStatusReasonCompleted)
 		}
 		return payload.TensorboardStatusFailed,
 			payload.TensorboardStatusReasonJobFailed,
@@ -859,11 +818,68 @@ func getJobStatus(
 	}
 }
 
+func tensorboardStartedAt(pod *corev1.Pod) *metav1.Time {
+	if pod == nil {
+		return nil
+	}
+	for i := range pod.Status.ContainerStatuses {
+		status := &pod.Status.ContainerStatuses[i]
+		if status.Name != tensorboardTaskName {
+			continue
+		}
+		if status.State.Running != nil && !status.State.Running.StartedAt.IsZero() {
+			return &status.State.Running.StartedAt
+		}
+		if status.State.Terminated != nil && !status.State.Terminated.StartedAt.IsZero() {
+			return &status.State.Terminated.StartedAt
+		}
+	}
+	return pod.Status.StartTime
+}
+
+func tensorboardCompletionReason(pod *corev1.Pod) (payload.TensorboardStatusReason, bool) {
+	if pod == nil {
+		return "", false
+	}
+	for i := range pod.Status.ContainerStatuses {
+		status := &pod.Status.ContainerStatuses[i]
+		terminated := status.State.Terminated
+		if status.Name != tensorboardTaskName || terminated == nil || terminated.ExitCode != 0 {
+			continue
+		}
+		var message struct {
+			Reason payload.TensorboardStatusReason `json:"reason"`
+		}
+		if err := json.Unmarshal([]byte(terminated.Message), &message); err == nil {
+			switch message.Reason {
+			case payload.TensorboardStatusReasonIdleExpired, payload.TensorboardStatusReasonRuntimeExpired:
+				return message.Reason, true
+			}
+		}
+		return payload.TensorboardStatusReasonCompleted, true
+	}
+	return "", false
+}
+
+func completedTensorboardStatus(reason payload.TensorboardStatusReason) (
+	payload.TensorboardStatus, payload.TensorboardStatusReason, string,
+) {
+	message := "The panel has finished and is being removed."
+	switch reason {
+	case payload.TensorboardStatusReasonIdleExpired:
+		message = "The panel reached its idle timeout and is being removed."
+	case payload.TensorboardStatusReasonRuntimeExpired:
+		message = "The panel reached its four-day runtime limit and is being removed."
+	}
+	return payload.TensorboardStatusCompleted, reason, message
+}
+
 func tensorboardExpiration(pod *corev1.Pod) string {
-	if pod == nil || pod.Status.StartTime == nil {
+	startedAt := tensorboardStartedAt(pod)
+	if startedAt == nil {
 		return ""
 	}
-	return pod.Status.StartTime.Add(
+	return startedAt.Add(
 		time.Duration(tensorboardMaxRuntimeSeconds) * time.Second,
 	).Format(time.RFC3339)
 }
@@ -900,22 +916,14 @@ func (svc *TensorboardService) List(
 		podsByID[pod.Labels[labelKeyTensorboardID]] = pod
 	}
 
-	var deployList appsv1.DeploymentList
-	if err := svc.crClient.List(ctx, &deployList,
-		client.InNamespace(ns),
-		selector,
-	); err != nil {
-		return nil, bizerr.Internal.K8sServiceError.Wrap(err, "list TensorBoard panels failed")
-	}
-
-	// New panels are Volcano Jobs. Legacy Deployments remain visible during migration.
-	items := make([]payload.TensorboardInfo, 0, len(jobList.Items)+len(deployList.Items))
+	items := make([]payload.TensorboardInfo, 0, len(jobList.Items))
 	for i := range jobList.Items {
 		job := &jobList.Items[i]
 		tbID := job.Labels[labelKeyTensorboardID]
 		pod := podsByID[tbID]
 		status, statusReason, statusMessage := getJobStatus(job, pod)
 		items = append(items, payload.TensorboardInfo{
+			Name:          job.Annotations[annotationKeyTensorboardName],
 			ID:            tbID,
 			Expiration:    tensorboardExpiration(pod),
 			CreatedAt:     job.CreationTimestamp.Format(time.RFC3339),
@@ -925,20 +933,5 @@ func (svc *TensorboardService) List(
 			StatusMessage: statusMessage,
 		})
 	}
-	for i := range deployList.Items {
-		deploy := &deployList.Items[i]
-		tbID := deploy.Labels[labelKeyTensorboardID]
-		status, statusReason, statusMessage := getDeploymentStatus(deploy)
-		items = append(items, payload.TensorboardInfo{
-			ID:            tbID,
-			Expiration:    deploy.Annotations["crater.raids.io/expiration-time"],
-			CreatedAt:     deploy.CreationTimestamp.Format(time.RFC3339),
-			AccessPath:    fmt.Sprintf("https://%s/ingress/%s-%s", cfg.Host, username, tbID),
-			Status:        status,
-			StatusReason:  statusReason,
-			StatusMessage: statusMessage,
-		})
-	}
-
 	return items, nil
 }

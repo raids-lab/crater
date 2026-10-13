@@ -89,6 +89,8 @@ images:
 
 # Scheduling policy for dynamically created TensorBoard Volcano Jobs
 tensorboard:
+  # -- End panels normally after this many seconds without user HTTP requests (default: 16 hours); must be positive
+  idleTimeoutSeconds: 57600
   # -- Protect every TensorBoard Ingress request through the Crater authentication endpoint
   ingressAuthEnabled: true
   # -- Node selector applied only to TensorBoard Pods

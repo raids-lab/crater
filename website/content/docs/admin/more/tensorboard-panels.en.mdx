@@ -13,6 +13,7 @@ Dynamically created TensorBoard Pods use these Helm values:
 - global `imagePullPolicy` and `imagePullSecrets`
 - TensorBoard-only `tensorboard.nodeSelector`, `tensorboard.tolerations`, and `tensorboard.affinity`
 - TensorBoard Ingress authentication switch `tensorboard.ingressAuthEnabled` (default: `true`)
+- Consecutive idle limit `tensorboard.idleTimeoutSeconds` (positive integer seconds; default: `57600`, or 16 hours)
 
 A private-registry pull secret must exist in the job namespace. Panels are submitted to the owner's Volcano queue. The default affinity prefers nodes without GPUs but does not force panels onto control-plane nodes. Override the TensorBoard-only values when dedicated service nodes are available, then verify actual Pod placement and events.
 
@@ -26,29 +27,38 @@ Verify with two ordinary users and a signed-out window: another user's panel mus
 
 ## TTL and status
 
-Each panel is a one-Pod Volcano Job requesting 100m CPU and 256Mi memory. Its Pod may run for four days after it starts. The Job becomes terminal at the active deadline, and Volcano removes it five minutes later through `ttlSecondsAfterFinished`; Service and Ingress resources are removed through owner references. Each user may have ten active or pending panels. Legacy Deployment panels remain supported by the old expiration collector during migration.
+The image must provide Python 3 through `python` and include TensorBoard. The launcher proxy supports HTTP, not WebSocket upgrades, with at most 32 concurrent connections and a 60-second socket timeout. Default TensorBoard pages and scalar APIs have been verified; test custom plugins and slow data requests separately.
 
-API states `pending`, `starting`, `ready`, `failed`, and `expired` are derived from the Volcano Job phase and Pod readiness. `pending` matches the Pending phase used by regular VCJobs. Service, Ingress, and EndpointSlice health are not aggregated. Troubleshooting should also inspect the Volcano queue, Pod events, Service endpoints, and ingress-controller logs.
+Each panel is a one-Pod Volcano Job requesting 100m CPU and 256Mi memory. An in-container launcher starts TensorBoard and records access times in memory through a local HTTP proxy, without per-request database or Kubernetes writes. After 16 consecutive hours without access (configurable), or four days of launcher runtime, it stops TensorBoard and exits with code 0: the Pod becomes Succeeded and the VCJob becomes Completed. Actual startup or runtime errors remain Failed. Queueing and image pulling do not count toward launcher runtime.
+
+Panel pages, static assets, and data requests renew activity; the separate health probe and Crater panel-list polling do not. Browser background refreshes also count as access. Closing a tab starts the idle countdown from the last request rather than deleting the panel immediately. Access never extends the four-day limit. `tensorboard.idleTimeoutSeconds` affects newly created panels only; in an isolated test environment, temporarily set it to `60` to verify cleanup, then restore the default.
+
+The `TaskCompleted → CompleteJob` policy completes the Job; Volcano deletes terminal Jobs after five minutes with `ttlSecondsAfterFinished: 300`, and owner references cascade deletion to Service and Ingress. HTTP service stops when the panel ends. Users can still delete the VCJob at any time to stop its Pod; source logs remain untouched. Pod `activeDeadlineSeconds` is only a four-day-plus-one-hour failure safeguard, not the normal expiry mechanism; reaching it may still result in Failed. Each user may have ten active or pending panels. This version manages only VCJob panels and no longer runs the legacy expiration collector.
+
+API states `pending`, `starting`, `ready`, `completed`, `failed`, and `expired` are derived from the Volcano Job phase and Pod readiness. `pending` matches the Pending phase used by regular VCJobs. Service, Ingress, and EndpointSlice health are not aggregated. Troubleshooting should also inspect the Volcano queue, Pod events, Service endpoints, and ingress-controller logs.
+
+Planned expiry and other successful exits return `completed`, displayed with the same green Completed badge as regular jobs. Reasons still distinguish `idle_expired`, `runtime_expired`, and `completed`; `expired` remains only for the deadline failure safeguard. Reasons are read from the container termination message; no activity-reporting API is added.
+
+TensorBoard is an auxiliary workload, excluded from regular job lists, counts, and job resource-usage summaries, including historical TensorBoard records. Actual cluster CPU, memory, and queue consumption remains accounted for. Historical database records need not be deleted.
 
 ## Upgrade and rollback
 
-Upgrade **backend → frontend**. Recreate pre-upgrade panels so their Ingress resources carry the current external-auth annotations.
+Upgrade **backend → frontend**. Before upgrading, clean up legacy panels and confirm that all remaining TensorBoard panels are VCJobs.
 
-Before rolling back to a backend that only understands Deployment panels, list and confirm both new and legacy resources:
+Before rolling back to a backend that does not support VCJob panels, list and confirm the panels to remove:
 
 ```bash
 kubectl -n <job-namespace> get jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
 kubectl -n <job-namespace> delete jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
-kubectl -n <job-namespace> get deployment -l crater.raids.io/task-type=tensorboard
-kubectl -n <job-namespace> delete deployment -l crater.raids.io/task-type=tensorboard
 ```
 
-The delete commands remove every listed TensorBoard panel; confirm the scope first. An older backend cannot list, authorize, or delete VCJob-based panels, while remaining legacy Deployments still require the old GC or manual cleanup.
+The delete command removes every listed TensorBoard panel; confirm the scope first. An older backend cannot list, authorize, or delete VCJob panels. Panel logs remain in the source storage.
 
 ## Release verification
 
 - Create a panel with a non-default registry, pull secret, and production tag.
 - Confirm Pod placement in a cluster with a control-plane taint.
-- Cover personal directories, single and multiple sources, duplicate display names, TensorFlow PS, pending/ready/failed/expired states, four-day cleanup, quota concurrency, and error paths.
+- Cover personal directories, single and multiple sources, duplicate display names, TensorFlow PS, pending/ready/completed/failed/expired states, four-day cleanup, quota concurrency, and error paths.
 - Place a large unschedulable GPU job before a panel and confirm the small CPU-only panel can still run when compatible CPU and memory are available.
 - Run Chart lint and template checks, and verify the rendered backend configuration contains the image, pull policy, pull secrets, `ingressAuthEnabled`, and scheduling fields.
+- With a short idle limit, verify that user traffic renews activity but probes alone do not; expiry must produce Pod exit code 0 and VCJob Completed, followed by cascading cleanup after five minutes. Also test manual deletion and genuine process failure.

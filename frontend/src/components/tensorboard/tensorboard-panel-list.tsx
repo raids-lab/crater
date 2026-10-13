@@ -129,13 +129,19 @@ export default function TensorboardPanelList() {
     },
   })
 
-  const activeTensorboardCount = (tensorboardsQuery.data ?? []).filter(
-    (board) => board.status !== 'failed' && board.status !== 'expired'
+  const activeTensorboardCount = (tensorboardsQuery.data ?? []).filter((board) =>
+    ['pending', 'starting', 'ready'].includes(board.status)
   ).length
   const hasReachedLimit = activeTensorboardCount >= MAX_ACTIVE_TENSORBOARDS
 
   const columns = useMemo<ColumnDef<TensorboardInfo>[]>(
     () => [
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={t('tensorboard.list.name')} />
+        ),
+      },
       {
         accessorKey: 'id',
         header: ({ column }) => (
@@ -247,7 +253,10 @@ export default function TensorboardPanelList() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('tensorboard.list.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('tensorboard.list.deleteDescription', { id: boardToDelete?.id ?? '' })}
+              {t('tensorboard.list.deleteDescription', {
+                name: boardToDelete?.name ?? '',
+                id: boardToDelete?.id ?? '',
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -81,11 +81,12 @@ import PageTitle from '@/components/layout/page-title'
 import { apiGetFiles } from '@/services/api/file'
 import {
   type CreateTensorboardReq,
+  MAX_TENSORBOARD_NAME_LENGTH,
   MAX_TENSORBOARD_SOURCE_JOBS,
   apiTensorboardCreate,
   apiTensorboardSourceConfig,
 } from '@/services/api/tensorboard'
-import { apiJobSelfList } from '@/services/api/vcjob'
+import { type IJobInfo, apiJobSelfList } from '@/services/api/vcjob'
 
 import { atomUserInfo } from '@/utils/store'
 import { showErrorToast } from '@/utils/toast'
@@ -93,6 +94,41 @@ import { showErrorToast } from '@/utils/toast'
 type TensorboardSearch = {
   fromTemplate?: number
   sourceJob?: string
+}
+
+type SourceJobOption = {
+  value: string
+  label: string
+  labelNote?: string
+}
+
+const getSourceJobOption = (job: IJobInfo): SourceJobOption => {
+  const name = job.name?.trim()
+  return {
+    value: job.jobName,
+    label: name && name !== job.jobName ? `${name} (${job.jobName})` : job.jobName,
+    labelNote: job.status,
+  }
+}
+
+const retainSelectedSourceJobOptions = (
+  selectedNames: string[],
+  options: SourceJobOption[],
+  previous: SourceJobOption[]
+): SourceJobOption[] => {
+  const optionsByValue = new Map(options.map((option) => [option.value, option]))
+  const retained: SourceJobOption[] = selectedNames.map(
+    (name) => optionsByValue.get(name) ?? { value: name, label: name }
+  )
+  const unchanged =
+    retained.length === previous.length &&
+    retained.every(
+      (option, index) =>
+        option.value === previous[index].value &&
+        option.label === previous[index].label &&
+        option.labelNote === previous[index].labelNote
+    )
+  return unchanged ? previous : retained
 }
 
 // Temporarily disable storage probing and directory browsing while keeping
@@ -157,6 +193,15 @@ export const Route = createFileRoute('/portal/jobs/new/tensorboard')({
 const createFormSchema = (t: TFunction) =>
   z
     .object({
+      name: z
+        .string()
+        .trim()
+        .min(1, t('tensorboard.validation.nameRequired'))
+        .regex(/^[^\p{Cc}]*$/u, t('tensorboard.validation.nameControlCharacters'))
+        .refine(
+          (name) => Array.from(name).length <= MAX_TENSORBOARD_NAME_LENGTH,
+          t('tensorboard.validation.nameTooLong', { count: MAX_TENSORBOARD_NAME_LENGTH })
+        ),
       sourceJobNames: z
         .array(z.string())
         .max(
@@ -213,6 +258,7 @@ type FormSchema = z.infer<ReturnType<typeof createFormSchema>>
 const dataProcessor = (data: FormSchema) => {
   return {
     ...data,
+    name: data.name ?? '',
     sourceJobNames: data.sourceJobNames ?? [],
     logDir: data.logDir ?? '',
     sourceLogDirs: data.sourceLogDirs ?? {},
@@ -258,6 +304,7 @@ function RouteComponent() {
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: '',
       sourceJobNames: [],
       logDir: '',
       sourceLogDirs: {},
@@ -265,24 +312,29 @@ function RouteComponent() {
   })
   const selectedSourceJobNames = form.watch('sourceJobNames')
   const selectedSourceLogDirs = form.watch('sourceLogDirs')
+  const [selectedSourceJobOptions, setSelectedSourceJobOptions] = useState<SourceJobOption[]>([])
   const sourceJobOptions = useMemo(() => {
-    const options: Array<{
-      value: string
-      label: string
-      labelNote?: string
-    }> = jobList.map((job) => ({
-      value: job.jobName,
-      label: job.jobName,
-      labelNote: job.status,
-    }))
+    const options = jobList.map(getSourceJobOption)
     const loadedJobNames = new Set(options.map((option) => option.value))
     selectedSourceJobNames.forEach((jobName) => {
       if (!loadedJobNames.has(jobName)) {
-        options.push({ value: jobName, label: jobName, labelNote: undefined })
+        options.push(
+          selectedSourceJobOptions.find((option) => option.value === jobName) ?? {
+            value: jobName,
+            label: jobName,
+          }
+        )
       }
     })
     return options
-  }, [jobList, selectedSourceJobNames])
+  }, [jobList, selectedSourceJobNames, selectedSourceJobOptions])
+
+  // Retain only selected labels so remote search does not replace them with bare IDs.
+  useEffect(() => {
+    setSelectedSourceJobOptions((previous) =>
+      retainSelectedSourceJobOptions(selectedSourceJobNames, sourceJobOptions, previous)
+    )
+  }, [selectedSourceJobNames, sourceJobOptions])
   const shouldFilterSourceJobs =
     sourceJobSearch.trim() !== debouncedSourceJobSearch || isUsingPreviousSourceJobs
   const selectedLogDir = form.watch('logDir').trim()
@@ -443,6 +495,7 @@ function RouteComponent() {
       }
     }
     setPendingCreateRequest({
+      name: data.name.trim(),
       sourceJobs: data.sourceJobNames.map((jobName) => ({
         jobName,
         logDir: hasMultipleSources
@@ -500,6 +553,24 @@ function RouteComponent() {
               <CardContent className="grid gap-5">
                 <FormField
                   control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center gap-1">
+                        <FormLabel>
+                          {t('tensorboard.create.name')} <FormLabelMust />
+                        </FormLabel>
+                        <FormHelpTooltip content={t('tensorboard.create.nameDescription')} />
+                      </div>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="sourceJobNames"
                   render={({ field }) => (
                     <FormItem>
@@ -552,7 +623,6 @@ function RouteComponent() {
                               form.setValue('logDir', '')
                             }
                           }}
-                          placeholder={t('tensorboard.create.sourceJobsPlaceholder')}
                           inputPlaceholder={t('tensorboard.create.searchJobs')}
                           emptyPlaceholder={t('tensorboard.create.noJobs')}
                         />
@@ -616,7 +686,6 @@ function RouteComponent() {
                                 </div>
                                 <Input
                                   value={value}
-                                  placeholder={t('tensorboard.create.logDirExample')}
                                   onChange={(event) =>
                                     field.onChange({
                                       ...field.value,
@@ -650,7 +719,6 @@ function RouteComponent() {
                         </FormDescription>
                         <FormControl>
                           <Input
-                            placeholder={`/home/${currentUser?.name ?? 'username'}/tensorboard-runs`}
                             {...field}
                             onChange={(event) => {
                               form.clearErrors('logDir')
@@ -761,8 +829,11 @@ function RouteComponent() {
             <AlertDialogTitle>{t('tensorboard.create.confirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
               {(pendingCreateRequest?.sourceJobs?.length ?? 0) === 0
-                ? t('tensorboard.create.confirmDescriptionWithoutSource')
+                ? t('tensorboard.create.confirmDescriptionWithoutSource', {
+                    name: pendingCreateRequest?.name ?? '',
+                  })
                 : t('tensorboard.create.confirmDescription', {
+                    name: pendingCreateRequest?.name ?? '',
                     count: pendingCreateRequest?.sourceJobs?.length ?? 0,
                   })}
             </AlertDialogDescription>

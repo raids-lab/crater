@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	UIDSourceDefault  = "default"
-	UIDSourceNone     = "none"
-	UIDSourceLDAP     = "ldap"
-	UIDSourceRID      = "rid"
-	UIDSourceExternal = "external"
+	UIDSourceDefault                           = "default"
+	UIDSourceNone                              = "none"
+	UIDSourceLDAP                              = "ldap"
+	UIDSourceRID                               = "rid"
+	UIDSourceExternal                          = "external"
+	DefaultTensorboardIdleTimeoutSeconds int64 = 16 * 60 * 60
 )
 
 // ImagePullSecret identifies a Kubernetes pull secret in the workload namespace.
@@ -31,6 +32,7 @@ type TensorboardConfig struct {
 	ImagePullPolicy    string              `json:"imagePullPolicy"`
 	ImagePullSecrets   []ImagePullSecret   `json:"imagePullSecrets,omitempty"`
 	IngressAuthEnabled *bool               `json:"ingressAuthEnabled,omitempty"`
+	IdleTimeoutSeconds *int64              `json:"idleTimeoutSeconds,omitempty"`
 	NodeSelector       map[string]string   `json:"nodeSelector,omitempty"`
 	Tolerations        []corev1.Toleration `json:"tolerations,omitempty"`
 	Affinity           *corev1.Affinity    `json:"affinity,omitempty"`
@@ -42,12 +44,23 @@ func (c *TensorboardConfig) IsIngressAuthEnabled() bool {
 	return c.IngressAuthEnabled == nil || *c.IngressAuthEnabled
 }
 
+// GetIdleTimeoutSeconds preserves the default for existing backend configurations.
+func (c *TensorboardConfig) GetIdleTimeoutSeconds() int64 {
+	if c.IdleTimeoutSeconds == nil {
+		return DefaultTensorboardIdleTimeoutSeconds
+	}
+	return *c.IdleTimeoutSeconds
+}
+
 func (c *TensorboardConfig) validationErrors() []string {
+	var errors []string
+	if c.IdleTimeoutSeconds != nil && *c.IdleTimeoutSeconds <= 0 {
+		errors = append(errors, "tensorboard.idleTimeoutSeconds must be greater than 0")
+	}
 	if c.Image == "" && c.ImagePullPolicy == "" && len(c.ImagePullSecrets) == 0 {
-		return nil
+		return errors
 	}
 
-	var errors []string
 	if strings.TrimSpace(c.Image) == "" {
 		errors = append(errors, "tensorboard.image is required")
 	}

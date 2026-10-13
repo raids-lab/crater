@@ -211,6 +211,7 @@ definitions:
     - deepspeed
     - openmpi
     - custom
+    - tensorboard
     type: string
     x-enum-varnames:
     - JobTypeAll
@@ -222,6 +223,7 @@ definitions:
     - JobTypeDeepSpeed
     - JobTypeOpenMPI
     - JobTypeCustom
+    - JobTypeTensorboard
   github_com_raids-lab_crater_dao_model.ReviewStatus:
     enum:
     - 0
@@ -351,6 +353,9 @@ definitions:
       logDir:
         example: /mnt/vol0/logs
         type: string
+      name:
+        example: Training comparison
+        type: string
       sourceJobName:
         example: job-old-xxxx
         type: string
@@ -362,11 +367,16 @@ definitions:
         items:
           $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq'
         type: array
+    required:
+    - name
     type: object
   github_com_raids-lab_crater_internal_payload.CreateTensorboardResp:
     properties:
       accessPath:
         description: Relative route prefix used to access the panel.
+        type: string
+      name:
+        description: User-defined display name.
         type: string
       tensorboardId:
         description: Unique panel identifier.
@@ -416,6 +426,8 @@ definitions:
         type: string
       id:
         type: string
+      name:
+        type: string
       status:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardStatus'
       statusMessage:
@@ -441,6 +453,7 @@ definitions:
     - starting
     - ready
     - failed
+    - completed
     - expired
     type: string
     x-enum-varnames:
@@ -448,24 +461,25 @@ definitions:
     - TensorboardStatusStarting
     - TensorboardStatusReady
     - TensorboardStatusFailed
+    - TensorboardStatusCompleted
     - TensorboardStatusExpired
   github_com_raids-lab_crater_internal_payload.TensorboardStatusReason:
     enum:
-    - deployment_failed
-    - deployment_starting
     - waiting_for_schedule
     - pod_starting
     - job_failed
     - runtime_expired
+    - idle_expired
+    - completed
     - ready
     type: string
     x-enum-varnames:
-    - TensorboardStatusReasonDeploymentFailed
-    - TensorboardStatusReasonDeploymentStarting
     - TensorboardStatusReasonWaitingForSchedule
     - TensorboardStatusReasonPodStarting
     - TensorboardStatusReasonJobFailed
     - TensorboardStatusReasonRuntimeExpired
+    - TensorboardStatusReasonIdleExpired
+    - TensorboardStatusReasonCompleted
     - TensorboardStatusReasonReady
   github_com_raids-lab_crater_internal_payload.TimePointData:
     properties:
@@ -6771,6 +6785,7 @@ paths:
         - deepspeed
         - openmpi
         - custom
+        - tensorboard
         in: query
         name: type
         required: true
@@ -6785,6 +6800,7 @@ paths:
         - JobTypeDeepSpeed
         - JobTypeOpenMPI
         - JobTypeCustom
+        - JobTypeTensorboard
       produces:
       - application/json
       responses: {}
@@ -8795,7 +8811,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: 从当前用户个人空间的日志目录创建面板，也可关联一个或多个来源任务
+      description: |-
+        Create a named TensorBoard panel from a personal log directory or owned source jobs.
+        Name is required (1-40 characters); duplicate names are allowed.
       parameters:
       - description: TensorBoard 面板配置
         in: body

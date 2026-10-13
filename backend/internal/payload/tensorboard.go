@@ -28,6 +28,7 @@ type TensorboardSourceJobReq struct {
 // With source jobs, the backend resolves trusted data mounts from jobs owned by the current user.
 // SourceJobName, SourceJobNames, and LogDir remain available for legacy API clients.
 type CreateTensorboardReq struct {
+	Name           string                    `json:"name" binding:"required" example:"Training comparison"`
 	SourceJobName  string                    `json:"sourceJobName,omitempty" example:"job-old-xxxx"`
 	SourceJobNames []string                  `json:"sourceJobNames,omitempty"`
 	SourceJobs     []TensorboardSourceJobReq `json:"sourceJobs,omitempty"`
@@ -41,6 +42,7 @@ type TensorboardSourceConfigResp struct {
 
 // CreateTensorboardResp describes a newly created TensorBoard panel.
 type CreateTensorboardResp struct {
+	Name          string `json:"name"`          // User-defined display name.
 	TensorboardID string `json:"tensorboardId"` // Unique panel identifier.
 	AccessPath    string `json:"accessPath"`    // Relative route prefix used to access the panel.
 }
@@ -50,23 +52,25 @@ type TensorboardStatus string
 type TensorboardStatusReason string
 
 const (
-	TensorboardStatusPending  TensorboardStatus = "pending"
-	TensorboardStatusStarting TensorboardStatus = "starting"
-	TensorboardStatusReady    TensorboardStatus = "ready"
-	TensorboardStatusFailed   TensorboardStatus = "failed"
-	TensorboardStatusExpired  TensorboardStatus = "expired"
+	TensorboardStatusPending   TensorboardStatus = "pending"
+	TensorboardStatusStarting  TensorboardStatus = "starting"
+	TensorboardStatusReady     TensorboardStatus = "ready"
+	TensorboardStatusFailed    TensorboardStatus = "failed"
+	TensorboardStatusCompleted TensorboardStatus = "completed"
+	TensorboardStatusExpired   TensorboardStatus = "expired"
 
-	TensorboardStatusReasonDeploymentFailed   TensorboardStatusReason = "deployment_failed"
-	TensorboardStatusReasonDeploymentStarting TensorboardStatusReason = "deployment_starting"
 	TensorboardStatusReasonWaitingForSchedule TensorboardStatusReason = "waiting_for_schedule"
 	TensorboardStatusReasonPodStarting        TensorboardStatusReason = "pod_starting"
 	TensorboardStatusReasonJobFailed          TensorboardStatusReason = "job_failed"
 	TensorboardStatusReasonRuntimeExpired     TensorboardStatusReason = "runtime_expired"
+	TensorboardStatusReasonIdleExpired        TensorboardStatusReason = "idle_expired"
+	TensorboardStatusReasonCompleted          TensorboardStatusReason = "completed"
 	TensorboardStatusReasonReady              TensorboardStatusReason = "ready"
 )
 
 // TensorboardInfo describes a panel and its current availability.
 type TensorboardInfo struct {
+	Name          string                  `json:"name"`
 	ID            string                  `json:"id"`
 	Expiration    string                  `json:"expiration"`
 	CreatedAt     string                  `json:"createdAt"`

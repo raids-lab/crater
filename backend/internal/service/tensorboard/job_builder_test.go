@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	bus "volcano.sh/apis/pkg/apis/bus/v1alpha1"
 )
 
 //nolint:gocyclo // This test intentionally verifies the complete generated resource in one place.
@@ -29,8 +30,9 @@ func TestBuildJobUsesConfiguredImageSchedulingAndLifecycle(t *testing.T) {
 	t.Parallel()
 
 	workloadConfig := workloadConfig{
-		Image:           "registry.example.com/observability/tensorboard:2.20.0",
-		ImagePullPolicy: corev1.PullNever,
+		Image:              "registry.example.com/observability/tensorboard:2.20.0",
+		ImagePullPolicy:    corev1.PullNever,
+		IdleTimeoutSeconds: 3600,
 		ImagePullSecrets: []corev1.LocalObjectReference{
 			{Name: "tensorboard-registry"},
 		},
@@ -54,6 +56,7 @@ func TestBuildJobUsesConfiguredImageSchedulingAndLifecycle(t *testing.T) {
 	}
 	job := newJobBuilder("jobs", &workloadConfig).buildJob(
 		"panel-id",
+		"训练对比",
 		"test-user",
 		"q-a1-u2",
 		"/home/test-user/tensorboard-runs/test-job",
@@ -62,11 +65,18 @@ func TestBuildJobUsesConfiguredImageSchedulingAndLifecycle(t *testing.T) {
 		nil,
 	)
 
+	if job.Annotations[annotationKeyTensorboardName] != "训练对比" || job.Name != "tb-panel-id" {
+		t.Fatalf("display name and resource ID are not independent: %#v", job.ObjectMeta)
+	}
 	if job.Spec.SchedulerName != tensorboardSchedulerName || job.Spec.Queue != "q-a1-u2" {
 		t.Fatalf("unexpected Volcano scheduling config: %#v", job.Spec)
 	}
 	if job.Spec.MinAvailable != 1 || job.Spec.MaxRetry != 0 {
 		t.Fatalf("unexpected gang or retry settings: %#v", job.Spec)
+	}
+	policies := job.Spec.Tasks[0].Policies
+	if len(policies) != 1 || policies[0].Event != bus.TaskCompletedEvent || policies[0].Action != bus.CompleteJobAction {
+		t.Fatalf("missing normal completion policy: %#v", policies)
 	}
 	if job.Spec.TTLSecondsAfterFinished == nil ||
 		*job.Spec.TTLSecondsAfterFinished != tensorboardCleanupTTLSeconds {
@@ -85,7 +95,7 @@ func TestBuildJobUsesConfiguredImageSchedulingAndLifecycle(t *testing.T) {
 		t.Fatalf("unexpected Pod scheduling config: %#v", podSpec)
 	}
 	if podSpec.ActiveDeadlineSeconds == nil ||
-		*podSpec.ActiveDeadlineSeconds != tensorboardMaxRuntimeSeconds {
+		*podSpec.ActiveDeadlineSeconds != tensorboardMaxRuntimeSeconds+tensorboardSafetyMarginSeconds {
 		t.Fatalf("unexpected active deadline: %#v", podSpec.ActiveDeadlineSeconds)
 	}
 	if got := podSpec.ImagePullSecrets; len(got) != 1 || got[0].Name != "tensorboard-registry" {
@@ -105,13 +115,19 @@ func TestBuildJobUsesConfiguredImageSchedulingAndLifecycle(t *testing.T) {
 	if strings.Contains(command, "pip install") {
 		t.Fatalf("command installs TensorBoard at runtime: %q", command)
 	}
-	if !strings.Contains(command, "python -m tensorboard.main") {
-		t.Fatalf("command does not start TensorBoard: %q", command)
+	if !reflect.DeepEqual(container.Command[:3], []string{"python", "-u", "-c"}) || container.Command[3] != tensorboardLauncher {
+		t.Fatal("command does not run the embedded launcher")
 	}
-	if !strings.Contains(command, "--logdir '/home/test-user/tensorboard-runs/test-job'") {
-		t.Fatalf("command does not contain the expected log directory: %q", command)
+	wantArgs := []string{
+		"--logdir", "/home/test-user/tensorboard-runs/test-job",
+		"--path-prefix", "/tensorboard/panel-id",
+		"--port", "6006", "--upstream-port", "6007",
+		"--idle-timeout-seconds", "3600", "--max-runtime-seconds", "345600",
 	}
-	if !strings.Contains(command, "--path_prefix '/tensorboard/panel-id'") {
-		t.Fatalf("command does not contain the expected path prefix: %q", command)
+	if !reflect.DeepEqual(container.Args, wantArgs) {
+		t.Fatalf("launcher args = %#v, want %#v", container.Args, wantArgs)
+	}
+	if container.ReadinessProbe.HTTPGet.Path != tensorboardHealthPath {
+		t.Fatal("readiness probe must not count as user activity")
 	}
 }

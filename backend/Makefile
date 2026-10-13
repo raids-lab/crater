@@ -176,7 +176,11 @@ run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host
 	KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
-pre-commit-check: lint docs ## Run pre-commit checks (lint and generate docs).
+pre-commit-check: lint docs test-tensorboard-launcher ## Run lint, generate docs, and test the TensorBoard launcher.
+
+.PHONY: test-tensorboard-launcher
+test-tensorboard-launcher: ## Test the embedded launcher with Python 3 (standard library only).
+	python3 -B -m unittest discover -s internal/service/tensorboard -p 'launcher_test.py' -v
 
 ##@ Build
 

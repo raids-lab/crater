@@ -17,18 +17,68 @@ limitations under the License.
 package tensorboard
 
 import (
+	"context"
+	"strings"
 	"testing"
+	"time"
 
 	"gorm.io/datatypes"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/payload"
+	interutil "github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
+
+func TestNormalizeTensorboardName(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		want  string
+		code  bizerr.BizCode
+	}{
+		{name: "trimmed Chinese", input: " 训练对比 ", want: "训练对比"},
+		{name: "spaces", input: "training comparison", want: "training comparison"},
+		{name: "Unicode boundary", input: strings.Repeat("🚀", maxTensorboardNameLength),
+			want: strings.Repeat("🚀", maxTensorboardNameLength)},
+		{name: "missing", code: bizerr.BadRequest.MissingParameter},
+		{name: "blank", input: "  ", code: bizerr.BadRequest.MissingParameter},
+		{name: "too long", input: strings.Repeat("中", maxTensorboardNameLength+1), code: bizerr.BadRequest.ParameterError},
+		{name: "control character", input: "training\ncomparison", code: bizerr.BadRequest.ParameterError},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := normalizeTensorboardName(test.input)
+			if test.want == "" {
+				assertTensorboardErrorCode(t, err, test.code)
+				return
+			}
+			if err != nil || got != test.want {
+				t.Fatalf("normalized name = %q, error = %v, want %q", got, err, test.want)
+			}
+		})
+	}
+}
+
+func TestCreateRejectsInvalidNameBeforeClusterOperations(t *testing.T) {
+	svc := NewTensorboardService(nil, nil)
+	for _, name := range []string{"", "  ", strings.Repeat("x", maxTensorboardNameLength+1), "bad\nname"} {
+		_, err := svc.Create(t.Context(), interutil.JWTMessage{}, &payload.CreateTensorboardReq{Name: name})
+		if err == nil {
+			t.Fatalf("invalid name %q was accepted", name)
+		}
+	}
+}
 
 func sourceJob(volumes []corev1.Volume, mounts []corev1.VolumeMount, logDir string) *model.Job {
 	job := &batch.Job{
@@ -373,81 +423,9 @@ func TestIsTensorboardOwner(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			deploy := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Labels: tt.labels}}
-			if got := isTensorboardOwner(deploy, tt.username); got != tt.want {
+			job := &batch.Job{ObjectMeta: metav1.ObjectMeta{Labels: tt.labels}}
+			if got := isTensorboardOwner(job, tt.username); got != tt.want {
 				t.Fatalf("isTensorboardOwner() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func readyTensorboardDeployment() *appsv1.Deployment {
-	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "tb-panel-1",
-			Namespace: "jobs",
-			Labels: map[string]string{
-				labelKeyTensorboardID:     "panel-1",
-				crclient.LabelKeyTaskUser: "alice",
-				crclient.LabelKeyTaskType: labelKeyTypeTensorboard,
-			},
-		},
-		Status: appsv1.DeploymentStatus{
-			AvailableReplicas: 1,
-			ReadyReplicas:     1,
-		},
-	}
-}
-
-func TestGetStatusUsesDeploymentState(t *testing.T) {
-	tests := []struct {
-		name        string
-		deployment  *appsv1.Deployment
-		wantStatus  payload.TensorboardStatus
-		wantReason  payload.TensorboardStatusReason
-		wantMessage string
-	}{
-		{
-			name:        "ready replicas available",
-			deployment:  readyTensorboardDeployment(),
-			wantStatus:  payload.TensorboardStatusReady,
-			wantReason:  payload.TensorboardStatusReasonReady,
-			wantMessage: "The panel is ready.",
-		},
-		{
-			name:        "replicas not ready",
-			deployment:  &appsv1.Deployment{},
-			wantStatus:  payload.TensorboardStatusStarting,
-			wantReason:  payload.TensorboardStatusReasonDeploymentStarting,
-			wantMessage: "The panel is starting. The first startup may take several minutes.",
-		},
-		{
-			name: "deployment failed",
-			deployment: &appsv1.Deployment{Status: appsv1.DeploymentStatus{
-				Conditions: []appsv1.DeploymentCondition{{
-					Type:   appsv1.DeploymentProgressing,
-					Status: corev1.ConditionFalse,
-				}},
-			}},
-			wantStatus:  payload.TensorboardStatusFailed,
-			wantReason:  payload.TensorboardStatusReasonDeploymentFailed,
-			wantMessage: "The panel failed to start. Check the Pod events or contact an administrator.",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			status, reason, message := getDeploymentStatus(tt.deployment)
-			if status != tt.wantStatus || reason != tt.wantReason || message != tt.wantMessage {
-				t.Fatalf(
-					"getDeploymentStatus() = (%q, %q, %q), want (%q, %q, %q)",
-					status,
-					reason,
-					message,
-					tt.wantStatus,
-					tt.wantReason,
-					tt.wantMessage,
-				)
 			}
 		})
 	}
@@ -480,8 +458,8 @@ func TestGetJobStatusUsesVolcanoAndPodState(t *testing.T) {
 			wantReason: payload.TensorboardStatusReasonJobFailed},
 		{name: "aborting", phase: batch.Aborting, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusFailed,
 			wantReason: payload.TensorboardStatusReasonJobFailed},
-		{name: "completing", phase: batch.Completing, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusFailed,
-			wantReason: payload.TensorboardStatusReasonJobFailed},
+		{name: "completing", phase: batch.Completing, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusCompleted,
+			wantReason: payload.TensorboardStatusReasonCompleted},
 		{name: "terminating", phase: batch.Terminating, pod: &corev1.Pod{}, wantStatus: payload.TensorboardStatusFailed,
 			wantReason: payload.TensorboardStatusReasonJobFailed},
 	}
@@ -495,5 +473,247 @@ func TestGetJobStatusUsesVolcanoAndPodState(t *testing.T) {
 					status, reason, tt.wantStatus, tt.wantReason)
 			}
 		})
+	}
+}
+
+func newTensorboardTestClient(t *testing.T, objects ...client.Object) client.Client {
+	t.Helper()
+	// Current panels must work without registering legacy workload kinds.
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatalf("register Pod resources: %v", err)
+	}
+	if err := batch.AddToScheme(scheme); err != nil {
+		t.Fatalf("register Volcano resources: %v", err)
+	}
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
+}
+
+func assertTensorboardErrorCode(t *testing.T, err error, want bizerr.BizCode) {
+	t.Helper()
+	actual, ok := bizerr.FromError(err)
+	if !ok || actual.Code != want {
+		t.Fatalf("expected business error code %d, got %v", want, err)
+	}
+}
+
+func tensorboardTestJob(id, username string, phase batch.JobPhase) *batch.Job {
+	return &batch.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "tb-" + id,
+			Namespace:   config.GetConfig().Namespaces.Job,
+			Annotations: map[string]string{annotationKeyTensorboardName: "Training comparison"},
+			Labels: map[string]string{
+				labelKeyTensorboardID:     id,
+				crclient.LabelKeyTaskUser: username,
+				crclient.LabelKeyTaskType: labelKeyTypeTensorboard,
+			},
+		},
+		Status: batch.JobStatus{State: batch.JobState{Phase: phase}},
+	}
+}
+
+func TestTensorboardQuotaAndListUseVolcanoJobs(t *testing.T) {
+	pending := tensorboardTestJob("pending", "alice", batch.Pending)
+	running := tensorboardTestJob("running", "alice", batch.Running)
+	completed := tensorboardTestJob("completed", "alice", batch.Completed)
+	expired := tensorboardTestJob("expired", "alice", batch.Failed)
+	otherUser := tensorboardTestJob("other-user", "bob", batch.Pending)
+	training := tensorboardTestJob("training", "alice", batch.Pending)
+	training.Labels[crclient.LabelKeyTaskType] = "training"
+	otherNamespace := tensorboardTestJob("other-namespace", "alice", batch.Pending)
+	otherNamespace.Namespace += "-other"
+	startedAt := metav1.NewTime(time.Now().Add(-time.Hour))
+	readyPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "running-pod", Namespace: running.Namespace, Labels: running.Labels,
+		},
+		Status: corev1.PodStatus{
+			StartTime: &startedAt,
+			Conditions: []corev1.PodCondition{{
+				Type: corev1.PodReady, Status: corev1.ConditionTrue,
+			}},
+		},
+	}
+	expiredPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "expired-pod", Namespace: expired.Namespace, Labels: expired.Labels,
+		},
+		Status: corev1.PodStatus{Reason: "DeadlineExceeded"},
+	}
+	crClient := newTensorboardTestClient(t,
+		pending, running, completed, expired, otherUser, training, otherNamespace, readyPod, expiredPod,
+	)
+	svc := NewTensorboardService(crClient, nil)
+	ctx := context.Background()
+	count, err := svc.activeTensorboardCount(ctx, "alice")
+	if err != nil || count != 2 {
+		t.Fatalf("active panel count = %d, error = %v, want 2", count, err)
+	}
+	panels, err := svc.List(ctx, "alice")
+	if err != nil {
+		t.Fatalf("list Volcano panels: %v", err)
+	}
+	wantStatuses := map[string]payload.TensorboardStatus{
+		"pending": payload.TensorboardStatusPending, "running": payload.TensorboardStatusReady,
+		"completed": payload.TensorboardStatusCompleted, "expired": payload.TensorboardStatusExpired,
+	}
+	if len(panels) != len(wantStatuses) {
+		t.Fatalf("listed %d panels, want %d", len(panels), len(wantStatuses))
+	}
+	for _, panel := range panels {
+		if panel.Name != "Training comparison" {
+			t.Fatalf("panel name = %q, want stored annotation", panel.Name)
+		}
+		wantStatus, ok := wantStatuses[panel.ID]
+		if !ok || panel.Status != wantStatus {
+			t.Fatalf("unexpected panel %q with status %q", panel.ID, panel.Status)
+		}
+		if panel.ID == "running" && panel.Expiration != startedAt.Add(4*24*time.Hour).Format(time.RFC3339) {
+			t.Fatalf("unexpected runtime expiration: %q", panel.Expiration)
+		}
+	}
+}
+
+func TestTensorboardAccessAndDeleteUseVolcanoJobs(t *testing.T) {
+	job := tensorboardTestJob("a1b2c3d4", "alice", batch.Running)
+	crClient := newTensorboardTestClient(t, job)
+	svc := NewTensorboardService(crClient, nil)
+	ctx := context.Background()
+	accessPath, err := svc.GetAccessPath(ctx, "alice", "a1b2c3d4")
+	wantPath := "https://" + config.GetConfig().Host + "/ingress/alice-a1b2c3d4"
+	if err != nil || accessPath != wantPath {
+		t.Fatalf("access path = %q, error = %v, want %q", accessPath, err, wantPath)
+	}
+	_, err = svc.GetAccessPath(ctx, "bob", "a1b2c3d4")
+	assertTensorboardErrorCode(t, err, bizerr.Forbidden.PermissionDenied)
+	assertTensorboardErrorCode(t, svc.Delete(ctx, "bob", "a1b2c3d4"), bizerr.Forbidden.PermissionDenied)
+	if err := crClient.Get(ctx, client.ObjectKeyFromObject(job), &batch.Job{}); err != nil {
+		t.Fatalf("unauthorized deletion removed the panel: %v", err)
+	}
+	if err := svc.Delete(ctx, "alice", "a1b2c3d4"); err != nil {
+		t.Fatalf("owner cannot delete the panel: %v", err)
+	}
+	if err := crClient.Get(ctx, client.ObjectKeyFromObject(job), &batch.Job{}); !k8serrors.IsNotFound(err) {
+		t.Fatalf("Volcano Job was not deleted: %v", err)
+	}
+	_, err = svc.GetAccessPath(ctx, "alice", "a1b2c3d4")
+	assertTensorboardErrorCode(t, err, bizerr.NotFound.K8sResourceNotFound)
+	assertTensorboardErrorCode(t, svc.Delete(ctx, "alice", "a1b2c3d4"), bizerr.NotFound.K8sResourceNotFound)
+}
+
+func TestSameNamePanelsHaveIndependentAccessAndDeletion(t *testing.T) {
+	first := tensorboardTestJob("11111111", "alice", batch.Running)
+	second := tensorboardTestJob("22222222", "alice", batch.Running)
+	crClient := newTensorboardTestClient(t, first, second)
+	svc := NewTensorboardService(crClient, nil)
+	panels, err := svc.List(t.Context(), "alice")
+	if err != nil || len(panels) != 2 {
+		t.Fatalf("same-name list = %#v, error = %v", panels, err)
+	}
+	if panels[0].Name != panels[1].Name || panels[0].ID == panels[1].ID {
+		t.Fatal("same-name panels did not retain distinct IDs")
+	}
+	firstURL, err := svc.GetAccessPath(t.Context(), "alice", "11111111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondURL, err := svc.GetAccessPath(t.Context(), "alice", "22222222")
+	if err != nil || firstURL == secondURL {
+		t.Fatalf("same-name routes are not independent: %q, %q, %v", firstURL, secondURL, err)
+	}
+	if err := svc.Delete(t.Context(), "alice", "11111111"); err != nil {
+		t.Fatal(err)
+	}
+	if err := crClient.Get(t.Context(), client.ObjectKeyFromObject(second), &batch.Job{}); err != nil {
+		t.Fatalf("deleting one same-name panel affected the other: %v", err)
+	}
+}
+
+func TestTensorboardAccessRejectsStoppedAndExpiredJobs(t *testing.T) {
+	expiredAt := metav1.NewTime(time.Now().Add(-5 * 24 * time.Hour))
+	tests := []struct {
+		name   string
+		phase  batch.JobPhase
+		status corev1.PodStatus
+	}{
+		{name: "completed", phase: batch.Completed},
+		{name: "failed", phase: batch.Failed},
+		{name: "aborted", phase: batch.Aborted},
+		{name: "terminated", phase: batch.Terminated},
+		{name: "deadline exceeded", phase: batch.Running,
+			status: corev1.PodStatus{Reason: "DeadlineExceeded"}},
+		{name: "runtime elapsed", phase: batch.Running,
+			status: corev1.PodStatus{StartTime: &expiredAt}},
+		{name: "idle timeout before Job transition", phase: batch.Running,
+			status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{
+				Name: tensorboardTaskName,
+				State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+					ExitCode: 0, Message: `{"reason":"idle_expired"}`,
+				}},
+			}}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			job := tensorboardTestJob("a1b2c3d4", "alice", tt.phase)
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "tb-pod", Namespace: job.Namespace, Labels: job.Labels,
+				},
+				Status: tt.status,
+			}
+			svc := NewTensorboardService(newTensorboardTestClient(t, job, pod), nil)
+			_, err := svc.GetAccessPath(context.Background(), "alice", "a1b2c3d4")
+			assertTensorboardErrorCode(t, err, bizerr.Conflict.ResourceStatusError)
+		})
+	}
+}
+
+func TestTensorboardCompletionReasons(t *testing.T) {
+	tests := []struct {
+		name       string
+		phase      batch.JobPhase
+		code       int32
+		message    string
+		wantStatus payload.TensorboardStatus
+		wantReason payload.TensorboardStatusReason
+	}{
+		{"idle", batch.Completed, 0, `{"reason":"idle_expired"}`, payload.TensorboardStatusCompleted, payload.TensorboardStatusReasonIdleExpired},
+		{"maximum runtime", batch.Completed, 0, `{"reason":"runtime_expired"}`, payload.TensorboardStatusCompleted, payload.TensorboardStatusReasonRuntimeExpired},
+		{"Pod finished before Job", batch.Running, 0, `{"reason":"idle_expired"}`, payload.TensorboardStatusCompleted, payload.TensorboardStatusReasonIdleExpired},
+		{"normal exit", batch.Completed, 0, `{"reason":"completed"}`, payload.TensorboardStatusCompleted, payload.TensorboardStatusReasonCompleted},
+		{"invalid message", batch.Completed, 0, "invalid", payload.TensorboardStatusCompleted, payload.TensorboardStatusReasonCompleted},
+		{"failure cannot claim expiry", batch.Failed, 2, `{"reason":"idle_expired"}`, payload.TensorboardStatusFailed, payload.TensorboardStatusReasonJobFailed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			job := &batch.Job{Status: batch.JobStatus{State: batch.JobState{Phase: tt.phase}}}
+			pod := &corev1.Pod{Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{
+				Name: tensorboardTaskName,
+				State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+					ExitCode: tt.code, Message: tt.message,
+				}},
+			}}}}
+			status, reason, _ := getJobStatus(job, pod)
+			if status != tt.wantStatus || reason != tt.wantReason {
+				t.Fatalf("status/reason = %s/%s, want %s/%s", status, reason, tt.wantStatus, tt.wantReason)
+			}
+		})
+	}
+}
+
+func TestTensorboardExpirationUsesContainerStart(t *testing.T) {
+	podStart := metav1.NewTime(time.Now().Add(-2 * time.Hour))
+	containerStart := metav1.NewTime(podStart.Add(time.Hour))
+	pod := &corev1.Pod{Status: corev1.PodStatus{
+		StartTime: &podStart,
+		ContainerStatuses: []corev1.ContainerStatus{{
+			Name:  tensorboardTaskName,
+			State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: containerStart}},
+		}},
+	}}
+	want := containerStart.Add(4 * 24 * time.Hour).Format(time.RFC3339)
+	if got := tensorboardExpiration(pod); got != want {
+		t.Fatalf("expiration = %q, want %q", got, want)
 	}
 }

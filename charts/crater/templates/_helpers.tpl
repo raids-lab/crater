@@ -69,6 +69,7 @@ Generate backend config with images from top-level images section
   "imagePullPolicy" .Values.imagePullPolicy
   "imagePullSecrets" .Values.imagePullSecrets
   "ingressAuthEnabled" .Values.tensorboard.ingressAuthEnabled
+  "idleTimeoutSeconds" .Values.tensorboard.idleTimeoutSeconds
   "nodeSelector" .Values.tensorboard.nodeSelector
   "tolerations" .Values.tensorboard.tolerations
   "affinity" .Values.tensorboard.affinity

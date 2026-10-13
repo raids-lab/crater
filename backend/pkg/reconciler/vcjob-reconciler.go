@@ -112,7 +112,7 @@ func podGroupPhaseChanged() predicate.Predicate {
 }
 
 func shouldReconcileVCJob(object client.Object) bool {
-	return object.GetLabels()[crclient.LabelKeyTaskType] != "tensorboard"
+	return object.GetLabels()[crclient.LabelKeyTaskType] != string(model.JobTypeTensorboard)
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to

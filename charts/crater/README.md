@@ -245,8 +245,9 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | storage.pvcName | string | `"crater-rw-storage"` | PVC name (existing or created, also used in backendConfig) |
 | storage.request | string | `"10Gi"` | If create, Storage request size |
 | storage.storageClass | string | `"nfs"` | If create, Storage class name (e.g. cephfs, nfs, must support ReadWriteMany) |
-| tensorboard | object | `{"affinity":{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"DoesNotExist"}]},"weight":100}]}},"ingressAuthEnabled":true,"nodeSelector":{},"tolerations":[]}` | Scheduling and access policy for dynamically created TensorBoard Volcano Jobs |
+| tensorboard | object | `{"affinity":{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"DoesNotExist"}]},"weight":100}]}},"idleTimeoutSeconds":57600,"ingressAuthEnabled":true,"nodeSelector":{},"tolerations":[]}` | Scheduling and access policy for dynamically created TensorBoard Volcano Jobs |
 | tensorboard.affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"DoesNotExist"}]},"weight":100}]}}` | Prefer nodes without GPUs while still allowing the scheduler to use other eligible nodes |
+| tensorboard.idleTimeoutSeconds | int | `57600` | Finish a panel after this many seconds without user HTTP access (16 hours by default); probes do not renew it |
 | tensorboard.ingressAuthEnabled | bool | `true` | Protect every TensorBoard Ingress request through the Crater authentication endpoint |
 | tensorboard.nodeSelector | object | `{}` | Node selector applied only to TensorBoard Pods |
 | tensorboard.tolerations | list | `[]` | Tolerations applied only to TensorBoard Pods |

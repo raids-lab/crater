@@ -17,11 +17,13 @@ limitations under the License.
 package tensorboard
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
@@ -203,7 +205,8 @@ func (mgr *TensorboardMgr) UserGetSourceConfig(c *gin.Context) {
 // UserCreate provisions a TensorBoard Volcano Job, Service, and Ingress.
 //
 //	@Summary		创建 TensorBoard 面板
-//	@Description	从当前用户个人空间的日志目录创建面板，也可关联一个或多个来源任务
+//	@Description	Create a named TensorBoard panel from a personal log directory or owned source jobs.
+//	@Description	Name is required (1-40 characters); duplicate names are allowed.
 //	@Tags			TensorBoard
 //	@Accept			json
 //	@Produce		json
@@ -218,6 +221,15 @@ func (mgr *TensorboardMgr) UserGetSourceConfig(c *gin.Context) {
 func (mgr *TensorboardMgr) UserCreate(c *gin.Context) {
 	var req payload.CreateTensorboardReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		var validationErrors validator.ValidationErrors
+		if errors.As(err, &validationErrors) {
+			for _, fieldError := range validationErrors {
+				if fieldError.StructField() == "Name" && fieldError.Tag() == "required" {
+					resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("name is required"))
+					return
+				}
+			}
+		}
 		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
 		return
 	}

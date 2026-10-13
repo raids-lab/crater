@@ -26,6 +26,8 @@ modelDownload:
 
 # Image configuration for dynamically created TensorBoard workloads
 tensorboard:
+  # Seconds without user HTTP requests before normal completion; probes do not renew activity
+  idleTimeoutSeconds: 57600
   # Full image reference, including its immutable tag or digest
   image: docker.io/tensorflow/tensorflow:2.20.0
   # Kubernetes image pull policy: Always, IfNotPresent, or Never

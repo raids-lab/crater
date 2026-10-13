@@ -17,6 +17,7 @@ import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
 
 export const MAX_TENSORBOARD_SOURCE_JOBS = 10
 export const MAX_ACTIVE_TENSORBOARDS = 10
+export const MAX_TENSORBOARD_NAME_LENGTH = 40
 
 export interface TensorboardSourceJobReq {
   jobName: string
@@ -24,6 +25,7 @@ export interface TensorboardSourceJobReq {
 }
 
 export interface CreateTensorboardReq {
+  name: string
   sourceJobName?: string
   sourceJobNames?: string[]
   sourceJobs?: TensorboardSourceJobReq[]
@@ -31,22 +33,30 @@ export interface CreateTensorboardReq {
 }
 
 export interface CreateTensorboardResp {
+  name: string
   tensorboardId: string
   accessPath: string
 }
 
-export type TensorboardStatus = 'pending' | 'starting' | 'ready' | 'failed' | 'expired'
+export type TensorboardStatus =
+  | 'pending'
+  | 'starting'
+  | 'ready'
+  | 'failed'
+  | 'completed'
+  | 'expired'
 
 export type TensorboardStatusReason =
-  | 'deployment_failed'
-  | 'deployment_starting'
   | 'waiting_for_schedule'
   | 'pod_starting'
   | 'job_failed'
   | 'runtime_expired'
+  | 'idle_expired'
+  | 'completed'
   | 'ready'
 
 export interface TensorboardInfo {
+  name: string
   id: string
   expiration?: string
   createdAt: string

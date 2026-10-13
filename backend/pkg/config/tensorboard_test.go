@@ -16,7 +16,11 @@ limitations under the License.
 
 package config
 
-import "testing"
+import (
+	"testing"
+
+	"k8s.io/utils/ptr"
+)
 
 func TestTensorboardConfigValidationErrors(t *testing.T) {
 	t.Parallel()
@@ -27,6 +31,8 @@ func TestTensorboardConfigValidationErrors(t *testing.T) {
 		wantErrors int
 	}{
 		{name: "omitted", config: TensorboardConfig{}, wantErrors: 0},
+		{name: "zero idle timeout", config: TensorboardConfig{IdleTimeoutSeconds: ptr.To(int64(0))}, wantErrors: 1},
+		{name: "negative idle timeout", config: TensorboardConfig{IdleTimeoutSeconds: ptr.To(int64(-1))}, wantErrors: 1},
 		{
 			name: "valid",
 			config: TensorboardConfig{
@@ -64,6 +70,18 @@ func TestTensorboardConfigValidationErrors(t *testing.T) {
 				t.Fatalf("validation error count = %d, want %d", got, tt.wantErrors)
 			}
 		})
+	}
+}
+
+func TestTensorboardIdleTimeoutDefaultsAndOverride(t *testing.T) {
+	t.Parallel()
+	defaultConfig := TensorboardConfig{}
+	if defaultConfig.GetIdleTimeoutSeconds() != 16*60*60 {
+		t.Fatal("default idle timeout must be sixteen hours")
+	}
+	custom := TensorboardConfig{IdleTimeoutSeconds: ptr.To(int64(3600))}
+	if custom.GetIdleTimeoutSeconds() != 3600 {
+		t.Fatal("configured idle timeout was ignored")
 	}
 }
 

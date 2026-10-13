@@ -17,16 +17,18 @@ import { type TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
 
 import { type TensorboardStatus, type TensorboardStatusReason } from '@/services/api/tensorboard'
+import { JobPhase } from '@/services/api/vcjob'
 
+import { getJobPhaseLabel } from './job-phase-badge'
 import { PhaseBadge, PhaseBadgeData } from './phase-badge'
 
 const statusReasonTranslationKeys: Record<TensorboardStatusReason, string> = {
-  deployment_failed: 'tensorboard.statusReason.deploymentFailed',
-  deployment_starting: 'tensorboard.statusReason.deploymentStarting',
   waiting_for_schedule: 'tensorboard.statusReason.waitingForSchedule',
   pod_starting: 'tensorboard.statusReason.podStarting',
   job_failed: 'tensorboard.statusReason.jobFailed',
   runtime_expired: 'tensorboard.statusReason.runtimeExpired',
+  idle_expired: 'tensorboard.statusReason.idleExpired',
+  completed: 'tensorboard.statusReason.completed',
   ready: 'tensorboard.statusReason.ready',
 }
 
@@ -49,6 +51,8 @@ export const getTensorboardStatusDescription = (
       return t('tensorboard.status.readyDescription')
     case 'failed':
       return t('tensorboard.status.failedDescription')
+    case 'completed':
+      return t('tensorboard.statusReason.completed')
     case 'expired':
       return t('tensorboard.status.expiredDescription')
     default:
@@ -84,6 +88,12 @@ export const getTensorboardStatusLabel = (
       return {
         label: t('tensorboard.status.failed'),
         color: 'text-highlight-red bg-highlight-red/20',
+        description: getTensorboardStatusDescription(status, statusReason, t),
+      }
+    case 'completed':
+      return {
+        ...getJobPhaseLabel(JobPhase.Completed),
+        label: t('tensorboard.status.completed'),
         description: getTensorboardStatusDescription(status, statusReason, t),
       }
     case 'expired':
