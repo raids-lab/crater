@@ -75,7 +75,7 @@ export default function VersionPage() {
         </div>
 
         {/* Third section: Version information */}
-        <div className="mb-12 flex flex-col items-center justify-center gap-4 text-base md:mb-16 md:text-lg">
+        <div className="mb-6 flex flex-col items-center justify-center gap-4 text-base md:text-lg">
           {/* Frontend version row */}
           <div className="flex flex-col items-center gap-2 md:flex-row md:gap-8">
             {/* Frontend version */}
