@@ -34,7 +34,7 @@ type ListOptions struct {
 	UserID        uint
 }
 
-// List applies permission, type, search, and owner filters before pagination.
+// List canonicalizes permission-scoped resources before display filters and pagination.
 // Sort expressions are selected by the handler's whitelist and always include ID
 // as a tie-breaker so adjacent pages remain stable when timestamps are equal.
 func List(ctx context.Context, options *ListOptions) ([]*model.Dataset, int64, error) {
@@ -42,8 +42,10 @@ func List(ctx context.Context, options *ListOptions) ([]*model.Dataset, int64, e
 		return []*model.Dataset{}, 0, nil
 	}
 
-	datasetsQuery := query.Dataset.WithContext(ctx).UnderlyingDB().Model(&model.Dataset{}).
-		Where("id IN ?", options.AccessibleIDs)
+	datasetsQuery := CanonicalListScope(
+		query.Dataset.WithContext(ctx).UnderlyingDB().Model(&model.Dataset{}).
+			Where("id IN ?", options.AccessibleIDs),
+	)
 
 	if options.Type != "" {
 		datasetsQuery = datasetsQuery.Where("type = ?", options.Type)

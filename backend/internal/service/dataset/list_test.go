@@ -35,7 +35,7 @@ func setupListTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}
-	if err := db.AutoMigrate(&model.User{}, &model.Dataset{}); err != nil {
+	if err := db.AutoMigrate(&model.User{}, &model.Dataset{}, &model.ModelDownload{}); err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
 	query.SetDefault(db)

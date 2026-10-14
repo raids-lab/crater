@@ -11,6 +11,7 @@ import (
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/pagination"
 	"github.com/raids-lab/crater/internal/resputil"
+	datasetservice "github.com/raids-lab/crater/internal/service/dataset"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -95,7 +96,7 @@ func (mgr *DatasetMgr) GetAllDatasetPage(c *gin.Context) {
 		return
 	}
 
-	db := query.Dataset.WithContext(c).UnderlyingDB().Model(&model.Dataset{})
+	db := datasetservice.CanonicalListScope(query.Dataset.WithContext(c).UnderlyingDB().Model(&model.Dataset{}))
 	if len(types) > 0 {
 		db = db.Where("type IN ?", types)
 	}
