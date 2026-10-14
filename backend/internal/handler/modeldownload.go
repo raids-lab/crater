@@ -80,6 +80,8 @@ func (mgr *ModelDownloadMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *ModelDownloadMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/models/download", mgr.CreateDownload)
 	g.GET("/models/downloads", mgr.ListDownloads)
+	g.GET("/models/downloads/page", mgr.ListDownloadsPage)
+	g.GET("/models/downloads/summary", mgr.ListDownloadsSummary)
 	g.GET("/models/downloads/:id", mgr.GetDownload)
 	g.GET("/models/downloads/:id/logs", mgr.GetDownloadLogs)
 	g.POST("/models/downloads/:id/retry", mgr.RetryDownload)

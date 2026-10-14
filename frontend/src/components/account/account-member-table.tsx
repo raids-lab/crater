@@ -245,14 +245,19 @@ export function AccountMemberTable({
     retry: false, // Disable auto-retry to show errors immediately
   })
 
+  const refreshAccountMembers = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['account', accountId, 'users'] }),
+      queryClient.invalidateQueries({ queryKey: ['account', accountId, 'billing-members'] }),
+      queryClient.invalidateQueries({ queryKey: ['usersOutOfProject', accountId] }),
+    ])
+
   const { mutate: addUser } = useMutation({
     mutationFn: (users: IUserInAccountCreate[]) =>
       Promise.all(users.map((user) => addAccountMember(accountId, user))),
     onSuccess: async () => {
       toast.success(t('accountDetail.toast.added'))
-      await queryClient.invalidateQueries({
-        queryKey: ['account', accountId, 'users'],
-      })
+      await refreshAccountMembers()
     },
     onError: handleAccountMemberMutationError,
   })
@@ -279,26 +284,20 @@ export function AccountMemberTable({
             }
             toast.success(t('accountDetail.toast.tokenUpdated'))
             // Refresh member list after token update (token now has correct permissions)
-            await queryClient.invalidateQueries({
-              queryKey: ['account', accountId, 'users'],
-            })
+            await refreshAccountMembers()
             return
           }
         } catch {
           // Token update failed, but user update succeeded
           toast.error(t('accountDetail.toast.tokenUpdateFailed'))
           // Still refresh cache even if token update failed (user is still in account)
-          await queryClient.invalidateQueries({
-            queryKey: ['account', accountId, 'users'],
-          })
+          await refreshAccountMembers()
           return
         }
       }
 
       // Refresh member list if not updating self
-      await queryClient.invalidateQueries({
-        queryKey: ['account', accountId, 'users'],
-      })
+      await refreshAccountMembers()
     },
     onError: handleAccountMemberMutationError,
   })
@@ -347,9 +346,7 @@ export function AccountMemberTable({
       }
 
       // Refresh member list if not deleting self
-      await queryClient.invalidateQueries({
-        queryKey: ['account', accountId, 'users'],
-      })
+      await refreshAccountMembers()
     },
     onError: handleAccountMemberMutationError,
   })
@@ -370,24 +367,17 @@ export function AccountMemberTable({
     }))
   }, [accountUsersQuery.data, billingMembersQuery.data])
 
-  const mergedAccountUsersQuery = useMemo(
-    () =>
-      ({
-        data: mergedAccountUsers,
-        isLoading: accountUsersQuery.isLoading || (billingEnabled && billingMembersQuery.isLoading),
-        dataUpdatedAt: Math.max(accountUsersQuery.dataUpdatedAt, billingMembersQuery.dataUpdatedAt),
-        refetch: accountUsersQuery.refetch,
-      }) as UseQueryResult<AccountMemberRow[], Error>,
-    [
-      accountUsersQuery.dataUpdatedAt,
-      accountUsersQuery.isLoading,
-      accountUsersQuery.refetch,
-      billingEnabled,
-      billingMembersQuery.dataUpdatedAt,
-      billingMembersQuery.isLoading,
-      mergedAccountUsers,
-    ]
-  )
+  const mergedAccountUsersQuery = {
+    data: mergedAccountUsers,
+    isLoading: accountUsersQuery.isLoading || (billingEnabled && billingMembersQuery.isLoading),
+    isError: accountUsersQuery.isError || (billingEnabled && billingMembersQuery.isError),
+    error: accountUsersQuery.error ?? billingMembersQuery.error,
+    dataUpdatedAt: Math.max(accountUsersQuery.dataUpdatedAt, billingMembersQuery.dataUpdatedAt),
+    refetch: () => {
+      void accountUsersQuery.refetch()
+      if (billingEnabled) void billingMembersQuery.refetch()
+    },
+  } as UseQueryResult<AccountMemberRow[], Error>
 
   const { data: usersOutOfProjectData, isLoading: isLoadingUsersOutOfProject } = useQuery({
     queryKey: ['usersOutOfProject', accountId, isAdminView ? 'admin' : 'user'],

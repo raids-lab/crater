@@ -158,8 +158,13 @@ export const apiAdminResetAllBillingBalances = () =>
     IResponse<{ accountsAffected: number; userAccountsAffected: number; issuedAt: string }>
   >('admin/system-config/billing/reset-all')
 
-export const apiBillingPriceList = () =>
-  apiV1Get<IResponse<BillingPriceResource[]>>('resources/billing/prices')
+export const apiBillingPriceList = (resourceIds?: number[]) => {
+  const searchParams = new URLSearchParams()
+  resourceIds?.forEach((resourceId) => searchParams.append('resource_id', String(resourceId)))
+  return apiV1Get<IResponse<BillingPriceResource[]>>('resources/billing/prices', {
+    searchParams: resourceIds?.length ? searchParams : undefined,
+  })
+}
 
 export const apiAdminUpdateResourceUnitPrice = (id: number, unitPrice: number) =>
   apiV1Put<IResponse<unknown>>(`admin/resources/${id}/billing/unit-price`, { unitPrice })

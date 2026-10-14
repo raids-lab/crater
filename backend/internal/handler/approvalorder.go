@@ -46,7 +46,8 @@ func (mgr *ApprovalOrderMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ApprovalOrderMgr) RegisterProtected(g *gin.RouterGroup) {
 	// RESTful 风格的路由设计
-	g.GET("", mgr.GetMyApprovalOrders)               // 获取我的审批工单列表
+	g.GET("", mgr.GetMyApprovalOrders)               // 获取我的审批工单列表（兼容旧接口）
+	g.GET("/page", mgr.ListMyApprovalOrdersPage)     // 获取我的审批工单分页
 	g.GET("/:id", mgr.GetApprovalOrder)              // 通过ID获取审批工单详情
 	g.POST("", mgr.CreateApprovalOrder)              // 创建审批工单
 	g.PUT("/:id", mgr.UpdateApprovalOrder)           // 更新审批工单
@@ -56,7 +57,9 @@ func (mgr *ApprovalOrderMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *ApprovalOrderMgr) RegisterAdmin(g *gin.RouterGroup) {
 	// 管理员接口
-	g.GET("", mgr.ListAllApprovalOrders)                // 获取所有审批工单
+	g.GET("", mgr.ListAllApprovalOrders)                // 获取所有审批工单（兼容旧接口）
+	g.GET("/page", mgr.ListAllApprovalOrdersPage)       // 获取所有审批工单分页
+	g.GET("/summary", mgr.GetApprovalOrderSummary)      // 获取审批工单聚合统计
 	g.GET("/:id", mgr.GetApprovalOrderAdmin)            // 管理员通过ID获取审批工单详情
 	g.PUT("/:id/review", mgr.ReviewApprovalOrderAdmin)  // 管理员审核审批工单
 	g.PUT("/check", mgr.UpdateApprovalOrderByJobStatus) // 管理员检查待审批的作业锁定工单有效性

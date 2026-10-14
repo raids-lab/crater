@@ -10,8 +10,9 @@ export const Route = createFileRoute('/portal/jobs/detail/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
   errorComponent: () => <NotFound />,
-  loader: async ({ params, context: { queryClient } }) => {
-    const { data } = await queryClient.ensureQueryData(queryJobDetail(params.name))
+  loader: async ({ params, location, context: { queryClient } }) => {
+    const id = detailValidateSearch(location.search).id
+    const { data } = await queryClient.ensureQueryData(queryJobDetail(params.name, id))
     return {
       crumb: data.name ?? params.name,
     }
@@ -20,13 +21,14 @@ export const Route = createFileRoute('/portal/jobs/detail/$name')({
 
 function RouteComponent() {
   const jobName = Route.useParams().name
-  const { tab } = Route.useSearch()
+  const { tab, id } = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
     <BaseCore
       jobName={jobName}
+      jobID={id}
       currentTab={tab}
-      setCurrentTab={(tab) => navigate(detailLinkOptions(tab))}
+      setCurrentTab={(tab) => navigate(detailLinkOptions(tab, id))}
     />
   )
 }

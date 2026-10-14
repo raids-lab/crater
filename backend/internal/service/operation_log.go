@@ -5,18 +5,10 @@ import (
 	"time"
 
 	"gorm.io/datatypes"
-	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 )
-
-//nolint:gochecknoinits // Operation logs need schema migration during service registration.
-func init() {
-	if err := query.GetDB().AutoMigrate(&model.OperationLog{}); err != nil {
-		klog.Fatalf("auto migrate operation_logs failed: %v", err)
-	}
-}
 
 type OperationLogService struct{}
 
@@ -50,6 +42,21 @@ func (s *OperationLogService) List(
 	search string,
 	startTime,
 	endTime *time.Time,
+) ([]*model.OperationLog, int64, error) {
+	return s.ListPage(ctx, page, pageSize, operator, opType, target, search, startTime, endTime, "created_at DESC")
+}
+
+func (s *OperationLogService) ListPage(
+	ctx context.Context,
+	page,
+	pageSize int,
+	operator,
+	opType,
+	target,
+	search string,
+	startTime,
+	endTime *time.Time,
+	sortClause string,
 ) ([]*model.OperationLog, int64, error) {
 	var logs []*model.OperationLog
 	var total int64
@@ -87,7 +94,7 @@ func (s *OperationLogService) List(
 	}
 
 	offset := (page - 1) * pageSize
-	err = db.Order("created_at desc").Offset(offset).Limit(pageSize).Find(&logs).Error
+	err = db.Order(sortClause).Offset(offset).Limit(pageSize).Find(&logs).Error
 	return logs, total, err
 }
 

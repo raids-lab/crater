@@ -134,6 +134,7 @@ func (mgr *AccountMgr) registerUserMemberRoutes(g *gin.RouterGroup) {
 }
 
 func (mgr *AccountMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/page", mgr.GetAdminAccountPage)
 	g.GET("", mgr.AdminListAccounts)
 	g.POST("", mgr.CreateAccount)
 	g.GET(":aid", mgr.GetAccountByID)

@@ -58,6 +58,9 @@ func (b *Backend) RegisterService(conf *handler.RegisterConfig) {
 	for _, mgr := range managers {
 		mgr.RegisterProtected(protectedRouter.Group(mgr.GetName()))
 	}
+	// Standard VCJob details use this cursor-based Pod snapshot route. EMIAS
+	// registers its task-ID-based snapshot route through the AIJob manager.
+	handler.NewPodSnapshotHandler(conf).Register(protectedRouter.Group("vcjobs"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///

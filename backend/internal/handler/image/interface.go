@@ -35,17 +35,20 @@ func (mgr *ImagePackMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/kaniko", mgr.UserListKaniko)
+	g.GET("/kaniko/page", mgr.UserListKanikoPage)
 	g.POST("/kaniko", mgr.UserCreateByPipApt)
 	g.POST("/dockerfile", mgr.UserCreateByDockerfile)
 	g.POST("/envd", mgr.UserCreateByEnvd)
 	g.POST("/remove", mgr.UserRemoveKanikoByID)
 
 	g.GET("/image", mgr.UserListImage)
+	g.GET("/image/page", mgr.UserListImagePage)
 	g.POST("/image", mgr.UserUploadImage)
 	g.DELETE("/image/:id", mgr.DeleteImageByID)
 
 	g.GET("/available", mgr.ListAvailableImages)
 	g.GET("/getbyname", mgr.GetKanikoByImagePackName)
+	g.GET("/getbyid", mgr.GetKanikoByID)
 	g.POST("/quota", mgr.UpdateProjectQuota)
 
 	g.GET("/podname", mgr.GetImagepackPodName)
@@ -70,7 +73,10 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/kaniko", mgr.AdminListKaniko)
+	g.GET("/kaniko/page", mgr.AdminListKanikoPage)
+	g.GET("/getbyid", mgr.AdminGetKanikoByID)
 	g.GET("/image", mgr.AdminListImage)
+	g.GET("/image/page", mgr.AdminListImagePage)
 	g.POST("/deleteimage", mgr.AdminDeleteImageByIDList)
 	g.POST("/remove", mgr.AdminRemoveKanikoByIDList)
 	g.POST("/type", mgr.AdminChangeImageTaskType)

@@ -15,10 +15,10 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Database, Hourglass, ListChecks } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -40,14 +40,18 @@ import {
   ApprovalOrderOperations,
 } from '@/components/approval-order/approval-order-operations'
 import { SectionCards } from '@/components/metrics/section-cards'
+import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
 
 import {
   type ApprovalOrder,
-  listApprovalOrders,
+  apiGetApprovalOrderPage,
+  apiGetApprovalOrderSummary,
   reviewApprovalOrder,
 } from '@/services/api/approvalorder'
+import type { IPage } from '@/services/types'
 
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { DurationDialog } from '../../jobs/-components/duration-dialog'
 
@@ -77,6 +81,9 @@ function RouteComponent() {
 
   const [rejectReason, setRejectReason] = useState('')
   const [rejectTarget, setRejectTarget] = useState<ApprovalOrder | null>(null)
+  const tableState = useRemoteTableState('admin_approvalorder_management', {
+    sorting: [{ id: 'createdAt', desc: true }],
+  })
 
   // 使用锁定管理器 hook
   const {
@@ -90,29 +97,22 @@ function RouteComponent() {
     setIsDelayDialogOpen,
   } = useApprovalOrderLock()
 
-  const query = useQuery({
-    queryKey: ['admin', 'approvalorders'],
-    queryFn: () => listApprovalOrders(),
-    select: (res) =>
-      [...(res.data ?? [])].sort((a, b) => {
-        // 首先按状态排序：Pending > Approved > Rejected
-        const statusOrder = { Pending: 0, Approved: 1, Rejected: 2 }
-        const aOrder = statusOrder[a.status as keyof typeof statusOrder] ?? 3
-        const bOrder = statusOrder[b.status as keyof typeof statusOrder] ?? 3
-
-        if (aOrder !== bOrder) {
-          return aOrder - bOrder
-        }
-
-        // 在同一状态内，按创建时间降序排列（最新的在前）
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      }),
+  const query = useQuery<IPage<ApprovalOrder>, Error>({
+    queryKey: buildRemoteQueryKey('approval-orders-admin', tableState.params),
+    queryFn: ({ signal }) =>
+      apiGetApprovalOrderPage(tableState.params, true, signal).then((res) => res.data),
+    placeholderData: keepPreviousData,
+  })
+  const summaryQuery = useQuery({
+    queryKey: ['approval-order-summary'],
+    queryFn: ({ signal }) => apiGetApprovalOrderSummary(signal).then((res) => res.data),
   })
 
   const refetchOrders = () => {
     queryClient.invalidateQueries({
-      queryKey: ['admin', 'approvalorders'],
+      queryKey: ['remote-list', 'approval-orders-admin'],
     })
+    queryClient.invalidateQueries({ queryKey: ['approval-order-summary'] })
   }
 
   // 批准操作（仅用于无需锁定的场景）
@@ -219,46 +219,27 @@ function RouteComponent() {
 
   // 统计卡片数据
 
-  const totalPending = useMemo(
-    () => (query.data ?? []).filter((o) => o.status === 'Pending').length,
-    [query.data]
-  )
-  const pendingJobDelay = useMemo(
-    () =>
-      (query.data ?? []).filter(
-        (o) =>
-          o.status === 'Pending' &&
-          o.type === 'job' &&
-          Number(o.content?.approvalorderExtensionHours) > 0
-      ).length,
-    [query.data]
-  )
-  const pendingDataset = useMemo(
-    () => (query.data ?? []).filter((o) => o.status === 'Pending' && o.type === 'dataset').length,
-    [query.data]
-  )
-
   return (
     <>
       <SectionCards
         items={[
           {
             title: '待审批工单',
-            value: totalPending,
+            value: summaryQuery.data?.totalPending ?? 0,
             className: 'text-highlight-blue',
             description: '所有状态为待审批的工单总数',
             icon: ListChecks,
           },
           {
             title: '作业锁定待审批',
-            value: pendingJobDelay,
+            value: summaryQuery.data?.pendingJobDelay ?? 0,
             className: 'text-highlight-purple',
             description: '类型为作业且申请了锁定的待审批工单数',
             icon: Hourglass,
           },
           {
             title: '数据迁移待审批',
-            value: pendingDataset,
+            value: summaryQuery.data?.pendingDataset ?? 0,
             className: 'text-highlight-emerald',
             description: '类型为数据集的数据迁移待审批工单数',
             icon: Database,
@@ -268,6 +249,7 @@ function RouteComponent() {
       />
       <ApprovalOrderDataTable
         query={query}
+        remoteState={tableState}
         storageKey="admin_approvalorder_management"
         info={{
           title: t('ApprovalOrderTable.info.title'),

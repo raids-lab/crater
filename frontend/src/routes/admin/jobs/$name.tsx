@@ -11,13 +11,14 @@ export const Route = createFileRoute('/admin/jobs/$name')({
 
 function RouteComponent() {
   const jobName = Route.useParams().name
-  const { tab } = Route.useSearch()
+  const { tab, id } = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
     <BaseCore
       jobName={jobName}
+      jobID={id}
       currentTab={tab}
-      setCurrentTab={(tab) => navigate(detailLinkOptions(tab))}
+      setCurrentTab={(tab) => navigate(detailLinkOptions(tab, id))}
     />
   )
 }

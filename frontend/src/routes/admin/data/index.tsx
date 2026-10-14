@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useNavigate } from '@tanstack/react-router'
@@ -49,11 +49,15 @@ import DatasetTypeLabel, { DatasetType } from '@/components/badge/dataset-tybe-b
 import { TimeDistance } from '@/components/custom/time-distance'
 import TooltipLink from '@/components/label/tooltip-link'
 import UserLabel from '@/components/label/user-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { IDataset, apiAdminGetDataset, apiDatasetDelete } from '@/services/api/dataset'
+import { IDataset, apiAdminGetDatasetPaged, apiDatasetDelete } from '@/services/api/dataset'
+import type { IPage } from '@/services/types'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 export const Route = createFileRoute('/admin/data/')({
   component: RouteComponent,
@@ -75,8 +79,8 @@ const getRoles = (t: (key: string) => string) => [
 ]
 
 const getToolbarConfig = (t: (key: string) => string): DataTableToolbarConfig => ({
-  filterInput: {
-    key: 'name',
+  globalSearch: {
+    enabled: true,
     placeholder: t('adminDatasetTable.toolbar.filter.placeholder'),
   },
   filterOptions: [
@@ -84,6 +88,7 @@ const getToolbarConfig = (t: (key: string) => string): DataTableToolbarConfig =>
       key: 'type',
       title: t('adminDatasetTable.toolbar.filter.title'),
       option: getRoles(t),
+      remoteFacets: true,
     },
   ],
   getHeader: (key: string): string => {
@@ -107,18 +112,20 @@ const getToolbarConfig = (t: (key: string) => string): DataTableToolbarConfig =>
 function RouteComponent() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const tableState = useRemoteTableState('admin_dataset_management')
 
-  const query = useQuery({
-    queryKey: ['admin', 'datasets'],
-    queryFn: () => apiAdminGetDataset(),
-    select: (res) => res.data,
+  const query = useQuery<IPage<IDataset>, Error>({
+    queryKey: buildRemoteQueryKey('admin-datasets', tableState.params),
+    queryFn: ({ signal }) =>
+      apiAdminGetDatasetPaged(tableState.params, signal).then((res) => res.data),
+    placeholderData: keepPreviousData,
   })
   const navigate = useNavigate()
   const { mutate: deleteDataset } = useMutation({
     mutationFn: (dataset: IDataset) => apiDatasetDelete(dataset.id),
     onSuccess: async (_, dataset) => {
       await queryClient.invalidateQueries({
-        queryKey: ['admin', 'datasets'],
+        queryKey: ['remote-list', 'admin-datasets'],
       })
       toast.success(t('adminDatasetTable.toast.deleteSuccess', { name: dataset.name }))
     },
@@ -162,6 +169,7 @@ function RouteComponent() {
     },
     {
       accessorKey: 'nickname',
+      enableSorting: false,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('adminDatasetTable.column.creator')} />
       ),
@@ -251,15 +259,16 @@ function RouteComponent() {
   ]
 
   return (
-    <DataTable
+    <RemoteDataTable
       info={{
         title: t('adminDatasetTable.info.title'),
         description: t('adminDatasetTable.info.description'),
       }}
-      storageKey="admin_dataset_management"
       query={query}
+      state={tableState}
       columns={columns}
       toolbarConfig={getToolbarConfig(t)}
+      getRowId={(row) => String(row.id)}
     />
   )
 }

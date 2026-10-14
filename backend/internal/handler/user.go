@@ -49,7 +49,9 @@ func (mgr *UserMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("/email/verified", mgr.CheckIfEmailVerified)
 }
 
+//nolint:dupl // Route registration remains explicit so each manager exposes a readable API surface.
 func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/page", mgr.ListUserPage)
 	g.GET("", mgr.ListUser)
 	g.GET("/billing/summary", mgr.ListUserBillingSummary)
 	g.GET("/baseinfo", mgr.ListUserBaseInfo)

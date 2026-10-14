@@ -1,4 +1,10 @@
-import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  type UseQueryResult,
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import type { TFunction } from 'i18next'
@@ -28,8 +34,9 @@ import UserRoleBadge from '@/components/badge/user-role-badge'
 import UserStatusBadge from '@/components/badge/user-status-badge'
 import { UserPointsTooltip } from '@/components/custom/user-points-tooltip'
 import UserLabel from '@/components/label/user-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 import {
   AlertDialog,
@@ -46,13 +53,16 @@ import {
 import { ProjectStatus } from '@/services/api/account'
 import {
   apiAdminUserDelete,
-  apiAdminUserList,
+  apiAdminUserListPaged,
   apiAdminUserUpdateRole,
 } from '@/services/api/admin/user'
 import { Role } from '@/services/api/auth'
 import { apiAdminGetUserBillingSummary } from '@/services/api/billing'
 import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 import { USER_BAN_STATUS_REFETCH_INTERVAL } from '@/services/api/user-ban'
+import type { IPage } from '@/services/types'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { atomUserInfo } from '@/utils/store'
 import { showErrorToast } from '@/utils/toast'
@@ -72,7 +82,7 @@ const roles = [
 ]
 
 const createToolbarConfig = (t: TFunction): DataTableToolbarConfig => ({
-  filterInput: { placeholder: '搜索用户名', key: 'name' },
+  globalSearch: { enabled: true, placeholder: t('accountDetail.table.filter.searchUser') },
   filterOptions: [
     { key: 'role', title: '权限', option: roles },
     {
@@ -109,6 +119,7 @@ function UserList() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const userInfo = useAtomValue(atomUserInfo)
+  const tableState = useRemoteTableState('admin_user')
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [adjustUser, setAdjustUser] = useState<AdminUserRow | null>(null)
@@ -125,22 +136,27 @@ function UserList() {
   const billingEnabled = billingStatus?.featureEnabled ?? false
 
   const userQuery = useQuery({
-    queryKey: ['admin', 'userlist'],
-    queryFn: apiAdminUserList,
+    queryKey: buildRemoteQueryKey('admin-users', tableState.params),
+    queryFn: ({ signal }) => apiAdminUserListPaged(tableState.params, signal),
     refetchInterval: USER_BAN_STATUS_REFETCH_INTERVAL,
-    select: (res): AdminUserRow[] =>
-      res.data.map((item) => ({
-        id: item.id,
-        name: item.name,
-        role: item.role.toString(),
-        status: item.status.toString(),
-        banned: item.banned,
-        permanentBanned: item.permanentBanned,
-        bannedTimestamp: item.bannedTimestamp,
-        banRestrictions: item.banRestrictions,
-        extraBalance: item.extraBalance,
-        attributes: item.attributes,
-      })),
+    select: (res) => ({
+      ...res.data,
+      items: res.data.items.map(
+        (item): AdminUserRow => ({
+          id: item.id,
+          name: item.name,
+          role: item.role.toString(),
+          status: item.status.toString(),
+          banned: item.banned,
+          permanentBanned: item.permanentBanned,
+          bannedTimestamp: item.bannedTimestamp,
+          banRestrictions: item.banRestrictions,
+          extraBalance: item.extraBalance,
+          attributes: item.attributes,
+        })
+      ),
+    }),
+    placeholderData: keepPreviousData,
   })
 
   const billingSummaryQuery = useQuery({
@@ -152,20 +168,29 @@ function UserList() {
   const mergedUserQuery = useMemo(
     () =>
       ({
-        data: (userQuery.data ?? []).map((user) => {
-          const summary = (billingSummaryQuery.data ?? []).find((item) => item.userId === user.id)
-          return {
-            ...user,
-            extraBalance: summary?.extraBalance ?? user.extraBalance,
-            periodFreeTotal: summary?.periodFreeTotal ?? 0,
-            totalIssueAmount: summary?.totalIssueAmount ?? 0,
-            totalAvailable: summary?.totalAvailable ?? 0,
-          }
-        }),
+        data: userQuery.data
+          ? {
+              ...userQuery.data,
+              items: userQuery.data.items.map((user) => {
+                const summary = (billingSummaryQuery.data ?? []).find(
+                  (item) => item.userId === user.id
+                )
+                return {
+                  ...user,
+                  extraBalance: summary?.extraBalance ?? user.extraBalance,
+                  periodFreeTotal: summary?.periodFreeTotal ?? 0,
+                  totalIssueAmount: summary?.totalIssueAmount ?? 0,
+                  totalAvailable: summary?.totalAvailable ?? 0,
+                }
+              }),
+            }
+          : undefined,
         isLoading: userQuery.isLoading || (billingEnabled && billingSummaryQuery.isLoading),
+        isError: userQuery.isError,
+        error: userQuery.error,
         dataUpdatedAt: Math.max(userQuery.dataUpdatedAt, billingSummaryQuery.dataUpdatedAt),
         refetch: userQuery.refetch,
-      }) as unknown as UseQueryResult<AdminUserRow[], Error>,
+      }) as unknown as UseQueryResult<IPage<AdminUserRow>, Error>,
     [
       billingEnabled,
       billingSummaryQuery.data,
@@ -173,6 +198,8 @@ function UserList() {
       billingSummaryQuery.isLoading,
       userQuery.data,
       userQuery.dataUpdatedAt,
+      userQuery.error,
+      userQuery.isError,
       userQuery.isLoading,
       userQuery.refetch,
     ]
@@ -181,7 +208,7 @@ function UserList() {
   const { mutate: deleteUser } = useMutation({
     mutationFn: apiAdminUserDelete,
     onSuccess: async (_, userName) => {
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'userlist'] })
+      await queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-users'] })
       toast.success(t('userTable.deleteSuccess', { name: userName }))
     },
   })
@@ -190,7 +217,7 @@ function UserList() {
     mutationFn: ({ userName, role }: { userName: string; role: Role }) =>
       apiAdminUserUpdateRole(userName, role),
     onSuccess: async (_, variables) => {
-      await queryClient.invalidateQueries({ queryKey: ['admin', 'userlist'] })
+      await queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-users'] })
       toast.success(t('userTable.roleUpdateSuccess', { name: variables.userName }))
     },
   })
@@ -214,6 +241,7 @@ function UserList() {
           <DataTableColumnHeader column={column} title={t('userTable.headers.group')} />
         ),
         cell: ({ row }) => <div>{row.original.attributes.group}</div>,
+        enableSorting: false,
       },
       {
         accessorKey: 'teacher',
@@ -221,6 +249,7 @@ function UserList() {
           <DataTableColumnHeader column={column} title={t('userTable.headers.teacher')} />
         ),
         cell: ({ row }) => <div>{row.original.attributes.teacher}</div>,
+        enableSorting: false,
       },
       {
         accessorKey: 'role',
@@ -253,6 +282,7 @@ function UserList() {
           />
         ),
         filterFn: (row, id, value) => (value as string[]).includes(String(row.getValue(id))),
+        enableSorting: false,
       },
     ]
 
@@ -277,6 +307,7 @@ function UserList() {
             fetchDetail
           />
         ),
+        enableSorting: false,
       })
     }
 
@@ -406,11 +437,12 @@ function UserList() {
 
   return (
     <>
-      <DataTable
+      <RemoteDataTable
         info={{ title: t('userTable.title'), description: t('userTable.description') }}
-        storageKey="admin_user"
         query={mergedUserQuery}
+        state={tableState}
         columns={columns}
+        getRowId={(row) => String(row.id)}
         toolbarConfig={toolbarConfig}
       />
       <UserEditDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} user={editUser} />

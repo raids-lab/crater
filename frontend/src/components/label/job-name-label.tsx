@@ -26,7 +26,7 @@ import TipBadge from '../badge/tip-badge'
 import SimpleTooltip from './simple-tooltip'
 
 interface JobNameCellProps {
-  jobInfo: IJobInfo
+  jobInfo: IJobInfo & { id?: number }
 }
 
 // 格式化锁定日期为中文格式
@@ -38,13 +38,13 @@ const formatLockDate = (timestamp?: string) => {
 const adminJobLinkOptions = linkOptions({
   to: '/admin/jobs/$name',
   params: { name: '' },
-  search: { tab: '' },
+  search: { tab: '', id: undefined as number | undefined },
 })
 
 const portalJobLinkOptions = linkOptions({
   to: '/portal/jobs/detail/$name',
   params: { name: '' },
-  search: { tab: '' },
+  search: { tab: '', id: undefined as number | undefined },
 })
 
 export const JobNameCell = ({ jobInfo }: JobNameCellProps) => {
@@ -74,6 +74,7 @@ export const JobNameCell = ({ jobInfo }: JobNameCellProps) => {
         params={{ name: jobInfo.jobName }}
         search={{
           tab: getJobStateType(jobInfo.status) === JobStatus.NotStarted ? 'event' : undefined,
+          id: jobInfo.id,
         }}
       >
         <div className="flex flex-row items-center">

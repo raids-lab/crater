@@ -15,7 +15,6 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { UseQueryResult } from '@tanstack/react-query'
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -52,7 +51,14 @@ interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElem
     description: string
   }
   storageKey: string
-  query: UseQueryResult<TData[], Error>
+  query: {
+    data?: TData[]
+    error: Error | null
+    isError: boolean
+    isLoading: boolean
+    dataUpdatedAt: number
+    refetch: () => unknown
+  }
   columns: ColumnDef<TData, TValue>[]
   toolbarConfig?: DataTableToolbarConfig
   multipleHandlers?: MultipleHandler<TData>[]
@@ -60,6 +66,8 @@ interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElem
   withI18n?: boolean
   className?: string
   initialColumnVisibility?: VisibilityState
+  paginate?: boolean
+  footer?: React.ReactNode
 }
 
 export function LocalDataTable<TData, TValue>({
@@ -74,6 +82,8 @@ export function LocalDataTable<TData, TValue>({
   withI18n = false,
   className,
   initialColumnVisibility = {},
+  paginate = true,
+  footer,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility)
@@ -164,10 +174,10 @@ export function LocalDataTable<TData, TValue>({
     onColumnFiltersChange: handleColumnFiltersChange,
     onGlobalFilterChange: handleGlobalFilterChange,
     onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    onPaginationChange: paginate ? setPagination : undefined,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getPaginationRowModel: paginate ? getPaginationRowModel() : undefined,
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -175,11 +185,12 @@ export function LocalDataTable<TData, TValue>({
 
   const pageCount = table.getPageCount()
   React.useEffect(() => {
+    if (!paginate) return
     const lastPageIndex = Math.max(pageCount - 1, 0)
     if (pagination.pageIndex > lastPageIndex) {
       setPagination((state) => ({ ...state, pageIndex: lastPageIndex }))
     }
-  }, [pageCount, pagination.pageIndex, setPagination])
+  }, [pageCount, paginate, pagination.pageIndex, setPagination])
 
   return (
     <DataTableShell
@@ -195,6 +206,8 @@ export function LocalDataTable<TData, TValue>({
       errorMessage={error?.message}
       refetch={() => void refetch()}
       dataUpdatedAt={dataUpdatedAt}
+      showPagination={paginate}
+      footer={footer}
     >
       {children}
     </DataTableShell>

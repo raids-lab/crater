@@ -53,6 +53,7 @@ func (mgr *GpuAnalysisMgr) RegisterPublic(_ *gin.RouterGroup)    {}
 func (mgr *GpuAnalysisMgr) RegisterProtected(_ *gin.RouterGroup) {}
 
 func (mgr *GpuAnalysisMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/page", mgr.ListAnalysesPage)
 	g.GET("", mgr.ListAnalyses)
 	g.PUT("/:id/review", mgr.UpdateReviewStatus)
 

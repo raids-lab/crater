@@ -60,8 +60,8 @@ import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
   IJobInfo,
   JobType,
+  apiAIJobDelete,
   apiJobBatchList,
-  apiJobDelete,
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
 
@@ -227,7 +227,7 @@ const ColocateOverview = () => {
   }
 
   const { mutate: deleteTask } = useMutation({
-    mutationFn: apiJobDelete,
+    mutationFn: apiAIJobDelete,
     onSuccess: async () => {
       await refetchTaskList()
       toast.success(t('jobs.toast.deleted'))
@@ -389,7 +389,11 @@ const ColocateOverview = () => {
                     {t('jobs.actions.dropdown.title')}
                   </DropdownMenuLabel>
                   <DropdownMenuItem asChild>
-                    <Link {...portalJobDetailLinkOptions} params={{ name: taskInfo.jobName }}>
+                    <Link
+                      {...portalJobDetailLinkOptions}
+                      params={{ name: taskInfo.jobName }}
+                      search={{ tab: '', id: taskInfo.id }}
+                    >
                       {t('jobs.actions.dropdown.details')}
                     </Link>
                   </DropdownMenuItem>
@@ -447,7 +451,7 @@ const ColocateOverview = () => {
             icon: <Trash2Icon className="text-destructive" />,
             handleSubmit: (rows) => {
               rows.forEach((row) => {
-                deleteTask(row.original.jobName)
+                deleteTask(row.original.id)
               })
             },
             isDanger: true,

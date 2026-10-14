@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
@@ -48,6 +48,8 @@ import { useAccountNameLookup } from '@/components/node/getaccountnickname'
 import { getNodeColumns, nodesToolbarConfig } from '@/components/node/node-list'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { SnapshotControls } from '@/components/query-table/cursor-list'
+import { SnapshotStatus } from '@/components/query-table/snapshot-list'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,7 +69,7 @@ import {
   apiDrainNode,
   apichangeNodeScheduling,
 } from '@/services/api/cluster'
-import { queryNodes } from '@/services/query/node'
+import { apiGetNodeSnapshot } from '@/services/api/snapshot'
 import { queryResources } from '@/services/query/resource'
 
 import { logger } from '@/utils/loglevel'
@@ -77,6 +79,8 @@ import AccountSelect from './-components/account-list'
 export const Route = createFileRoute('/admin/cluster/nodes/')({
   component: NodesForAdmin,
 })
+
+const nodeSnapshotQueryKey = ['admin', 'nodes', 'snapshot'] as const
 
 function NodesForAdmin() {
   const { t, i18n } = useTranslation()
@@ -113,10 +117,10 @@ function NodesForAdmin() {
 
   const refetchTaskList = useCallback(async () => {
     try {
+      await new Promise((resolve) => setTimeout(resolve, 200))
       await Promise.all([
-        new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
-          queryClient.invalidateQueries({ queryKey: ['overview', 'nodes'] })
-        ),
+        queryClient.invalidateQueries({ queryKey: ['overview', 'nodes'] }),
+        queryClient.resetQueries({ queryKey: nodeSnapshotQueryKey, exact: true }),
       ])
     } catch (error) {
       logger.error('更新查询失败', error)
@@ -198,7 +202,25 @@ function NodesForAdmin() {
     },
   })
 
-  const nodeQuery = useQuery(queryNodes())
+  const nodeSnapshotQuery = useInfiniteQuery({
+    queryKey: nodeSnapshotQueryKey,
+    initialPageParam: '',
+    queryFn: ({ pageParam }) => apiGetNodeSnapshot({ limit: 50, cursor: pageParam || undefined }),
+    getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,
+  })
+  const nodes = useMemo(
+    () => nodeSnapshotQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
+    [nodeSnapshotQuery.data]
+  )
+  const nodeQuery = {
+    data: nodes,
+    error: nodeSnapshotQuery.error,
+    isError: nodeSnapshotQuery.isError,
+    isLoading: nodeSnapshotQuery.isLoading,
+    dataUpdatedAt: nodeSnapshotQuery.dataUpdatedAt,
+    refetch: nodeSnapshotQuery.refetch,
+  }
+  const observedAt = nodeSnapshotQuery.data?.pages[0]?.data.observed_at
 
   const handleOccupation = useCallback(() => {
     // 在占有时验证原因
@@ -404,6 +426,20 @@ function NodesForAdmin() {
         query={nodeQuery}
         columns={columns}
         toolbarConfig={nodesToolbarConfig}
+        briefChildren={<SnapshotStatus observedAt={observedAt} />}
+        paginate={false}
+        withI18n
+        footer={
+          <SnapshotControls
+            hasMore={nodeSnapshotQuery.hasNextPage}
+            isLoading={nodeSnapshotQuery.isFetchingNextPage}
+            isRefreshing={nodeSnapshotQuery.isFetching && !nodeSnapshotQuery.isFetchingNextPage}
+            onLoadMore={() => void nodeSnapshotQuery.fetchNextPage()}
+            onRefresh={() =>
+              void queryClient.resetQueries({ queryKey: nodeSnapshotQueryKey, exact: true })
+            }
+          />
+        }
         initialColumnVisibility={{
           gpuDriver: false, // 默认隐藏加速卡驱动版本列
           kernelVersion: false,
