@@ -610,6 +610,13 @@ func (svc *TensorboardService) Create(
 		return nil, err
 	}
 
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = svc.crClient.Delete(context.Background(), job)
+		}
+	}()
+
 	// Use owner references so network resources are garbage-collected with the Volcano Job.
 	ownerRefs := []metav1.OwnerReference{
 		*metav1.NewControllerRef(job, batch.SchemeGroupVersion.WithKind("Job")),
@@ -643,13 +650,13 @@ func (svc *TensorboardService) Create(
 		ingressOptions...,
 	)
 	if err != nil {
-		_ = svc.crClient.Delete(ctx, job)
 		return nil, bizerr.Internal.K8sServiceError.Wrap(
 			err,
 			"create TensorBoard service and ingress failed",
 		)
 	}
 
+	cleanup = false
 	return &payload.CreateTensorboardResp{
 		Name:          name,
 		TensorboardID: tbID,
