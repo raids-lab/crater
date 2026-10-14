@@ -83,6 +83,34 @@ type Config struct {
 	// Storage contains persistent volume claim and path prefix configurations.
 	// Required: All PVC names and prefix paths must be specified.
 	Storage struct {
+		// Quota configures how CephFS directory quotas are read and written.
+		Quota struct {
+			// Enabled explicitly enables CephFS usage and quota management.
+			// Nil and false both keep the feature disabled.
+			Enabled *bool `json:"enabled,omitempty"`
+
+			// Provider selects auto, storageServer, toolbox, or disabled.
+			// Auto prefers storage-server and falls back to a Rook Ceph toolbox.
+			Provider string `json:"provider,omitempty"`
+
+			// StorageServerURL is the internal storage-server endpoint.
+			// If empty, the service URL is derived from Namespaces.Job.
+			StorageServerURL string `json:"storageServerURL,omitempty"`
+
+			// RookNamespace contains the optional Rook Ceph toolbox and CephClient resources.
+			RookNamespace string `json:"rookNamespace,omitempty"`
+
+			// CephFSCSIDriver identifies the CephFS CSI driver used by the shared storage PV.
+			// If empty, it is derived from RookNamespace.
+			CephFSCSIDriver string `json:"cephFSCSIDriver,omitempty"`
+
+			// ToolboxLabelSelector selects the optional Rook toolbox Pod.
+			ToolboxLabelSelector string `json:"toolboxLabelSelector,omitempty"`
+
+			// CephFSName is used only when the shared PV does not expose fsName.
+			CephFSName string `json:"cephFSName,omitempty"`
+		} `json:"quota,omitempty"`
+
 		PVC struct {
 			// ReadWriteMany is the name of the ReadWriteMany Persistent Volume Claim for shared storage.
 			// Required: PVC must exist in the cluster with ReadWriteMany access mode.
@@ -432,6 +460,9 @@ func (c *Config) ValidateConfig() error {
 	if c.Storage.Prefix.Public == "" {
 		errors = append(errors, "storage.prefix.public is required")
 	}
+	if !isStorageQuotaProviderValid(c.Storage.Quota.Provider) {
+		errors = append(errors, fmt.Sprintf("invalid storage.quota.provider: %s", c.Storage.Quota.Provider))
+	}
 
 	// Validate secrets configuration
 	if c.Secrets.TLSSecretName == "" {
@@ -552,6 +583,49 @@ func (c *Config) ValidateConfig() error {
 	return nil
 }
 
+func isStorageQuotaProviderValid(provider string) bool {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "", "auto", "storageserver", "storage-server", "toolbox", "disabled":
+		return true
+	default:
+		return false
+	}
+}
+
+const (
+	defaultStorageQuotaRookNamespace        = "rook-ceph"
+	defaultStorageQuotaToolboxLabelSelector = "app=rook-ceph-tools"
+	defaultStorageQuotaCephFSName           = "cephfs"
+)
+
+func (c *Config) StorageQuotaRookNamespace() string {
+	if value := strings.TrimSpace(c.Storage.Quota.RookNamespace); value != "" {
+		return value
+	}
+	return defaultStorageQuotaRookNamespace
+}
+
+func (c *Config) StorageQuotaCephFSCSIDriver() string {
+	if value := strings.TrimSpace(c.Storage.Quota.CephFSCSIDriver); value != "" {
+		return value
+	}
+	return c.StorageQuotaRookNamespace() + ".cephfs.csi.ceph.com"
+}
+
+func (c *Config) StorageQuotaToolboxLabelSelector() string {
+	if value := strings.TrimSpace(c.Storage.Quota.ToolboxLabelSelector); value != "" {
+		return value
+	}
+	return defaultStorageQuotaToolboxLabelSelector
+}
+
+func (c *Config) StorageQuotaCephFSName() string {
+	if value := strings.TrimSpace(c.Storage.Quota.CephFSName); value != "" {
+		return value
+	}
+	return defaultStorageQuotaCephFSName
+}
+
 const ldapAliasMaxRunes = 6
 
 // logConfigWarnings collects non-fatal configuration warnings and logs them once.
@@ -586,6 +660,8 @@ func (c *Config) logConfigWarnings() {
 }
 
 // PrintConfig prints the configuration in a formatted and readable way, masking sensitive information
+//
+//nolint:gocyclo // The summary intentionally prints optional configuration sections independently.
 func (c *Config) PrintConfig() {
 	klog.Info("=== Configuration Summary ===")
 
@@ -615,6 +691,19 @@ func (c *Config) PrintConfig() {
 	}
 	klog.Infof("Storage Prefixes: User=%s, Account=%s, Public=%s",
 		c.Storage.Prefix.User, c.Storage.Prefix.Account, c.Storage.Prefix.Public)
+	quotaEnabled := c.Storage.Quota.Enabled != nil && *c.Storage.Quota.Enabled
+	quotaProvider := strings.TrimSpace(c.Storage.Quota.Provider)
+	if quotaProvider == "" {
+		quotaProvider = "auto"
+	}
+	klog.Infof("Storage Quota: Enabled=%t, Provider=%s", quotaEnabled, quotaProvider)
+	if quotaEnabled {
+		klog.Infof("Storage Quota Rook: Namespace=%s, CSI Driver=%s, Toolbox Selector=%s",
+			c.StorageQuotaRookNamespace(),
+			c.StorageQuotaCephFSCSIDriver(),
+			c.StorageQuotaToolboxLabelSelector(),
+		)
+	}
 
 	// Model Download
 	if c.ModelDownload.Image != "" {

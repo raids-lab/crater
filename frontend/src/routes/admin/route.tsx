@@ -14,6 +14,7 @@ import {
   ScrollText,
   ServerIcon,
   SettingsIcon,
+  StoreIcon,
   UserRoundIcon,
   UsersRoundIcon,
 } from 'lucide-react'
@@ -23,6 +24,7 @@ import AppLayout from '@/components/layout/app-layout'
 import { NavGroupProps } from '@/components/sidebar/types'
 
 import { Role } from '@/services/api/auth'
+import { apiAdminGetStorageCapabilities } from '@/services/api/storage'
 import { apiAdminGetGpuAnalysisStatus } from '@/services/api/system-config'
 
 export const Route = createFileRoute('/admin')({
@@ -50,9 +52,15 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
     queryFn: () => apiAdminGetGpuAnalysisStatus().then((res) => res.data),
     staleTime: 1000 * 60 * 5, // 建议设置缓存时间，避免每次点击侧边栏都请求
   })
+  const { data: storageCapabilities } = useQuery({
+    queryKey: ['admin', 'storage', 'capabilities'],
+    queryFn: () => apiAdminGetStorageCapabilities().then((res) => res.data),
+    staleTime: 1000 * 60,
+  })
 
   // 判断是否开启
   const showGpuAnalysis = gpuStatus?.enabled ?? false
+  const showStorageManagement = !!storageCapabilities?.quota_enabled
 
   return [
     {
@@ -164,6 +172,15 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           icon: FolderIcon,
           url: '/admin/files',
         },
+        ...(showStorageManagement
+          ? [
+              {
+                title: t('navigation.storageManagement'),
+                icon: StoreIcon,
+                url: '/admin/storage',
+              },
+            ]
+          : []),
       ],
     },
     {

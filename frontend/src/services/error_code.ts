@@ -41,6 +41,7 @@ export const ERROR_USER_BANNED: ErrorCode = 40303
 export const ERROR_DATA_BASE_NOT_FOUND: ErrorCode = 40401
 export const ERROR_SERVICE_SSHD_NOT_FOUND: ErrorCode = 40402
 export const ERROR_K8S_RESOURCE_NOT_FOUND: ErrorCode = 40403
+export const ERROR_STORAGE_RESOURCE_NOT_FOUND: ErrorCode = 40404
 
 // 405xx - Method Not Allowed
 export const ERROR_METHOD_NOT_ALLOWED: ErrorCode = 40501

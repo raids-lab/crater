@@ -11,6 +11,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/storage"
 	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/storagequota"
 )
 
 var (
@@ -18,6 +19,11 @@ var (
 	CommitSHA  string
 	BuildType  string
 	BuildTime  string
+)
+
+const (
+	storageModeFull       = "full"
+	storageModeQuotaAgent = "quota-agent"
 )
 
 func initVersionInfo() {
@@ -51,6 +57,7 @@ func normalizePort(port string) string {
 	return ":" + port
 }
 
+//nolint:gocyclo // Startup validates mode-specific dependencies in one linear flow.
 func main() {
 	initVersionInfo()
 
@@ -63,8 +70,21 @@ func main() {
 		}
 	}
 
-	_ = config.GetConfig()
-	query.SetDefault(query.GetDB())
+	mode := strings.ToLower(firstNonEmptyEnv("CRATER_STORAGE_MODE"))
+	if mode == "" {
+		mode = storageModeFull
+	}
+	if mode != storageModeFull && mode != storageModeQuotaAgent {
+		klog.Fatalf("unsupported storage-server mode %q; expected full or quota-agent", mode)
+	}
+	hasInternalCredential := strings.TrimSpace(os.Getenv(storagequota.InternalTokenEnv)) != "" ||
+		strings.TrimSpace(os.Getenv(storagequota.InternalSecretEnv)) != ""
+	if mode == storageModeFull || !hasInternalCredential {
+		_ = config.GetConfig()
+	}
+	if mode == storageModeFull {
+		query.SetDefault(query.GetDB())
+	}
 
 	port := firstNonEmptyEnv("CRATER_STORAGE_PORT", "PORT")
 	if port == "" {
@@ -79,14 +99,18 @@ func main() {
 		klog.Fatalf("failed to create storage root directory %s: %v", rootDir, err)
 	}
 	storage.SetRootDir(rootDir)
-	go storage.StartCheckSpace()
 
 	r := gin.Default()
-	storage.RegisterRoutes(r)
+	if mode == storageModeQuotaAgent {
+		storage.RegisterQuotaRoutes(r)
+	} else {
+		go storage.StartCheckSpace()
+		storage.RegisterRoutes(r)
+	}
 
 	addr := normalizePort(port)
-	klog.Infof("storage-server starting on %s (version=%s, commit=%s, buildType=%s, buildTime=%s)",
-		addr, AppVersion, CommitSHA, BuildType, BuildTime)
+	klog.Infof("storage-server starting on %s (mode=%s, version=%s, commit=%s, buildType=%s, buildTime=%s)",
+		addr, mode, AppVersion, CommitSHA, BuildType, BuildTime)
 	if err := r.Run(addr); err != nil {
 		klog.Fatalf("failed to run storage-server: %v", err)
 	}

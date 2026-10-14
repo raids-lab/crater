@@ -142,3 +142,12 @@ func TestShortCommitSHA(t *testing.T) {
 		})
 	}
 }
+
+func TestFileContractCompatibility(t *testing.T) {
+	if got := EvaluateCompatibility(MinSupportedBackendAPIVersion-1, 1); got != CompatibilityBackendTooOld {
+		t.Fatalf("backend below required contract: got %s, want %s", got, CompatibilityBackendTooOld)
+	}
+	if got := EvaluateCompatibility(MinSupportedBackendAPIVersion, 1); got != CompatibilityCompatible {
+		t.Fatalf("backend with required contract: got %s, want %s", got, CompatibilityCompatible)
+	}
+}

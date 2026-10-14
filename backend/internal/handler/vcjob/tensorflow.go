@@ -66,6 +66,12 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
+
+	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
 	if !mgr.preCheckCreateJob(c, token, scheduleType, false) {
 		return
 	}

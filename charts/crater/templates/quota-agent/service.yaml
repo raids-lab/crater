@@ -1,0 +1,18 @@
+{{- if .Values.quotaAgent.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-quota-agent
+  namespace: {{ .Values.namespaces.job }}
+  labels:
+    app: crater-quota-agent
+spec:
+  type: ClusterIP
+  selector:
+    app: crater-quota-agent
+  ports:
+    - name: http
+      port: 7320
+      targetPort: http
+      protocol: TCP
+{{- end }}

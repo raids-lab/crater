@@ -32,7 +32,7 @@ Crater's CI process is divided into five main categories based on different buil
 
 - **Frontend & Backend** is the core of the CI process, responsible for code quality checks and image build publishing for application services (Backend, Frontend, Storage). It adopts a two-stage design: the PR check stage performs code style checks (Lint) and build verification to ensure code quality; the build and publish stage builds multi-platform images and pushes them to GHCR after code merge, while managing storage space through automatic cleanup strategies.
 
-- **CLI** handles checks and npm publication for the independently distributed command-line client. The PR check stage runs `make test`, then verifies npm publishing helpers, a six-target cross-build, and npm packaging; formal publication accepts only an exact `vX.Y.Z` tag and publishes native binaries as npm packages. Updates to `main` do not publish CLI artifacts.
+- **CLI** handles checks and npm publication for the independently distributed command-line client. PR checks run `make pre-commit-check`, cross-build six targets, and verify all seven npm packages without submitting them. An exact `vX.Y.Z` tag starts the formal workflow, which stages the packages through npm Trusted Publishing for maintainer approval. Updates to `main` do not publish CLI artifacts.
 
 - **Dependency Images** are responsible for building and pushing Docker images related to build tools (buildx-client, envd-client, nerdctl-client), providing necessary runtime environments for application builds. These images also support multi-platform builds and are managed uniformly through GHCR.
 
@@ -624,11 +624,11 @@ When Charts are published, version numbers are pushed to GHCR as tags. Users can
 
 ## CLI
 
-The CLI is an independently installed command-line client that is not deployed with the platform. Its CI differs from frontend, backend, and Storage image publishing: CLI changes on `main` are checked only and do not publish artifacts; only an exact `vX.Y.Z` release tag publishes binaries to npm. Repository-wide trigger rules are defined in [Publish Workflows](../../CONTRIBUTING.md#publish-workflows).
+The CLI is an independently installed command-line client that is not deployed with the platform. Its CI differs from frontend, backend, and Storage image publishing: CLI pull requests targeting `main` run checks, while pushes to `main` do not start a CLI-specific workflow. Only an exact `vX.Y.Z` release tag starts npm staging; packages become public after maintainer approval. Repository-wide trigger rules are defined in [Publish Workflows](../../CONTRIBUTING.md#publish-workflows).
 
 ### Overview
 
-CLI CI uses a two-stage design: PR checks run in `.github/workflows/cli-pr.yml`, and publication runs in `.github/workflows/cli-release.yml`. Inputs are `cli/` source, `cli/npm/` packaging scripts, and the root `hack/set-build-version.sh` helper. Outputs are the `@raids-lab/crater-cli` entry package on npm plus six platform packages:
+CLI CI uses a two-stage design: PR checks run in `.github/workflows/cli-pr.yml`, and release staging runs in `.github/workflows/cli-release.yml`. Inputs are `cli/` source, `cli/npm/` packaging scripts, and the root `hack/set-build-version.sh` helper. After approval, the npm distribution consists of the `@raids-lab/crater-cli` entry package plus six platform packages:
 
 - `@raids-lab/crater-cli-darwin-arm64`
 - `@raids-lab/crater-cli-darwin-x64`
@@ -643,12 +643,13 @@ Version fields are produced by the same `hack/set-build-version.sh` helper used 
 
 ### PR Check
 
-CLI PR Check runs on pull requests targeting `main`, filtered to `cli/**`, `hack/set-build-version.sh`, and the two CLI workflow files. Two jobs run in series:
+CLI PR Check runs on pull requests targeting `main`, filtered to `cli/**`, `hack/set-build-version.sh`, and the two CLI workflow files. Its checks follow the release build and packaging path:
 
-1. **Check CLI**: runs `make test` in `cli/` (unit tests plus snapshot checks).
-2. **Check npm packaging**: runs the `cli/npm` packaging-script tests, then cross-compiles Linux, macOS, and Windows `amd64` / `arm64` with `CGO_ENABLED=0`, builds npm packages, and `npm pack`s them. Finally it installs the entry package and the `linux-x64` platform package offline on the Linux runner and runs `crater -v`, `crater --version`, `crater version --json`, and `crater --help`. That only proves the packaging path and the Linux launcher work; it is not full functional coverage of every platform.
+1. **Check and resolve version**: independent jobs run in parallel. `check` uses `make pre-commit-check` in `cli/` for unit tests, snapshot checks, and npm packaging-script tests; `resolve-version` obtains development build metadata from `hack/set-build-version.sh`.
+2. **Cross-build**: after both jobs succeed, six independent matrix jobs use `cli/hack/build-release-artifact.sh` to build Linux, macOS, and Windows `amd64` / `arm64` binaries with `CGO_ENABLED=0`, then upload the build artifacts.
+3. **Prepare npm packages**: downloads all six artifacts, generates the seven package directories with placeholder npm version `0.0.0`, checks each with `npm pack --dry-run`, and packs all seven tarballs. On the Linux runner it installs the entry and `linux-x64` tarballs offline, then checks `crater -v`, `crater --version`, `crater version --json`, and `crater --help`. The tested tarballs are retained as workflow artifacts.
 
-PR packaging uses the placeholder version `0.0.0` and does not publish to npm. As with frontend and backend, a CLI PR Check that is not path-triggered stays Pending, so it cannot be required in GitHub branch protection.
+The PR workflow never stages or publishes to npm. Its smoke test proves the packaging path and Linux x64 launcher, not execution on every target platform. Because the workflow is path-filtered, it cannot be configured as a required status check for every PR without accounting for PRs that do not trigger it.
 
 ### Formal release
 
@@ -661,8 +662,10 @@ on:
       - "v*.*.*"
 ```
 
-It does not run on `main`. The same exact tag also starts the existing frontend, backend, storage, and Helm publish workflows. Maintainers should push a tag once, wait for that formal release to finish, and must not move a published release tag.
+It does not run on `main`. The same exact tag also starts the existing frontend, backend, storage, and Helm publish workflows, which publish immediately. Maintainers should push a tag once, wait for CLI staging and approval, and must not move a published release tag.
 
-The release path resolves versions, re-runs CLI checks and npm script tests, then cross-compiles the six targets in a matrix. Before publishing it confirms the remote tag still points at the commit that was built. Packages are then published platform-first: the six platform packages must be visible on the registry before the entry package is published. An already-public `name@version` is skipped so a partially completed first publish can resume; a version npm has accepted can never be reused.
+The tag glob selects candidate events; `hack/set-build-version.sh` rejects anything outside the exact `vX.Y.Z` format. The release workflow runs the same `make pre-commit-check` entry point and six-target build matrix as the PR workflow. Its npm preparation job downloads all six artifacts, verifies that the remote tag still points to the built commit, packs all seven packages at the tag's version, and smoke-tests an offline Linux x64 installation. The seven tested tarballs are uploaded as workflow artifacts.
 
-The first publication cannot use npm trusted publishing or staged publishing because the seven packages do not exist yet, so the bootstrap `cli-release.yml` publishes directly with the repository Actions secret `NPM_TOKEN`. The token must never appear in files, logs, issues, PRs, or workflow inputs. After all seven packages have completed their first publication, a separate change should migrate to staged trusted publishing and delete the temporary token. Details live in `cli/CONTRIBUTING.md`.
+Six independent platform jobs then run `npm stage publish` using GitHub OIDC and each package's npm Trusted Publisher configuration. Only after all six succeed does the entry-package job stage `@raids-lab/crater-cli`. The workflow uses Node 24 and npm 11.19.1 for staging; it does not use `NPM_TOKEN` or wait for staged packages to appear in the public registry. A successful workflow means the packages are staged, **not yet publicly installable**. A maintainer reviews them on npm and approves the six platform packages with 2FA before approving the entry package. Approval is per package, not atomic.
+
+If a staging job fails after npm may have accepted its package, check npm's Staged Packages page before rerunning it. Repeating a staged submission of the same package/version can conflict. Details and post-migration token cleanup are in [CLI release maintenance](../../cli/CONTRIBUTING.md#4-release-maintenance).

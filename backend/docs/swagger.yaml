@@ -586,6 +586,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_patrol_StorageUsageRefreshResult:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_pkg_patrol.StorageUsageRefreshResult'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AdjustUserExtraBalanceResp:
     properties:
       code:
@@ -813,6 +823,26 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.QueueQuotaResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_StorageCapabilities:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.StorageCapabilities'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_StorageCapabilitySummary:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.StorageCapabilitySummary'
       msg:
         type: string
     type: object
@@ -1147,6 +1177,15 @@ definitions:
       userRealName:
         description: 用户真实名称（用于tooltip）
         type: string
+    type: object
+  github_com_raids-lab_crater_pkg_patrol.StorageUsageRefreshResult:
+    properties:
+      failed:
+        type: integer
+      refreshed_at:
+        type: string
+      updated:
+        type: integer
     type: object
   gorm.DeletedAt:
     properties:
@@ -1840,6 +1879,13 @@ definitions:
       enable:
         type: boolean
     type: object
+  internal_handler.SetUserSpaceQuotaRequest:
+    properties:
+      quota:
+        type: integer
+    required:
+    - quota
+    type: object
   internal_handler.SharedQueueReq:
     properties:
       datasetID:
@@ -1863,6 +1909,48 @@ definitions:
     required:
     - datasetID
     - userIDs
+    type: object
+  internal_handler.StorageCapabilities:
+    properties:
+      backend:
+        type: string
+      configured:
+        type: boolean
+      csi_driver:
+        type: string
+      pv_name:
+        type: string
+      pvc_name:
+        type: string
+      pvc_namespace:
+        type: string
+      quota_enabled:
+        type: boolean
+      quota_provider:
+        type: string
+      quota_readable:
+        type: boolean
+      quota_writable:
+        type: boolean
+      reasons:
+        items:
+          type: string
+        type: array
+      storage_server_available:
+        type: boolean
+      toolbox_available:
+        type: boolean
+      usage_readable:
+        type: boolean
+    type: object
+  internal_handler.StorageCapabilitySummary:
+    properties:
+      quota_enabled:
+        type: boolean
+      quota_readable:
+        type: boolean
+      usage_readable:
+        type: boolean
     type: object
   internal_handler.SwitchQueueReq:
     properties:
@@ -4955,6 +5043,87 @@ paths:
         database
       tags:
       - Resource
+  /v1/admin/storage/capabilities:
+    get:
+      description: Probe storage quota providers and return diagnostics to platform
+        administrators
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_StorageCapabilities'
+      security:
+      - Bearer: []
+      summary: Get detailed storage quota capabilities
+      tags:
+      - Storage
+  /v1/admin/storage/user-spaces:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, from 1 to 100
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get paginated user storage usage and quotas
+      tags:
+      - Storage
+  /v1/admin/storage/user-spaces/{user}/quota:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Username
+        in: path
+        name: user
+        required: true
+        type: string
+      - description: Space quota request
+        in: body
+        name: quota
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.SetUserSpaceQuotaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Set a user's CephFS storage quota
+      tags:
+      - Storage
+  /v1/admin/storage/user-spaces/refresh:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_pkg_patrol_StorageUsageRefreshResult'
+      security:
+      - Bearer: []
+      summary: Refresh user storage usage and reconcile quota mirrors
+      tags:
+      - Storage
   /v1/admin/system-config/gpu-analysis:
     get:
       description: 查询当前系统是否开启了自动 GPU 资源滥用检测
@@ -8459,6 +8628,64 @@ paths:
       summary: 获取资源统计信息
       tags:
       - statistics
+  /v1/storage/capabilities:
+    get:
+      description: Return non-sensitive storage capability flags for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_StorageCapabilitySummary'
+      security:
+      - Bearer: []
+      summary: Get storage quota capability summary
+      tags:
+      - Storage
+  /v1/storage/dirsize/{path}:
+    get:
+      description: Read the current user's user, account, or public storage root usage
+      parameters:
+      - description: 'Storage scope: user, account, or public'
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get permitted storage root usage
+      tags:
+      - Storage
+  /v1/storage/my-quota:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get the current user's enforced storage quota
+      tags:
+      - Storage
   /v1/system-config/model-download-limit:
     get:
       description: 获取当前用户的并发任务上限、滚动窗口成功下载上限和白名单豁免状态

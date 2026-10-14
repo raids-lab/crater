@@ -344,7 +344,7 @@ After creating the PR, check workflow status. The PR may need multiple rounds of
 Publishing is split into two tracks. Later workflow changes must keep this split. Do not reintroduce GitHub Release events such as `release.published` as triggers, and do not let one component's GitHub Release start other components. Do not move a published `vX.Y.Z` tag.
 
 - **`main` updates** (with the path filters each workflow already uses): frontend, backend, and storage push development images to GHCR. Helm publishes the chart to GHCR OCI when `charts/**` changes. CLI does not publish.
-- **Exact `vX.Y.Z` tags**: the same image and chart workflows publish version-tagged artifacts. Helm also requires `charts/crater/Chart.yaml` `version` and `appVersion` to equal the tag version. CLI publishes npm packages only.
+- **Exact `vX.Y.Z` tags**: the same image and chart workflows publish version-tagged artifacts. Helm also requires `charts/crater/Chart.yaml` `version` and `appVersion` to equal the tag version. CLI stages npm packages through trusted publishing; a maintainer approves them on npm before they become public.
 - **GitHub Release** is optional human-written notes. It must not trigger workflows and must not carry published binaries, images, or charts.
 
 ## Application Build Versions

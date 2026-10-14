@@ -39,6 +39,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Status = field.NewUint8(tableName, "status")
 	_user.Space = field.NewString(tableName, "space")
 	_user.ImageQuota = field.NewInt64(tableName, "image_quota")
+	_user.SpaceQuota = field.NewInt64(tableName, "space_quota")
 	_user.ExtraBalance = field.NewInt64(tableName, "extra_balance")
 	_user.LastEmailVerifiedAt = field.NewTime(tableName, "last_email_verified_at")
 	_user.BannedTimestamp = field.NewTime(tableName, "banned_timestamp")
@@ -76,6 +77,7 @@ type user struct {
 	Status              field.Uint8  // 用户状态 (pending, active, inactive)
 	Space               field.String // 用户空间绝对路径
 	ImageQuota          field.Int64  // 用户在镜像仓库的配额
+	SpaceQuota          field.Int64  // User storage quota in bytes
 	ExtraBalance        field.Int64  // 用户额外点数余额(内部微点, 充值/奖励)
 	LastEmailVerifiedAt field.Time   // 最后一次邮箱验证时间
 	BannedTimestamp     field.Time   // 用户封禁截止时间，晚于当前时间表示封禁中
@@ -111,6 +113,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Status = field.NewUint8(table, "status")
 	u.Space = field.NewString(table, "space")
 	u.ImageQuota = field.NewInt64(table, "image_quota")
+	u.SpaceQuota = field.NewInt64(table, "space_quota")
 	u.ExtraBalance = field.NewInt64(table, "extra_balance")
 	u.LastEmailVerifiedAt = field.NewTime(table, "last_email_verified_at")
 	u.BannedTimestamp = field.NewTime(table, "banned_timestamp")
@@ -140,7 +143,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 18)
+	u.fieldMap = make(map[string]field.Expr, 19)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -152,6 +155,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["status"] = u.Status
 	u.fieldMap["space"] = u.Space
 	u.fieldMap["image_quota"] = u.ImageQuota
+	u.fieldMap["space_quota"] = u.SpaceQuota
 	u.fieldMap["extra_balance"] = u.ExtraBalance
 	u.fieldMap["last_email_verified_at"] = u.LastEmailVerifiedAt
 	u.fieldMap["banned_timestamp"] = u.BannedTimestamp
