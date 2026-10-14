@@ -9,5 +9,5 @@ export const Route = createFileRoute('/portal/monitor/gpu')({
 })
 
 function RouteComponent() {
-  return <NvidiaOverview />
+  return <NvidiaOverview view="user" />
 }
