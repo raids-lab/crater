@@ -17,7 +17,7 @@ import i18n from '@/i18n'
 import { isAxiosError } from 'axios'
 import { toast } from 'sonner'
 
-import { ERROR_USER_BANNED } from '@/services/error_code'
+import { ERROR_JOB_ADMISSION_FAILED, ERROR_USER_BANNED } from '@/services/error_code'
 import { IErrorResponse } from '@/services/types'
 
 const isToastHandled = (error: unknown) =>
@@ -28,6 +28,12 @@ const isToastHandled = (error: unknown) =>
 const showUserBanToast = () => {
   toast.error(i18n.t('userBan.errors.operationBlockedTitle'), {
     description: i18n.t('userBan.errors.operationBlockedDescription'),
+  })
+}
+
+const showJobAdmissionToast = () => {
+  toast.error(i18n.t('jobAdmission.errors.title'), {
+    description: i18n.t('jobAdmission.errors.description'),
   })
 }
 
@@ -62,6 +68,11 @@ export const showErrorToast = (error: unknown) => {
         const httpStatus = error.response.status
         const businessCode = errorResponse.code
         const errorMsg = errorResponse.msg || error.message
+
+        if (businessCode === ERROR_JOB_ADMISSION_FAILED) {
+          showJobAdmissionToast()
+          return
+        }
 
         if (businessCode === ERROR_USER_BANNED) {
           showUserBanToast()
@@ -101,6 +112,11 @@ export const showErrorToast = (error: unknown) => {
     if (errorWithData.data) {
       const businessCode = errorWithData.data.code
       const errorMsg = errorWithData.data.msg || 'Request failed'
+
+      if (businessCode === ERROR_JOB_ADMISSION_FAILED) {
+        showJobAdmissionToast()
+        return
+      }
 
       if (businessCode === ERROR_USER_BANNED) {
         showUserBanToast()
