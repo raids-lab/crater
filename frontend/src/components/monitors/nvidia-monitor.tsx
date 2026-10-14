@@ -15,13 +15,37 @@
  */
 import { useAtomValue } from 'jotai'
 
+import { atomUserContext } from '@/utils/store'
 import { configGrafanaOverviewAtom } from '@/utils/store/config'
 
 import FixedGrafanaIframe from '../layout/embed/fixed-grafana-iframe'
 
-const NvidiaOverview = () => {
+type NvidiaOverviewProps = {
+  view: 'user' | 'admin'
+}
+
+const NvidiaOverview = ({ view }: NvidiaOverviewProps) => {
   const grafanaOverview = useAtomValue(configGrafanaOverviewAtom)
-  return <FixedGrafanaIframe baseSrc={grafanaOverview.main} />
+  const userContext = useAtomValue(atomUserContext)
+
+  const developmentDashboard =
+    import.meta.env.MODE === 'development'
+      ? import.meta.env.VITE_DEVELOPMENT_GRAFANA_OVERVIEW_MAIN
+      : undefined
+  const dashboard = developmentDashboard || grafanaOverview.main
+
+  const variables = new URLSearchParams({ 'var-view': view })
+  if (view === 'user') {
+    variables.set('var-account', userContext?.queue ?? 'default')
+  }
+
+  const separator = dashboard.includes('?')
+    ? dashboard.endsWith('?') || dashboard.endsWith('&')
+      ? ''
+      : '&'
+    : '?'
+
+  return <FixedGrafanaIframe baseSrc={`${dashboard}${separator}${variables.toString()}`} />
 }
 
 export default NvidiaOverview
