@@ -173,7 +173,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	if err = mgr.submitJob(c, token, &job); err != nil {
-		resputil.HandleError(c, err)
+		handleJobSubmissionError(c, err)
 		return
 	}
 

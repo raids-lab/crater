@@ -608,6 +608,8 @@
   "imageSettingsForm.tagLabel": "タグ",
   "imageSettingsForm.tagPlaceholder": "デフォルトイメージタグ",
   "imageSettingsForm.tipBadgeTitle": "イメージリンク",
+  "jobAdmission.errors.description": "リソース要求が利用可能なすべてのノードの上限を超えています。ノードのリソース状況を確認してください。",
+  "jobAdmission.errors.title": "ジョブを送信できません",
   "jobResourceSummary.accelerators": "アクセラレータ",
   "jobResourceSummary.collapse": "折りたたむ",
   "jobResourceSummary.cpu": "CPU",

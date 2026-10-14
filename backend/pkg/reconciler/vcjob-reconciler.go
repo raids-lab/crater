@@ -513,6 +513,20 @@ func (r *VcJobReconciler) buildUpdateJobModel(
 		completedTimestamp = job.Status.State.LastTransitionTime.Time
 	}
 
+	var terminatedStatesPtr *datatypes.JSONType[[]v1.ContainerStateTerminated]
+	var terminatedStates []v1.ContainerStateTerminated
+	if utils.IsJobPhaseTerminal(status) {
+		if oldRecord.TerminatedStates != nil {
+			terminatedStates = oldRecord.TerminatedStates.Data()
+		} else {
+			terminatedStates = r.getTerminatedStates(ctx, job, oldRecord)
+			if len(terminatedStates) > 0 {
+				terminatedStatesPtr = ptr.To(datatypes.NewJSONType(terminatedStates))
+			}
+		}
+	}
+	runningTimestamp = resolveJobRunningTimestamp(runningTimestamp, oldRecord.RunningTimestamp, terminatedStates)
+
 	nodes := make([]string, 0)
 	for i := range job.Spec.Tasks {
 		task := &job.Spec.Tasks[i]
@@ -542,7 +556,6 @@ func (r *VcJobReconciler) buildUpdateJobModel(
 	// do not update nodes info if job is not running on any node
 	if len(nodes) == 0 {
 		var profilePtr *datatypes.JSONType[*monitor.ProfileData]
-		var terminatedStatesPtr *datatypes.JSONType[[]v1.ContainerStateTerminated]
 		var eventsPtr *datatypes.JSONType[[]v1.Event]
 
 		if !completedTimestamp.IsZero() {
@@ -561,10 +574,6 @@ func (r *VcJobReconciler) buildUpdateJobModel(
 				events := r.getNewEventsForJob(ctx, job, oldRecord)
 				if len(events) > 0 {
 					eventsPtr = ptr.To(datatypes.NewJSONType(events))
-				}
-				terminatedStates := r.getTerminatedStates(ctx, job, oldRecord)
-				if len(terminatedStates) > 0 {
-					terminatedStatesPtr = ptr.To(datatypes.NewJSONType(terminatedStates))
 				}
 			}
 		}
@@ -619,6 +628,7 @@ func (r *VcJobReconciler) buildUpdateJobModel(
 		RunningTimestamp:        runningTimestamp,
 		CompletedTimestamp:      completedTimestamp,
 		Nodes:                   datatypes.NewJSONType(nodes),
+		TerminatedStates:        terminatedStatesPtr,
 		WaitingToleranceSeconds: waitingToleranceSeconds,
 	}
 }

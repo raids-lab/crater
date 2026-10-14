@@ -608,6 +608,8 @@
   "imageSettingsForm.tagLabel": "标签",
   "imageSettingsForm.tagPlaceholder": "默认镜像标签",
   "imageSettingsForm.tipBadgeTitle": "镜像链接",
+  "jobAdmission.errors.description": "资源需求超过所有可用节点的资源上限，请检查节点资源情况。",
+  "jobAdmission.errors.title": "作业无法提交",
   "jobResourceSummary.accelerators": "加速卡",
   "jobResourceSummary.collapse": "收起",
   "jobResourceSummary.cpu": "CPU",

@@ -608,6 +608,8 @@
   "imageSettingsForm.tagLabel": "Tag",
   "imageSettingsForm.tagPlaceholder": "Default Image Tag",
   "imageSettingsForm.tipBadgeTitle": "Image Link",
+  "jobAdmission.errors.description": "The resource request exceeds the capacity of every available node. Please check node resources.",
+  "jobAdmission.errors.title": "Unable to submit job",
   "jobResourceSummary.accelerators": "Accelerators",
   "jobResourceSummary.collapse": "Collapse",
   "jobResourceSummary.cpu": "CPU",
