@@ -17,6 +17,7 @@ Crater CLI is the command-line client for Crater. It talks to the Crater platfor
 
 - Agent-friendly `--json` and `--no-interactive` modes.
 - Local authentication context management.
+- Inspect the current project account/queue and switch the account used by subsequent commands.
 - Bash and zsh completion.
 - Chinese and English display language support.
 - Native binaries for Linux, macOS, and Windows on x64 and ARM64.

@@ -2,6 +2,8 @@
 
 用户需要查看已保存身份、确认当前身份、筛选身份，或切换 `active_context` 时，按本流程操作。
 
+同一登录用户切换项目账户／队列时，使用 `account current`、`account ls` 和 `account use <name>`，流程见 [`crater-cli-auth-accounts`](crater-cli-auth-accounts.md)。
+
 **前置要求：先读取 `crater-cli-shared`（可能路径：[`../../crater-cli-shared/SKILL.md`](../../crater-cli-shared/SKILL.md)）。**
 
 ## 典型范例
