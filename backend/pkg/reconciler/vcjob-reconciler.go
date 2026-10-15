@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -89,8 +90,13 @@ func (r *VcJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("vcjob-reconciler").
 		For(&batch.Job{}).
+		WithEventFilter(predicate.NewPredicateFuncs(shouldReconcileVCJob)).
 		WithOptions(controller.Options{}).
 		Complete(r)
+}
+
+func shouldReconcileVCJob(object client.Object) bool {
+	return object.GetLabels()[crclient.LabelKeyTaskType] != "tensorboard"
 }
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -193,6 +199,13 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 		}
 		r.notifyPrequeue()
+		return ctrl.Result{}, nil
+	}
+
+	// TensorBoard panels are auxiliary Volcano workloads. They participate in
+	// queue scheduling, but must not become normal job records or trigger
+	// billing, alerts, profiling, and prequeue accounting.
+	if job.Labels[crclient.LabelKeyTaskType] == "tensorboard" {
 		return ctrl.Result{}, nil
 	}
 

@@ -107,6 +107,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 	podSpec, err := generateInteractivePodSpec(
 		c,
 		token,
+		jobName,
 		&req.CreateJobCommon,
 		req.Resource,
 		req.Image,

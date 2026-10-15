@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/yaml"
 )
@@ -18,6 +19,59 @@ const (
 	UIDSourceRID      = "rid"
 	UIDSourceExternal = "external"
 )
+
+// ImagePullSecret identifies a Kubernetes pull secret in the workload namespace.
+type ImagePullSecret struct {
+	Name string `json:"name"`
+}
+
+// TensorboardConfig configures the image used by dynamically created TensorBoard workloads.
+type TensorboardConfig struct {
+	Image              string              `json:"image"`
+	ImagePullPolicy    string              `json:"imagePullPolicy"`
+	ImagePullSecrets   []ImagePullSecret   `json:"imagePullSecrets,omitempty"`
+	IngressAuthEnabled *bool               `json:"ingressAuthEnabled,omitempty"`
+	NodeSelector       map[string]string   `json:"nodeSelector,omitempty"`
+	Tolerations        []corev1.Toleration `json:"tolerations,omitempty"`
+	Affinity           *corev1.Affinity    `json:"affinity,omitempty"`
+}
+
+// IsIngressAuthEnabled keeps Ingress authentication enabled unless an
+// administrator explicitly disables it for a local development environment.
+func (c *TensorboardConfig) IsIngressAuthEnabled() bool {
+	return c.IngressAuthEnabled == nil || *c.IngressAuthEnabled
+}
+
+func (c *TensorboardConfig) validationErrors() []string {
+	if c.Image == "" && c.ImagePullPolicy == "" && len(c.ImagePullSecrets) == 0 {
+		return nil
+	}
+
+	var errors []string
+	if strings.TrimSpace(c.Image) == "" {
+		errors = append(errors, "tensorboard.image is required")
+	}
+	switch c.ImagePullPolicy {
+	case "Always", "IfNotPresent", "Never":
+		// Valid Kubernetes image pull policies.
+	default:
+		errors = append(errors, "tensorboard.imagePullPolicy must be one of Always, IfNotPresent, or Never")
+	}
+	for i, secret := range c.ImagePullSecrets {
+		if strings.TrimSpace(secret.Name) == "" {
+			errors = append(errors, fmt.Sprintf("tensorboard.imagePullSecrets[%d].name is required", i))
+		}
+	}
+	return errors
+}
+
+func (c *TensorboardConfig) logSummary() {
+	if c.Image == "" {
+		return
+	}
+	klog.Infof("TensorBoard Image: %s (pull policy: %s, pull secrets: %d)",
+		c.Image, c.ImagePullPolicy, len(c.ImagePullSecrets))
+}
 
 type Config struct {
 	// EnableLeaderElection enables leader election for controller manager to ensure high availability.
@@ -168,6 +222,10 @@ type Config struct {
 		// Optional: Defaults to the official ModelScope service.
 		ModelScopeEndpoint string `json:"modelScopeEndpoint"`
 	} `json:"modelDownload"`
+
+	// Tensorboard configures dynamically created TensorBoard workloads.
+	// The backend requires Image and ImagePullPolicy when creating a panel.
+	Tensorboard TensorboardConfig `json:"tensorboard"`
 
 	// ModelMetadata configures background metadata refresh endpoints and cache limits.
 	// Endpoints are tried in order and must be selected by each deployment administrator.
@@ -447,22 +505,12 @@ func (c *Config) ValidateConfig() error {
 		errors = append(errors, "postgres.password is required")
 	}
 
+	// Validate TensorBoard configuration when present. Storage-only binaries use
+	// the same Config type and do not need this workload-specific section.
+	errors = append(errors, c.Tensorboard.validationErrors()...)
+
 	// Validate storage configuration
-	if c.Storage.PVC.ReadWriteMany == "" {
-		errors = append(errors, "storage.pvc.rwxpvcName is required")
-	}
-	if c.Storage.Prefix.User == "" {
-		errors = append(errors, "storage.prefix.user is required")
-	}
-	if c.Storage.Prefix.Account == "" {
-		errors = append(errors, "storage.prefix.account is required")
-	}
-	if c.Storage.Prefix.Public == "" {
-		errors = append(errors, "storage.prefix.public is required")
-	}
-	if !isStorageQuotaProviderValid(c.Storage.Quota.Provider) {
-		errors = append(errors, fmt.Sprintf("invalid storage.quota.provider: %s", c.Storage.Quota.Provider))
-	}
+	errors = append(errors, c.storageValidationErrors()...)
 
 	// Validate secrets configuration
 	if c.Secrets.TLSSecretName == "" {
@@ -581,6 +629,26 @@ func (c *Config) ValidateConfig() error {
 	}
 
 	return nil
+}
+
+func (c *Config) storageValidationErrors() []string {
+	var errors []string
+	if c.Storage.PVC.ReadWriteMany == "" {
+		errors = append(errors, "storage.pvc.rwxpvcName is required")
+	}
+	if c.Storage.Prefix.User == "" {
+		errors = append(errors, "storage.prefix.user is required")
+	}
+	if c.Storage.Prefix.Account == "" {
+		errors = append(errors, "storage.prefix.account is required")
+	}
+	if c.Storage.Prefix.Public == "" {
+		errors = append(errors, "storage.prefix.public is required")
+	}
+	if !isStorageQuotaProviderValid(c.Storage.Quota.Provider) {
+		errors = append(errors, fmt.Sprintf("invalid storage.quota.provider: %s", c.Storage.Quota.Provider))
+	}
+	return errors
 }
 
 func isStorageQuotaProviderValid(provider string) bool {
@@ -711,6 +779,7 @@ func (c *Config) PrintConfig() {
 	} else {
 		klog.Info("Model Download Image: <default: ghcr.io/raids-lab/crater-model-downloader:v1.0.0>")
 	}
+	c.Tensorboard.logSummary()
 	klog.Infof("Model Metadata Endpoints: HuggingFace=%d, ModelScope=%d",
 		len(c.HuggingFaceMetadataEndpoints()), len(c.ModelScopeMetadataEndpoints()))
 

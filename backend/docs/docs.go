@@ -285,6 +285,23 @@ const docTemplate = `{
                 }
             }
         },
+        "/tensorboard/auth": {
+            "get": {
+                "description": "供 ingress-nginx external-auth 子请求调用",
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "校验 TensorBoard Ingress 访问",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
         "/v1/accounts": {
             "get": {
                 "security": [
@@ -9015,6 +9032,254 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/tensorboard": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前用户创建的 TensorBoard 面板",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "获取 TensorBoard 面板列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_payload_TensorboardInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "从当前用户个人空间的日志目录创建面板，也可关联一个或多个来源任务",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "创建 TensorBoard 面板",
+                "parameters": [
+                    {
+                        "description": "TensorBoard 面板配置",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.CreateTensorboardReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_CreateTensorboardResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tensorboard/source/{jobName}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前用户来源任务中声明的 TensorBoard 日志目录",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "获取 TensorBoard 来源任务配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "来源任务名称",
+                        "name": "jobName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_TensorboardSourceConfigResp"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tensorboard/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除 TensorBoard 面板及其关联的网络资源",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "删除 TensorBoard 面板",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "TensorBoard 面板 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tensorboard/{id}/access": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "校验面板所有权，并为该面板路径设置短期登录 Cookie",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "创建 TensorBoard 访问会话",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "TensorBoard 面板 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/token/verify": {
             "get": {
                 "security": [
@@ -10978,6 +11243,44 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_payload.CreateTensorboardReq": {
+            "type": "object",
+            "properties": {
+                "logDir": {
+                    "type": "string",
+                    "example": "/mnt/vol0/logs"
+                },
+                "sourceJobName": {
+                    "type": "string",
+                    "example": "job-old-xxxx"
+                },
+                "sourceJobNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sourceJobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq"
+                    }
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.CreateTensorboardResp": {
+            "type": "object",
+            "properties": {
+                "accessPath": {
+                    "description": "Relative route prefix used to access the panel.",
+                    "type": "string"
+                },
+                "tensorboardId": {
+                    "description": "Unique panel identifier.",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_payload.Order": {
             "type": "string",
             "enum": [
@@ -11023,6 +11326,89 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardInfo": {
+            "type": "object",
+            "properties": {
+                "accessPath": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "expiration": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardStatus"
+                },
+                "statusMessage": {
+                    "type": "string"
+                },
+                "statusReason": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardStatusReason"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardSourceConfigResp": {
+            "type": "object",
+            "properties": {
+                "logDir": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq": {
+            "type": "object",
+            "properties": {
+                "jobName": {
+                    "type": "string"
+                },
+                "logDir": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "starting",
+                "ready",
+                "failed",
+                "expired"
+            ],
+            "x-enum-varnames": [
+                "TensorboardStatusPending",
+                "TensorboardStatusStarting",
+                "TensorboardStatusReady",
+                "TensorboardStatusFailed",
+                "TensorboardStatusExpired"
+            ]
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardStatusReason": {
+            "type": "string",
+            "enum": [
+                "deployment_failed",
+                "deployment_starting",
+                "waiting_for_schedule",
+                "pod_starting",
+                "job_failed",
+                "runtime_expired",
+                "ready"
+            ],
+            "x-enum-varnames": [
+                "TensorboardStatusReasonDeploymentFailed",
+                "TensorboardStatusReasonDeploymentStarting",
+                "TensorboardStatusReasonWaitingForSchedule",
+                "TensorboardStatusReasonPodStarting",
+                "TensorboardStatusReasonJobFailed",
+                "TensorboardStatusReasonRuntimeExpired",
+                "TensorboardStatusReasonReady"
+            ]
         },
         "github_com_raids-lab_crater_internal_payload.TimePointData": {
             "type": "object",
@@ -11107,6 +11493,24 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "data": {},
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_payload_TensorboardInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardInfo"
+                    }
+                },
                 "msg": {
                     "type": "string"
                 }
@@ -11217,6 +11621,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_CreateTensorboardResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.CreateTensorboardResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp": {
             "type": "object",
             "properties": {
@@ -11226,6 +11645,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_TensorboardSourceConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceConfigResp"
                 },
                 "msg": {
                     "type": "string"

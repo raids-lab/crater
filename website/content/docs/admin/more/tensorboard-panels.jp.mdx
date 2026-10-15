@@ -1,0 +1,54 @@
+---
+title: TensorBoard パネルのデプロイと運用
+description: イメージ、認証、スケジューリング、TTL、アップグレード、ロールバックの設定
+---
+
+<ChartBadge />
+
+## イメージとスケジューリング
+
+動的に作成される TensorBoard Pod は次の Helm values を使用します。
+
+- `images.tensorboard.repository` と `images.tensorboard.tag`
+- グローバルな `imagePullPolicy` と `imagePullSecrets`
+- TensorBoard 専用の `tensorboard.nodeSelector`、`tensorboard.tolerations`、`tensorboard.affinity`
+- TensorBoard Ingress の認証スイッチ `tensorboard.ingressAuthEnabled`（デフォルトは `true`）
+
+プライベートレジストリの pull secret はジョブ名前空間に必要です。パネルは所有者の Volcano キューに投入されます。デフォルト affinity は GPU のないノードを優先しますが、control-plane には固定しません。専用サービスノードがある場合は TensorBoard 専用 values を上書きし、Pod の配置とイベントを確認してください。
+
+## アクセス認証
+
+TensorBoard Ingress は ingress-nginx external auth で Crater を呼び出します。保護された API がユーザーと所有権を確認し、対象パス限定の短期 Secure、HttpOnly、SameSite=Strict Cookie を発行します。ingress-nginx と Crater ホストの HTTPS/TLS を正しく構成してください。ランダム URL はセキュリティ境界ではありません。
+
+共有環境、テスト環境、本番環境では `tensorboard.ingressAuthEnabled: true` を維持してください。`false` にすると Ingress から external-auth 注釈が削除され、URL を知っている利用者が Crater のログインおよび所有権確認を回避できます。無効化は、ネットワークが明確に隔離されたローカル開発環境だけに限定してください。
+
+2 人の一般ユーザーとログアウト状態で、他人のパネルと未ログインアクセスが拒否され、削除または期限切れ直後に URL が無効になることを確認してください。
+
+## TTL と状態
+
+各パネルは 100m CPU と 256Mi メモリを要求する 1 Pod の Volcano Job です。Pod 起動後は最長 4 日間実行され、active deadline 到達後に終端状態となり、`ttlSecondsAfterFinished` により 5 分後に削除されます。Service と Ingress は owner reference で連鎖削除されます。1 ユーザーにつき待機中または稼働中のパネルは最大 10 個です。移行中は旧 Deployment も従来の GC で処理されます。
+
+`pending`、`starting`、`ready`、`failed`、`expired` は Volcano Job の phase と Pod Ready 条件から判定します。`pending` は通常の VCJob の Pending phase と一致します。Service、Ingress、EndpointSlice の状態は集約しません。Volcano キュー、Pod イベント、Service endpoint、Ingress controller ログも確認してください。
+
+## アップグレードとロールバック
+
+**backend → frontend** の順でアップグレードします。古いパネルは再作成し、現在の external-auth 注釈を持つ Ingress にしてください。
+
+Deployment パネルのみを認識する旧 backend に戻す前に、新旧両方の対象を確認します。
+
+```bash
+kubectl -n <job-namespace> get jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> get deployment -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete deployment -l crater.raids.io/task-type=tensorboard
+```
+
+各 delete コマンドは一覧の全パネルを削除します。事前に範囲を確認してください。旧 backend は VCJob パネルを一覧表示、認証、削除できません。旧 Deployment は従来の GC または手動削除が必要です。
+
+## リリース前の確認
+
+- 非デフォルトレジストリ、pull secret、本番 tag で作成する。
+- control-plane taint のあるクラスタで Pod の配置を確認する。
+- 個人ディレクトリ、単一/複数ソース、同名ジョブ、TensorFlow PS、待機/準備完了/失敗/期限切れ、4 日後の回収、同時数制限、異常系を確認する。
+- 調度不能な大規模 GPU ジョブを先に置き、互換性のある CPU/メモリが残る場合に小規模パネルが起動できることを確認する。
+- Chart の lint/template を実行し、backend 設定にイメージ、`ingressAuthEnabled`、スケジューリング項目があることを確認する。
