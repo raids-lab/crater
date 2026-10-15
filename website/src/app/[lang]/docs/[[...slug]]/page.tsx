@@ -24,8 +24,10 @@ import {
 import { notFound } from "next/navigation";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import {getMDXComponents} from "@/mdx-components";
-import {SquarePenIcon} from "lucide-react";
-import {setRequestLocale} from "next-intl/server";
+import {ArrowUpRightIcon, SquarePenIcon} from "lucide-react";
+import {getTranslations, setRequestLocale} from "next-intl/server";
+
+const documentActionClassName = "w-fit border flex items-center gap-2 no-underline rounded-md p-2 font-medium text-sm text-fd-secondary-foreground bg-fd-secondary transition-colors hover:text-fd-accent-foreground hover:bg-fd-accent";
 
 export default async function Page(props: {
   params: Promise<{ lang: string; slug?: string[] }>;
@@ -35,7 +37,13 @@ export default async function Page(props: {
   const page = source.getPage(params.slug, params.lang);
   if (!page) notFound();
 
+  const t = await getTranslations("Fumadocs");
   const MDXContent = page.data.body;
+  const latestDocumentUrl = `https://raids-lab.github.io/crater/${[
+    params.lang,
+    "docs",
+    ...(params.slug ?? []),
+  ].map(encodeURIComponent).join("/")}/`;
 
   return (
     <DocsPage
@@ -54,15 +62,26 @@ export default async function Page(props: {
             a: createRelativeLink(source, page),
           })}
         />
-        <a
-          href={`https://github.com/raids-lab/crater/blob/main/website/content/docs/${page.file.path}`}
-          rel="noreferrer noopener"
-          target="_blank"
-          className="w-fit border flex items-center mt-2 gap-2 no-underline rounded-md p-2 font-medium text-sm text-fd-secondary-foreground bg-fd-secondary transition-colors hover:text-fd-accent-foreground hover:bg-fd-accent"
-        >
-          <SquarePenIcon className="size-4" />
-          Edit on GitHub
-        </a>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <a
+            href={`https://github.com/raids-lab/crater/blob/main/website/content/docs/${page.file.path}`}
+            rel="noreferrer noopener"
+            target="_blank"
+            className={documentActionClassName}
+          >
+            <SquarePenIcon className="size-4" />
+            {t("editOnGithub")}
+          </a>
+          <a
+            href={latestDocumentUrl}
+            rel="noreferrer noopener"
+            target="_blank"
+            className={documentActionClassName}
+          >
+            <ArrowUpRightIcon className="size-4" />
+            {t("viewLatestDocs")}
+          </a>
+        </div>
       </DocsBody>
     </DocsPage>
   );

@@ -2,7 +2,8 @@
   "Links": {
     "userGuide": "사용자 가이드",
     "adminGuide": "관리자 가이드",
-    "getStarted": "시작하기"
+    "getStarted": "시작하기",
+    "latestOnlineDocs": "여기를 클릭하여 최신 온라인 문서 보기"
   },
   "Fumadocs": {
     "search": "검색",
@@ -14,7 +15,8 @@
     "nextPage": "다음 페이지",
     "previousPage": "이전 페이지",
     "chooseTheme": "테마 선택",
-    "editOnGithub": "GitHub 에서 편집"
+    "editOnGithub": "GitHub 에서 편집",
+    "viewLatestDocs": "최신 문서 보기"
   },
   "HeroSection": {
     "title": "Crater · 클라우드 네이티브 지능 컴퓨팅 플랫폼",
@@ -250,5 +252,9 @@
     "message": "이 버전 번호는 Helm Chart 설정 버전이며 <link>Chart.yaml</link>에서 추출되었습니다. 시스템이 정상적으로 작동하려면 Crater 관련 구성 요소 이미지 버전과 일치해야 합니다.",
     "version": "(현재 버전: {version})",
     "fallback": "버전 번호를 자동으로 가져올 수 없습니다. 버전 일치를 확인하려면 <link>Chart.yaml</link>을 참조하십시오."
+  },
+  "EmbeddedDocsNotice": {
+    "description": "이 문서는 현재 시스템과 함께 배포됩니다. 최신 온라인 문서에는 업데이트된 내용이 포함될 수 있지만 현재 시스템 버전과 다를 수 있습니다.",
+    "viewLatest": "최신 온라인 문서 보기"
   }
 }

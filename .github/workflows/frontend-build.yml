@@ -105,6 +105,8 @@ jobs:
 
       # 1. 构建 Website
       - name: Build Website
+        env:
+          CRATER_DOCS_EMBEDDED: "true"
         run: |
           cd website
           pnpm install
