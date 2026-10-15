@@ -17,7 +17,7 @@ func TestModelDownloadLimitConfigDefaultsAndUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}); err != nil {
+	if err := db.AutoMigrate(&model.SystemConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	service := NewConfigService(query.Use(db))
@@ -54,58 +54,51 @@ func TestModelDownloadLimitConfigDefaultsAndUpdate(t *testing.T) {
 	}
 }
 
-func TestParsePrequeueRuntimeConfig(t *testing.T) {
+func TestParseSchedulerExtenderConfig(t *testing.T) {
 	t.Parallel()
 
-	cfg, err := parsePrequeueRuntimeConfig(map[string]string{
-		model.PrequeueBackfillEnabledKey:                  "true",
-		model.PrequeueQueueQuotaEnabledKey:                "false",
-		model.PrequeueNormalJobWaitingToleranceSecondsKey: "300",
-		model.PrequeueActivateTickerIntervalSecondsKey:    "5",
-		model.PrequeueMaxTotalActivationsPerRoundKey:      "500",
+	cfg, err := parseSchedulerExtenderConfig(map[string]string{
+		model.ConfigKeySchedulerExtenderEnabled:   "true",
+		model.ConfigKeyQueueQuotaEnabled:          "false",
+		model.ConfigKeyJobWaitingToleranceSeconds: "300",
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if !cfg.BackfillEnabled {
-		t.Fatalf("expected backfill to be enabled")
+	// Distinct values so a swapped key-to-field mapping cannot pass.
+	if !cfg.SchedulerExtenderEnabled || cfg.QueueQuotaEnabled {
+		t.Fatalf("expected extender on and queue quota off, got %+v", *cfg)
 	}
-	if cfg.QueueQuotaEnabled {
-		t.Fatalf("expected queue quota to be disabled")
-	}
-	if cfg.NormalJobWaitingToleranceSeconds != 300 {
-		t.Fatalf("expected waiting tolerance 300, got %d", cfg.NormalJobWaitingToleranceSeconds)
-	}
-	if cfg.ActivateTickerIntervalSeconds != 5 {
-		t.Fatalf("expected activate ticker 5, got %d", cfg.ActivateTickerIntervalSeconds)
+	if cfg.JobWaitingToleranceSeconds != 300 {
+		t.Fatalf("expected waiting tolerance 300, got %d", cfg.JobWaitingToleranceSeconds)
 	}
 }
 
-func TestParsePrequeueRuntimeConfig_MissingKeyKeepsDefault(t *testing.T) {
+func TestParseSchedulerExtenderConfig_MissingKeyKeepsDefault(t *testing.T) {
 	t.Parallel()
 
-	cfg, err := parsePrequeueRuntimeConfig(map[string]string{
-		model.PrequeueBackfillEnabledKey: "true",
+	cfg, err := parseSchedulerExtenderConfig(map[string]string{
+		model.ConfigKeyQueueQuotaEnabled: "true",
 	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if !cfg.BackfillEnabled {
-		t.Fatalf("expected backfill to be enabled")
+	if !cfg.QueueQuotaEnabled {
+		t.Fatalf("expected queue quota to be enabled")
 	}
-	if cfg.NormalJobWaitingToleranceSeconds != model.PrequeueDefaultNormalJobWaitingToleranceSeconds {
-		t.Fatalf("expected default waiting tolerance, got %d", cfg.NormalJobWaitingToleranceSeconds)
+	if cfg.SchedulerExtenderEnabled {
+		t.Fatalf("expected the extender switch to keep its disabled default")
 	}
-	if cfg.ActivateTickerIntervalSeconds != model.PrequeueDefaultActivateTickerIntervalSeconds {
-		t.Fatalf("expected default activate ticker, got %d", cfg.ActivateTickerIntervalSeconds)
+	if cfg.JobWaitingToleranceSeconds != model.DefaultJobWaitingToleranceSeconds {
+		t.Fatalf("expected default waiting tolerance, got %d", cfg.JobWaitingToleranceSeconds)
 	}
 }
 
-func TestParsePrequeueRuntimeConfig_InvalidWaitingTolerance(t *testing.T) {
+func TestParseSchedulerExtenderConfig_InvalidWaitingTolerance(t *testing.T) {
 	t.Parallel()
 
-	_, err := parsePrequeueRuntimeConfig(map[string]string{
-		model.PrequeueNormalJobWaitingToleranceSecondsKey: "0",
+	_, err := parseSchedulerExtenderConfig(map[string]string{
+		model.ConfigKeyJobWaitingToleranceSeconds: "0",
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid waiting tolerance")
@@ -115,16 +108,16 @@ func TestParsePrequeueRuntimeConfig_InvalidWaitingTolerance(t *testing.T) {
 	}
 }
 
-func TestParsePrequeueRuntimeConfig_InvalidQueueQuotaFlag(t *testing.T) {
+func TestParseSchedulerExtenderConfig_InvalidQueueQuotaFlag(t *testing.T) {
 	t.Parallel()
 
-	_, err := parsePrequeueRuntimeConfig(map[string]string{
-		model.PrequeueQueueQuotaEnabledKey: "oops",
+	_, err := parseSchedulerExtenderConfig(map[string]string{
+		model.ConfigKeyQueueQuotaEnabled: "oops",
 	})
 	if err == nil {
 		t.Fatal("expected error for invalid queue quota flag")
 	}
-	if !strings.Contains(err.Error(), model.PrequeueQueueQuotaEnabledKey) {
+	if !strings.Contains(err.Error(), model.ConfigKeyQueueQuotaEnabled) {
 		t.Fatalf("expected key name in error, got %v", err)
 	}
 }

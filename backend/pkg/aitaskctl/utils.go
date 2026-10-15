@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -81,7 +82,7 @@ func CheckInteractiveLimitBeforeCreate(
 		Where(j.UserID.Eq(userID)).
 		Where(j.AccountID.Eq(accountID)).
 		Where(j.JobType.Eq(string(model.JobTypeJupyter))).
-		Where(j.Status.In("Running", "Pending")).
+		Where(j.Status.In(string(batch.Running), string(batch.Pending))).
 		Count()
 	if err != nil {
 		return err
@@ -140,7 +141,7 @@ func CheckResourcesBeforeCreateJob(
 	jobResources, err := j.WithContext(c).
 		Where(j.UserID.Eq(userID)).
 		Where(j.AccountID.Eq(accountID)).
-		Where(j.Status.In("Running", "Pending")).
+		Where(j.Status.In(string(batch.Running), string(batch.Pending))).
 		Select(j.Resources).
 		Find()
 	if err != nil {

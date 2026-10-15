@@ -24,8 +24,6 @@ import (
 )
 
 const (
-	scheduleBackfill  = 0
-	scheduleNormal    = 1
 	volumeTypeFile    = 1
 	volumeTypeDataset = 2
 	jobMaxSearchRunes = 128
@@ -41,7 +39,7 @@ var (
 		"jupyter", "webide", "custom", "pytorch", "tensorflow", "kuberay", "deepspeed", "openmpi",
 	}
 	jobListSortFields = []string{
-		"name", "jobName", "owner", "queue", "jobType", "scheduleType",
+		"name", "jobName", "owner", "queue", "jobType",
 		"status", "billedPointsTotal", "createdAt", "startedAt", "completedAt",
 	}
 )
@@ -117,7 +115,6 @@ func readJobListOptions(cmd *cobra.Command, admin bool) (api.JobListOptions, err
 	days, _ := cmd.Flags().GetInt("days")
 	statuses := readListFlagValues(cmd, "status")
 	requestedTypes := readListFlagValues(cmd, "type")
-	schedules := readListFlagValues(cmd, "schedule")
 	node, _ := cmd.Flags().GetString("node")
 	interactive, _ := cmd.Flags().GetBool("interactive")
 	batch, _ := cmd.Flags().GetBool("batch")
@@ -125,24 +122,18 @@ func readJobListOptions(cmd *cobra.Command, admin bool) (api.JobListOptions, err
 	if len(issues) > 0 {
 		return api.JobListOptions{}, errUsageFromIssues(issues)
 	}
-	scheduleTypes := make([]int, 0, len(schedules))
-	for _, schedule := range normalizeListFlagValues(schedules) {
-		value, _ := parseJobListScheduleType(schedule)
-		scheduleTypes = append(scheduleTypes, value)
-	}
 	return api.JobListOptions{
-		ListOptions:   listOptions,
-		All:           all,
-		Admin:         admin,
-		Username:      username,
-		Days:          days,
-		Search:        strings.TrimSpace(search),
-		Statuses:      normalizeListFlagValues(statuses),
-		JobTypes:      normalizeListFlagValues(requestedTypes),
-		ScheduleTypes: scheduleTypes,
-		Node:          strings.TrimSpace(node),
-		Interactive:   interactive,
-		Batch:         batch,
+		ListOptions: listOptions,
+		All:         all,
+		Admin:       admin,
+		Username:    username,
+		Days:        days,
+		Search:      strings.TrimSpace(search),
+		Statuses:    normalizeListFlagValues(statuses),
+		JobTypes:    normalizeListFlagValues(requestedTypes),
+		Node:        strings.TrimSpace(node),
+		Interactive: interactive,
+		Batch:       batch,
 	}, nil
 }
 
@@ -743,7 +734,6 @@ func collectBasicCreate(cmd *cobra.Command) (api.JobCommonRequest, api.ResourceL
 	template, _ := cmd.Flags().GetString("template")
 	alert, _ := cmd.Flags().GetBool("alert")
 	cpuPinning, _ := cmd.Flags().GetBool("cpu-pinning")
-	schedule, _ := cmd.Flags().GetString("schedule")
 
 	issues := []usageIssue{}
 	if strings.TrimSpace(name) == "" {
@@ -765,10 +755,6 @@ func collectBasicCreate(cmd *cobra.Command) (api.JobCommonRequest, api.ResourceL
 	}
 	if gpu > 0 && strings.TrimSpace(gpuResource) == "" {
 		issues = append(issues, missingIssue("gpu-resource", "job_label_gpu_resource"))
-	}
-	scheduleValue, err := parseScheduleType(schedule)
-	if err != nil {
-		issues = append(issues, invalidIssue("schedule", err.Error()))
 	}
 	if len(issues) > 0 {
 		return api.JobCommonRequest{}, nil, api.ImageBaseInfo{}, errUsageFromIssues(issues)
@@ -812,26 +798,8 @@ func collectBasicCreate(cmd *cobra.Command) (api.JobCommonRequest, api.ResourceL
 		AlertEnabled:      alert,
 		CpuPinningEnabled: cpuPinning,
 		Forwards:          forwards,
-		ScheduleType:      scheduleValue,
 	}
 	return common, resources, api.ImageBaseInfo{ImageLink: imageLink, Archs: archs}, nil
-}
-
-func parseScheduleType(raw string) (*int, error) {
-	raw = strings.TrimSpace(strings.ToLower(raw))
-	if raw == "" {
-		return nil, nil
-	}
-	switch raw {
-	case "normal", "1":
-		v := scheduleNormal
-		return &v, nil
-	case "backfill", "0":
-		v := scheduleBackfill
-		return &v, nil
-	default:
-		return nil, fmt.Errorf("%s", i18n.T("err_invalid_job_schedule", raw))
-	}
 }
 
 func parseEnvFlags(cmd *cobra.Command) ([]api.EnvVar, error) {
@@ -979,7 +947,7 @@ func validateTrainingRequest(req api.CreateTrainingJobRequest) error {
 }
 
 func validateDistributedRequest(req api.CreateDistributedJobRequest) error {
-	issues := validateCommonIssues(req.JobCommonRequest, false)
+	issues := validateCommonIssues(req.JobCommonRequest)
 	if len(req.Tasks) == 0 {
 		issues = append(issues, missingIssue("tasks", "job_label_tasks"))
 	}
@@ -1020,7 +988,7 @@ func validateBasicRequest(common api.JobCommonRequest, resource api.ResourceList
 }
 
 func validateBasicIssues(common api.JobCommonRequest, resource api.ResourceList, image api.ImageBaseInfo) []usageIssue {
-	issues := validateCommonIssues(common, true)
+	issues := validateCommonIssues(common)
 	issues = append(issues, validateResourceIssues("resource", resource)...)
 	if strings.TrimSpace(image.ImageLink) == "" {
 		issues = append(issues, missingIssue("image", "job_label_image"))
@@ -1028,21 +996,10 @@ func validateBasicIssues(common api.JobCommonRequest, resource api.ResourceList,
 	return issues
 }
 
-func validateCommonIssues(common api.JobCommonRequest, allowBackfill bool) []usageIssue {
+func validateCommonIssues(common api.JobCommonRequest) []usageIssue {
 	issues := []usageIssue{}
 	if strings.TrimSpace(common.Name) == "" {
 		issues = append(issues, missingIssue("name", "job_label_display_name"))
-	}
-	if common.ScheduleType != nil {
-		switch *common.ScheduleType {
-		case scheduleNormal:
-		case scheduleBackfill:
-			if !allowBackfill {
-				issues = append(issues, invalidIssue("scheduleType", i18n.T("err_job_backfill_distributed")))
-			}
-		default:
-			issues = append(issues, invalidIssue("scheduleType", i18n.T("err_invalid_job_schedule_value", *common.ScheduleType)))
-		}
 	}
 	for i, mount := range common.VolumeMounts {
 		field := fmt.Sprintf("volumeMounts[%d]", i)
@@ -1188,7 +1145,6 @@ func jobListFilterIssues(cmd *cobra.Command) []usageIssue {
 	sortFields, _ := cmd.Flags().GetString("sort")
 	statuses := readListFlagValues(cmd, "status")
 	requestedTypes := readListFlagValues(cmd, "type")
-	schedules := readListFlagValues(cmd, "schedule")
 	interactive, _ := cmd.Flags().GetBool("interactive")
 	batch, _ := cmd.Flags().GetBool("batch")
 	from, _ := cmd.Flags().GetString("from")
@@ -1206,7 +1162,6 @@ func jobListFilterIssues(cmd *cobra.Command) []usageIssue {
 	issues = append(issues, jobSortIssues(strings.TrimSpace(sortFields))...)
 	issues = append(issues, validateJobListValues("status", statuses)...)
 	issues = append(issues, validateJobListValues("type", requestedTypes)...)
-	issues = append(issues, validateJobListValues("schedule", schedules)...)
 	for _, status := range normalizeListFlagValues(statuses) {
 		if !slices.Contains(jobStatuses, status) {
 			issues = append(issues, invalidIssue("status", i18n.T("err_invalid_job_status", status)))
@@ -1215,11 +1170,6 @@ func jobListFilterIssues(cmd *cobra.Command) []usageIssue {
 	for _, jobType := range normalizeListFlagValues(requestedTypes) {
 		if !slices.Contains(jobTypes, jobType) {
 			issues = append(issues, invalidIssue("type", i18n.T("err_invalid_job_type", jobType)))
-		}
-	}
-	for _, schedule := range normalizeListFlagValues(schedules) {
-		if _, ok := parseJobListScheduleType(schedule); !ok {
-			issues = append(issues, invalidIssue("schedule", i18n.T("err_invalid_job_schedule", schedule)))
 		}
 	}
 	if interactive && batch {
@@ -1319,17 +1269,6 @@ func normalizeListFlagValues(values []string) []string {
 		normalized = append(normalized, value)
 	}
 	return normalized
-}
-
-func parseJobListScheduleType(raw string) (int, bool) {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "normal":
-		return scheduleNormal, true
-	case "backfill":
-		return scheduleBackfill, true
-	default:
-		return 0, false
-	}
 }
 
 func parseOptionalTime(value string) (*time.Time, error) {
@@ -1565,7 +1504,6 @@ func addCreateCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().String("template", "", "Template name or JSON")
 	cmd.Flags().Bool("alert", false, "Enable alert")
 	cmd.Flags().Bool("cpu-pinning", false, "Enable CPU pinning")
-	cmd.Flags().String("schedule", "", "Schedule type: normal or backfill")
 	cmd.Flags().StringArray("env", nil, "Environment variable KEY=VALUE, repeatable")
 	cmd.Flags().StringArray("volume", nil, "Workspace mount subPath:mountPath, repeatable")
 	cmd.Flags().StringArray("dataset", nil, "Dataset mount id:mountPath, repeatable")
@@ -1580,7 +1518,6 @@ func init() {
 	jobLsCmd.Flags().Int("days", 0, i18n.T("flag_days"))
 	jobLsCmd.Flags().StringSlice("status", nil, "Filter by job status, repeatable or comma-separated")
 	jobLsCmd.Flags().StringSlice("type", nil, "Filter by job type, repeatable or comma-separated")
-	jobLsCmd.Flags().StringSlice("schedule", nil, "Filter by schedule type: normal or backfill")
 	jobLsCmd.Flags().String("node", "", "Filter by node name")
 	jobLsCmd.Flags().String("owner", "", "Filter by owner username or display name")
 	jobLsCmd.Flags().String("from", "", "Filter createdAt from time, RFC3339 or YYYY-MM-DD")
@@ -1637,15 +1574,9 @@ func init() {
 	}
 	completion.RegisterFlagValue([]string{"job", "ls"}, "status", commaSeparatedValueCompleter(jobStatuses, nil))
 	completion.RegisterFlagValue([]string{"job", "ls"}, "type", commaSeparatedValueCompleter(jobTypes, nil))
-	completion.RegisterFlagValue([]string{"job", "ls"}, "schedule", commaSeparatedValueCompleter([]string{"normal", "backfill"}, nil))
 	completion.RegisterFlagValue([]string{"job", "pods"}, "status", staticValueCompleter(podStatuses, nil))
 	completion.RegisterFlagValue([]string{"admin", "job", "ls"}, "status", staticValueCompleter(jobStatuses, nil))
 	completion.RegisterFlagValue([]string{"admin", "job", "ls"}, "type", staticValueCompleter(jobTypes, nil))
-	scheduleValues := []string{"normal", "backfill"}
-	for _, path := range [][]string{{"job", "create", "jupyter"}, {"job", "create", "webide"}, {"job", "create", "custom"}} {
-		completion.RegisterFlagValue(path, "schedule", staticValueCompleter(scheduleValues, nil))
-	}
-
 	jobCreateCmd.AddCommand(jobCreateJupyterCmd, jobCreateWebIDECmd, jobCreateCustomCmd, jobCreateTensorflowCmd, jobCreatePytorchCmd)
 	jobAdminCleanCmd.AddCommand(jobAdminCleanWaitingJupyterCmd, jobAdminCleanWaitingCustomCmd, jobAdminCleanLongRunningCmd, jobAdminCleanLowGPUCmd)
 	adminJobCmd.AddCommand(adminJobLsCmd, adminJobDeleteCmd, jobAdminLockCmd, jobAdminUnlockCmd, jobAdminKeepCmd, jobAdminCleanCmd)

@@ -19,6 +19,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -35,7 +36,6 @@ import (
 	"github.com/raids-lab/crater/pkg/imageregistry"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/packer"
-	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
@@ -45,34 +45,32 @@ func init() {
 }
 
 type VolcanojobMgr struct {
-	name            string
-	client          client.Client
-	config          *rest.Config
-	kubeClient      kubernetes.Interface
-	imagePacker     packer.ImagePackerInterface
-	imageRegistry   imageregistry.ImageRegistryInterface
-	serviceManager  crclient.ServiceManagerInterface
-	configService   *service.ConfigService
-	queueQuotaSvc   *service.PrequeueService
-	prequeueWatcher *prequeuewatcher.PrequeueWatcher
-	billingService  *service.BillingService
-	userBanService  *service.UserBanService
+	name           string
+	client         client.Client
+	config         *rest.Config
+	kubeClient     kubernetes.Interface
+	imagePacker    packer.ImagePackerInterface
+	imageRegistry  imageregistry.ImageRegistryInterface
+	serviceManager crclient.ServiceManagerInterface
+	configService  *service.ConfigService
+	queueQuotaSvc  *service.QueueQuotaService
+	billingService *service.BillingService
+	userBanService *service.UserBanService
 }
 
 func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
-		name:            "vcjobs",
-		client:          conf.Client,
-		config:          conf.KubeConfig,
-		kubeClient:      conf.KubeClient,
-		imagePacker:     conf.ImagePacker,
-		imageRegistry:   conf.ImageRegistry,
-		serviceManager:  conf.ServiceManager,
-		configService:   conf.ConfigService,
-		queueQuotaSvc:   conf.PrequeueService,
-		prequeueWatcher: conf.PrequeueWatcher,
-		billingService:  conf.BillingService,
-		userBanService:  conf.UserBanService,
+		name:           "vcjobs",
+		client:         conf.Client,
+		config:         conf.KubeConfig,
+		kubeClient:     conf.KubeClient,
+		imagePacker:    conf.ImagePacker,
+		imageRegistry:  conf.ImageRegistry,
+		serviceManager: conf.ServiceManager,
+		configService:  conf.ConfigService,
+		queueQuotaSvc:  conf.QueueQuotaService,
+		billingService: conf.BillingService,
+		userBanService: conf.UserBanService,
 	}
 }
 
@@ -146,9 +144,8 @@ const (
 	AnnotationKeyWebIDE                  = "crater.raids.io/webide-token"  // WebIDE token cache
 	AnnotationKeyAlertEnabled            = "crater.raids.io/alert-enabled" // 是否开启告警
 	AnnotationKeySSHEnabled              = "crater.raids.io/ssh-enabled"   // SSH 缓存，格式为 "ip:port"
-	AnnotationKeyUserID                  = "crater.raids.io/user-id"
+	AnnotationKeyUserID                  = vcjobservice.AnnotationKeyUserID
 	AnnotationKeyForwards                = "crater.raids.io/forwards"
-	AnnotationKeyScheduleType            = vcjobservice.AnnotationKeyScheduleType
 	AnnotationKeyWaitingToleranceSeconds = vcjobservice.AnnotationKeyWaitingToleranceSeconds
 
 	// VolumeData  = "crater-rw-workspace"
@@ -183,28 +180,22 @@ const (
 
 type Forward = vcjobservice.Forward
 
-func (mgr *VolcanojobMgr) checkBillingBeforeCreate(
-	c *gin.Context,
-	userID uint,
-	accountID uint,
-	scheduleType model.ScheduleType,
-) error {
+func (mgr *VolcanojobMgr) checkBillingBeforeCreate(c *gin.Context, userID, accountID uint) error {
 	if mgr.billingService == nil {
 		return nil
 	}
-	return mgr.billingService.OnJobCreateCheck(c.Request.Context(), userID, accountID, &scheduleType)
+	return mgr.billingService.OnJobCreateCheck(c.Request.Context(), userID, accountID)
 }
 
 func (mgr *VolcanojobMgr) preCheckCreateJob(
 	c *gin.Context,
 	token util.JWTMessage,
-	scheduleType model.ScheduleType,
 	requireInteractiveLimit bool,
 ) bool {
 	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityJobSubmission) {
 		return false
 	}
-	if err := mgr.checkBillingBeforeCreate(c, token.UserID, token.AccountID, scheduleType); err != nil {
+	if err := mgr.checkBillingBeforeCreate(c, token.UserID, token.AccountID); err != nil {
 		resputil.Error(c, err.Error(), resputil.BusinessLogicError)
 		return false
 	}
@@ -242,63 +233,21 @@ type (
 		AlertEnabled      bool                         `json:"alertEnabled"`
 		CpuPinningEnabled bool                         `json:"cpuPinningEnabled"`
 		Forwards          []Forward                    `json:"forwards,omitempty"`
-		ScheduleType      *model.ScheduleType          `json:"scheduleType,omitempty"`
 	}
 )
 
-func (req *CreateJobCommon) validateScheduleOptions(allowBackfill bool) (model.ScheduleType, error) {
-	scheduleType := model.ScheduleTypeNormal
-	if req.ScheduleType != nil {
-		scheduleType = *req.ScheduleType
-	}
-
-	switch scheduleType {
-	case model.ScheduleTypeNormal, model.ScheduleTypeBackfill:
-	default:
-		return model.ScheduleTypeNormal, fmt.Errorf(
-			"scheduleType must be %d or %d",
-			model.ScheduleTypeBackfill,
-			model.ScheduleTypeNormal,
-		)
-	}
-	if scheduleType == model.ScheduleTypeBackfill && !allowBackfill {
-		return model.ScheduleTypeNormal, fmt.Errorf(
-			"backfill scheduleType is only supported for jupyter, webide, and custom training jobs",
-		)
-	}
-
-	req.ScheduleType = ptr.To(scheduleType)
-	return scheduleType, nil
-}
-
-type jobScheduleMetadata struct {
-	ScheduleType            model.ScheduleType
-	WaitingToleranceSeconds *int64
-}
-
-func (mgr *VolcanojobMgr) resolveJobScheduleMetadata(
-	ctx context.Context,
-	scheduleType model.ScheduleType,
-) (*jobScheduleMetadata, error) {
+// resolveWaitingTolerance returns the platform default stamped onto every submitted job; the extender
+// reads it back to decide when a waiting job has timed out.
+func (mgr *VolcanojobMgr) resolveWaitingTolerance(ctx context.Context) (*int64, error) {
 	if mgr.configService == nil {
 		return nil, fmt.Errorf("config service is not initialized")
 	}
 
-	cfg, err := mgr.configService.GetPrequeueConfig(ctx)
+	cfg, err := mgr.configService.GetSchedulerExtenderConfig(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if scheduleType == model.ScheduleTypeBackfill {
-		if !cfg.BackfillEnabled {
-			return nil, fmt.Errorf("backfill scheduleType is disabled by prequeue configuration")
-		}
-		return &jobScheduleMetadata{ScheduleType: scheduleType}, nil
-	}
-	waitingToleranceSeconds := cfg.NormalJobWaitingToleranceSeconds
-	return &jobScheduleMetadata{
-		ScheduleType:            scheduleType,
-		WaitingToleranceSeconds: &waitingToleranceSeconds,
-	}, nil
+	return &cfg.JobWaitingToleranceSeconds, nil
 }
 
 // DeleteJob godoc
@@ -505,14 +454,6 @@ func (mgr *VolcanojobMgr) deleteJob(c *gin.Context, recordAdminOperation bool) {
 	)
 
 	resputil.Success(c, nil)
-	mgr.notifyDeletedPrequeue(plan.shouldDeleteRecord)
-}
-
-func (mgr *VolcanojobMgr) notifyDeletedPrequeue(shouldDeleteRecord bool) {
-	if !shouldDeleteRecord || mgr.prequeueWatcher == nil {
-		return
-	}
-	mgr.prequeueWatcher.RequestFullScan()
 }
 
 func (mgr *VolcanojobMgr) settleJobBeforeDelete(c *gin.Context, record *model.Job, job *batch.Job) error {
@@ -574,24 +515,24 @@ type GetJobLogResp struct {
 
 type (
 	JobResp struct {
-		Name                    string             `json:"name"`
-		JobName                 string             `json:"jobName"`
-		Owner                   string             `json:"owner"`
-		UserInfo                model.UserInfo     `json:"userInfo"`
-		JobType                 string             `json:"jobType"`
-		ScheduleType            model.ScheduleType `json:"scheduleType"`
-		WaitingToleranceSeconds *int64             `json:"waitingToleranceSeconds,omitempty"`
-		Queue                   string             `json:"queue"`
-		Status                  string             `json:"status"`
-		CreationTimestamp       metav1.Time        `json:"createdAt"`
-		RunningTimestamp        metav1.Time        `json:"startedAt"`
-		CompletedTimestamp      metav1.Time        `json:"completedAt"`
-		Nodes                   []string           `json:"nodes"`
-		Resources               v1.ResourceList    `json:"resources"`
-		Locked                  bool               `json:"locked"`
-		PermanentLocked         bool               `json:"permanentLocked"`
-		LockedTimestamp         metav1.Time        `json:"lockedTimestamp"`
-		BilledPointsTotal       float64            `json:"billedPointsTotal"`
+		Name                    string          `json:"name"`
+		JobName                 string          `json:"jobName"`
+		Owner                   string          `json:"owner"`
+		UserInfo                model.UserInfo  `json:"userInfo"`
+		JobType                 string          `json:"jobType"`
+		WaitingToleranceSeconds *int64          `json:"waitingToleranceSeconds,omitempty"`
+		Queue                   string          `json:"queue"`
+		Status                  string          `json:"status"`
+		PodGroupPhase           string          `json:"podGroupPhase,omitempty"`
+		CreationTimestamp       metav1.Time     `json:"createdAt"`
+		RunningTimestamp        metav1.Time     `json:"startedAt"`
+		CompletedTimestamp      metav1.Time     `json:"completedAt"`
+		Nodes                   []string        `json:"nodes"`
+		Resources               v1.ResourceList `json:"resources"`
+		Locked                  bool            `json:"locked"`
+		PermanentLocked         bool            `json:"permanentLocked"`
+		LockedTimestamp         metav1.Time     `json:"lockedTimestamp"`
+		BilledPointsTotal       float64         `json:"billedPointsTotal"`
 	}
 
 	JobBillingResp struct {
@@ -615,7 +556,6 @@ type (
 //	@Param			search		query	string	false	"Search jobs"
 //	@Param			days		query	int	false	"Number of days to look back, -1 for all"
 //	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
-//	@Param			schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
 //	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
 //	@Param			node		query	string	false	"Node name"
 //	@Success		200	{object}	resputil.Response[resputil.Page[JobResp]]	"Volcano Job List"
@@ -644,7 +584,6 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 //	@Param			sort		query	string	false	"Sort fields"
 //	@Param			search		query	string	false	"Search jobs"
 //	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
-//	@Param			schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
 //	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
 //	@Param			node		query	string	false	"Node name"
 //	@Success		200		{object}	resputil.Response[resputil.Page[JobResp]]	"admin get Volcano Job List"
@@ -683,7 +622,6 @@ func (mgr *VolcanojobMgr) listJobs(c *gin.Context, defaultDays int, scope jobLis
 //	@Param		days	query	int	false	"Number of days to look back, -1 for all"
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
-//	@Param		schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
@@ -705,7 +643,6 @@ func (mgr *VolcanojobMgr) GetSelfJobFacets(c *gin.Context) {
 //	@Param		days	query	int	false	"Number of days to look back, -1 for all"
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
-//	@Param		schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
@@ -724,7 +661,6 @@ func (mgr *VolcanojobMgr) GetAllJobFacets(c *gin.Context) {
 //	@Param		days	query	int	false	"Number of days to look back, -1 for all"
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
-//	@Param		schedule_type	query	[]int	false	"Schedule types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
@@ -890,7 +826,6 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 //	@Param			sort		query		string				false	"Sort fields"
 //	@Param			search		query		string				false	"Search jobs"
 //	@Param			job_type	query		[]string			false	"Job types" collectionFormat(multi)
-//	@Param			schedule_type	query		[]int				false	"Schedule types" collectionFormat(multi)
 //	@Param			status		query		[]string			false	"Job statuses" collectionFormat(multi)
 //	@Param			node		query		string				false	"Node name"
 //	@Success		200			{object}	resputil.Response[resputil.Page[JobResp]]	"User's Job List"
@@ -911,10 +846,6 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 	jobList := make([]JobResp, len(jobs))
 	for i := range jobs {
 		job := jobs[i]
-		scheduleType := model.ScheduleTypeNormal
-		if job.ScheduleType != nil {
-			scheduleType = *job.ScheduleType
-		}
 		jobList[i] = JobResp{
 			Name:    job.Name,
 			JobName: job.JobName,
@@ -924,10 +855,10 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 				Nickname: job.User.Nickname,
 			},
 			JobType:                 string(job.JobType),
-			ScheduleType:            scheduleType,
 			WaitingToleranceSeconds: job.WaitingToleranceSeconds,
 			Queue:                   job.Account.Nickname, // 向后兼容，保持展示账号昵称
 			Status:                  string(job.Status),
+			PodGroupPhase:           string(job.PodGroupPhase),
 			CreationTimestamp:       metav1.NewTime(job.CreationTimestamp),
 			RunningTimestamp:        metav1.NewTime(job.RunningTimestamp),
 			CompletedTimestamp:      metav1.NewTime(job.CompletedTimestamp),
@@ -951,11 +882,11 @@ type (
 		UserInfo                model.UserInfo                `json:"userInfo"`
 		JobName                 string                        `json:"jobName"`
 		JobType                 model.JobType                 `json:"jobType"`
-		ScheduleType            model.ScheduleType            `json:"scheduleType"`
 		WaitingToleranceSeconds *int64                        `json:"waitingToleranceSeconds,omitempty"`
 		Queue                   string                        `json:"queue"`
 		Resources               v1.ResourceList               `json:"resources"`
 		Status                  batch.JobPhase                `json:"status"`
+		PodGroupPhase           scheduling.PodGroupPhase      `json:"podGroupPhase,omitempty"`
 		ProfileData             *monitor.ProfileData          `json:"profileData"`
 		ScheduleData            *model.ScheduleData           `json:"scheduleData"`
 		Events                  []v1.Event                    `json:"events"`
@@ -1040,10 +971,6 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	if job.TerminatedStates != nil {
 		terminatedStates = job.TerminatedStates.Data()
 	}
-	scheduleType := model.ScheduleTypeNormal
-	if job.ScheduleType != nil {
-		scheduleType = *job.ScheduleType
-	}
 	jobDetail := JobDetailResp{
 		Name:      job.Name,
 		Namespace: job.Attributes.Data().Namespace,
@@ -1055,10 +982,10 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		},
 		JobName:                 job.JobName,
 		JobType:                 job.JobType,
-		ScheduleType:            scheduleType,
 		WaitingToleranceSeconds: job.WaitingToleranceSeconds,
 		Queue:                   job.Account.Nickname,
 		Status:                  job.Status,
+		PodGroupPhase:           job.PodGroupPhase,
 		Resources:               job.Resources.Data(),
 		ProfileData:             profileData,
 		ScheduleData:            scheduleData,
