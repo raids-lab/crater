@@ -1128,7 +1128,7 @@ func datasetExtraForDownload(
 func (r *ModelDownloadReconciler) createDatasetForModel(
 	ctx context.Context, download *model.ModelDownload, readmeDesc string, repositoryTags []string,
 ) error {
-	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return r.database().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txQuery := query.Use(tx)
 
 		// More than one backend instance may reconcile the same completed Job. Lock

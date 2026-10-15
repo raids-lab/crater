@@ -424,6 +424,19 @@ definitions:
       total:
         type: integer
     type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_JobTemplateresp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.JobTemplateresp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
   github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp:
     properties:
       items:
@@ -543,6 +556,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_JobTemplateresp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_JobTemplateresp'
       msg:
         type: string
     type: object
@@ -1565,6 +1588,23 @@ definitions:
     required:
     - name
     - template
+    type: object
+  internal_handler.JobTemplateresp:
+    properties:
+      createdAt:
+        type: string
+      describe:
+        type: string
+      document:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      template:
+        type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
     type: object
   internal_handler.LLMConfigResp:
     properties:
@@ -7141,6 +7181,53 @@ paths:
       summary: 检查镜像链接是否有效
       tags:
       - ImagePack
+  /v1/jobtemplate:
+    get:
+      consumes:
+      - application/json
+      description: List job templates with server-side pagination, search, owner filtering,
+        and sorting
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search template names
+        in: query
+        name: search
+        type: string
+      - description: 'Owner scope: all, mine, or others'
+        in: query
+        name: owner
+        type: string
+      - description: Sort by createdAt or -createdAt
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Job template page
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_JobTemplateresp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: List job templates
+      tags:
+      - jobtemplate
   /v1/jobtemplate/{id}:
     get:
       consumes:
