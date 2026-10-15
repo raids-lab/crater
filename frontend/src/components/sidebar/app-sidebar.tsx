@@ -23,10 +23,8 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-  useSidebar,
 } from '@/components/ui/sidebar'
 
-import { GitHubStarCard } from '@/components/layout/github-star-card'
 import { NavGroup } from '@/components/sidebar/nav-main'
 import { NavUser } from '@/components/sidebar/nav-user'
 import { TeamSwitcher } from '@/components/sidebar/team-switcher'
@@ -36,21 +34,6 @@ import useIsAdmin from '@/hooks/use-admin'
 import { atomUserContext } from '@/utils/store'
 
 import { NavGroupProps } from './types'
-
-function GitHubStarCardWrapper() {
-  const { state } = useSidebar()
-
-  // 只在侧边栏展开时显示卡片
-  if (state === 'collapsed') {
-    return null
-  }
-
-  return (
-    <div className="px-2 pb-2">
-      <GitHubStarCard />
-    </div>
-  )
-}
 
 export function AppSidebar({
   groups,
@@ -112,7 +95,6 @@ export function AppSidebar({
         ))}
       </SidebarContent>
       <SidebarFooter>
-        <GitHubStarCardWrapper />
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
