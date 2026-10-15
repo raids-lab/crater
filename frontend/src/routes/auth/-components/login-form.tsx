@@ -20,6 +20,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { HTTPError } from 'ky'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -44,6 +45,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -72,43 +74,12 @@ import { IErrorResponse, IResponse } from '@/services/types'
 import { atomPrivacyAccepted, atomUserContext, atomUserInfo, useResetStore } from '@/utils/store'
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 
+import { createLoginFormSchema } from './login-schema'
+
 export type LoginSearch = {
   redirect?: string
   token?: string
 }
-
-const formSchema = z.object({
-  username: z
-    .string()
-    .min(1, {
-      message: '用户名不能为空',
-    })
-    .max(20, {
-      message: '用户名最多 20 个字符',
-    })
-    .refine(
-      (value) => {
-        // 首字符必须小写字母，包含小写字母、数字、中划线
-        const regex = /^[a-z][a-z0-9-]*[a-z0-9]$/
-        return regex.test(value)
-      },
-      {
-        message: '只能包含小写字母和数字，中划线可作为连接符',
-      }
-    ),
-  password: z
-    .string()
-    .min(1, {
-      message: '密码不能为空',
-    })
-    .max(20, {
-      message: '密码最多 20 个字符',
-    }),
-  // 必须勾选隐私政策,否则无法通过校验
-  acceptPrivacy: z.boolean().refine((val) => val === true, {
-    message: '请先阅读并同意隐私政策方可登录',
-  }),
-})
 
 interface LoginFormProps {
   authMode: AuthMode
@@ -125,6 +96,8 @@ export function LoginForm({
   onForgotPasswordClick,
   searchParams,
 }: LoginFormProps) {
+  const { t } = useTranslation()
+  const formSchema = createLoginFormSchema(t)
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -238,8 +211,16 @@ export function LoginForm({
               <FormItem>
                 <FormLabel>账号</FormLabel>
                 <FormControl>
-                  <Input autoComplete="username" {...field} />
+                  <Input
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    {...field}
+                    onChange={(event) => {
+                      field.onChange(event.target.value.toLowerCase())
+                    }}
+                  />
                 </FormControl>
+                <FormDescription className="text-xs">{t('auth.usernameHint')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
