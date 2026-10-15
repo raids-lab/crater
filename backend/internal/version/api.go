@@ -16,8 +16,9 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	APIVersion = 2
+	APIVersion = 3
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
-	MinSupportedCLIAPIVersion = 1
+	// v2 and older CLIs still call the removed prequeue endpoints and the dropped schedule_type filter with no fallback.
+	MinSupportedCLIAPIVersion = 3
 )

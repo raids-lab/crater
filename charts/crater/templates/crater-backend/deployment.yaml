@@ -77,6 +77,11 @@ spec:
             - containerPort: 8088
               name: docusaurus
               protocol: TCP
+            {{- if .Values.backendConfig.schedulerExtenderPort }}
+            - containerPort: {{ trimPrefix ":" .Values.backendConfig.schedulerExtenderPort | int }}
+              name: vc-extender
+              protocol: TCP
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /healthz

@@ -530,7 +530,7 @@ func getLabelAndAnnotations(
 	token util.JWTMessage,
 	baseURL string,
 	c *CreateJobCommon,
-	scheduleMetadata *jobScheduleMetadata,
+	waitingToleranceSeconds *int64,
 ) (
 	labels map[string]string,
 	jobAnnotations map[string]string,
@@ -548,17 +548,7 @@ func getLabelAndAnnotations(
 		AnnotationKeyAlertEnabled: strconv.FormatBool(c.AlertEnabled),
 		AnnotationKeyUserID:       strconv.FormatUint(uint64(token.UserID), 10),
 	}
-	scheduleType := model.ScheduleTypeNormal
-	var waitingToleranceSeconds *int64
-	if scheduleMetadata != nil {
-		scheduleType = scheduleMetadata.ScheduleType
-		waitingToleranceSeconds = scheduleMetadata.WaitingToleranceSeconds
-	}
-	vcjobservice.ApplyScheduleMetadataAnnotations(
-		jobAnnotations,
-		scheduleType,
-		waitingToleranceSeconds,
-	)
+	vcjobservice.ApplyScheduleMetadataAnnotations(jobAnnotations, waitingToleranceSeconds)
 	if len(c.Forwards) > 0 {
 		if data, err := json.Marshal(c.Forwards); err == nil {
 			jobAnnotations[AnnotationKeyForwards] = string(data)
