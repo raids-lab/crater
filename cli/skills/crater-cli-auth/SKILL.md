@@ -1,7 +1,7 @@
 ---
 name: crater-cli-auth
-version: 1.1.0
-description: "Crater CLI 认证域：指导 AI Agent 帮用户登录、重新登录、查看和切换已保存身份、删除凭据、登出当前身份，以及排查 token、session、active_context、401/403、未登录等认证问题。用户提到 crater auth、login、logout、switch、ls、rm、session、token、active context、state.json、未登录、认证失败、权限错误时使用。"
+version: 1.2.0
+description: "Crater CLI 认证域：指导 AI Agent 帮用户登录、重新登录、查看和切换已保存身份、查看和切换项目账户／队列、删除凭据、登出当前身份，以及排查 token、session、active_context、401/403、未登录等认证问题。用户提到 crater auth、account current、account use、项目切换、login、logout、switch、session、token、active context、未登录或权限错误时使用。"
 metadata:
   requires:
     bins: ["crater"]
@@ -17,6 +17,7 @@ metadata:
 
 - 用户需要登录或重新登录 Crater platform。
 - 用户需要查看当前身份、列出已保存身份，或切换 `active_context`。
+- 用户需要查看当前项目账户／队列，或切换到自己所属的另一个账户。
 - 用户需要登出当前身份，或删除某个已保存认证上下文。
 - 用户遇到未登录、token 失效、401/403、权限不足等认证相关问题。
 
@@ -36,11 +37,13 @@ Crater CLI 使用 `(platform_url, username, method)` 三元组标识一个已保
 - `active_context`：当前激活的三元组，后续需要认证的命令默认使用它。
 - `token`：登录接口返回的访问令牌，写在对应 `auth_infos` 条目里。`auth ls` / `auth login` 的命令输出会去掉该字段。
 - `method`：认证方式，目前支持 `ldap` 与 `normal`，默认 `ldap`。
+- 项目账户／队列由服务端凭据确定：`account current` 查询当前项目，`account use <name>` 更新当前登录身份的凭据。`auth switch` 用于切换平台或登录用户。
 
 ## 工作流参考
 
 - 登录、重新登录、401/token 失效处理：读取 `crater-cli-auth-login`（可能路径：[`references/crater-cli-auth-login.md`](references/crater-cli-auth-login.md)）。
 - 查看当前身份、筛选身份、切换 `active_context`：读取 `crater-cli-auth-identities`（可能路径：[`references/crater-cli-auth-identities.md`](references/crater-cli-auth-identities.md)）。
+- 查看当前项目、切换所属账户／队列：读取 [`crater-cli-auth-accounts`](references/crater-cli-auth-accounts.md)。
 - 登出当前身份、删除指定身份、区分 `logout` 与 `rm`：读取 `crater-cli-auth-remove`（可能路径：[`references/crater-cli-auth-remove.md`](references/crater-cli-auth-remove.md)）。
 
 ## 常用范例
@@ -50,6 +53,9 @@ crater auth ls --json
 crater auth login --platform <platform-url> --username <username> --mode ldap
 crater auth login --platform https://gpu.act.buaa.edu.cn --username <username> --mode ldap
 crater auth switch --platform <platform-url> --username <username> --mode ldap
+crater account ls --json
+crater account current --json
+crater account use <account-name> --json
 crater auth logout
 crater auth rm --platform <platform-url> --username <username> --mode ldap
 ```

@@ -1,0 +1,373 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-account-help/argv --
+crater account --help
+-- zh-CN/01-account-help/exit --
+0
+-- zh-CN/01-account-help/stdout --
+查看所属账户和当前账户／队列，切换后续命令使用的项目账户。
+
+Usage:
+  crater account [flags]
+  crater account [command]
+
+Available Commands:
+  billing     查看账户计费
+  current     查看当前账户／队列
+  get         查看账户
+  ls          列出账户
+  members     列出账户成员
+  use         切换当前账户／队列
+  users-out   列出账户外用户
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+
+Use "crater account [command] --help" for more information about a command.
+-- zh-CN/01-account-help/stderr --
+-- zh-CN/02-current-help/argv --
+crater account current --help
+-- zh-CN/02-current-help/exit --
+0
+-- zh-CN/02-current-help/stdout --
+从当前平台查询正在使用的账户／队列及账户角色。
+
+Usage:
+  crater account current [flags]
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/02-current-help/stderr --
+-- zh-CN/03-use-help/argv --
+crater account use --help
+-- zh-CN/03-use-help/exit --
+0
+-- zh-CN/03-use-help/stdout --
+使用 account ls 返回的精确名称切换账户／队列，并保存后续命令使用的凭据。
+
+Usage:
+  crater account use <name> [flags]
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/03-use-help/stderr --
+-- zh-CN/04-use-missing-json/argv --
+crater account use --json
+-- zh-CN/04-use-missing-json/exit --
+2
+-- zh-CN/04-use-missing-json/stdout --
+-- zh-CN/04-use-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：账户／队列 (\u003cname\u003e)"
+}
+-- zh-CN/05-use-blank-json/argv --
+crater account use   --json
+-- zh-CN/05-use-blank-json/exit --
+2
+-- zh-CN/05-use-blank-json/stdout --
+-- zh-CN/05-use-blank-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "缺少必要参数：账户／队列 (\u003cname\u003e)"
+}
+-- zh-CN/06-use-extra-json/argv --
+crater account use research extra --json
+-- zh-CN/06-use-extra-json/exit --
+2
+-- zh-CN/06-use-extra-json/stdout --
+-- zh-CN/06-use-extra-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater account use 的参数过多：收到 2 个，最多允许 1 个"
+}
+-- zh-CN/07-current-extra-json/argv --
+crater account current extra --json
+-- zh-CN/07-current-extra-json/exit --
+2
+-- zh-CN/07-current-extra-json/stdout --
+-- zh-CN/07-current-extra-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater account current 的参数过多：收到 1 个，最多允许 0 个"
+}
+-- zh-CN/08-typo-json/argv --
+crater account invalid-command --json
+-- zh-CN/08-typo-json/exit --
+2
+-- zh-CN/08-typo-json/stdout --
+-- zh-CN/08-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"invalid-command\" for \"crater account\"\nRun \"crater account --help\" for usage."
+}
+-- zh-CN/09-typo-text/argv --
+crater account invalid-command --no-interactive
+-- zh-CN/09-typo-text/exit --
+2
+-- zh-CN/09-typo-text/stdout --
+-- zh-CN/09-typo-text/stderr --
+Error:
+  unknown command "invalid-command" for "crater account"
+  Run "crater account --help" for usage.
+-- zh-CN/10-current-no-active/argv --
+crater account current --json
+-- zh-CN/10-current-no-active/exit --
+2
+-- zh-CN/10-current-no-active/stdout --
+-- zh-CN/10-current-no-active/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "未找到当前激活的账号"
+}
+-- zh-CN/11-use-no-active/argv --
+crater account use research --json
+-- zh-CN/11-use-no-active/exit --
+2
+-- zh-CN/11-use-no-active/stdout --
+-- zh-CN/11-use-no-active/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "未找到当前激活的账号"
+}
+-- zh-CN/12-current-timeout/argv --
+crater account current --json
+-- zh-CN/12-current-timeout/exit --
+4
+-- zh-CN/12-current-timeout/stdout --
+-- zh-CN/12-current-timeout/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/auth/check\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/auth/check\": context deadline exceeded"
+  }
+}
+-- zh-CN/13-use-timeout/argv --
+crater account use research --no-interactive
+-- zh-CN/13-use-timeout/exit --
+4
+-- zh-CN/13-use-timeout/stdout --
+-- zh-CN/13-use-timeout/stderr --
+Error:
+  无法连接服务器：Post "https://example.invalid/api/v1/auth/switch": context deadline exceeded
+-- zh-CN/14-current-404/argv --
+crater account current --json
+-- zh-CN/14-current-404/exit --
+4
+-- zh-CN/14-current-404/stdout --
+-- zh-CN/14-current-404/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- zh-CN/15-use-forbidden/argv --
+crater account use forbidden --json
+-- zh-CN/15-use-forbidden/exit --
+4
+-- zh-CN/15-use-forbidden/stdout --
+-- zh-CN/15-use-forbidden/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_FORBIDDEN_403",
+  "message": "请求失败（HTTP 403）：not a member",
+  "context": {
+    "crater_code": 1001,
+    "http_status": 403,
+    "msg": "not a member"
+  }
+}
+-- zh-CN/16-current-text/argv --
+crater account current --no-interactive
+-- zh-CN/16-current-text/exit --
+0
+-- zh-CN/16-current-text/stdout --
+平台: https://example.invalid
+用户名: alice
+账户／队列: public
+角色: 2
+-- zh-CN/16-current-text/stderr --
+-- zh-CN/17-current-json/argv --
+crater account current --json
+-- zh-CN/17-current-json/exit --
+0
+-- zh-CN/17-current-json/stdout --
+{
+  "data": {
+    "context": {
+      "queue": "public",
+      "roleQueue": 2,
+      "rolePlatform": 2,
+      "accessQueue": 3,
+      "accessPublic": 3,
+      "space": "alice"
+    },
+    "platform_url": "https://example.invalid",
+    "username": "alice"
+  },
+  "status": "OK"
+}
+-- zh-CN/17-current-json/stderr --
+-- zh-CN/18-use-text/argv --
+crater account use research --no-interactive
+-- zh-CN/18-use-text/exit --
+0
+-- zh-CN/18-use-text/stdout --
+平台: https://example.invalid
+用户名: alice
+账户／队列: research
+角色: 2
+-- zh-CN/18-use-text/stderr --
+-- zh-CN/19-use-json/argv --
+crater account use research --json
+-- zh-CN/19-use-json/exit --
+0
+-- zh-CN/19-use-json/stdout --
+{
+  "data": {
+    "context": {
+      "queue": "research",
+      "roleQueue": 2,
+      "rolePlatform": 2,
+      "accessQueue": 3,
+      "accessPublic": 3,
+      "space": "alice"
+    },
+    "platform_url": "https://example.invalid",
+    "username": "alice"
+  },
+  "status": "OK"
+}
+-- zh-CN/19-use-json/stderr --
+-- zh-CN/20-use-invalid-response/argv --
+crater account use invalid --json
+-- zh-CN/20-use-invalid-response/exit --
+4
+-- zh-CN/20-use-invalid-response/stdout --
+-- zh-CN/20-use-invalid-response/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_API_OTHER",
+  "message": "请求失败（HTTP 200）：platform returned invalid account switch credentials or context",
+  "context": {
+    "http_status": 200,
+    "msg": "platform returned invalid account switch credentials or context"
+  }
+}
+-- zh-CN/21-current-malformed-401/argv --
+crater account current --json
+-- zh-CN/21-current-malformed-401/exit --
+4
+-- zh-CN/21-current-malformed-401/stdout --
+-- zh-CN/21-current-malformed-401/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_UNAUTHORIZED_401",
+  "message": "请求失败（HTTP 401）：Unauthorized",
+  "context": {
+    "http_status": 401,
+    "msg": "Unauthorized"
+  }
+}
+-- zh-CN/22-use-malformed-401/argv --
+crater account use research --json
+-- zh-CN/22-use-malformed-401/exit --
+4
+-- zh-CN/22-use-malformed-401/stdout --
+-- zh-CN/22-use-malformed-401/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_UNAUTHORIZED_401",
+  "message": "请求失败（HTTP 401）：Unauthorized",
+  "context": {
+    "http_status": 401,
+    "msg": "Unauthorized"
+  }
+}
+-- zh-CN/23-current-malformed-403/argv --
+crater account current --json
+-- zh-CN/23-current-malformed-403/exit --
+4
+-- zh-CN/23-current-malformed-403/stdout --
+-- zh-CN/23-current-malformed-403/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_FORBIDDEN_403",
+  "message": "请求失败（HTTP 403）：Forbidden",
+  "context": {
+    "http_status": 403,
+    "msg": "Forbidden"
+  }
+}
+-- zh-CN/24-use-malformed-403/argv --
+crater account use research --json
+-- zh-CN/24-use-malformed-403/exit --
+4
+-- zh-CN/24-use-malformed-403/stdout --
+-- zh-CN/24-use-malformed-403/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_FORBIDDEN_403",
+  "message": "请求失败（HTTP 403）：Forbidden",
+  "context": {
+    "http_status": 403,
+    "msg": "Forbidden"
+  }
+}
+-- zh-CN/25-current-malformed-500/argv --
+crater account current --json
+-- zh-CN/25-current-malformed-500/exit --
+4
+-- zh-CN/25-current-malformed-500/stdout --
+-- zh-CN/25-current-malformed-500/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_SERVER_INTERNAL_5XX",
+  "message": "请求失败（HTTP 500）：Internal Server Error",
+  "context": {
+    "http_status": 500,
+    "msg": "Internal Server Error"
+  }
+}
+-- zh-CN/26-use-malformed-500/argv --
+crater account use research --json
+-- zh-CN/26-use-malformed-500/exit --
+4
+-- zh-CN/26-use-malformed-500/stdout --
+-- zh-CN/26-use-malformed-500/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_SERVER_INTERNAL_5XX",
+  "message": "请求失败（HTTP 500）：Internal Server Error",
+  "context": {
+    "http_status": 500,
+    "msg": "Internal Server Error"
+  }
+}
+-- zh-CN/27-use-malformed-text/argv --
+crater account use research --no-interactive
+-- zh-CN/27-use-malformed-text/exit --
+4
+-- zh-CN/27-use-malformed-text/stdout --
+-- zh-CN/27-use-malformed-text/stderr --
+Error:
+  请求失败（HTTP 403）：Forbidden
