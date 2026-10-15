@@ -1,0 +1,35 @@
+{
+  "name": "crater-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.12.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/app.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "tsc --noEmit && eslint . --max-warnings 0",
+    "start": "node dist/app.js"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "3.0.45",
+    "@hono/node-server": "2.1.1",
+    "ai": "7.0.94",
+    "hono": "4.13.7",
+    "zod": "4.1.12"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.35.0",
+    "@types/node": "22.18.1",
+    "eslint": "9.35.0",
+    "globals": "16.3.0",
+    "prettier": "3.6.2",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.42.0"
+  }
+}
