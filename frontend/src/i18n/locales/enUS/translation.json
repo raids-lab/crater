@@ -311,6 +311,7 @@
   "cronPolicy.enableDescription": "When enabled, the system runs this job automatically on its schedule.",
   "cronPolicy.executeError": "Execution failed: ",
   "cronPolicy.executeNow": "Execute Now",
+  "cronPolicy.executeSuccess": "Execution successful",
   "cronPolicy.executing": "Executing...",
   "cronPolicy.gpuAnalysisError": "Failed to update GPU abuse detection policy:",
   "cronPolicy.gpuAnalysisSuccess": "GPU abuse detection policy updated successfully",
