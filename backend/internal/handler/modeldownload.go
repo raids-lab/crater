@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -39,13 +40,15 @@ import (
 )
 
 const (
-	defaultDownloadLogTailLines int64 = 1000
-	maxStoredDownloadLogBytes         = 64 * 1024
-	maxCapturedReadmeBytes            = modeldataset.MaxStoredReadmeBytes
-	readmeLogChunkCharacters          = 4096
-	maxDownloadRevisionLength         = 128
-	CategoryModel                     = "model"
-	CategoryDataset                   = "dataset"
+	defaultDownloadLogTailLines   int64 = 1000
+	maxStoredDownloadLogBytes           = 64 * 1024
+	maxCapturedReadmeBytes              = modeldataset.MaxStoredReadmeBytes
+	readmeLogChunkCharacters            = 4096
+	maxDownloadRevisionLength           = 128
+	CategoryModel                       = "model"
+	CategoryDataset                     = "dataset"
+	modelDownloadModelsBasePath         = "public/Models"
+	modelDownloadDatasetsBasePath       = "public/Datasets"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -309,41 +312,48 @@ func (mgr *ModelDownloadMgr) associateUserWithDownload(
 	return nil
 }
 
-// findReadyOrOngoingDownload only reuses a download with the exact requested
-// upstream identity. The canonical storage path is shared by all variants, so
-// a different source or revision must be reported as a conflict instead of
-// silently satisfying the request with unrelated files.
+// findReadyOrOngoingDownload reuses the one shared public copy for a logical
+// resource. It prefers Ready records, then an active record. The requested
+// revision is only a preference: this product currently exposes one reusable
+// revision for each name and category.
 func (mgr *ModelDownloadMgr) findReadyOrOngoingDownload(
 	c *gin.Context, txQ *query.Query,
-	name string, source model.ModelSource, category model.DownloadCategory, revision string,
+	name string, category model.DownloadCategory, revision string,
 ) (*model.ModelDownload, error) {
 	q := txQ.ModelDownload
 
-	readyDownload, err := q.WithContext(c).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where(q.Name.Eq(name), q.Source.Eq(string(source)), q.Category.Eq(string(category)),
-			q.Revision.Eq(revision),
-			q.Status.Eq(string(model.ModelDownloadStatusReady))).
-		First()
-	if err == nil {
-		return readyDownload, nil
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find ready logical download")
+	find := func(statuses []string, exactRevision bool) (*model.ModelDownload, error) {
+		builder := q.WithContext(c).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(q.Name.Eq(name), q.Category.Eq(string(category)))
+		if exactRevision {
+			builder = builder.Where(q.Revision.Eq(revision))
+		}
+		return builder.Where(q.Status.In(statuses...)).First()
 	}
 
-	ongoingDownload, err := q.WithContext(c).
-		Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where(q.Name.Eq(name), q.Source.Eq(string(source)), q.Category.Eq(string(category)),
-			q.Revision.Eq(revision),
-			q.Status.In(string(model.ModelDownloadStatusPending), string(model.ModelDownloadStatusDownloading),
-				string(model.ModelDownloadStatusPaused))).
-		First()
-	if err == nil {
-		return ongoingDownload, nil
+	readyStatuses := []string{string(model.ModelDownloadStatusReady)}
+	ongoingStatuses := []string{
+		string(model.ModelDownloadStatusPending),
+		string(model.ModelDownloadStatusDownloading),
+		string(model.ModelDownloadStatusPaused),
 	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find ongoing logical download")
+	for _, querySpec := range []struct {
+		statuses      []string
+		exactRevision bool
+	}{
+		{statuses: readyStatuses, exactRevision: true},
+		{statuses: readyStatuses, exactRevision: false},
+		{statuses: ongoingStatuses, exactRevision: true},
+		{statuses: ongoingStatuses, exactRevision: false},
+	} {
+		download, err := find(querySpec.statuses, querySpec.exactRevision)
+		if err == nil {
+			return download, nil
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, bizerr.Internal.DatabaseError.Wrap(err, "find reusable logical download")
+		}
 	}
 	return nil, nil
 }
@@ -376,32 +386,6 @@ func updateDownloadAndReleaseQuota(
 		}
 		return service.ReleaseModelDownloadQuotaReservation(ctx, tx, downloadID)
 	})
-}
-
-// checkLogicalDownloadConflict blocks a new source/revision when a historical
-// failed or soft-deleted record already owns storage for the same public model.
-// Ready and ongoing records are handled earlier and reused instead.
-func checkLogicalDownloadConflict(
-	c *gin.Context, txQ *query.Query,
-	name string, source model.ModelSource, category model.DownloadCategory, revision string,
-) error {
-	var conflict model.ModelDownload
-	db := txQ.ModelDownload.WithContext(c).Unscoped().UnderlyingDB()
-	err := db.Clauses(clause.Locking{Strength: "UPDATE"}).
-		Where("name = ? AND category = ? AND NOT (source = ? AND revision = ?)",
-			name, category, source, revision).
-		Order("id ASC").
-		First(&conflict).Error
-	if err == nil {
-		return bizerr.Conflict.ResourceStatusError.New(fmt.Sprintf(
-			"model already has storage at %s from %s revision %q; reuse or resolve that record before downloading another source or revision",
-			conflict.Path, conflict.Source, conflict.Revision,
-		))
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return bizerr.Internal.DatabaseError.Wrap(err, "check logical download conflict")
-	}
-	return nil
 }
 
 // restoreAndResetSoftDeletedDownload 恢复并重置软删除的下载记录
@@ -498,7 +482,7 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 
 		// 1. 查找已完成或正在进行的下载
 		existing, err := mgr.findReadyOrOngoingDownload(
-			c, tx, req.Name, source, category, revision,
+			c, tx, req.Name, category, revision,
 		)
 		if err != nil {
 			return err
@@ -509,10 +493,6 @@ func (mgr *ModelDownloadMgr) getOrCreateDownload(
 			}
 			download, isNewDownload = existing, false
 			return nil
-		}
-
-		if err := checkLogicalDownloadConflict(c, tx, req.Name, source, category, revision); err != nil {
-			return err
 		}
 
 		// 2. 查找并恢复软删除的记录
@@ -579,8 +559,8 @@ func shouldSubmitRestoredDownload(download *model.ModelDownload) bool {
 	return download.Status != model.ModelDownloadStatusReady
 }
 
-// @Summary		创建模型下载任务
-// @Description	创建一个新的模型下载任务
+// @Summary		创建或复用模型/数据集下载任务
+// @Description	按 name + category 复用已有有效公共资源，响应可能返回不同的 source/revision 且不创建 Job；否则创建下载 Job 并异步处理源站错误。
 // @Tags			ModelDownload
 // @Accept			json
 // @Produce		json
@@ -589,49 +569,17 @@ func shouldSubmitRestoredDownload(download *model.ModelDownload) bool {
 // @Success		200		{object}	resputil.Response[ModelDownloadResp]
 // @Router			/v1/models/download [POST]
 func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
-	var req CreateDownloadReq
+	req, source, category, valid := mgr.parseCreateDownloadRequest(c)
+	if !valid {
+		return
+	}
 	token := util.GetToken(c)
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
-		return
-	}
-
-	if !isValidModelName(req.Name) {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("invalid model name format, expected: owner/model-name"))
-		return
-	}
-
-	// 设置默认来源
-	source := model.ModelSourceModelScope
-	if req.Source != "" {
-		source = model.ModelSource(req.Source)
-	}
-	if source != model.ModelSourceModelScope && source != model.ModelSourceHuggingFace {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("source must be modelscope or huggingface"))
-		return
-	}
-	if len(req.Revision) > maxDownloadRevisionLength {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("revision must not exceed 128 characters"))
-		return
-	}
-
-	// 设置分类
-	category := model.DownloadCategory(req.Category)
-	if !mgr.requireDownloadCapability(c, category) {
-		return
-	}
 
 	// 生成安全的路径名
 	safeName := sanitizeModelName(req.Name)
 
 	// 根据category自动确定下载路径: public/Models/ 或 public/Datasets/
-	var basePath string
-	if category == model.DownloadCategoryModel {
-		basePath = "public/Models"
-	} else {
-		basePath = "public/Datasets"
-	}
+	basePath := modelDownloadBasePath(category)
 	downloadPath := modelDownloadStoragePath(basePath, safeName)
 
 	// 在事务中获取或创建下载任务
@@ -649,24 +597,16 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 		if download.CreatorID != token.UserID {
 			resp.Relation = ModelDownloadRelationSubmitted
 		}
-		if download.Status == model.ModelDownloadStatusReady {
-			c.JSON(http.StatusOK, gin.H{
-				"code": resputil.OK,
-				"data": resp,
-				"msg":  fmt.Sprintf("该资源已下载完成，位置: %s", download.Path),
-			})
-		} else {
-			c.JSON(http.StatusOK, gin.H{
-				"code": resputil.OK,
-				"data": resp,
-				"msg":  "该资源正在下载中，已记录您的下载需求",
-			})
-		}
+		c.JSON(http.StatusOK, gin.H{
+			"code": resputil.OK,
+			"data": resp,
+			"msg":  reusedDownloadMessage(download, source, req.Revision),
+		})
 		return
 	}
 
 	// 提交 K8s Job
-	if err := mgr.submitDownloadJob(c, download, token.Username, req.Token); err != nil {
+	if err := mgr.submitDownloadJob(c, download, token.Username, req.Token, true); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
 		updates := map[string]any{
 			"status":  model.ModelDownloadStatusFailed,
@@ -685,6 +625,65 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Update(q.Status, model.ModelDownloadStatusDownloading)
 
 	resputil.Success(c, convertDownloadToResp(download, token))
+}
+
+func (mgr *ModelDownloadMgr) parseCreateDownloadRequest(
+	c *gin.Context,
+) (CreateDownloadReq, model.ModelSource, model.DownloadCategory, bool) {
+	var req CreateDownloadReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request body"))
+		return CreateDownloadReq{}, "", "", false
+	}
+	if !isValidModelName(req.Name) {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("invalid model name format, expected: owner/model-name"))
+		return CreateDownloadReq{}, "", "", false
+	}
+
+	source := model.ModelSourceModelScope
+	if req.Source != "" {
+		source = model.ModelSource(req.Source)
+	}
+	if source != model.ModelSourceModelScope && source != model.ModelSourceHuggingFace {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("source must be modelscope or huggingface"))
+		return CreateDownloadReq{}, "", "", false
+	}
+	if len(req.Revision) > maxDownloadRevisionLength {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("revision must not exceed 128 characters"))
+		return CreateDownloadReq{}, "", "", false
+	}
+
+	category := model.DownloadCategory(req.Category)
+	if !mgr.requireDownloadCapability(c, category) {
+		return CreateDownloadReq{}, "", "", false
+	}
+	return req, source, category, true
+}
+
+func reusedDownloadMessage(
+	download *model.ModelDownload, requestedSource model.ModelSource, requestedRevision string,
+) string {
+	revisionNote := ""
+	if download.Revision != requestedRevision {
+		revisionNote = fmt.Sprintf(" The shared revision is %q.", download.Revision)
+	}
+	if download.Status == model.ModelDownloadStatusReady {
+		if download.Source == requestedSource {
+			return fmt.Sprintf("Resource is already available at: %s.%s", download.Path, revisionNote)
+		}
+		return fmt.Sprintf(
+			"Resource is already available from %s at %s; reusing it instead of downloading from %s.%s",
+			download.Source, download.Path, requestedSource, revisionNote,
+		)
+	}
+
+	if download.Source == requestedSource {
+		return "Resource is already being downloaded; your request has been recorded." + revisionNote
+	}
+	return fmt.Sprintf(
+		"Resource is already being downloaded from %s; reusing that download instead of starting one from %s.%s",
+		download.Source, requestedSource, revisionNote,
+	)
 }
 
 // ListDownloads godoc
@@ -911,7 +910,7 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 		return
 	}
 	// 事务成功后提交 Job
-	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token); err != nil {
+	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token, true); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
 		// 回滚状态
 		updates := map[string]any{
@@ -953,6 +952,14 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 	var download *model.ModelDownload
 	err := db.Transaction(func(tx *query.Query) error {
 		txQ := tx.ModelDownload
+		identity, err := txQ.WithContext(c).Where(txQ.ID.Eq(downloadID)).First()
+		if err != nil {
+			return bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+		}
+		if err := lockModelDownloadIdentity(c, tx, identity.Name, identity.Category); err != nil {
+			return err
+		}
+
 		d, err := txQ.WithContext(c).
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where(txQ.ID.Eq(downloadID)).
@@ -964,6 +971,9 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 			return bizerr.Conflict.ResourceStatusError.New(
 				fmt.Sprintf("only failed downloads can be retried, current status: %s", d.Status),
 			)
+		}
+		if err := checkLogicalDownloadConflict(c, tx, d); err != nil {
+			return err
 		}
 		if err := checkRetryRevisionConflict(c, tx, d, revision); err != nil {
 			return err
@@ -997,6 +1007,31 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 		return nil
 	})
 	return download, err
+}
+
+func checkLogicalDownloadConflict(
+	c *gin.Context, txQ *query.Query, download *model.ModelDownload,
+) error {
+	q := txQ.ModelDownload
+	conflict, err := q.WithContext(c).
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where(q.ID.Neq(download.ID), q.Name.Eq(download.Name),
+			q.Category.Eq(string(download.Category)), q.Status.In(
+				string(model.ModelDownloadStatusReady),
+				string(model.ModelDownloadStatusPending),
+				string(model.ModelDownloadStatusDownloading),
+				string(model.ModelDownloadStatusPaused),
+			)).
+		First()
+	if err == nil && conflict != nil {
+		return bizerr.Conflict.ResourceStatusError.New(
+			"another active or ready download already uses this model or dataset; reuse it instead of starting this record",
+		)
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Internal.DatabaseError.Wrap(err, "check logical download conflict")
+	}
+	return nil
 }
 
 func checkRetryRevisionConflict(
@@ -1178,47 +1213,14 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 		return
 	}
 
-	db := query.Use(query.GetDB())
-	err = db.Transaction(func(tx *query.Query) error {
-		txQ := tx.ModelDownload
-		locked, lockErr := txQ.WithContext(c).
-			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where(txQ.ID.Eq(download.ID)).
-			First()
-		if lockErr != nil {
-			return lockErr
-		}
-		if locked.Status != model.ModelDownloadStatusPaused {
-			return bizerr.Conflict.ResourceStatusError.New("only paused tasks can be resumed")
-		}
-		if limitErr := mgr.quotaService.Reserve(
-			c, tx.ModelDownload.WithContext(c).UnderlyingDB(), token.UserID,
-			locked.ID, model.ModelDownloadSubmissionResume,
-		); limitErr != nil {
-			return limitErr
-		}
-
-		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
-		if _, updateErr := txQ.WithContext(c).Where(txQ.ID.Eq(locked.ID)).Updates(map[string]any{
-			"status":   model.ModelDownloadStatusDownloading,
-			"message":  "",
-			"job_name": newJobName,
-		}); updateErr != nil {
-			return updateErr
-		}
-		locked.Status = model.ModelDownloadStatusDownloading
-		locked.JobName = newJobName
-		locked.Message = ""
-		download = locked
-		return nil
-	})
+	download, err = mgr.prepareResumeDownload(c, query.Use(query.GetDB()), download.ID, token)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
 	// 提交新 Job (会从已下载的部分继续)
-	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token); err != nil {
+	if err := mgr.submitDownloadJob(c, download, token.Username, action.Token, false); err != nil {
 		klog.Errorf("submit download job failed: %v", err)
 		// 回滚状态
 		rollbackUpdates := map[string]any{
@@ -1236,6 +1238,59 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 	download.Message = ""
 
 	resputil.Success(c, convertDownloadToResp(download, token))
+}
+
+// prepareResumeDownload serializes resume with create and retry for the same
+// logical resource before reserving quota or changing the paused record.
+func (mgr *ModelDownloadMgr) prepareResumeDownload(
+	c *gin.Context, db *query.Query, downloadID uint, token util.JWTMessage,
+) (*model.ModelDownload, error) {
+	var download *model.ModelDownload
+	err := db.Transaction(func(tx *query.Query) error {
+		txQ := tx.ModelDownload
+		identity, err := txQ.WithContext(c).Where(txQ.ID.Eq(downloadID)).First()
+		if err != nil {
+			return bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+		}
+		if err := lockModelDownloadIdentity(c, tx, identity.Name, identity.Category); err != nil {
+			return err
+		}
+
+		locked, err := txQ.WithContext(c).
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(txQ.ID.Eq(downloadID)).
+			First()
+		if err != nil {
+			return bizerr.NotFound.DataBaseNotFound.Wrap(err, "download not found")
+		}
+		if locked.Status != model.ModelDownloadStatusPaused {
+			return bizerr.Conflict.ResourceStatusError.New("only paused tasks can be resumed")
+		}
+		if err := checkLogicalDownloadConflict(c, tx, locked); err != nil {
+			return err
+		}
+		if err := mgr.quotaService.Reserve(
+			c, txQ.WithContext(c).UnderlyingDB(), token.UserID,
+			locked.ID, model.ModelDownloadSubmissionResume,
+		); err != nil {
+			return err
+		}
+
+		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
+		if _, err := txQ.WithContext(c).Where(txQ.ID.Eq(locked.ID)).Updates(map[string]any{
+			"status":   model.ModelDownloadStatusDownloading,
+			"message":  "",
+			"job_name": newJobName,
+		}); err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "update resumed download")
+		}
+		locked.Status = model.ModelDownloadStatusDownloading
+		locked.JobName = newJobName
+		locked.Message = ""
+		download = locked
+		return nil
+	})
+	return download, err
 }
 
 // ListAllDownloads godoc
@@ -1327,7 +1382,12 @@ const (
 	modelScopeHubVersion        = "0.1.7"
 )
 
-func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.ModelDownload, username, accessToken string) error {
+func (mgr *ModelDownloadMgr) submitDownloadJob(
+	c *gin.Context, download *model.ModelDownload, username, accessToken string, clearOutput bool,
+) error {
+	if err := validateDownloadStoragePath(download); err != nil {
+		return err
+	}
 	podAnnotations, err := service.ModelDownloadPodBandwidthAnnotations(
 		c.Request.Context(), mgr.configService, mgr.crClient,
 	)
@@ -1338,7 +1398,7 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 	subPath := filepath.Dir(physicalPath)
 	modelDirName := filepath.Base(physicalPath)
 
-	downloadCmd := mgr.buildDownloadCommand(download, modelDirName)
+	downloadCmd := mgr.buildDownloadCommand(download, modelDirName, clearOutput)
 	memRequest, memLimit := mgr.memoryForModel(download.Name)
 	backoffLimit := downloadJobBackoffLimit
 
@@ -1373,7 +1433,7 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(c *gin.Context, download *model.M
 							Image:   mgr.getDownloadImage(download.Source),
 							Command: []string{"/bin/bash", "-c"},
 							Args:    []string{downloadCmd},
-							Env:     downloadTokenEnv(download.Source, accessToken),
+							Env:     downloadJobEnv(download.Source, accessToken),
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceCPU:    resource.MustParse("1"),
@@ -1443,6 +1503,41 @@ func downloadTokenEnv(source model.ModelSource, accessToken string) []corev1.Env
 	}
 }
 
+// downloadJobEnv reuses the administrator-configured cluster egress proxy for
+// Hugging Face downloads. Hub file responses can redirect to separate hf.co
+// CDN hosts even when HF_ENDPOINT points at a mirror.
+func downloadJobEnv(source model.ModelSource, accessToken string) []corev1.EnvVar {
+	env := downloadTokenEnv(source, accessToken)
+	if source != model.ModelSourceHuggingFace {
+		return env
+	}
+
+	proxy := config.GetConfig().Registry.BuildTools.ProxyConfig
+	return append(env, downloadProxyEnv(proxy.HTTPSProxy, proxy.HTTPProxy, proxy.NoProxy)...)
+}
+
+func downloadProxyEnv(httpsProxy, httpProxy, noProxy string) []corev1.EnvVar {
+	var env []corev1.EnvVar
+	if httpsProxy != "" {
+		env = append(env, corev1.EnvVar{Name: "HTTPS_PROXY", Value: normalizeProxyURL(httpsProxy)})
+	}
+	if httpProxy != "" {
+		env = append(env, corev1.EnvVar{Name: "HTTP_PROXY", Value: normalizeProxyURL(httpProxy)})
+	}
+	if noProxy != "" {
+		env = append(env, corev1.EnvVar{Name: "NO_PROXY", Value: noProxy})
+	}
+	return env
+}
+
+func normalizeProxyURL(proxy string) string {
+	proxy = strings.TrimSpace(proxy)
+	if proxy == "" || strings.Contains(proxy, "://") {
+		return proxy
+	}
+	return "http://" + proxy
+}
+
 // Parameter-count thresholds (in billions) used to size download job memory.
 const (
 	paramThresholdHuge   = 70
@@ -1492,11 +1587,23 @@ func (mgr *ModelDownloadMgr) getDownloadImage(_ model.ModelSource) string {
 	return defaultModelDownloaderImage
 }
 
-func (mgr *ModelDownloadMgr) buildDownloadCommand(download *model.ModelDownload, modelDirName string) string {
+func (mgr *ModelDownloadMgr) buildDownloadCommand(
+	download *model.ModelDownload, modelDirName string, clearOutput bool,
+) string {
 	var installCmd, preflightCmd, downloadCommand, totalProbeCmd, metadataCmd string
+	prepareOutputCmd := `mkdir -p "$OUT_DIR"`
+	if clearOutput {
+		prepareOutputCmd = `# A fresh attempt owns this directory after the logical-resource lock is released.
+# Remove leftovers from a failed attempt so files from different sources cannot be mixed.
+rm -rf "$OUT_DIR"
+mkdir -p "$OUT_DIR"`
+	}
 	huggingFaceEndpoint := config.GetConfig().HuggingFaceDownloadEndpoint()
+	huggingFaceProxyConfigured := hasHuggingFaceEgressProxy()
+	huggingFaceEndpoint = downloadHuggingFaceEndpoint(huggingFaceEndpoint, huggingFaceProxyConfigured)
 	disableXetCmd := ""
-	if shouldDisableHuggingFaceXet(download.Source, huggingFaceEndpoint) {
+	if shouldDisableHuggingFaceXet(download.Source, huggingFaceEndpoint) ||
+		(download.Source == model.ModelSourceHuggingFace && huggingFaceProxyConfigured) {
 		disableXetCmd = "export HF_HUB_DISABLE_XET=1"
 	}
 	if download.Source == model.ModelSourceHuggingFace {
@@ -1544,11 +1651,23 @@ PY`,
 		downloadCommand = fmt.Sprintf(`
 python - << 'PY'
 import os
-from huggingface_hub import snapshot_download
+import httpx
+from huggingface_hub import set_client_factory, snapshot_download
 
 repo_id = %q
 revision = %q
 repo_type = %q
+
+# huggingface_hub 1.x uses a custom httpx transport. Configure its supported
+# client factory explicitly so restricted clusters reliably use their egress
+# proxy for redirected CDN downloads while keeping TLS verification enabled.
+# trust_env also preserves the administrator's NO_PROXY bypass list.
+proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+if proxy:
+    print("[NETWORK] using configured egress proxy", flush=True)
+    set_client_factory(
+        lambda: httpx.Client(follow_redirects=True, trust_env=True)
+    )
 
 # Some mirrors return an absolute rel="next" Link URL pointing to huggingface.co.
 # Rewrite those next-page requests so pagination stays on the configured mirror
@@ -1872,7 +1991,7 @@ export HF_ENDPOINT=%q
 export MODELSCOPE_ENDPOINT=%q
 OUT_DIR="/data/%s"
 export OUT_DIR
-mkdir -p "$OUT_DIR"
+%s
 echo "Downloading model: %s from %s to $OUT_DIR"
 
 # Surface the failing step clearly so the controller can classify the reason.
@@ -1927,6 +2046,7 @@ fi
 		disableXetCmd,
 		config.GetConfig().ModelScopeDownloadEndpoint(),
 		modelDirName,
+		prepareOutputCmd,
 		download.Name,
 		download.Source,
 		installCmd,
@@ -1944,6 +2064,25 @@ func shouldDisableHuggingFaceXet(source model.ModelSource, endpoint string) bool
 		strings.TrimRight(strings.TrimSpace(endpoint), "/") != "https://huggingface.co"
 }
 
+func hasHuggingFaceEgressProxy() bool {
+	proxy := config.GetConfig().Registry.BuildTools.ProxyConfig
+	return strings.TrimSpace(proxy.HTTPSProxy) != "" || strings.TrimSpace(proxy.HTTPProxy) != ""
+}
+
+func downloadHuggingFaceEndpoint(endpoint string, proxyConfigured bool) string {
+	if !proxyConfigured {
+		return endpoint
+	}
+	parsed, err := url.Parse(strings.TrimSpace(endpoint))
+	if err != nil || !strings.EqualFold(parsed.Hostname(), "hf-mirror.com") {
+		return endpoint
+	}
+
+	// hf-mirror.com currently redirects resolve requests to the official Hub.
+	// huggingface_hub 1.23.0 loses required commit metadata on that 308 chain.
+	return "https://huggingface.co"
+}
+
 // convertToPhysicalPath 将前端路径转换为物理存储路径
 func (mgr *ModelDownloadMgr) convertToPhysicalPath(frontendPath string) string {
 	// public -> sugon-gpu-incoming
@@ -1958,7 +2097,17 @@ func (mgr *ModelDownloadMgr) convertToPhysicalPath(frontendPath string) string {
 }
 
 func isValidModelName(name string) bool {
-	// 验证格式: owner/model-name
+	segments := strings.Split(name, "/")
+	if len(segments) != 2 {
+		return false
+	}
+	for _, segment := range segments {
+		if segment == "." || segment == ".." {
+			return false
+		}
+	}
+
+	// Validate format: owner/model-name.
 	pattern := `^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`
 	matched, _ := regexp.MatchString(pattern, name)
 	return matched
@@ -1973,6 +2122,36 @@ func sanitizeModelName(name string) string {
 
 func modelDownloadStoragePath(basePath, safeName string) string {
 	return filepath.Join(basePath, safeName)
+}
+
+func modelDownloadBasePath(category model.DownloadCategory) string {
+	switch category {
+	case model.DownloadCategoryModel:
+		return modelDownloadModelsBasePath
+	case model.DownloadCategoryDataset:
+		return modelDownloadDatasetsBasePath
+	default:
+		return ""
+	}
+}
+
+func validateDownloadStoragePath(download *model.ModelDownload) error {
+	if download == nil || !isValidModelName(download.Name) {
+		return bizerr.Internal.ServiceError.New("unsafe model download storage path")
+	}
+
+	basePath := modelDownloadBasePath(download.Category)
+	if basePath == "" {
+		return bizerr.Internal.ServiceError.New("unsafe model download storage path")
+	}
+	expectedPath := filepath.Clean(modelDownloadStoragePath(basePath, download.Name))
+	actualPath := filepath.Clean(download.Path)
+	relativePath, err := filepath.Rel(expectedPath, actualPath)
+	if err != nil || filepath.IsAbs(relativePath) || relativePath == ".." ||
+		strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+		return bizerr.Internal.ServiceError.New("unsafe model download storage path")
+	}
+	return nil
 }
 
 func convertDownloadToResp(d *model.ModelDownload, token util.JWTMessage) ModelDownloadResp {

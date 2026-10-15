@@ -27,6 +27,7 @@ func TestEvaluateCompatibility(t *testing.T) {
 		want       CompatibilityStatus
 	}{
 		{name: "compatible", cli: 2, minBackend: 1, backend: 2, minCLI: 1, want: CompatibilityCompatible},
+		{name: "compatible with previous backend", cli: 2, minBackend: 1, backend: 1, minCLI: 1, want: CompatibilityCompatible},
 		{name: "cli too old", cli: 1, minBackend: 1, backend: 2, minCLI: 2, want: CompatibilityCLITooOld},
 		{name: "backend too old", cli: 2, minBackend: 2, backend: 1, minCLI: 1, want: CompatibilityBackendTooOld},
 		{name: "explicit zero backend is pre-contract", cli: 1, minBackend: 1, backend: 0, minCLI: 0, want: CompatibilityBackendTooOld},
