@@ -143,8 +143,10 @@ type JobToken struct {
 }
 
 type SSHInfo struct {
-	IP   string `json:"ip"`
-	Port string `json:"port"`
+	IP             string `json:"ip"`
+	Port           string `json:"port"`
+	User           string `json:"user,omitempty"`
+	SessionCommand string `json:"session_command,omitempty"`
 }
 
 type JobCommonRequest struct {

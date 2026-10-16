@@ -544,11 +544,33 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **`--json` 的 `data`**：`logs`（数组）；每项固定包含 `namespace`、`pod`、`container`、`content`。`--prefix` 仅影响文本输出，不修改 JSON 内容。
 - **状态**: [x] Completed
 
-### `crater job token|secret|ssh|snapshot|alert|delete <name>`
+### `crater job exec <name> [--pod POD] [-c CONTAINER] [-i] [-t] [--env-mode user|container] [-- COMMAND [ARG...]]`
+
+- **描述**：在已有作业的运行中容器内执行命令，通过平台 WebSocket 转发到 Kubernetes exec，不依赖节点 CPU 架构、加速卡厂商、GPU 数量、SSH 服务或本地 kubectl。
+- 省略命令时自动转发 stdin、分配 TTY，进入任务用户的交互式登录 shell；要求本地输入输出为终端，与 `--json`、`--no-interactive` 互斥。显式命令必须放在 `--` 后；保留 argv 边界，不解释管道、变量或重定向。需要 shell 表达式时显式使用 `-- sh -c '...'`。
+- SSH 与 exec 共用后端用户会话层。优先使用容器的 `NB_USER`，未配置时使用容器当前用户；HOME 与首选 shell 取自容器账户信息。用户不存在、切换身份失败或 HOME 不可用时明确报错，不回退到 root。连接时不要求用户调用 `/crater-start.sh`，不修改用户 rc 文件。绕过平台初始化的自定义镜像需在镜像或作业启动阶段准备好任务账户。
+- `--env-mode user` 为默认：交互会话由用户登录 shell 加载配置；显式 TTY 命令由该 shell 加载配置后执行安全引用的 argv，不传输环境前缀；非 TTY 命令先通过用户的登录交互 shell 获取导出的环境（最多 10 秒、1 MiB），再执行原始 argv。探测启动输出不进入命令 stdout/stderr；超时或失败时明确报错，可用 `--env-mode container` 跳过用户配置探测，仍保留任务用户与 HOME。别名、shell 函数不是普通命令可继承的环境。
+- 平台启动脚本保存初始化后导出的环境；会话合并该环境和容器初始环境，再应用用户配置。新会话不复制另一个终端临时设置的变量或 Conda 状态。交互 shell 从 HOME 开始；普通命令使用容器工作目录，不可访问时回到 HOME。仅依赖 Linux 镜像内的 POSIX sh、env、dd/wc 等基础工具和账户查询工具；跨用户执行需要已有 sudo、runuser 或 su。
+- `--pod`、`--container` / `-c` 指定目标。只有一个 Pod、一个普通容器时自动选择；多候选必须显式选择。默认不选择 init container，显式指定时只允许运行中的容器。后端再次检查当前用户、项目、作业与 Pod 的归属。
+- `--stdin` / `-i` 转发标准输入，显式命令时默认关闭；输入 EOF 只关闭远端 stdin，继续读取输出与退出状态。
+- `--tty` / `-t` 分配终端，必须同时指定 `-i` 且本地输入输出为终端；与 `--json`、`--no-interactive` 互斥。TTY 模式合并远端 stderr 到 stdout，并同步终端尺寸。结束、出错或取消时恢复本地终端。
+- 普通模式将远端 stdout、stderr 原样流式写入对应的本地流。Ctrl+C 取消返回 `cancelled`（退出码 3）；TTY 内 Ctrl+C 由远端终端处理。
+- `--json` 仅支持不带 `-t` 的执行；完成后输出一次成功信封，`data.exec` 包含 `namespace`、`pod`、`container`、`stdout`、`stderr`、`exit_code`。捕获文本输出总计最多 16 MiB，超限关闭连接并返回 `system_error`。二进制结果使用普通模式重定向保存。
+- 远端命令非零退出返回 `api_error` / `ERR_REMOTE_COMMAND_FAILED`（CLI 退出码 4），`context` 保留 `exit_code` 和目标；JSON 模式还保留已捕获的 `stdout`、`stderr`。连接中断或缺少最终退出帧均视为失败，不能推断执行成功。
+- 后端接口：`GET /api/v1/vcjobs/{name}/exec`，Bearer Header 鉴权；升级前按普通 API 返回 HTTP 错误。API v4 新增该能力，旧后端上的其它命令仍可使用，exec 的 404 保留正常 API 错误。
+
+### `crater job ssh <name> [--connect] [--user USER] [--identity-file FILE]`
+
+- 默认保持原有行为：调用平台 SSH 接口，输出 `host:port`；`--json` 的 `data.ssh` 包含 `ip`、`port`，新版后端还返回 `user` 与 `session_command`。
+- `--connect` 在开启 SSH 后直接调用本机 OpenSSH 并进入交互会话，复用本机 SSH 配置、密钥及主机校验；与 `--json`、`--no-interactive` 互斥，要求本地输入输出为终端。
+- `--user` 默认使用后端确认的任务容器用户名；旧后端未返回时使用当前登录身份的用户名。新版后端安装共享会话入口，`--connect` 自动执行该入口并分配 TTY；SSH 登录账户的 HOME、shell 和配置由共享会话层处理，容器任务环境也会传入；`--identity-file` / `-i` 指定私钥文件。两者只用于 `--connect`，单独使用返回用法错误。
+- 本地参数和 SSH 可执行文件在平台请求前检查；后端返回的主机、端口在启动 OpenSSH 前校验，以独立 argv 调用，不经本地 shell。
+- SSH 适用于平台可连接的各种节点，容器需已安装平台 SSH 接口要求的 sshd。无 sshd 的镜像可使用 `job exec`。取消返回退出码 3，OpenSSH 非零退出返回 `system_error`，`context.exit_code` 保留其退出状态。
+
+### `crater job token|secret|snapshot|alert|delete <name>`
 - **描述**:
   - `token`: 获取运行中 Jupyter 作业的 URL 与 token。
   - `secret`: 获取运行中 WebIDE 作业的 URL 与密码。
-  - `ssh`: 为运行中作业开启 SSH，并输出 `host:port`。
   - `snapshot`: 为 Jupyter 或 Custom 作业创建镜像快照。
   - `alert`: 切换作业告警状态。
   - `delete`: 停止或删除自己的作业。
@@ -559,7 +581,6 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 交互模式默认二次确认；`--json` 或 `--no-interactive` 下必须显式提供 `--yes`，否则返回 `usage_error`。
 - **`--json` 的 `data`**：
   - `token` / `secret`: `token`
-  - `ssh`: `ssh`
   - `snapshot` / `alert` / `delete`: `message`
 - **状态**: [x] Completed
 
@@ -811,7 +832,7 @@ This section records the read-only API surface covered by the CLI after the broa
   - `crater pod logs <pod> <container> --namespace NAMESPACE [--tail N] [--timestamps] [--previous]`
 - 为兼容旧脚本，仍接受显式 namespace 的旧位置参数形式：`... <namespace> <pod>` 与 `logs <namespace> <pod> <container>`。同一次调用不能同时提供旧位置参数 namespace 和 `--namespace`，否则返回 `usage_error`。
 - 上述命令覆盖 `/api/v1/namespaces/...` diagnostic GET APIs；`pod logs` 会先解码后端 Base64 载荷再输出原始日志文本。平台未向普通用户暴露全局作业命名空间配置，CLI 不硬编码或猜测默认值；`crater job get|pods|logs|events|yaml` 始终使用作业 API 返回的真实 namespace。
-- Job-level log streaming is available through `crater job logs --follow`; terminal websocket APIs are intentionally not part of this CLI.
+- Job-level log streaming is available through `crater job logs --follow`. Container execution uses the dedicated, ownership-checked `job exec` protocol described above; the browser terminal endpoint is not reused.
 - AIJob/SPJob reads are intentionally not exposed in this PR because their backend identifier contracts differ from Volcano job names and need a dedicated CLI design.
 
 ### Interfaces Not Exposed As General Read CLI

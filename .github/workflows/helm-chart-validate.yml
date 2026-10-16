@@ -1,4 +1,4 @@
-# Copyright 2025 RAIDS Lab
+# Copyright 2025-2026 The Crater Project Team, RAIDS-Lab
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,6 +38,9 @@ jobs:
           cd charts
           helm lint crater/
           helm template crater crater/ --dry-run
+
+      - name: Test Job Session Environment
+        run: make -C charts test-job-sessions
 
       - name: Check Chart Version Update
         run: |

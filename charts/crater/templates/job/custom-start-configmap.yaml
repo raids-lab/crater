@@ -10,6 +10,17 @@ data:
     # ========== Shell Detection ==========
     # Auto-detect available shell with fallback
     detect_shell() {
+        if [ -n "${NB_USER:-}" ]; then
+            account_shell=$(getent passwd "$NB_USER" | cut -d: -f7) || account_shell=
+            if [ -n "$account_shell" ] && [ -x "$account_shell" ]; then
+                echo "$account_shell"
+                return 0
+            fi
+        fi
+        if [ -n "${SHELL:-}" ] && [ -x "$SHELL" ]; then
+            echo "$SHELL"
+            return 0
+        fi
         for shell in /bin/zsh /bin/bash /bin/sh; do
             if [ -x "$shell" ]; then
                 echo "$shell"
@@ -39,9 +50,12 @@ data:
         echo "User ${NB_USER} already exists, will not recreate"
     fi
     # ========== Directory & Permissions ==========
-    mkdir -p "/home/${NB_USER}"
-    chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}"
-    chmod 755 "/home/${NB_USER}"
+    USER_HOME=$(getent passwd "$NB_USER" | cut -d: -f6)
+    USER_UID=$(id -u "$NB_USER")
+    USER_GID=$(id -g "$NB_USER")
+    mkdir -p "$USER_HOME"
+    chown "${USER_UID}:${USER_GID}" "$USER_HOME"
+    chmod 755 "$USER_HOME"
     SUDOERS_FILE="/etc/sudoers.d/nopasswd-${NB_USER}"
     if [ ! -f "${SUDOERS_FILE}" ]; then
         echo "${NB_USER} ALL=(ALL) NOPASSWD:ALL" > "${SUDOERS_FILE}"
@@ -50,11 +64,12 @@ data:
     # ========== Shell Environment ==========
     # Create shell rc file based on detected shell
     SHELL_TYPE=$(basename "${DEFAULT_SHELL}")
-    SHELL_RC="/home/${NB_USER}/.${SHELL_TYPE}rc"
+    SHELL_RC="${USER_HOME}/.${SHELL_TYPE}rc"
     if [ ! -f "${SHELL_RC}" ]; then
         touch "${SHELL_RC}"
-        chown "${NB_UID}:${NB_GID}" "${SHELL_RC}"
+        chown "${USER_UID}:${USER_GID}" "${SHELL_RC}"
     fi
+{{ include "crater.jobSessionEnvironment" . | indent 4 }}
     # ========== Command Execution ==========
     if [ $# -gt 0 ]; then
         if [ "$1" = "-c" ]; then

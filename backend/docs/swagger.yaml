@@ -928,6 +928,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler_vcjob.SSHInfo'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-map_string_string:
     properties:
       code:
@@ -2650,6 +2660,17 @@ definitions:
       podName:
         type: string
       token:
+        type: string
+    type: object
+  internal_handler_vcjob.SSHInfo:
+    properties:
+      ip:
+        type: string
+      port:
+        type: string
+      session_command:
+        type: string
+      user:
         type: string
     type: object
   map_string_string:
@@ -8939,6 +8960,58 @@ paths:
       summary: 获取任务的事件
       tags:
       - VolcanoJob
+  /v1/vcjobs/{name}/exec:
+    get:
+      description: |-
+        Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.
+        Empty command opens a user login shell with stdin/tty.
+        env_mode=user (default) loads user shell configuration; container skips probing.
+        Non-TTY commands use a bounded environment probe; TTY commands use the user login shell.
+        SSH and exec share account HOME/shell handling; byte payloads are Base64 JSON strings. No GPU or SSH dependency for exec.
+      parameters:
+      - description: Platform job name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Pod name; required for multiple pods
+        in: query
+        name: pod
+        type: string
+      - description: Container name; required for multiple regular containers
+        in: query
+        name: container
+        type: string
+      responses:
+        "101":
+          description: WebSocket exec session
+          schema:
+            type: string
+        "400":
+          description: Invalid target or subprotocol
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Job is outside the current user/project
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Job or pod not found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "409":
+          description: Container is not running
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Platform failure
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Open a user shell or execute argv in your current-project job
+      tags:
+      - VolcanoJob
   /v1/vcjobs/{name}/pods:
     get:
       consumes:
@@ -9036,11 +9109,11 @@ paths:
       - VolcanoJob
   /v1/vcjobs/{name}/ssh:
     post:
-      consumes:
-      - application/json
-      description: 开启 SSH
+      description: |-
+        Returns ip, port, user and session_command.
+        Run session_command through SSH with a TTY for the shared user HOME/shell and task environment.
       parameters:
-      - description: Job Name
+      - description: Platform job name
         in: path
         name: name
         required: true
@@ -9049,20 +9122,24 @@ paths:
       - application/json
       responses:
         "200":
-          description: SSH开启成功
+          description: SSH endpoint and shared session
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo'
+        "403":
+          description: Job is outside the current user/project
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: Request parameter error
+        "409":
+          description: Job or container is not running
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: Other errors
+          description: SSH service or session setup failed
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 开启 SSH
+      summary: Enable SSH with the task user's shared session environment
       tags:
       - VolcanoJob
   /v1/vcjobs/{name}/template:
