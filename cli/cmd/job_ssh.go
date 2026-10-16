@@ -54,7 +54,7 @@ func runJobSSH(cmd *cobra.Command, args []string) (runErr error) {
 	if err != nil {
 		return err
 	}
-	ssh, err := client.OpenJobSSH(name)
+	ssh, err := client.OpenJobSSH(name, connect)
 	if err != nil {
 		return cliErrFromAPI(err)
 	}

@@ -114,7 +114,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 4,
+      "api_version": 5,
       "min_supported_backend_api_version": 3
     },
     "backend": {
@@ -122,7 +122,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "short_commit_sha": "f42b0c2",
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
-      "api_version": 4,
+      "api_version": 5,
       "min_supported_cli_api_version": 3
     }
   }
@@ -560,13 +560,14 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - 普通模式将远端 stdout、stderr 原样流式写入对应的本地流。Ctrl+C 取消返回 `cancelled`（退出码 3）；TTY 内 Ctrl+C 由远端终端处理。
 - `--json` 仅支持不带 `-t` 的执行；完成后输出一次成功信封，`data.exec` 包含 `namespace`、`pod`、`container`、`stdout`、`stderr`、`exit_code`。捕获文本输出总计最多 16 MiB，超限关闭连接并返回 `system_error`。二进制结果使用普通模式重定向保存。
 - 远端命令非零退出返回 `api_error` / `ERR_REMOTE_COMMAND_FAILED`（CLI 退出码 4），`context` 保留 `exit_code` 和目标；JSON 模式还保留已捕获的 `stdout`、`stderr`。连接中断或缺少最终退出帧均视为失败，不能推断执行成功。
-- 后端接口：`GET /api/v1/vcjobs/{name}/exec`，Bearer Header 鉴权；升级前按普通 API 返回 HTTP 错误。API v4 新增该能力，旧后端上的其它命令仍可使用，exec 的 404 保留正常 API 错误。
+- 后端接口：`GET /api/v1/vcjobs/{name}/exec`，Bearer Header 鉴权；升级前按普通 API 返回 HTTP 错误。API v5 新增该能力，旧后端上的其它命令仍可使用，exec 的 404 保留正常 API 错误。
 
 ### `crater job ssh <name> [--connect] [--user USER] [--identity-file FILE]`
 
-- 默认保持原有行为：调用平台 SSH 接口，输出 `host:port`；`--json` 的 `data.ssh` 包含 `ip`、`port`，新版后端还返回 `user` 与 `session_command`。
+- 默认保持原有行为：调用平台 SSH 接口，输出 `host:port`；`--json` 的 `data.ssh` 包含 `ip`、`port`。不指定 `--connect` 时不请求共享会话安装，兼容网页 SSH 和旧客户端。
 - `--connect` 在开启 SSH 后直接调用本机 OpenSSH 并进入交互会话，复用本机 SSH 配置、密钥及主机校验；与 `--json`、`--no-interactive` 互斥，要求本地输入输出为终端。
-- `--user` 默认使用后端确认的任务容器用户名；旧后端未返回时使用当前登录身份的用户名。新版后端安装共享会话入口，`--connect` 自动执行该入口并分配 TTY；SSH 登录账户的 HOME、shell 和配置由共享会话层处理，容器任务环境也会传入；`--identity-file` / `-i` 指定私钥文件。两者只用于 `--connect`，单独使用返回用法错误。
+- `--user` 默认使用后端确认的任务容器用户名；旧后端未返回时使用当前登录身份的用户名。`--connect` 通过 `session=user` 显式请求新版后端安装共享会话入口，响应增加可选的 `user` 与 `session_command`，CLI 自动执行该入口并分配 TTY；SSH 登录账户的 HOME、shell 和配置由共享会话层处理，容器任务环境也会传入；`--identity-file` / `-i` 指定私钥文件。两者只用于 `--connect`，单独使用返回用法错误。
+- SSH 保留平台管理员访问作业的既有权限，普通用户仍限当前账户中自己的作业；exec 始终要求当前账户中本人拥有。SSH 使用首个作业 task 模板的主容器名，注入 sidecar 不改变目标；exec 多容器时仍需显式选择。
 - 本地参数和 SSH 可执行文件在平台请求前检查；后端返回的主机、端口在启动 OpenSSH 前校验，以独立 argv 调用，不经本地 shell。
 - SSH 适用于平台可连接的各种节点，容器需已安装平台 SSH 接口要求的 sshd。无 sshd 的镜像可使用 `job exec`。取消返回退出码 3，OpenSSH 非零退出返回 `system_error`，`context.exit_code` 保留其退出状态。
 

@@ -75,6 +75,7 @@ Common targets:
 | `make curd` | Generate GORM CRUD code |
 | `make docs` | Generate swag docs |
 | `make pre-commit-check` | Run pre-commit checks manually |
+| `make test-job-sessions` | Run isolated SSH/exec and browser request compatibility tests with the race detector |
 | `make build` / `make build-migrate` | Build main / migration binary |
 | `make run-storage` | Run the storage server locally, default port `7320` |
 | `make build-storage` | Build the storage server binary without starting it |
@@ -151,6 +152,7 @@ The repo root `.vscode/launch.json` provides a "Backend Debug Server" configurat
 ## Before Submitting Backend Changes
 
 - Run the relevant `make` target, usually `make pre-commit-check` for final checks.
+- `make test-job-sessions` covers SSH/exec access, container selection, user environment and streaming, plus browser query-token/native Header parsing. Request parsing is tested from its source files to avoid the unrelated service initialization database migration. It runs in pre-commit and backend PR checks without a database or cluster.
 - If API behavior changed, confirm `swag` annotations, frontend usage, CLI behavior, and error presentation are aligned.
 - If an API used by the CLI changed, record whether `APIVersion` and `MinSupportedCLIAPIVersion` changed and why.
 - If job template payloads changed, confirm the versioning / compatibility decision.

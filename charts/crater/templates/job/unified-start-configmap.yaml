@@ -94,10 +94,11 @@ data:
         USER_HOME=$(getent passwd "$NB_USER" | cut -d: -f6)
         USER_UID=$(id -u "$NB_USER")
         USER_GID=$(id -g "$NB_USER")
-        if [ ! -d "$USER_HOME" ]; then
-            mkdir -p "$USER_HOME"
-        fi
-        chown "${USER_UID}:${USER_GID}" "$USER_HOME"
+        # Keep the platform working/notebook directory alongside the image HOME.
+        for user_dir in "$USER_HOME" "/home/${NB_USER}"; do
+            mkdir -p "$user_dir"
+            chown "${USER_UID}:${USER_GID}" "$user_dir"
+        done
         
         # Create .zshrc if shell is zsh and file doesn't exist
         if [ "${DEFAULT_SHELL}" = "/bin/zsh" ] && [ ! -f "$USER_HOME/.zshrc" ]; then

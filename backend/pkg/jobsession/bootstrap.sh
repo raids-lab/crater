@@ -3,7 +3,7 @@
 # Resolve the account before entering the shared, unprivileged session stage.
 set -eu
 # Only the root-managed startup snapshot is read before dropping privileges.
-if [ "$(id -u)" = 0 ] && [ -f /run/crater/environment.sh ] && [ ! -L /run/crater/environment.sh ]; then
+if [ "$(id -u)" = 0 ] && [ ! -L /run/crater ] && [ -f /run/crater/environment.sh ] && [ ! -L /run/crater/environment.sh ]; then
     . /run/crater/environment.sh
 fi
 crater_user_script=__USER_SCRIPT__

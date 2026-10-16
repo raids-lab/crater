@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 
@@ -16,20 +16,11 @@ import (
 
 func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var authToken string
-		// Native WebSocket clients can keep credentials out of URLs. Browser
-		// terminals retain the query-token fallback for compatibility.
-		if websocketUpgrade(c.Request) && c.Request.Header.Get("Authorization") == "" {
-			authToken = c.Query("token")
-		} else {
-			authHeader := c.Request.Header.Get("Authorization")
-			t := strings.Split(authHeader, " ")
-			if len(t) < 2 || t[0] != "Bearer" {
-				resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.TokenInvalid)
-				c.Abort()
-				return
-			}
-			authToken = t[1]
+		authToken, err := protectedRequestToken(c)
+		if err != nil {
+			resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("Invalid token"))
+			c.Abort()
+			return
 		}
 		token, err := util.GetTokenMgr().CheckToken(authToken)
 		if err != nil {
@@ -89,14 +80,6 @@ func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 		util.SetJWTContext(c, token)
 		c.Next()
 	}
-}
-
-func websocketUpgrade(r *http.Request) bool {
-	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
-}
-
-func requiresFreshPermissions(c *gin.Context) bool {
-	return c.Request.Method != http.MethodGet || c.FullPath() == "/api/v1/vcjobs/:name/exec"
 }
 
 func AuthAdmin() gin.HandlerFunc {
