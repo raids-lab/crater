@@ -66,6 +66,8 @@ const (
 	ErrAPIVersionMismatch = "ERR_API_VERSION_MISMATCH"
 	// ErrNetworkFailure 表示 API 请求在传输阶段失败，未拿到有效 HTTP 语义。
 	ErrNetworkFailure = "ERR_NETWORK_FAILURE"
+	// ErrRemoteCommandFailed preserves the process status in context.exit_code.
+	ErrRemoteCommandFailed = "ERR_REMOTE_COMMAND_FAILED"
 
 	// ErrNotFound 用于 usage_error 等本地状态「未找到」，不带 HTTP 后缀。
 	ErrNotFound = "ERR_NOT_FOUND"

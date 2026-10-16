@@ -5,17 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -99,7 +96,8 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.PUT(":name/alert", mgr.ToggleAlertState)
 
 	// open ssh
-	g.POST(":name/ssh", mgr.OpenSSH)
+	g.POST(":name/ssh", mgr.UserOpenSSH)
+	g.GET(":name/exec", mgr.UserExec)
 
 	// snapshot - 通用作业快照功能，适用于 Jupyter 和 Custom 类型作业
 	g.POST(":name/snapshot", mgr.CreateSnapshot)
@@ -905,8 +903,10 @@ type (
 
 	// SSHInfo 定义 SSH 信息的结构体
 	SSHInfo struct {
-		IP   string `json:"ip"`
-		Port string `json:"port"`
+		IP             string `json:"ip"`
+		Port           string `json:"port"`
+		User           string `json:"user,omitempty"`
+		SessionCommand string `json:"session_command,omitempty"`
 	}
 
 	// SSHResp 定义返回的 SSH 信息的结构体
@@ -1021,124 +1021,6 @@ func (mgr *VolcanojobMgr) GetJobBillingDetail(c *gin.Context) {
 		Name:              job.Name,
 		BilledPointsTotal: service.ToDisplayPoints(job.BilledPointsTotal),
 	})
-}
-
-// OpenSSH godoc
-//
-//	@Summary		开启 SSH
-//	@Description	开启 SSH
-//	@Tags			VolcanoJob
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			name	path		string					true	"Job Name"
-//	@Success		200		{object}	resputil.Response[any]	"SSH开启成功"
-//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
-//	@Failure		500		{object}	resputil.Response[any]	"Other errors"
-//	@Router			/v1/vcjobs/{name}/ssh [post]
-func (mgr *VolcanojobMgr) OpenSSH(c *gin.Context) {
-	var req JobActionReq
-	if err := c.ShouldBindUri(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	token := util.GetToken(c)
-
-	job, err := getJob(c, req.JobName, &token)
-	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	if job.Status != batch.Running {
-		resputil.Error(c, "job is not running", resputil.NotSpecified)
-		return
-	}
-
-	vcjob := job.Attributes.Data()
-	namespace := job.Attributes.Data().Namespace
-	podName, podLabels := getPodNameAndLabelFromJob(vcjob)
-
-	var pod v1.Pod
-	if err = mgr.client.Get(c, client.ObjectKey{Namespace: namespace, Name: podName}, &pod); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-
-	// get container name
-	containerName := pod.Spec.Containers[0].Name
-
-	if v, ok := pod.Annotations[AnnotationKeySSHEnabled]; ok {
-		// 解析主机名和端口号 // Value 格式为 "ip:port"
-		splits := strings.Split(v, ":")
-		if len(splits) != 2 {
-			resputil.Error(c, "invalid ssh enabled value", resputil.NotSpecified)
-			return
-		}
-		resputil.Success(c, SSHInfo{
-			IP:   splits[0],
-			Port: splits[1],
-		})
-		return
-	}
-
-	// 检查并创建sshd用户，然后启动sshd服务
-	commands := []string{
-		"sh",
-		"-c",
-		`if ! id "sshd" &>/dev/null; then
-			echo "Creating SSHD user and group...";
-			groupadd sshd;
-			useradd -u 66 -g sshd -c "SSH daemon" -d /var/lib/sshd -s /sbin/nologin -m sshd;
-			echo "SSHD user creation completed";
-		else
-			echo "SSHD user already exists, skipping creation";
-		fi && 
-		service ssh restart`,
-	}
-
-	if _, err = mgr.execCommandInPod(c, namespace, podName, containerName, commands); err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to setup and start ssh service in pod: %v", err), resputil.ServiceSshdNotFound)
-		return
-	}
-
-	ip, port, err := mgr.serviceManager.CreateNodePort(
-		c,
-		[]metav1.OwnerReference{
-			{
-				APIVersion:         "batch.volcano.sh/v1alpha1",
-				Kind:               "Job",
-				Name:               vcjob.Name,
-				UID:                vcjob.UID,
-				BlockOwnerDeletion: ptr.To(true),
-			},
-		},
-		podLabels,
-		ptr.To(v1.ServicePort{
-			Name:       "ssh",
-			Port:       SSHPort,
-			Protocol:   v1.ProtocolTCP,
-			TargetPort: intstr.FromInt(SSHPort),
-		}),
-		job.User.Name, // Pass the username
-	)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to create ssh service: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	sshInfo := SSHInfo{
-		IP:   ip,
-		Port: fmt.Sprintf("%d", port),
-	}
-	sshInfoStr := fmt.Sprintf("%s:%d", ip, port)
-	pod.Annotations[AnnotationKeySSHEnabled] = sshInfoStr
-	if err := mgr.client.Update(c, &pod); err != nil {
-		klog.Errorf("failed to update pod annotation: %v", err)
-	}
-
-	resputil.Success(c, sshInfo)
 }
 
 // GetJobPods godoc

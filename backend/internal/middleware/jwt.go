@@ -17,8 +17,9 @@ import (
 func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var authToken string
-		// if request type is websocket, read token from string
-		if c.Request.Header.Get("Upgrade") == "websocket" {
+		// Native WebSocket clients can keep credentials out of URLs. Browser
+		// terminals retain the query-token fallback for compatibility.
+		if websocketUpgrade(c.Request) && c.Request.Header.Get("Authorization") == "" {
 			authToken = c.Query("token")
 		} else {
 			authHeader := c.Request.Header.Get("Authorization")
@@ -49,7 +50,7 @@ func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 		}
 
 		// If query method is not GET (e.g. POST, PUT, DELETE), validate permissions from database
-		if c.Request.Method != "GET" {
+		if requiresFreshPermissions(c) {
 			u := query.User
 
 			// Check platform role
@@ -88,6 +89,14 @@ func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 		util.SetJWTContext(c, token)
 		c.Next()
 	}
+}
+
+func websocketUpgrade(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+}
+
+func requiresFreshPermissions(c *gin.Context) bool {
+	return c.Request.Method != http.MethodGet || c.FullPath() == "/api/v1/vcjobs/:name/exec"
 }
 
 func AuthAdmin() gin.HandlerFunc {
