@@ -561,9 +561,10 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 
 ### `crater job ssh <name> [--connect] [--user USER] [--identity-file FILE]`
 
-- 默认保持原有行为：调用平台 SSH 接口，输出 `host:port`；`--json` 的 `data.ssh` 包含 `ip`、`port`，新版后端还返回 `user` 与 `session_command`。
+- 默认保持原有行为：调用平台 SSH 接口，输出 `host:port`；`--json` 的 `data.ssh` 包含 `ip`、`port`。不指定 `--connect` 时不请求共享会话安装，兼容网页 SSH 和旧客户端。
 - `--connect` 在开启 SSH 后直接调用本机 OpenSSH 并进入交互会话，复用本机 SSH 配置、密钥及主机校验；与 `--json`、`--no-interactive` 互斥，要求本地输入输出为终端。
-- `--user` 默认使用后端确认的任务容器用户名；旧后端未返回时使用当前登录身份的用户名。新版后端安装共享会话入口，`--connect` 自动执行该入口并分配 TTY；SSH 登录账户的 HOME、shell 和配置由共享会话层处理，容器任务环境也会传入；`--identity-file` / `-i` 指定私钥文件。两者只用于 `--connect`，单独使用返回用法错误。
+- `--user` 默认使用后端确认的任务容器用户名；旧后端未返回时使用当前登录身份的用户名。`--connect` 通过 `session=user` 显式请求新版后端安装共享会话入口，响应增加可选的 `user` 与 `session_command`，CLI 自动执行该入口并分配 TTY；SSH 登录账户的 HOME、shell 和配置由共享会话层处理，容器任务环境也会传入；`--identity-file` / `-i` 指定私钥文件。两者只用于 `--connect`，单独使用返回用法错误。
+- SSH 保留平台管理员访问作业的既有权限，普通用户仍限当前账户中自己的作业；exec 始终要求当前账户中本人拥有。SSH 使用首个作业 task 模板的主容器名，注入 sidecar 不改变目标；exec 多容器时仍需显式选择。
 - 本地参数和 SSH 可执行文件在平台请求前检查；后端返回的主机、端口在启动 OpenSSH 前校验，以独立 argv 调用，不经本地 shell。
 - SSH 适用于平台可连接的各种节点，容器需已安装平台 SSH 接口要求的 sshd。无 sshd 的镜像可使用 `job exec`。取消返回退出码 3，OpenSSH 非零退出返回 `system_error`，`context.exit_code` 保留其退出状态。
 

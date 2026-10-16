@@ -10295,14 +10295,14 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns ip, port, user and session_command.\nRun session_command through SSH with a TTY for the shared user HOME/shell and task environment.",
+                "description": "Returns ip and port. session=user additionally prepares and returns user and session_command.\nDefault clients retain native sshd sessions without shared launcher installation.\nPlatform administrators retain access to other users' jobs; ordinary users require ownership in the current project.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "VolcanoJob"
                 ],
-                "summary": "Enable SSH with the task user's shared session environment",
+                "summary": "Enable SSH access, optionally preparing the task user's environment",
                 "parameters": [
                     {
                         "type": "string",
@@ -10310,6 +10310,12 @@ const docTemplate = `{
                         "name": "name",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Set user to prepare the shared HOME/shell environment",
+                        "name": "session",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -10319,8 +10325,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo"
                         }
                     },
+                    "400": {
+                        "description": "Unsupported session mode",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
                     "403": {
                         "description": "Job is outside the current user/project",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Job, pod or SSH service not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }

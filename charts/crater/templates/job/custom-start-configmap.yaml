@@ -53,9 +53,12 @@ data:
     USER_HOME=$(getent passwd "$NB_USER" | cut -d: -f6)
     USER_UID=$(id -u "$NB_USER")
     USER_GID=$(id -g "$NB_USER")
-    mkdir -p "$USER_HOME"
-    chown "${USER_UID}:${USER_GID}" "$USER_HOME"
-    chmod 755 "$USER_HOME"
+    # Preserve the existing platform working directory as well as the image HOME.
+    for user_dir in "$USER_HOME" "/home/${NB_USER}"; do
+        mkdir -p "$user_dir"
+        chown "${USER_UID}:${USER_GID}" "$user_dir"
+        chmod 755 "$user_dir"
+    done
     SUDOERS_FILE="/etc/sudoers.d/nopasswd-${NB_USER}"
     if [ ! -f "${SUDOERS_FILE}" ]; then
         echo "${NB_USER} ALL=(ALL) NOPASSWD:ALL" > "${SUDOERS_FILE}"

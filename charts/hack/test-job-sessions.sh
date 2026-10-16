@@ -35,7 +35,7 @@ for kind in custom unified; do
     awk '
         /# Preserve generated toolchain/ { copying=1 }
         copying { print }
-        /unset CRATER_ENV_FILE/ { exit }
+        /unset -f crater_save_session_environment/ { exit }
     ' "$scratch/$kind.sh" > "$scratch/$kind-hook.sh"
     test -s "$scratch/$kind-hook.sh"
     sed "s|/run/crater|$scratch/$kind-session|g" "$scratch/$kind-hook.sh" > "$scratch/$kind-test.sh"
@@ -54,8 +54,13 @@ done
 mkdir "$scratch/link-target"
 ln -s "$scratch/link-target" "$scratch/link"
 sed "s|/run/crater|$scratch/link|g" "$scratch/custom-hook.sh" > "$scratch/link-test.sh"
-if bash "$scratch/link-test.sh" > /dev/null 2>&1; then
-    echo "snapshot hook accepted a symlink session directory" >&2
+if ! bash "$scratch/link-test.sh" > "$scratch/link-output" 2>&1; then
+    echo "snapshot failure stopped startup" >&2
     exit 1
 fi
+if [ -e "$scratch/link-target/environment.sh" ] || ! grep -q 'must not be a symlink' "$scratch/link-output"; then
+    echo "snapshot hook wrote through a symlink session directory" >&2
+    exit 1
+fi
+bash "$chart_dir/../hack/test-job-startup-compatibility.sh" "$scratch/custom.sh" "$scratch/unified.sh"
 echo "Job startup scripts: render, syntax, private environment snapshots and symlink checks passed."

@@ -119,15 +119,21 @@ Avoid rendering full backend config into ss-config.
 {{/* Save only exported startup state; session connections never rerun provisioning. */}}
 {{- define "crater.jobSessionEnvironment" -}}
 # Preserve generated toolchain/environment settings for later SSH and exec sessions.
-if [ -L /run/crater ]; then
-    echo "crater: session directory must not be a symlink" >&2
-    exit 1
+crater_save_session_environment() (
+    if [ -L /run/crater ]; then
+        echo "crater: session directory must not be a symlink" >&2
+        exit 1
+    fi
+    mkdir -p /run/crater || exit 1
+    chmod 755 /run/crater || exit 1
+    CRATER_ENV_FILE=$(umask 077; mktemp /run/crater/.environment.XXXXXX) || exit 1
+    trap 'rm -f "$CRATER_ENV_FILE"' EXIT
+    /bin/sh -c 'export -p' > "$CRATER_ENV_FILE" || exit 1
+    chmod 600 "$CRATER_ENV_FILE" || exit 1
+    mv -f "$CRATER_ENV_FILE" /run/crater/environment.sh || exit 1
+)
+if ! crater_save_session_environment; then
+    echo "crater: could not save startup environment; continuing with container environment and user shell configuration" >&2
 fi
-mkdir -p /run/crater
-chmod 755 /run/crater
-CRATER_ENV_FILE=$(umask 077; mktemp /run/crater/.environment.XXXXXX)
-/bin/sh -c 'export -p' > "$CRATER_ENV_FILE"
-chmod 600 "$CRATER_ENV_FILE"
-mv -f "$CRATER_ENV_FILE" /run/crater/environment.sh
-unset CRATER_ENV_FILE
+unset -f crater_save_session_environment
 {{- end -}}

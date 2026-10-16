@@ -59,6 +59,9 @@ jobs:
       - name: Run make lint
         run: make lint
 
+      - name: Test job session and browser compatibility
+        run: make test-job-sessions
+
   backend-build-check:
     runs-on: ubuntu-latest
     needs: backend-lint-check

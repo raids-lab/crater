@@ -33,7 +33,7 @@ crater job exec JOB --json --no-interactive -- python -V
 
 SSH 连接和 exec 共用用户环境处理，无需手动执行 `/crater-start.sh`。默认优先使用容器的 `NB_USER`，未设置时使用容器当前用户；HOME 和 shell 取自容器用户信息。shell 按自身规则读取配置，例如 Bash 是否读取 `.bashrc` 由登录配置决定。
 
-平台启动脚本会保存初始化后导出的环境，新会话再加载用户配置。已有终端内临时 export 的变量或 Conda 激活状态不会自动传入新会话。普通命令保留容器工作目录，不可访问时回到 HOME；交互 shell 从 HOME 开始。
+平台启动脚本会保存初始化后导出的环境，新会话再加载用户配置。若无法保存快照，启动日志会提示 `could not save startup environment`，作业继续启动；此时新会话使用容器环境和用户配置，启动阶段临时生成的变量需先修复快照保存问题再重建作业。已有终端内临时 export 的变量或 Conda 激活状态不会自动传入新会话。普通命令保留容器工作目录，不可访问时回到 HOME；交互 shell 从 HOME 开始。
 
 非 TTY 命令默认先探测用户 shell 导出的环境（最多 10 秒、1 MiB），忽略启动提示后执行原始参数。如果用户配置阻塞或只需容器环境，可执行：
 
@@ -52,6 +52,8 @@ crater job exec JOB -- conda run -n myenv python script.py
 crater job exec JOB -- /opt/conda/envs/myenv/bin/python script.py
 ```
 
+Jupyter 的 notebook 目录和 WebIDE 的默认工作目录保留为 `/home/用户名`。镜像已有用户的 HOME 若在其他路径，启动时会同时准备两个目录：应用继续使用原工作目录，shell 配置保留在用户自己的 HOME。平台网页终端继续使用原有入口和终端行为。
+
 ## 使用本机 SSH
 
 先按 [SSH 连接指南](./ssh/ssh-func.md) 配置容器 SSH 服务和公钥，再执行：
@@ -63,4 +65,6 @@ crater job ssh JOB --connect --identity-file ~/.ssh/id_ed25519
 crater job ssh JOB --connect --user USER
 ```
 
-不加 `--connect` 时显示连接地址；加上后使用本机 OpenSSH 连接，保留本机 SSH 配置和主机密钥校验。默认使用后端确认的任务用户。`--user` 和 `--identity-file` 仅与 `--connect` 一起使用；指定其他用户时，该用户需能访问共用会话入口。交互连接要求本机输入输出均为终端，不能使用 `--json` 或 `--no-interactive`。没有 sshd 的镜像可使用 `job exec`。
+不加 `--connect` 时只取连接地址，不安装共享会话入口；网页 SSH 和旧客户端也保留这一行为。加上后 CLI 显式请求用户环境入口，再使用本机 OpenSSH 连接，保留本机 SSH 配置和主机密钥校验。默认使用后端确认的任务用户。`--user` 和 `--identity-file` 仅与 `--connect` 一起使用；指定其他用户时，该用户需能访问共用会话入口。交互连接要求本机输入输出均为终端，不能使用 `--json` 或 `--no-interactive`。没有 sshd 的镜像可使用 `job exec`。
+
+SSH 保留平台管理员访问作业的权限，普通用户限当前账户中自己的作业；`job exec` 始终要求本人在当前账户拥有作业。SSH 自动选择作业主容器，Pod 中注入的 sidecar 不改变该目标。

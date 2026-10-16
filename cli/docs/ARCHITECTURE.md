@@ -101,11 +101,13 @@ CLI 与 Crater 平台之间的请求、响应解析与传输层异常，集中�
 
 ## 作业连接与命令执行
 
-`job ssh --connect` 通过统一 session/API 客户端获取当前身份和 SSH 地址，再以独立 argv 调用本机 OpenSSH。`job ssh` 默认仍输出地址。交互前检查 TTY、选项和本机依赖，不更改本机 SSH 配置或主机校验规则。
+`job ssh --connect` 通过统一 session/API 客户端获取当前身份和 SSH 地址，并用 `session=user` 显式请求共享环境入口，再以独立 argv 调用本机 OpenSSH。`job ssh` 默认只取地址，网页 SSH 和旧客户端也保留默认路径，不安装共享入口。交互前检查 TTY、选项和本机依赖，不更改本机 SSH 配置或主机校验规则。
 
 `cmd/job_exec.go` 负责 argv 校验、可取消的 stdin、本地终端 raw 模式与恢复、尺寸变化和输出。`internal/api/job_exec.go` 负责 Bearer Header 鉴权的 WebSocket 握手、协议帧和流生命周期；不访问本地凭据、不输出用户消息。省略命令时进入用户 shell；显式命令保留 argv，不依赖节点架构或 GPU 厂商。测试沙箱的 HTTP 失败模拟仍通过统一客户端；WebSocket 的 `passthrough` 同样限制为测试管理的 loopback fixture。
 
-后端 `GET /api/v1/vcjobs/{name}/exec` 在升级连接前检查当前用户与项目、读取 live Volcano Job，并用 live UID 的 controller owner reference 校验 Pod 归属。该 GET 具有执行副作用，认证中间件会按写操作重新验证账户权限。`internal/service/vcjob/exec.go` 选择运行中容器；`pkg/jobexec` 转发 Kubernetes exec 流，不更改已有浏览器终端协议。`pkg/jobsession` 拥有共享 POSIX 会话脚本、账户解析、用户切换和限时环境探测；exec 和 SSH 安装入口均使用该包，CLI 不包含远端环境脚本。非 TTY 命令探测出的环境值通过 Kubernetes stdin 的私有前缀传递，包装器按字节长度读取后再把剩余 stdin 交给用户命令；环境值不进入 exec URL、日志或 CLI 响应。TTY 命令由用户登录 shell 加载配置后执行安全引用的 argv，不向 PTY 发送环境前缀，避免回显或 canonical 输入处理泄漏环境。启动 ConfigMap 只保存初始化后的导出环境，连接时不重复建用户或修改权限。SSH API 返回确认的 `user` 和固定 `session_command`；旧后端缺少这两个可选字段时仍按原方式连接。
+后端 `GET /api/v1/vcjobs/{name}/exec` 在升级连接前检查当前用户与项目、读取 live Volcano Job，并用 live UID 的 controller owner reference 校验 Pod 归属。该 GET 具有执行副作用，认证中间件会按写操作重新验证账户权限。`internal/service/vcjob/exec.go` 选择运行中容器；`pkg/jobexec` 转发 Kubernetes exec 流，不更改已有浏览器终端协议。`pkg/jobsession` 拥有共享 POSIX 会话脚本、账户解析、用户切换和限时环境探测；exec 和 SSH 安装入口均使用该包，CLI 不包含远端环境脚本。非 TTY 命令探测出的环境值通过 Kubernetes stdin 的私有前缀传递，包装器按字节长度读取后再把剩余 stdin 交给用户命令；环境值不进入 exec URL、日志或 CLI 响应。TTY 命令由用户登录 shell 加载配置后执行安全引用的 argv，不向 PTY 发送环境前缀，避免回显或 canonical 输入处理泄漏环境。启动 ConfigMap 只保存初始化后的导出环境，连接时不重复建用户或修改权限。SSH API 仅在显式请求 `session=user` 时返回确认的 `user` 和固定 `session_command`；旧后端缺少这两个可选字段时仍按原方式连接。
+
+SSH 的访问策略保留平台管理员权限，exec 始终要求当前账户中本人拥有；两者在读取 live 资源前通过 `CheckSessionAccess` 校验。SSH 根据首个 task 模板的主容器名选择目标，不因 Pod 注入 sidecar 而要求额外参数。Jupyter/WebIDE 保留 `/home/NB_USER` 工作与 notebook 目录，启动脚本同时准备实际 HOME。环境快照保存失败会给出提示并继续原服务启动，不发布不完整文件；会话忽略符号链接目录中的快照。网页终端保留原有 query-token 和 `op:stdin/resize` 协议，不接入新的 exec 协议。
 
 WebSocket 子协议为 `crater.exec.v1`。目标选择通过 `pod`、`container` query 发送；token 使用 Header、命令使用首帧，均不写入 URL。JSON 帧如下：
 

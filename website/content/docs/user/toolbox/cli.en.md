@@ -33,7 +33,7 @@ Ordinary mode streams stdout and stderr separately; TTY mode merges them. Succes
 
 SSH connections and exec share user environment handling, so you do not need to invoke `/crater-start.sh`. The container's `NB_USER` selects the task user; otherwise the current container user is used. HOME and shell come from the container's user database. Each shell follows its own startup rules; a Bash login profile determines whether `.bashrc` is sourced.
 
-Platform startup scripts save exported initialization settings, and new sessions load user configuration. Temporary exports or Conda activation in another terminal are not copied. Commands retain the container working directory when accessible, otherwise HOME; interactive shells start in HOME.
+Platform startup scripts save exported initialization settings, and new sessions load user configuration. If saving fails, startup logs report `could not save startup environment` and the job continues starting. New sessions then use container settings and user configuration; fix snapshot saving and recreate the job when startup-only generated values are needed. Temporary exports or Conda activation in another terminal are not copied. Commands retain the container working directory when accessible, otherwise HOME; interactive shells start in HOME.
 
 Non-TTY commands first probe the user's exported shell environment (up to 10 seconds and 1 MiB), discard startup output, then execute the original arguments. If configuration blocks or you only need container settings, use:
 
@@ -52,6 +52,8 @@ crater job exec JOB -- conda run -n myenv python script.py
 crater job exec JOB -- /opt/conda/envs/myenv/bin/python script.py
 ```
 
+Jupyter's notebook directory and WebIDE's default working directory remain `/home/USERNAME`. If an existing image user has a different HOME, startup prepares both directories: applications retain their working directory and shell configuration stays in the user's own HOME. The platform web terminal retains its existing endpoint and terminal behavior.
+
 ## Use Local SSH
 
 Configure the container SSH service and public key using the [SSH guide](./ssh/ssh-func.md), then run:
@@ -63,4 +65,6 @@ crater job ssh JOB --connect --identity-file ~/.ssh/id_ed25519
 crater job ssh JOB --connect --user USER
 ```
 
-Without `--connect`, the command prints the address. With it, local OpenSSH connects using your SSH configuration and normal host-key checks. The backend-confirmed task user is the default. `--user` and `--identity-file` require `--connect`; an alternative user must have access to the shared session launcher. Interactive connections require local terminal input/output and cannot use `--json` or `--no-interactive`. Use `job exec` for images without sshd.
+Without `--connect`, the command only requests the address and does not install a shared session launcher; the web SSH UI and older clients retain this behavior. With it, the CLI explicitly requests the user environment launcher, then local OpenSSH connects using your SSH configuration and normal host-key checks. The backend-confirmed task user is the default. `--user` and `--identity-file` require `--connect`; an alternative user must have access to the shared session launcher. Interactive connections require local terminal input/output and cannot use `--json` or `--no-interactive`. Use `job exec` for images without sshd.
+
+SSH retains platform administrator access to jobs, while ordinary users require ownership in the current account. `job exec` always requires ownership in the current account. SSH automatically selects the job's main container even when sidecars are injected into the Pod.

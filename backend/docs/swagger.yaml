@@ -9110,13 +9110,18 @@ paths:
   /v1/vcjobs/{name}/ssh:
     post:
       description: |-
-        Returns ip, port, user and session_command.
-        Run session_command through SSH with a TTY for the shared user HOME/shell and task environment.
+        Returns ip and port. session=user additionally prepares and returns user and session_command.
+        Default clients retain native sshd sessions without shared launcher installation.
+        Platform administrators retain access to other users' jobs; ordinary users require ownership in the current project.
       parameters:
       - description: Platform job name
         in: path
         name: name
         required: true
+        type: string
+      - description: Set user to prepare the shared HOME/shell environment
+        in: query
+        name: session
         type: string
       produces:
       - application/json
@@ -9125,8 +9130,16 @@ paths:
           description: SSH endpoint and shared session
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo'
+        "400":
+          description: Unsupported session mode
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "403":
           description: Job is outside the current user/project
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Job, pod or SSH service not found
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "409":
@@ -9139,7 +9152,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: Enable SSH with the task user's shared session environment
+      summary: Enable SSH access, optionally preparing the task user's environment
       tags:
       - VolcanoJob
   /v1/vcjobs/{name}/template:

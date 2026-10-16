@@ -68,7 +68,7 @@ func (mgr *VolcanojobMgr) UserExec(c *gin.Context) {
 }
 
 func (mgr *VolcanojobMgr) userExecTarget(c *gin.Context) (*v1.Pod, string, error) {
-	_, live, err := mgr.userLiveJob(c)
+	_, live, err := mgr.liveSessionJob(c, vcjobservice.ExecSession)
 	if err != nil {
 		return nil, "", err
 	}
@@ -80,7 +80,7 @@ func (mgr *VolcanojobMgr) userExecTarget(c *gin.Context) (*v1.Pod, string, error
 	return vcjobservice.SelectExecTarget(live, pods.Items, c.Query("pod"), c.Query("container"))
 }
 
-func (mgr *VolcanojobMgr) userLiveJob(c *gin.Context) (job *model.Job, live *batch.Job, err error) {
+func (mgr *VolcanojobMgr) liveSessionJob(c *gin.Context, kind vcjobservice.SessionKind) (job *model.Job, live *batch.Job, err error) {
 	token := util.GetToken(c)
 	job, err = getJob(c, c.Param("name"), &token)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -89,8 +89,8 @@ func (mgr *VolcanojobMgr) userLiveJob(c *gin.Context) (job *model.Job, live *bat
 	if err != nil {
 		return nil, nil, bizerr.Internal.DatabaseError.Wrap(err, "could not look up job")
 	}
-	if job.UserID != token.UserID || job.AccountID != token.AccountID {
-		return nil, nil, bizerr.Forbidden.PermissionDenied.New("job access requires ownership in the current user and project")
+	if err := vcjobservice.CheckSessionAccess(job, token.UserID, token.AccountID, token.RolePlatform, kind); err != nil {
+		return nil, nil, err
 	}
 	stored := job.Attributes.Data()
 	if stored == nil || stored.Namespace == "" {

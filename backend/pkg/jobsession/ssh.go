@@ -35,11 +35,11 @@ crater_write_launcher() {
 
 const installSSH = writeSSHLauncher + `set -eu
 [ "$(id -u)" = 0 ] || { echo 'crater: SSH setup requires the container root user' >&2; exit 126; }
+[ ! -L /run/crater ] || { echo 'crater: session directory must not be a symlink' >&2; exit 126; }
 if [ -f /run/crater/environment.sh ] && [ ! -L /run/crater/environment.sh ]; then
     . /run/crater/environment.sh
 fi
 crater_snapshot=$(export -p)
-[ ! -L /run/crater ] || { echo 'crater: session directory must not be a symlink' >&2; exit 126; }
 mkdir -p /run/crater
 chown 0:0 /run/crater
 chmod 755 /run/crater
