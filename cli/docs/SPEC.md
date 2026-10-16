@@ -282,6 +282,8 @@ Crater 后端 API 错误信封为 `code`、`data`、`msg`。CLI 不应依赖后�
 
 有 HTTP 时，`Context` 必须包含整数 `http_status`；能读到后端响应体时必须带 `crater_code`、`msg` 等事实。`crater_code` 保留后端业务码原始整数，`msg` 保留后端可展示消息；命令如需补充本地上下文，应追加字段，而不是覆盖这些事实。无 HTTP 响应时不得写入 `http_status`；超时、DNS、连接失败等传输层失败使用 `ERR_NETWORK_FAILURE`，并只在 `Context` 中放可序列化的错误事实（如 `msg`）。映射以 `cmd/errors.go` 的 `cliErrFromAPI` / `apiCodeForHTTP` 为准；新增档位须同步修改 `pkg/errorcodes/codes.go`、上表，以及 COMMANDS 中引用本节的表述。
 
+容器内命令的非零退出由 `job exec` 的领域契约使用 `api_error` / `ERR_REMOTE_COMMAND_FAILED` 表达，`context.exit_code` 保留远端状态；它不是 HTTP 错误，不附加 `http_status`。CLI 本身仍按公共 category 退出码映射退出。交互连接、原始流、JSON 捕获与终端恢复的具体规则见 COMMANDS 对应命令。
+
 ### 成功：`--json` 的公共形状
 
 在 stdout / stderr 只出合法 JSON、禁止混入装饰性文字等前提下，须满足 COMMANDS 全局与各命令对成功 / 错误体的规定。编码统一经 `internal/output.MarshalJSONPretty`（两空格缩进、尾随换行），成功与失败路径均适用，禁止在命令内自行 `json.Marshal` 紧凑输出。

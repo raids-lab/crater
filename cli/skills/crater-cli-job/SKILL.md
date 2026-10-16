@@ -1,7 +1,7 @@
 ---
 name: crater-cli-job
-version: 0.4.0
-description: "Use Crater CLI job commands to list, inspect, view logs, create, stop, and snapshot jobs."
+version: 0.6.1
+description: "Use Crater CLI to inspect, create, connect to, execute commands in, stop, and snapshot jobs."
 metadata:
   requires:
     bins: ["crater"]
@@ -21,6 +21,9 @@ Use this skill when the user asks to operate Crater jobs from the CLI: list jobs
 - Pod list: `crater job pods <jobName> [--status STATUS] [--search TEXT] [--page N] [--page-size N] [--all-pages]`
 - Logs: `crater job logs <jobName> [--pod POD | --all-pods] [-c CONTAINER | --all-containers]`
 - Access helpers: `crater job token <jobName>`, `crater job secret <jobName>`, `crater job ssh <jobName>`
+- Connect directly: `crater job ssh <jobName> --connect [--user USER] [--identity-file FILE]`
+- Open a user shell: `crater job exec <jobName>`
+- Execute argv: `crater job exec <jobName> [--pod POD] [-c CONTAINER] [--json] [--env-mode user|container] -- COMMAND [ARG...]`
 - Lifecycle helpers: `crater job snapshot <jobName>`, `crater job alert <jobName>`, `crater job delete <jobName>`
 - Create interactive jobs: `crater job create jupyter|webide ...`
 - Create custom jobs: `crater job create custom ...`
@@ -37,6 +40,8 @@ Job list pagination is server-side. When `--owner`, `--from`, or `--to` is used,
 For create commands, validate resource values before calling the platform. CPU, memory, and GPU counts must not be negative; task replicas must be positive. Workspace mounts use `subPath:mountPath`; dataset mounts use `datasetID:mountPath`; forwards use `name:port`.
 
 For Jupyter/WebIDE access commands, the returned token or password is sensitive. Prefer JSON only when the next tool needs structured fields, and avoid echoing secrets into logs or issue bodies.
+
+For connection and execution workflows, read [references/crater-cli-job-execution.md](references/crater-cli-job-execution.md). Execute only commands authorized by the user; container commands can modify files and processes. `exec` works independently of CPU architecture and accelerator vendor. Use `uname -m` or other image-provided tools for general diagnostics; use vendor-specific tools only when relevant to the actual hardware.
 
 ## Job Status
 

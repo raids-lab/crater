@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	APIVersion = 3
+	APIVersion = 4
 	// v3 first exposes /admin/system-config/scheduler-extender, which this CLI calls with no fallback.
 	MinSupportedBackendAPIVersion    = 3
 	APIVersionHeader                 = "X-Crater-API-Version"

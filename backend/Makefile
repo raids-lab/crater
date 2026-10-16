@@ -176,7 +176,13 @@ run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host
 	KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
-pre-commit-check: lint docs ## Run pre-commit checks (lint and generate docs).
+pre-commit-check: lint docs test-job-sessions ## Run lint, docs and isolated job session tests.
+
+.PHONY: test-job-sessions
+test-job-sessions: ## Test job sessions and browser/native request compatibility without infrastructure.
+	go test -race ./pkg/jobsession ./pkg/jobexec ./internal/service/vcjob
+	# Test request parsing separately from service initialization and its database migration.
+	go test -race ./internal/middleware/jwt_request.go ./internal/middleware/jwt_request_test.go
 
 ##@ Build
 

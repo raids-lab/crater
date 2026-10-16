@@ -1,0 +1,251 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-missing-command/argv --
+crater job exec cpu-job --no-interactive --json
+-- en/01-missing-command/exit --
+2
+-- en/01-missing-command/stdout --
+-- en/01-missing-command/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "interactive connection requires terminal stdin/stdout and cannot use --json or --no-interactive"
+}
+-- en/02-missing-separator/argv --
+crater job exec cpu-job uname --no-interactive --json
+-- en/02-missing-separator/exit --
+2
+-- en/02-missing-separator/stdout --
+-- en/02-missing-separator/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "provide one job name; explicit commands must be non-empty and follow --"
+}
+-- en/03-tty-invalid/argv --
+crater job exec cpu-job -t --pod= --json -- sh
+-- en/03-tty-invalid/exit --
+2
+-- en/03-tty-invalid/stdout --
+-- en/03-tty-invalid/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--tty requires --stdin (-i)\ninteractive connection requires terminal stdin/stdout and cannot use --json or --no-interactive\n--pod cannot be empty",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "tty",
+        "message": "--tty requires --stdin (-i)"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "tty",
+        "message": "interactive connection requires terminal stdin/stdout and cannot use --json or --no-interactive"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "pod",
+        "message": "--pod cannot be empty"
+      }
+    ]
+  }
+}
+-- en/04-ssh-connect-json/argv --
+crater job ssh cpu-job --connect --json
+-- en/04-ssh-connect-json/exit --
+2
+-- en/04-ssh-connect-json/stdout --
+-- en/04-ssh-connect-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "interactive connection requires terminal stdin/stdout and cannot use --json or --no-interactive"
+}
+-- en/05-ssh-options-without-connect/argv --
+crater job ssh cpu-job --user alice --identity-file key --json
+-- en/05-ssh-options-without-connect/exit --
+2
+-- en/05-ssh-options-without-connect/stdout --
+-- en/05-ssh-options-without-connect/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--user requires --connect and a non-empty value without NUL or newlines\n--identity-file requires --connect and a non-empty value without NUL or newlines",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "user",
+        "message": "--user requires --connect and a non-empty value without NUL or newlines"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "identity-file",
+        "message": "--identity-file requires --connect and a non-empty value without NUL or newlines"
+      }
+    ]
+  }
+}
+-- en/06-exec-text/argv --
+crater job exec cpu-job --no-interactive -- uname -m
+-- en/06-exec-text/exit --
+0
+-- en/06-exec-text/stdout --
+hello CPU/ARM
+-- en/06-exec-text/stderr --
+diagnostic
+-- en/07-exec-json/argv --
+crater job exec cpu-job --json -- uname -m
+-- en/07-exec-json/exit --
+0
+-- en/07-exec-json/stdout --
+{
+  "data": {
+    "exec": {
+      "namespace": "real-ns",
+      "pod": "cpu-worker",
+      "container": "main",
+      "exit_code": 0,
+      "stdout": "hello CPU/ARM\n",
+      "stderr": "diagnostic\n"
+    }
+  },
+  "status": "OK"
+}
+-- en/07-exec-json/stderr --
+-- en/08-exec-remote-failure-json/argv --
+crater job exec cpu-job --json -- false
+-- en/08-exec-remote-failure-json/exit --
+4
+-- en/08-exec-remote-failure-json/stdout --
+-- en/08-exec-remote-failure-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_REMOTE_COMMAND_FAILED",
+  "message": "remote command exited with status 7",
+  "context": {
+    "container": "main",
+    "exit_code": 7,
+    "namespace": "real-ns",
+    "pod": "cpu-worker",
+    "stderr": "diagnostic\n",
+    "stdout": "hello CPU/ARM\n"
+  }
+}
+-- en/09-ssh-address/argv --
+crater job ssh cpu-job --no-interactive
+-- en/09-ssh-address/exit --
+0
+-- en/09-ssh-address/stdout --
+cpu.example.test:30222
+-- en/09-ssh-address/stderr --
+-- en/10-ssh-address-json/argv --
+crater job ssh cpu-job --json
+-- en/10-ssh-address-json/exit --
+0
+-- en/10-ssh-address-json/stdout --
+{
+  "data": {
+    "ssh": {
+      "ip": "cpu.example.test",
+      "port": "30222"
+    }
+  },
+  "status": "OK"
+}
+-- en/10-ssh-address-json/stderr --
+-- en/11-exec-help/argv --
+crater job exec --help
+-- en/11-exec-help/exit --
+0
+-- en/11-exec-help/stdout --
+Open the task user's login shell when no command is given. Commands after -- retain argv boundaries and use that user's HOME and exported shell environment. --env-mode container skips environment probing. Select --pod and --container when there are multiple candidates; no SSH or GPU dependency.
+
+Usage:
+  crater job exec <name> [flags] [-- COMMAND [ARG...]]
+
+Flags:
+  -c, --container string   Select a running container by name
+      --env-mode string    Environment source: user (default) or container (skip configuration probing) (default "user")
+      --pod string         Select a pod belonging to the job
+  -i, --stdin              Forward standard input to the command
+  -t, --tty                Allocate a terminal (requires -i and local terminals)
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/11-exec-help/stderr --
+-- en/12-ssh-help/argv --
+crater job ssh --help
+-- en/12-ssh-help/exit --
+0
+-- en/12-ssh-help/stdout --
+Open SSH access and print host:port, or enter a session with --connect using local OpenSSH.
+
+Usage:
+  crater job ssh <name> [flags]
+
+Flags:
+      --connect                Connect immediately using local OpenSSH
+  -i, --identity-file string   Private key file for --connect
+      --user string            SSH username (default: task container user)
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/12-ssh-help/stderr --
+-- en/15-invalid-environment-mode/argv --
+crater job exec cpu-job --env-mode=invalid --json -- env
+-- en/15-invalid-environment-mode/exit --
+2
+-- en/15-invalid-environment-mode/stdout --
+-- en/15-invalid-environment-mode/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--env-mode must be user or container"
+}
+-- en/16-container-environment/argv --
+crater job exec cpu-job --env-mode=container --json -- env
+-- en/16-container-environment/exit --
+0
+-- en/16-container-environment/stdout --
+{
+  "data": {
+    "exec": {
+      "namespace": "real-ns",
+      "pod": "cpu-worker",
+      "container": "main",
+      "exit_code": 0,
+      "stdout": "hello CPU/ARM\n",
+      "stderr": "diagnostic\n"
+    }
+  },
+  "status": "OK"
+}
+-- en/16-container-environment/stderr --
+-- en/13-exec-timeout-json/argv --
+crater job exec cpu-job --json -- uname
+-- en/13-exec-timeout-json/exit --
+4
+-- en/13-exec-timeout-json/stdout --
+-- en/13-exec-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Get \"https://example.invalid/api/v1/vcjobs/cpu-job/exec\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/vcjobs/cpu-job/exec\": context deadline exceeded"
+  }
+}
+-- en/14-exec-timeout-text/argv --
+crater job exec cpu-job --no-interactive -- uname
+-- en/14-exec-timeout-text/exit --
+4
+-- en/14-exec-timeout-text/stdout --
+-- en/14-exec-timeout-text/stderr --
+Error:
+  could not reach server: Get "https://example.invalid/api/v1/vcjobs/cpu-job/exec": context deadline exceeded
