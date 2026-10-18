@@ -59,7 +59,7 @@ func TestHuggingFaceMetadataRedirectClient(t *testing.T) {
 	if err != nil {
 		t.Skip("Python is required for the HTTPX metadata redirect test")
 	}
-	if err := exec.Command(python, "-c", "import httpx").Run(); err != nil {
+	if err := exec.CommandContext(t.Context(), python, "-c", "import httpx").Run(); err != nil {
 		t.Skip("httpx is required for the metadata redirect test")
 	}
 	script := `
@@ -135,7 +135,7 @@ class MetadataRedirectTests(unittest.TestCase):
 
 unittest.main()
 `
-	if output, err := exec.Command(python, "-c", script).CombinedOutput(); err != nil {
+	if output, err := exec.CommandContext(t.Context(), python, "-c", script).CombinedOutput(); err != nil {
 		t.Fatalf("HTTPX metadata redirect tests failed: %v\n%s", err, output)
 	}
 }

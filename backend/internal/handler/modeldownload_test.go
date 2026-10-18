@@ -331,7 +331,7 @@ func newResumePreparationTestManager(t *testing.T, databaseName string) (*gorm.D
 		t.Fatal(err)
 	}
 	if err := db.AutoMigrate(
-		&model.SystemConfig{}, &model.PrequeueConfig{}, &model.ModelDownload{}, &model.ModelDownloadSubmission{},
+		&model.SystemConfig{}, &model.ModelDownload{}, &model.ModelDownloadSubmission{},
 	); err != nil {
 		t.Fatal(err)
 	}
