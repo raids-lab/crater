@@ -45,12 +45,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	scheduleType, err := req.validateScheduleOptions(true)
-	if err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-	scheduleMetadata, err := mgr.resolveJobScheduleMetadata(c.Request.Context(), scheduleType)
+	waitingToleranceSeconds, err := mgr.resolveWaitingTolerance(c.Request.Context())
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
@@ -61,7 +56,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		return
 	}
 
-	if !mgr.preCheckCreateJob(c, token, scheduleType, true) {
+	if !mgr.preCheckCreateJob(c, token, true) {
 		return
 	}
 
@@ -100,7 +95,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		token,
 		baseURL,
 		&req.CreateJobCommon,
-		scheduleMetadata,
+		waitingToleranceSeconds,
 	)
 
 	// 5. Create the pod spec

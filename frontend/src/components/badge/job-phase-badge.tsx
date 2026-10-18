@@ -15,7 +15,13 @@
  */
 import { t } from 'i18next'
 
-import { JobPhase } from '@/services/api/vcjob'
+import {
+  JobDisplayPhase,
+  JobDisplayPhaseValue,
+  JobPhase,
+  PodGroupPhase,
+  getJobDisplayPhase,
+} from '@/services/api/vcjob'
 
 import { PhaseBadge, PhaseBadgeData } from './phase-badge'
 
@@ -87,7 +93,7 @@ export const jobPhases = [
   },
 ]
 
-export const getJobPhaseLabel = (phase: JobPhase): PhaseBadgeData => {
+export const getJobPhaseLabel = (phase: JobDisplayPhaseValue): PhaseBadgeData => {
   switch (phase) {
     case JobPhase.Prequeue:
       return {
@@ -100,6 +106,18 @@ export const getJobPhaseLabel = (phase: JobPhase): PhaseBadgeData => {
         label: t('jobs.statuses.pending.label'),
         color: 'text-highlight-purple bg-highlight-purple/20',
         description: t('jobs.statuses.pending.description'),
+      }
+    case JobDisplayPhase.Inqueue:
+      return {
+        label: t('jobs.statuses.inqueue.label'),
+        color: 'text-highlight-indigo bg-highlight-indigo/20',
+        description: t('jobs.statuses.inqueue.description'),
+      }
+    case JobDisplayPhase.Starting:
+      return {
+        label: t('jobs.statuses.starting.label'),
+        color: 'text-highlight-sky bg-highlight-sky/20',
+        description: t('jobs.statuses.starting.description'),
       }
     case JobPhase.Init:
       return {
@@ -182,8 +200,19 @@ export const getJobPhaseLabel = (phase: JobPhase): PhaseBadgeData => {
   }
 }
 
-const JobPhaseLabel = ({ jobPhase }: { jobPhase: JobPhase }) => {
-  return <PhaseBadge phase={jobPhase} getPhaseLabel={getJobPhaseLabel} />
+const JobPhaseLabel = ({
+  jobPhase,
+  podGroupPhase,
+}: {
+  jobPhase: JobPhase
+  podGroupPhase?: PodGroupPhase
+}) => {
+  return (
+    <PhaseBadge
+      phase={getJobDisplayPhase(jobPhase, podGroupPhase)}
+      getPhaseLabel={getJobPhaseLabel}
+    />
+  )
 }
 
 export default JobPhaseLabel

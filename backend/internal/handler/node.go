@@ -13,7 +13,6 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/crclient"
-	"github.com/raids-lab/crater/pkg/prequeuewatcher"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -22,9 +21,8 @@ func init() {
 }
 
 type NodeMgr struct {
-	name            string
-	nodeClient      *crclient.NodeClient
-	prequeueWatcher *prequeuewatcher.PrequeueWatcher
+	name       string
+	nodeClient *crclient.NodeClient
 }
 
 // 接收 URI 中的参数
@@ -64,8 +62,7 @@ type NodeMark struct {
 
 func NewNodeMgr(conf *RegisterConfig) Manager {
 	return &NodeMgr{
-		name:            "nodes",
-		prequeueWatcher: conf.PrequeueWatcher,
+		name: "nodes",
 		nodeClient: &crclient.NodeClient{
 			Client:           conf.Client,
 			KubeClient:       conf.KubeClient,
@@ -212,9 +209,6 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 			"reason": bodyReq.Reason,
 		})
 		return
-	}
-	if wasUnschedulable && mgr.prequeueWatcher != nil {
-		mgr.prequeueWatcher.RequestFullScan()
 	}
 	RecordOperationLog(c, opType, urlReq.Name, constants.OpStatusSuccess, "", map[string]any{
 		"reason": bodyReq.Reason,

@@ -2,7 +2,8 @@
   "Links": {
     "userGuide": "用户指南",
     "adminGuide": "管理员指南",
-    "getStarted": "开始使用"
+    "getStarted": "开始使用",
+    "latestOnlineDocs": "点击这里查看最新在线文档"
 },
   "Fumadocs": {
     "search": "搜索",
@@ -14,7 +15,8 @@
     "nextPage": "下一页",
     "previousPage": "上一页",
     "chooseTheme": "选择主题",
-    "editOnGithub": "在 GitHub 上编辑"
+    "editOnGithub": "在 GitHub 上编辑",
+    "viewLatestDocs": "查看最新文档"
 },
   "HeroSection": {
     "title": "Crater · 云原生智算平台",
@@ -250,5 +252,9 @@
     "message": "此版本号为 Helm Chart 配置版本，提取自 <link>Chart.yaml</link>，需与 Crater 相关组件镜像版本保持对应，系统才能正常工作。",
     "version": "（当前版本：{version}）",
     "fallback": "无法自动获取版本号，请查阅 <link>Chart.yaml</link> 以确保其与相关组件镜像版本保持对应。"
+  },
+  "EmbeddedDocsNotice": {
+    "description": "当前为随本系统部署的文档。最新在线文档可能包含更新内容，但可能与当前系统版本不同。",
+    "viewLatest": "查看最新在线文档"
   }
 }

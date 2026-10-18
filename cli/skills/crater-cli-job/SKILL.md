@@ -1,6 +1,6 @@
 ---
 name: crater-cli-job
-version: 0.3.1
+version: 0.4.0
 description: "Use Crater CLI job commands to list, inspect, view logs, create, stop, and snapshot jobs."
 metadata:
   requires:
@@ -38,6 +38,15 @@ For create commands, validate resource values before calling the platform. CPU, 
 
 For Jupyter/WebIDE access commands, the returned token or password is sensitive. Prefer JSON only when the next tool needs structured fields, and avoid echoing secrets into logs or issue bodies.
 
+## Job Status
+
+`crater job ls --status` accepts `Prequeue`, `Pending`, `Running`, `Restarting`, `Completing`, `Completed`, `Aborting`, `Aborted`, `Terminating`, `Terminated`, `Failed`, `Deleted`, `Freed` and `Cancelled`. `crater job pods --status` filters pods instead and takes `Pending | Running | Succeeded | Failed | Unknown`.
+
+- `Pending`: the job exists in the cluster but is not running. `status` alone does not say why; read `podGroupPhase` in the `--json` record: `Pending` means not admitted yet (queue quota or capacity), `Inqueue` means admitted and waiting for nodes, `Running` or `Completed` means nodes are assigned and containers are starting. These are PodGroup phases, not job statuses; never pass them to `--status`.
+- `Running`: the job's pods are running. `Completed` and `Failed` are the final results; `Aborted` and `Terminated` mean volcano stopped the job by policy or on request. `Restarting`, `Completing`, `Aborting` and `Terminating` are the transitions into those states.
+- `Deleted`: stopped by the user; resources are released and the record is kept. `Freed`: released automatically after long idle resource usage.
+- `Prequeue`: only jobs submitted before the scheduler extender upgrade that are still being handed to the cluster; new jobs never enter it. `Cancelled`: accepted by the filter for historical records; the current backend does not produce it.
+
 ## Common Workflows
 
 List running or pending PyTorch/TensorFlow jobs for a user:
@@ -48,7 +57,6 @@ crater job ls \
   --search experiment \
   --status Running,Pending \
   --type pytorch,tensorflow \
-  --schedule normal \
   --all-pages \
   --json --no-interactive
 ```
@@ -109,7 +117,7 @@ crater job delete jpt-alice-abcde --yes --json --no-interactive
 
 ## Notes
 
-`crater job create tensorflow|pytorch` intentionally uses `--file` because the backend accepts a nested `tasks[]` request. The CLI rejects unknown JSON fields. Keep the JSON aligned with the backend DTO fields: `name`, `tasks`, `resource`, `image.imageLink`, `volumeMounts`, `envs`, `selectors`, `alertEnabled`, `template`, and optional scheduling fields. Distributed TensorFlow and PyTorch jobs do not support backfill scheduling.
+`crater job create tensorflow|pytorch` intentionally uses `--file` because the backend accepts a nested `tasks[]` request. The CLI rejects unknown JSON fields. Keep the JSON aligned with the backend DTO fields: `name`, `tasks`, `resource`, `image.imageLink`, `volumeMounts`, `envs`, `selectors`, `alertEnabled`, and `template`.
 
 Pagination and job filter validation are aggregated. If a JSON `usage_error` contains `context.issues`, fix all listed fields before retrying.
 

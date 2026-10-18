@@ -16,7 +16,7 @@
 
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 import { i18n } from "@/lib/i18n";
-import { BookKeyIcon, BookUserIcon } from "lucide-react";
+import { BookKeyIcon, BookUserIcon, ExternalLinkIcon } from "lucide-react";
 
 import { SVGProps, Ref, forwardRef } from "react";
 
@@ -82,6 +82,11 @@ export function baseOptions(
         icon: <BookKeyIcon />,
         url: `/${lang}/docs/admin`,
         active: "nested-url",
+      },
+      {
+        text: t('getStarted'),
+        icon: <ExternalLinkIcon />,
+        url: `/${lang}/docs/admin/`,
       },
     ],
     githubUrl: 'https://github.com/raids-lab/crater',
