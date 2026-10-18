@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"k8s.io/klog/v2"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
@@ -337,29 +339,33 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 	var req ApprovalOrderreq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		klog.Errorf("failed to bind request parameters: %v", err)
-		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameters"))
 		return
 	}
 
 	// 1. 获取当前用户信息
 	token := util.GetToken(c)
 	if token.UserID == 0 {
-		resputil.Error(c, "cannot get user id", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("cannot get user id"))
 		return
 	}
 
 	if req.Type == model.ApprovalOrderTypeJob {
-		// The job is only looked up to reject orders for jobs that do not exist.
+		// Reject inactive jobs before attempting automatic approval.
 		jobDB := query.Job
-		_, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
+		job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				resputil.BadRequestError(c, "job not found")
+				resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "job not found"))
 				return
 			}
 			klog.Errorf("failed to query job for approval order, userID: %d, jobName: %s, err: %v",
 				token.UserID, req.Name, err)
-			resputil.Error(c, "failed to query target job", resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to query target job"))
+			return
+		}
+		if !mgr.isJobRunning(job.Status) {
+			resputil.HandleError(c, errApprovalOrderJobInactive)
 			return
 		}
 	}
@@ -370,7 +376,7 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 	canAutoApprove, err := mgr.checkAutoApprovalEligibility(c, token.UserID, &req)
 	if err != nil {
 		klog.Errorf("failed to check auto approval eligibility, userID: %d, err: %v", token.UserID, err)
-		resputil.Error(c, "failed to check recent orders", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to check recent orders"))
 		return
 	}
 
@@ -407,9 +413,13 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		ReviewNotes: orderReason,
 	}
 
-	if err := query.ApprovalOrder.WithContext(c).Create(&order); err != nil {
+	if err := mgr.createApprovalOrder(c, query.Q, &order); err != nil {
+		if errors.Is(err, errApprovalOrderJobInactive) || errors.Is(err, gorm.ErrRecordNotFound) {
+			resputil.HandleError(c, errApprovalOrderJobInactive)
+			return
+		}
 		klog.Errorf("failed to create approval order, userID: %d, err: %v", token.UserID, err)
-		resputil.Error(c, "failed to create approval order", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to create approval order"))
 		return
 	}
 
@@ -419,6 +429,29 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 	}
 
 	resputil.Success(c, message)
+}
+
+var errApprovalOrderJobInactive = bizerr.BadRequest.ParameterError.New("cannot create approval order for an inactive job")
+
+func (mgr *ApprovalOrderMgr) createApprovalOrder(ctx context.Context, q *query.Query, order *model.ApprovalOrder) error {
+	if order.Type != model.ApprovalOrderTypeJob {
+		return q.ApprovalOrder.WithContext(ctx).Create(order)
+	}
+
+	return q.Transaction(func(tx *query.Query) error {
+		// Serialize creation with job status updates so cancellation cannot finish
+		// between the final status check and inserting the order.
+		j := tx.Job
+		job, err := j.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(j.JobName.Eq(order.Name)).First()
+		if err != nil {
+			return err
+		}
+		if !mgr.isJobRunning(job.Status) {
+			return errApprovalOrderJobInactive
+		}
+		return tx.ApprovalOrder.WithContext(ctx).Create(order)
+	})
 }
 
 type UpdateApprovalOrder struct {
@@ -878,8 +911,8 @@ func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 
 // checkAutoApprovalEligibility 检查是否满足自动审批条件
 func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID uint, req *ApprovalOrderreq) (bool, error) {
-	// 只有作业类型且延长时间小于12小时才可能自动审批
-	if req.Type != model.ApprovalOrderTypeJob || req.ExtensionHours >= 12 {
+	// 只有作业类型且延长时间不超过12小时才可能自动审批
+	if req.Type != model.ApprovalOrderTypeJob || req.ExtensionHours > 12 {
 		return false, nil
 	}
 
