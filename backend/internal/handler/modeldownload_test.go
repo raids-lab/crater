@@ -445,7 +445,7 @@ func TestHuggingFaceDownloadCommandKeepsPaginationOnConfiguredEndpoint(t *testin
 		`unsupported huggingface_hub version`,
 		`use crater-model-downloader:v1.0.0 or an exact mirror of it`,
 		`from huggingface_hub import set_client_factory, snapshot_download`,
-		`httpx.Client(follow_redirects=True, trust_env=True)`,
+		`HuggingFaceMetadataClient(follow_redirects=True, trust_env=True)`,
 		`[NETWORK] using configured egress proxy`,
 		`if mirror != upstream:`,
 		`except (ImportError, AttributeError) as error:`,
@@ -469,38 +469,10 @@ func TestHuggingFaceDownloadCommandKeepsPaginationOnConfiguredEndpoint(t *testin
 	if strings.Contains(command, "pip install") {
 		t.Fatal("download command mutates the pinned downloader image at runtime")
 	}
-}
-
-func TestDownloadHuggingFaceEndpoint(t *testing.T) {
-	for _, testCase := range []struct {
-		name            string
-		endpoint        string
-		proxyConfigured bool
-		want            string
-	}{
-		{
-			name: "bypass hf mirror when proxy is configured", endpoint: "https://hf-mirror.com",
-			proxyConfigured: true, want: "https://huggingface.co",
-		},
-		{
-			name: "keep mirror without proxy", endpoint: "https://hf-mirror.com",
-			proxyConfigured: false, want: "https://hf-mirror.com",
-		},
-		{
-			name: "keep another custom endpoint", endpoint: "https://hf.example.test",
-			proxyConfigured: true, want: "https://hf.example.test",
-		},
-		{
-			name: "keep official endpoint", endpoint: "https://huggingface.co",
-			proxyConfigured: true, want: "https://huggingface.co",
-		},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			if got := downloadHuggingFaceEndpoint(testCase.endpoint, testCase.proxyConfigured); got != testCase.want {
-				t.Fatalf("downloadHuggingFaceEndpoint(%q, %v) = %q, want %q",
-					testCase.endpoint, testCase.proxyConfigured, got, testCase.want)
-			}
-		})
+	for _, override := range []string{"export HF_ENDPOINT=", "HF_HUB_DISABLE_XET"} {
+		if strings.Contains(command, override) {
+			t.Fatalf("download command overrides the Job environment with %q", override)
+		}
 	}
 }
 
@@ -517,41 +489,6 @@ func TestResumedDownloadCommandPreservesExistingFiles(t *testing.T) {
 	}
 	if !strings.Contains(command, `mkdir -p "$OUT_DIR"`) {
 		t.Fatal("resumed download command must still create a missing output directory")
-	}
-}
-
-func TestShouldDisableHuggingFaceXet(t *testing.T) {
-	for _, testCase := range []struct {
-		name     string
-		source   model.ModelSource
-		endpoint string
-		want     bool
-	}{
-		{
-			name:     "hugging face mirror",
-			source:   model.ModelSourceHuggingFace,
-			endpoint: "https://hf-mirror.com",
-			want:     true,
-		},
-		{
-			name:     "official hugging face endpoint",
-			source:   model.ModelSourceHuggingFace,
-			endpoint: "https://huggingface.co/",
-			want:     false,
-		},
-		{
-			name:     "modelscope download",
-			source:   model.ModelSourceModelScope,
-			endpoint: "https://hf-mirror.com",
-			want:     false,
-		},
-	} {
-		t.Run(testCase.name, func(t *testing.T) {
-			if got := shouldDisableHuggingFaceXet(testCase.source, testCase.endpoint); got != testCase.want {
-				t.Fatalf("shouldDisableHuggingFaceXet(%q, %q) = %v, want %v",
-					testCase.source, testCase.endpoint, got, testCase.want)
-			}
-		})
 	}
 }
 

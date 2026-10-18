@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -1512,30 +1511,11 @@ func downloadJobEnv(source model.ModelSource, accessToken string) []corev1.EnvVa
 		return env
 	}
 
-	proxy := config.GetConfig().Registry.BuildTools.ProxyConfig
-	return append(env, downloadProxyEnv(proxy.HTTPSProxy, proxy.HTTPProxy, proxy.NoProxy)...)
-}
-
-func downloadProxyEnv(httpsProxy, httpProxy, noProxy string) []corev1.EnvVar {
-	var env []corev1.EnvVar
-	if httpsProxy != "" {
-		env = append(env, corev1.EnvVar{Name: "HTTPS_PROXY", Value: normalizeProxyURL(httpsProxy)})
-	}
-	if httpProxy != "" {
-		env = append(env, corev1.EnvVar{Name: "HTTP_PROXY", Value: normalizeProxyURL(httpProxy)})
-	}
-	if noProxy != "" {
-		env = append(env, corev1.EnvVar{Name: "NO_PROXY", Value: noProxy})
-	}
-	return env
-}
-
-func normalizeProxyURL(proxy string) string {
-	proxy = strings.TrimSpace(proxy)
-	if proxy == "" || strings.Contains(proxy, "://") {
-		return proxy
-	}
-	return "http://" + proxy
+	cfg := config.GetConfig()
+	proxy := cfg.Registry.BuildTools.ProxyConfig
+	return append(env, huggingFaceDownloadEnv(
+		cfg.HuggingFaceDownloadEndpoint(), proxy.HTTPSProxy, proxy.HTTPProxy, proxy.NoProxy,
+	)...)
 }
 
 // Parameter-count thresholds (in billions) used to size download job memory.
@@ -1598,14 +1578,6 @@ func (mgr *ModelDownloadMgr) buildDownloadCommand(
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"`
 	}
-	huggingFaceEndpoint := config.GetConfig().HuggingFaceDownloadEndpoint()
-	huggingFaceProxyConfigured := hasHuggingFaceEgressProxy()
-	huggingFaceEndpoint = downloadHuggingFaceEndpoint(huggingFaceEndpoint, huggingFaceProxyConfigured)
-	disableXetCmd := ""
-	if shouldDisableHuggingFaceXet(download.Source, huggingFaceEndpoint) ||
-		(download.Source == model.ModelSourceHuggingFace && huggingFaceProxyConfigured) {
-		disableXetCmd = "export HF_HUB_DISABLE_XET=1"
-	}
 	if download.Source == model.ModelSourceHuggingFace {
 		// The official downloader image pins the Hub client version because the mirror
 		// pagination workaround below intentionally targets that verified API surface.
@@ -1654,6 +1626,8 @@ import os
 import httpx
 from huggingface_hub import set_client_factory, snapshot_download
 
+%s
+
 repo_id = %q
 revision = %q
 repo_type = %q
@@ -1665,15 +1639,16 @@ repo_type = %q
 proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
 if proxy:
     print("[NETWORK] using configured egress proxy", flush=True)
-    set_client_factory(
-        lambda: httpx.Client(follow_redirects=True, trust_env=True)
-    )
 
 # Some mirrors return an absolute rel="next" Link URL pointing to huggingface.co.
 # Rewrite those next-page requests so pagination stays on the configured mirror
 # for repositories containing more than 1,000 entries.
 mirror = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
 upstream = "https://huggingface.co"
+if proxy or mirror != upstream:
+    set_client_factory(
+        lambda: HuggingFaceMetadataClient(follow_redirects=True, trust_env=True)
+    )
 if mirror != upstream:
     try:
         from huggingface_hub.utils import _pagination
@@ -1703,7 +1678,7 @@ if revision:
 
 snapshot_download(**kwargs)
 PY
-`, download.Name, download.Revision, repoType)
+`, huggingFaceHTTPClientScript, download.Name, download.Revision, repoType)
 
 		// Best-effort total-size probe so the UI can render a real progress bar.
 		// Runs inside `|| true` so a probe failure never fails the download job.
@@ -1986,8 +1961,6 @@ trap "kill $MONITOR_PID 2>/dev/null || true" EXIT
 
 	return fmt.Sprintf(`
 set -euo pipefail
-export HF_ENDPOINT=%q
-%s
 export MODELSCOPE_ENDPOINT=%q
 OUT_DIR="/data/%s"
 export OUT_DIR
@@ -2042,8 +2015,6 @@ else
     echo "[RESULT] size_bytes=$SIZE"
 fi
 `,
-		huggingFaceEndpoint,
-		disableXetCmd,
 		config.GetConfig().ModelScopeDownloadEndpoint(),
 		modelDirName,
 		prepareOutputCmd,
@@ -2057,30 +2028,6 @@ fi
 		metadataCmd,
 		descScript,
 	)
-}
-
-func shouldDisableHuggingFaceXet(source model.ModelSource, endpoint string) bool {
-	return source == model.ModelSourceHuggingFace &&
-		strings.TrimRight(strings.TrimSpace(endpoint), "/") != "https://huggingface.co"
-}
-
-func hasHuggingFaceEgressProxy() bool {
-	proxy := config.GetConfig().Registry.BuildTools.ProxyConfig
-	return strings.TrimSpace(proxy.HTTPSProxy) != "" || strings.TrimSpace(proxy.HTTPProxy) != ""
-}
-
-func downloadHuggingFaceEndpoint(endpoint string, proxyConfigured bool) string {
-	if !proxyConfigured {
-		return endpoint
-	}
-	parsed, err := url.Parse(strings.TrimSpace(endpoint))
-	if err != nil || !strings.EqualFold(parsed.Hostname(), "hf-mirror.com") {
-		return endpoint
-	}
-
-	// hf-mirror.com currently redirects resolve requests to the official Hub.
-	// huggingface_hub 1.23.0 loses required commit metadata on that 308 chain.
-	return "https://huggingface.co"
 }
 
 // convertToPhysicalPath 将前端路径转换为物理存储路径
