@@ -78,8 +78,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 1,
-      "min_supported_backend_api_version": 1
+      "api_version": 4,
+      "min_supported_backend_api_version": 3
     }
   }
   ```
@@ -114,7 +114,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 3,
+      "api_version": 4,
       "min_supported_backend_api_version": 3
     },
     "backend": {
@@ -122,7 +122,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "short_commit_sha": "f42b0c2",
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
-      "api_version": 3,
+      "api_version": 4,
       "min_supported_cli_api_version": 3
     }
   }
@@ -309,7 +309,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--name` (string, required): 资源名称，格式为 `owner/name`，例如 `qwen/Qwen2.5-Coder-7B-Instruct`。
   - `--category` (string, required): 下载类别，可选 `model` 或 `dataset`。
   - `--source` (string): 下载来源，可选 `modelscope` / `ms` 或 `huggingface` / `hf`，默认为 `modelscope`；`ms` 与 `hf` 仅为 CLI 简写，发送给平台前会规范化为全拼。
-  - `--revision` (string): 可选的分支、tag 或 revision。
+  - `--revision` (string): 请求的分支、tag 或 revision。不同 revision 不创建独立公共副本，已有有效记录时可能不采用该值。
   - `--token` (string): 可选的访问令牌，用于 gated/private 仓库。该值仅随本次请求发送给平台，不写入 CLI 本地配置，不在成功/错误输出中展示。
   - `--token-env` (string): 从指定环境变量读取可选访问令牌。与 `--token`、`--token-stdin` 互斥。
   - `--token-stdin` (bool): 从 stdin 读取可选访问令牌。与 `--token`、`--token-env` 互斥。
@@ -321,7 +321,10 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 若提供 `--token-env` 或 `--token-stdin`，CLI 读取 token 后仅用于本次请求；不得在输出中展示 token。
   - 读取当前激活身份的 token；若未登录或该身份没有保存 token，返回错误（见认证模块）。
   - 调用平台接口创建下载任务。后端根据 `category` 自动选择平台侧目标目录（模型为 `public/Models`，数据集为 `public/Datasets`）。
-  - 若平台返回资源已存在或正在下载，CLI 仍按成功处理并展示后端返回的任务信息与消息。
+  - `name + category` 标识平台中的唯一公共资源。若已有 Ready、等待中、下载中或暂停中的记录，后端会复用该记录，即使请求的来源或版本不同；CLI 使用后端返回的实际任务信息，默认输出实际来源、状态与路径，JSON 输出还包含实际版本。
+  - 实际来源或 revision 与请求不一致时，人类输出明确展示请求来源/版本、实际来源/版本、状态和路径，并提示请求来源未采用或“未下载请求版本”；普通创建及 `--wait` 的最终输出均适用。空 revision 显示为未指定，不推断为某个固定版本。
+  - `--json` 继续在 `data.download` 保留实际字段；不一致提示放入顶层 `message`，`--wait --json` 同样保留创建消息与最终不一致提示，不向 JSON 外混入文本。复用仍为成功处理，退出码不变，不自动删除或覆盖公共资源。
+  - `--source` 和 `--revision` 只在创建新任务或重新发起失败下载时决定下载内容。仓库不存在、版本错误或无权访问等源站错误由下载 Job 异步发现，任务随后进入 Failed；可查看任务日志并在其他来源存在同名资源时重新提交。
 - **输出格式**:
   - 默认模式：stdout 展示下载任务的 ID、名称、类别、来源、状态与目标路径。
   - `--json`：stdout 输出成功信封 JSON。

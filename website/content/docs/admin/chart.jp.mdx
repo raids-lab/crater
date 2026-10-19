@@ -125,9 +125,9 @@ Crater は Kubernetes 向けに設計された総合的な AI 開発プラット
 | backendConfig.registry.harbor.server | string | `"..."` | Harbor サービスのアクセスアドレス |
 | backendConfig.registry.harbor.user | string | `"admin"` | Harbor 管理者アカウント |
 | backendConfig.registry.harbor.password | string | `"..."` | Harbor 管理者パスワード |
-| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `null` | イメージビルド時の HTTP プロキシ |
-| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `null` | イメージビルド時の HTTPS プロキシ |
-| backendConfig.registry.buildTools.proxyConfig.noProxy | string | `null` | プロキシを使用しないドメインのリスト（カンマ区切り） |
+| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `null` | イメージビルドと Hugging Face ダウンロード Job が使用する HTTP 出力プロキシ |
+| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `null` | イメージビルドと Hugging Face ダウンロード Job が使用する HTTPS 出力プロキシ |
+| backendConfig.registry.buildTools.proxyConfig.noProxy | string | `null` | イメージビルドと Hugging Face ダウンロード Job がプロキシを使用しないアドレス一覧（カンマ区切り） |
 
 ### 邮件サービス設定 (backendConfig.smtp)
 

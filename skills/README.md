@@ -21,5 +21,5 @@
 | [`crater-devel-shared`](./crater-devel-shared/) | 入口：仓库结构、文档地图、任务路由与核心工程规则 |
 | [`crater-devel-code`](./crater-devel-code/) | `backend/` + `frontend/` + `cli/`：代码开发、API 联动、作业模板、组件、表单、hooks、i18n、CLI 契约 |
 | [`crater-devel-docs`](./crater-devel-docs/) | `website/`、`docs/`、仓库 Markdown：文档分类、术语、Chart 版本占位、写作规范 |
-| [`crater-devel-release`](./crater-devel-release/) | `charts/` Helm 开发、Chart 版本与发布产物（开发者侧） |
+| [`crater-devel-release`](./crater-devel-release/) | Helm / Chart 开发、What's New 与 Release、正式 tag 发布、npm 暂存审批交接与产物验证（开发者侧） |
 | [`crater-devel-review`](./crater-devel-review/) | 全仓库 PR 审查分级与 PR 描述 |

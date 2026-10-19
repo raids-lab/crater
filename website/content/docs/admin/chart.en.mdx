@@ -125,9 +125,9 @@ Crater is a comprehensive AI development platform designed for Kubernetes, provi
 | backendConfig.registry.harbor.server | string | `"..."` | Harbor service access address |
 | backendConfig.registry.harbor.user | string | `"admin"` | Harbor admin account |
 | backendConfig.registry.harbor.password | string | `"..."` | Harbor admin password |
-| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `null` | HTTP proxy for image building |
-| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `null` | HTTPS proxy for image building |
-| backendConfig.registry.buildTools.proxyConfig.noProxy | string | `null` | List of domains that should not be proxied (comma-separated) |
+| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `null` | HTTP egress proxy used by image builds and Hugging Face download Jobs |
+| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `null` | HTTPS egress proxy used by image builds and Hugging Face download Jobs |
+| backendConfig.registry.buildTools.proxyConfig.noProxy | string | `null` | Comma-separated addresses bypassed by image builds and Hugging Face download Jobs |
 
 ### Email Service Configuration (backendConfig.smtp)
 
