@@ -6,6 +6,9 @@
 
 如果你第一次接触 Crater，建议按顺序读一遍本文档。日常开发时，把它当作流程清单；真正修改某个模块前，再进入对应模块的 `CONTRIBUTING`。
 
+> [!IMPORTANT]
+> **使用 AI 工具辅助开发，必须先安装 Crater 开发 Skills。** 开始贡献前，请安装仓库提供的 `crater-devel-*` Skills，并确保 Agent 加载 `crater-devel-shared` 及对应任务的 Skill。安装方式见 [Agent Skills](#agent-skills)。Skill 用于指导工作流程，不能替代本文规范，也不能替代贡献者对改动的审阅与验证责任。
+
 ## 文档体系
 
 - **README** 面向使用者，说明 Crater 是什么、怎么用、如何部署。
@@ -181,7 +184,7 @@ git pull origin main
 
 ### 分支前缀与 Commit type
 
-创建任务分支前，先根据下表确定本次改动的 **type**，并在分支名中使用对应前缀（如 `feature/`、`fix/`）。后续 commit subject 也使用同一套 type。
+创建任务分支前，先根据下表确定本次改动的 **type**，并在分支名中使用对应前缀（如 `feature/`、`fix/`）。前缀表示改动类型，不表示作者或开发工具：禁止使用 `zhangsan/`、`codex/` 等个人、账号或 AI 工具前缀，也不得把它们加在类型前缀之前。人工和 Agent 创建的分支均遵守此规则。后续 commit subject 也使用同一套 type。
 
 | type | 分支前缀 | 含义 |
 |------|----------|------|
@@ -323,7 +326,7 @@ PR 描述必须使用**双语 Markdown**，并覆盖：
 - **变更意图**：一句话概述本 PR，必要时说明动机。
 - **核心改动**：按「做了什么」归类，不要只按文件罗列。
 - **测试验证**：只列实际执行过的检查，并清晰区分自动化 / AI 检查与开发者人工检查。
-- **截图**：涉及前端 / UI 改动时必须附相应界面截图，展示受影响界面状态。
+- **截图**：前端 / UI 改动应在 PR 描述或评论中提供实际界面截图；若没有有意义的可见变化或无法截图，应说明原因。其他改动在截图能显著帮助审查时推荐提供实际执行结果，例如 CLI 输出。作为验证证据的截图必须来自实际浏览器或真实执行：Agent 可以操作真实环境并截图，但不得使用 AI 生成图或模拟图；由 Agent 截取的真实结果归入 AI 检查，不能记作开发者人工检查。缺少截图或覆盖不完整时，review 仅在总览中简短提醒，不作为代码问题或行内评论，也不单独据此建议阻止合并。仅供 PR 使用的截图应作为 PR 附件上传，不得提交到代码仓库；无关文件被提交仍属于独立的修改范围问题。
 - **其他说明**：可选，记录特殊风险、迁移说明、上线说明或兼容性说明。
 - **关联 ISSUE**：如适用，以 GitHub 可识别的方式逐行列出，例如 `Resolve #208`。
 
@@ -340,6 +343,17 @@ PR 创建后，需要检查 workflow 状态。PR 也可能需要和 Copilot revi
 - **`main` 更新**（沿用各 workflow 已有的 path 过滤）：前端、后端和 Storage 向 GHCR 推送开发镜像。Helm 在 `charts/**` 变更时把 Chart 发布到 GHCR OCI。CLI 不发布。
 - **精确 `vX.Y.Z` tag**：上述镜像和 Chart workflow 再发布带该版本的产物。Helm 还要求 `charts/crater/Chart.yaml` 的 `version` 与 `appVersion` 都等于 tag 版本。CLI 通过 Trusted Publishing 暂存 npm 包；维护者在 npm 审批后才会公开。
 - **GitHub Release** 可选，只用于人工撰写更新说明。它不得触发 workflow，也不得挂发布用的二进制、镜像或 Chart。
+
+### 发布准备与验证
+
+- 打 tag 前，先把发布准备内容（包括已审阅的 What's New 文案）合并到 `main`。记录 `main` 上经过确认的准确提交 SHA；squash merge 后的 SHA 可能不同于功能分支。`main` 前进后重新检查发布范围，不要直接给无关的本地 `HEAD` 打 tag。
+- 推送 tag 前核对目标版本、What's New 版本、Chart `version` / `appVersion`、相关 CI 结果和开发者人工检查。Chart 版本决策遵循 [charts/CONTRIBUTING.md](../../charts/CONTRIBUTING.md)；应用构建版本与 API 兼容计数器仍相互独立。
+- 分别记录 tag 创建、产物构建、npm 暂存、npm 审批和公开可用状态。核验预期的镜像与 Chart tag，以及 CLI 的 [npm 审批与安装检查](../../cli/CONTRIBUTING.zh-CN.md#npm-暂存发布)；暂存 workflow 变绿不等于 CLI 已发布。发布产物也不等于已部署到集群。
+- 重跑 tag workflow 仍使用该 tag 对应的源码，不会采用后来合入 `main` 的修复。重试前先检查失败 job 和实际发布状态，不得通过移动 tag 修复发布。
+
+### Release 文案
+
+GitHub Release 以目标提交中已审阅的 [What's New](../../frontend/CONTRIBUTING.zh-CN.md#whats-new) 为基础，保留相同的简短引言和面向用户的更新要点，不维护两套独立摘要。将 UI 版本占位符替换为实际发布版本，删除邀请用户反馈意见等仅适用于应用内的措辞，并且只根据已核实的发布状态调整可用性描述或时态。必要时补充升级、破坏性变化或迁移说明。不得把暂存包写成已公开可用，也不得把已发布产物写成已部署。PR 描述的双语要求不自动适用于 Release，发布语言与维护者确认。
 
 ## 应用构建版本
 

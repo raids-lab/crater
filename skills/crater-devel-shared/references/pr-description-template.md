@@ -17,9 +17,9 @@ AI:
 Developer:
 - <Manual check with page / role / action / observed result, or document / language / link / terminology / placeholder checked by the developer>
 
-### Screenshots
+### Screenshots (when applicable)
 
-- <Required for frontend / UI changes: attach or link screenshots of affected interface state(s)>
+- <Frontend / UI changes normally provide actual screenshots here or in a PR comment; other changes may include useful real-execution evidence such as CLI output. Agent-captured real runs are allowed, but AI-generated or simulated images are not. Omit this section when no screenshot belongs in the description.>
 
 ### Other (optional)
 
@@ -41,9 +41,9 @@ AI：
 开发者：
 - <开发者亲自执行的人工检查，写清页面 / 角色 / 操作 / 观察结果，或文档 / 语言版本 / 链接 / 术语 / 占位符检查>
 
-### 截图
+### 截图（适用时）
 
-- <涉及前端 / UI 改动时必须附受影响界面状态的截图或链接>
+- <前端 / UI 改动通常在此处或 PR 评论中提供实际截图；其他改动可按审查价值提供真实执行证据，例如 CLI 输出。允许 Agent 截取真实运行结果，但不得使用 AI 生成图或模拟图；描述中无需截图时省略本节。>
 
 ### 其他（可选）
 
