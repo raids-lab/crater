@@ -16,7 +16,8 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	APIVersion = 3
+	// v4 allows model/dataset downloads to reuse another source or revision.
+	APIVersion = 4
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
 	// v2 and older CLIs still call the removed prequeue endpoints and the dropped schedule_type filter with no fallback.

@@ -357,25 +357,6 @@ func (mgr *ModelDownloadMgr) findReadyOrOngoingDownload(
 	return nil, nil
 }
 
-// lockModelDownloadIdentity serializes first-time downloads whose current
-// database uniqueness still differs by source and revision. Existing
-// installations may contain more than one historical record, so changing the
-// unique index in place would make upgrades fail; a PostgreSQL transaction
-// advisory lock prevents two new variants from racing into the same short path.
-func lockModelDownloadIdentity(
-	c *gin.Context, txQ *query.Query, name string, category model.DownloadCategory,
-) error {
-	db := txQ.ModelDownload.WithContext(c).UnderlyingDB()
-	if db.Name() != "postgres" {
-		return nil
-	}
-	identity := string(category) + ":" + name
-	if err := db.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", identity).Error; err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "lock logical download identity")
-	}
-	return nil
-}
-
 func updateDownloadAndReleaseQuota(
 	ctx context.Context, downloadID uint, updates map[string]any,
 ) error {
@@ -1467,6 +1448,13 @@ func (mgr *ModelDownloadMgr) submitDownloadJob(
 		},
 	}
 
+	// Invalidate history before a fresh Job can remove its backing files.
+	if clearOutput {
+		if err := invalidateSoftDeletedDownloadsForCleanup(c, query.GetDB(), download); err != nil {
+			return err
+		}
+	}
+
 	// 提交 Job 到集群
 	_, err = mgr.crClient.BatchV1().Jobs(mgr.namespace).Create(c, job, metav1.CreateOptions{})
 	return err
@@ -1573,7 +1561,7 @@ func (mgr *ModelDownloadMgr) buildDownloadCommand(
 	var installCmd, preflightCmd, downloadCommand, totalProbeCmd, metadataCmd string
 	prepareOutputCmd := `mkdir -p "$OUT_DIR"`
 	if clearOutput {
-		prepareOutputCmd = `# A fresh attempt owns this directory after the logical-resource lock is released.
+		prepareOutputCmd = `# Historical Ready records were invalidated before this cleanup Job was submitted.
 # Remove leftovers from a failed attempt so files from different sources cannot be mixed.
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"`

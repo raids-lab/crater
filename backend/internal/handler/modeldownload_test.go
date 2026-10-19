@@ -367,6 +367,56 @@ func TestRetryUpdateDuplicateIsConflict(t *testing.T) {
 	}
 }
 
+func TestRestoreReadyDownloadAfterOutputCleanup(t *testing.T) {
+	for _, testCase := range []struct {
+		name    string
+		cleared bool
+	}{{"intact", false}, {"cleared by failed attempt", true}} {
+		t.Run(testCase.name, func(t *testing.T) {
+			db := newOutputCleanupTestDB(t)
+			history := model.ModelDownload{
+				Name: "owner/model", Source: model.ModelSourceModelScope, Category: model.DownloadCategoryModel,
+				Revision: "old", Path: "public/Models/owner/model", Status: model.ModelDownloadStatusReady,
+			}
+			if err := db.Create(&history).Error; err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Delete(&history).Error; err != nil {
+				t.Fatal(err)
+			}
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			if testCase.cleared {
+				attempt := history
+				attempt.ID = 0
+				attempt.DeletedAt = gorm.DeletedAt{}
+				attempt.Source, attempt.Revision = model.ModelSourceHuggingFace, "new"
+				attempt.Status = model.ModelDownloadStatusPending
+				if err := db.Create(&attempt).Error; err != nil {
+					t.Fatal(err)
+				}
+				if err := invalidateSoftDeletedDownloadsForCleanup(c, db, &attempt); err != nil {
+					t.Fatal(err)
+				}
+				if err := db.Model(&attempt).Update("status", model.ModelDownloadStatusFailed).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			restored, err := (&ModelDownloadMgr{}).restoreAndResetSoftDeletedDownload(
+				c, query.Use(db), history.Name, history.Source, history.Category, history.Revision, "alice",
+			)
+			if err != nil || restored == nil {
+				t.Fatalf("restore history: download %v error %v", restored, err)
+			}
+			if got := shouldSubmitRestoredDownload(restored); got != testCase.cleared {
+				t.Fatalf("submit restored download = %v, want %v", got, testCase.cleared)
+			}
+			if testCase.cleared && (restored.Status != model.ModelDownloadStatusPending || restored.JobName == "") {
+				t.Fatalf("invalidated history was not prepared for a new Job: status %s job %q", restored.Status, restored.JobName)
+			}
+		})
+	}
+}
+
 func TestRestoredReadyDownloadDoesNotSubmitJob(t *testing.T) {
 	for _, testCase := range []struct {
 		status model.ModelDownloadStatus

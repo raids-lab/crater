@@ -80,6 +80,7 @@ crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --
 -- zh-CN/09-http-sim-timeout-nojson/exit --
 4
 -- zh-CN/09-http-sim-timeout-nojson/stdout --
+同名同类别只共享一份公共资源；请求其他来源或版本不会创建独立副本，可能复用已有资源。
 -- zh-CN/09-http-sim-timeout-nojson/stderr --
 Error:
   无法连接服务器：Post "https://example.invalid/api/v1/model-download/models/download": context deadline exceeded
@@ -102,6 +103,7 @@ crater download create --no-interactive --name AI-ModelScope/alpaca-gpt4-data-zh
 -- zh-CN/11-http-sim-404-nojson/exit --
 4
 -- zh-CN/11-http-sim-404-nojson/stdout --
+同名同类别只共享一份公共资源；请求其他来源或版本不会创建独立副本，可能复用已有资源。
 -- zh-CN/11-http-sim-404-nojson/stderr --
 Error:
   请求失败（HTTP 404）：simulated
@@ -204,6 +206,7 @@ crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --source h
 -- zh-CN/19-shortcut-model-timeout-nojson/exit --
 4
 -- zh-CN/19-shortcut-model-timeout-nojson/stdout --
+同名同类别只共享一份公共资源；请求其他来源或版本不会创建独立副本，可能复用已有资源。
 -- zh-CN/19-shortcut-model-timeout-nojson/stderr --
 Error:
   无法连接服务器：Post "https://example.invalid/api/v1/model-download/models/download": context deadline exceeded
