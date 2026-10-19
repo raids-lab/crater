@@ -102,7 +102,7 @@ func exactArgs(n int, fields ...string) cobra.PositionalArgs {
 
 func positionalArgName(field string) string {
 	switch field {
-	case "node-name", "job-name", "order-name":
+	case "node-name", "job-name", "order-name", "queue":
 		return "name"
 	default:
 		return field
@@ -121,6 +121,8 @@ func positionalLabel(field string) string {
 		return "id"
 	case "account":
 		return i18n.T("account_label_id_or_name")
+	case "queue":
+		return i18n.T("account_label_queue")
 	case "namespace":
 		return i18n.T("pod_label_namespace")
 	case "pod":

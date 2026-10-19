@@ -42,6 +42,11 @@ const CompatibilityPath = CompatibilityPrefix + "/compatibility"
 // AuthLoginPath 为登录接口路径（含模块前缀）。
 const AuthLoginPath = AuthPrefix + "/login"
 
+const (
+	AuthCheckPath  = AuthPrefix + "/check"
+	AuthSwitchPath = "/api/v1/auth/switch"
+)
+
 // ModelDownloadCreatePath creates a model or dataset download task.
 const ModelDownloadCreatePath = ModelDownloadPrefix + "/download"
 
