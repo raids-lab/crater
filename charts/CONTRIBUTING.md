@@ -51,7 +51,7 @@ Use this file when you change chart metadata, `values.yaml`, Helm templates, dep
 
 - PRs that change `charts/**` automatically run the **Validate Helm Chart** workflow. After merging a Chart change to `main`, and again for its matching exact `vX.Y.Z` formal-release tag, the **Publish Helm Chart** workflow packages and pushes the chart to `oci://ghcr.io/raids-lab/crater`. Do not add GitHub Release events as chart publish triggers.
 - The root pre-commit hook delegates staged `charts/**` changes to `cd charts && make pre-commit-check`. It requires a higher shared `version` / `appVersion` only when release-impacting chart files change (`Chart.yaml`, `values.yaml`, templates, dependencies, or `Chart.lock`).
-- Run `helm lint crater/` and `helm template crater crater/ --dry-run` locally when useful; `charts/` does not currently have a dedicated `make` target.
+- Run `make test-job-sessions` for startup rendering/syntax, private environment snapshots, and full-script Jupyter/WebIDE compatibility with an image-defined HOME, the platform working directory and snapshot failures (requires Helm). User provisioning and service processes are isolated fixtures; host users and system directories are not changed. This check also runs in `make pre-commit-check`. Run `helm lint crater/` and `helm template crater crater/ --dry-run=client` for full chart validation.
 - Include exact commands and results in the PR description when you ran local checks.
 - Confirm `version` and `appVersion` are identical when either field changes.
 - Confirm `charts/crater/README.md` reflects `values.yaml` changes.

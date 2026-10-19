@@ -51,7 +51,7 @@
 
 - PR 改动 `charts/**` 时会自动运行 **Validate Helm Chart** workflow；Chart 改动合入 `main` 后，以及推送与 Chart 版本匹配的精确 `vX.Y.Z` 正式发布 tag 时，**Publish Helm Chart** workflow 会自动打包并推送到 `oci://ghcr.io/raids-lab/crater`。不要把 GitHub Release 事件加为 Chart 发布触发条件。
 - 根 pre-commit hook 会在暂存 `charts/**` 变更时委托执行 `cd charts && make pre-commit-check`。只有实际影响 Chart 发布内容的文件变更时，才要求提升共享 `version` / `appVersion`（`Chart.yaml`、`values.yaml`、模板、依赖或 `Chart.lock`）。
-- 本地可按需运行 `helm lint crater/`、`helm template crater crater/ --dry-run` 预检；`charts/` 当前没有专属 `make` target。
+- 使用 `make test-job-sessions` 检查启动脚本渲染、语法、私有环境快照，并运行完整脚本验证镜像自定义 HOME、平台工作目录及快照失败时的 Jupyter/WebIDE 启动兼容性（需要 Helm）。用户准备和服务进程使用隔离 fixture，不修改本机用户或系统目录；`make pre-commit-check` 也会执行该检查。全量 Chart 验证使用 `helm lint crater/` 和 `helm template crater crater/ --dry-run=client`。
 - 若运行了本地检查，在 PR 描述中写清具体命令与结果。
 - 任一版本字段变化时，确认 `version` 与 `appVersion` 完全相同。
 - 确认 `charts/crater/README.md` 已反映 `values.yaml` 变更。

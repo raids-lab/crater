@@ -33,9 +33,14 @@ func loadAccessToken(st session.State, ac session.ActiveContext) (string, error)
 }
 
 func activeAPIClient() (*api.Client, error) {
+	client, _, err := activeAPIClientWithContext()
+	return client, err
+}
+
+func activeAPIClientWithContext() (*api.Client, session.ActiveContext, error) {
 	st, err := session.LoadState()
 	if err != nil {
-		return nil, &clierror.Error{
+		return nil, session.ActiveContext{}, &clierror.Error{
 			Category: errorcodes.CategorySystem,
 			Code:     errorcodes.ErrConfigWriteFailed,
 			Message:  i18n.T("err_config_write", err.Error()),
@@ -43,7 +48,7 @@ func activeAPIClient() (*api.Client, error) {
 	}
 	active := st.ActiveContext
 	if active.PlatformURL == "" {
-		return nil, &clierror.Error{
+		return nil, active, &clierror.Error{
 			Category: errorcodes.CategoryUsage,
 			Code:     errorcodes.ErrNotFound,
 			Message:  i18n.T("err_no_active"),
@@ -51,7 +56,7 @@ func activeAPIClient() (*api.Client, error) {
 	}
 	token, err := loadAccessToken(st, active)
 	if err != nil {
-		return nil, err
+		return nil, active, err
 	}
-	return api.NewClient(active.PlatformURL).SetToken(token), nil
+	return api.NewClient(active.PlatformURL).SetToken(token), active, nil
 }

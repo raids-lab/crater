@@ -17,6 +17,7 @@ Crater CLI is the command-line client for Crater. It talks to the Crater platfor
 
 - Agent-friendly `--json` and `--no-interactive` modes.
 - Local authentication context management.
+- Direct SSH connections and container command execution on CPU and accelerator nodes.
 - Bash and zsh completion.
 - Chinese and English display language support.
 - Native binaries for Linux, macOS, and Windows on x64 and ARM64.
@@ -56,6 +57,20 @@ crater version
 ```
 
 For day-to-day use, you can ask an AI Agent to operate Crater after installing the bundled Skills.
+
+Connect to a running job, execute a command, or open a shell:
+
+```bash
+crater job ssh my-job --connect
+crater job exec my-job -- uname -m
+crater job exec my-job
+crater job exec my-job --env-mode container -- env
+crater job exec my-job --pod worker-0 -c worker --json -- python -V
+```
+
+`job exec` requires backend API v4 and uses the platform connection, without local kubectl, sshd, or accelerator-specific tools. With no command it opens the task user's login shell. Commands after `--` retain their argument boundaries, use that user's HOME, and inherit exported shell configuration. Use `--env-mode container` to skip configuration probing. Select the Pod/container explicitly when there are multiple candidates. `--json` captures output; remote failures preserve `context.exit_code`.
+
+SSH and exec share user environment handling; `/crater-start.sh` is not required in the command. SSH requires the image's SSH service and local OpenSSH. `job ssh` only requests the address, preserving web SSH behavior; `--connect` uses the confirmed container user and opens its shared session automatically. Platform startup scripts save exported startup settings for later connections; if saving fails, a warning is logged and the job continues using container settings and user configuration. Custom images that bypass initialization must prepare the task account in the image or during job startup. Existing jobs without this snapshot still use container variables and user configuration; recreate the job if startup-only generated variables are needed. New sessions do not copy another terminal's temporary exports or Conda activation.
 
 ## Agent Skills
 

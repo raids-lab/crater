@@ -1,0 +1,251 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-missing-command/argv --
+crater job exec cpu-job --no-interactive --json
+-- zh-CN/01-missing-command/exit --
+2
+-- zh-CN/01-missing-command/stdout --
+-- zh-CN/01-missing-command/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "交互连接要求标准输入和输出均为终端，且不能使用 --json 或 --no-interactive"
+}
+-- zh-CN/02-missing-separator/argv --
+crater job exec cpu-job uname --no-interactive --json
+-- zh-CN/02-missing-separator/exit --
+2
+-- zh-CN/02-missing-separator/stdout --
+-- zh-CN/02-missing-separator/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "请提供一个作业名；显式命令必须非空且放在 -- 后"
+}
+-- zh-CN/03-tty-invalid/argv --
+crater job exec cpu-job -t --pod= --json -- sh
+-- zh-CN/03-tty-invalid/exit --
+2
+-- zh-CN/03-tty-invalid/stdout --
+-- zh-CN/03-tty-invalid/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--tty 必须同时使用 --stdin（-i）\n交互连接要求标准输入和输出均为终端，且不能使用 --json 或 --no-interactive\n--pod 不能为空",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "tty",
+        "message": "--tty 必须同时使用 --stdin（-i）"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "tty",
+        "message": "交互连接要求标准输入和输出均为终端，且不能使用 --json 或 --no-interactive"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "pod",
+        "message": "--pod 不能为空"
+      }
+    ]
+  }
+}
+-- zh-CN/04-ssh-connect-json/argv --
+crater job ssh cpu-job --connect --json
+-- zh-CN/04-ssh-connect-json/exit --
+2
+-- zh-CN/04-ssh-connect-json/stdout --
+-- zh-CN/04-ssh-connect-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "交互连接要求标准输入和输出均为终端，且不能使用 --json 或 --no-interactive"
+}
+-- zh-CN/05-ssh-options-without-connect/argv --
+crater job ssh cpu-job --user alice --identity-file key --json
+-- zh-CN/05-ssh-options-without-connect/exit --
+2
+-- zh-CN/05-ssh-options-without-connect/stdout --
+-- zh-CN/05-ssh-options-without-connect/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--user 要求同时使用 --connect，且取值非空、不包含 NUL 或换行\n--identity-file 要求同时使用 --connect，且取值非空、不包含 NUL 或换行",
+  "context": {
+    "issues": [
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "user",
+        "message": "--user 要求同时使用 --connect，且取值非空、不包含 NUL 或换行"
+      },
+      {
+        "code": "ERR_INVALID_FLAG_VALUE",
+        "field": "identity-file",
+        "message": "--identity-file 要求同时使用 --connect，且取值非空、不包含 NUL 或换行"
+      }
+    ]
+  }
+}
+-- zh-CN/06-exec-text/argv --
+crater job exec cpu-job --no-interactive -- uname -m
+-- zh-CN/06-exec-text/exit --
+0
+-- zh-CN/06-exec-text/stdout --
+hello CPU/ARM
+-- zh-CN/06-exec-text/stderr --
+diagnostic
+-- zh-CN/07-exec-json/argv --
+crater job exec cpu-job --json -- uname -m
+-- zh-CN/07-exec-json/exit --
+0
+-- zh-CN/07-exec-json/stdout --
+{
+  "data": {
+    "exec": {
+      "namespace": "real-ns",
+      "pod": "cpu-worker",
+      "container": "main",
+      "exit_code": 0,
+      "stdout": "hello CPU/ARM\n",
+      "stderr": "diagnostic\n"
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/07-exec-json/stderr --
+-- zh-CN/08-exec-remote-failure-json/argv --
+crater job exec cpu-job --json -- false
+-- zh-CN/08-exec-remote-failure-json/exit --
+4
+-- zh-CN/08-exec-remote-failure-json/stdout --
+-- zh-CN/08-exec-remote-failure-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_REMOTE_COMMAND_FAILED",
+  "message": "远端命令退出状态为 7",
+  "context": {
+    "container": "main",
+    "exit_code": 7,
+    "namespace": "real-ns",
+    "pod": "cpu-worker",
+    "stderr": "diagnostic\n",
+    "stdout": "hello CPU/ARM\n"
+  }
+}
+-- zh-CN/09-ssh-address/argv --
+crater job ssh cpu-job --no-interactive
+-- zh-CN/09-ssh-address/exit --
+0
+-- zh-CN/09-ssh-address/stdout --
+cpu.example.test:30222
+-- zh-CN/09-ssh-address/stderr --
+-- zh-CN/10-ssh-address-json/argv --
+crater job ssh cpu-job --json
+-- zh-CN/10-ssh-address-json/exit --
+0
+-- zh-CN/10-ssh-address-json/stdout --
+{
+  "data": {
+    "ssh": {
+      "ip": "cpu.example.test",
+      "port": "30222"
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/10-ssh-address-json/stderr --
+-- zh-CN/11-exec-help/argv --
+crater job exec --help
+-- zh-CN/11-exec-help/exit --
+0
+-- zh-CN/11-exec-help/stdout --
+不指定命令时进入任务用户的登录 shell；-- 后的命令保留参数边界，使用该用户的 HOME 和 shell 导出环境。--env-mode container 跳过环境探测。存在多个候选时用 --pod 和 --container 指定目标；不依赖 SSH 或 GPU。
+
+Usage:
+  crater job exec <name> [flags] [-- COMMAND [ARG...]]
+
+Flags:
+  -c, --container string   按名称选择运行中的容器
+      --env-mode string    环境来源：user（默认）或 container（跳过配置探测） (default "user")
+      --pod string         选择属于该作业的 Pod
+  -i, --stdin              向命令转发标准输入
+  -t, --tty                分配终端（要求 -i 且本地输入输出为终端）
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/11-exec-help/stderr --
+-- zh-CN/12-ssh-help/argv --
+crater job ssh --help
+-- zh-CN/12-ssh-help/exit --
+0
+-- zh-CN/12-ssh-help/stdout --
+开启作业 SSH 并输出主机与端口，或用 --connect 通过本机 OpenSSH 进入会话。
+
+Usage:
+  crater job ssh <name> [flags]
+
+Flags:
+      --connect                立即使用本机 OpenSSH 连接
+  -i, --identity-file string   用于 --connect 的私钥文件
+      --user string            SSH 用户名（默认使用任务容器用户）
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/12-ssh-help/stderr --
+-- zh-CN/15-invalid-environment-mode/argv --
+crater job exec cpu-job --env-mode=invalid --json -- env
+-- zh-CN/15-invalid-environment-mode/exit --
+2
+-- zh-CN/15-invalid-environment-mode/stdout --
+-- zh-CN/15-invalid-environment-mode/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "--env-mode 必须为 user 或 container"
+}
+-- zh-CN/16-container-environment/argv --
+crater job exec cpu-job --env-mode=container --json -- env
+-- zh-CN/16-container-environment/exit --
+0
+-- zh-CN/16-container-environment/stdout --
+{
+  "data": {
+    "exec": {
+      "namespace": "real-ns",
+      "pod": "cpu-worker",
+      "container": "main",
+      "exit_code": 0,
+      "stdout": "hello CPU/ARM\n",
+      "stderr": "diagnostic\n"
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/16-container-environment/stderr --
+-- zh-CN/13-exec-timeout-json/argv --
+crater job exec cpu-job --json -- uname
+-- zh-CN/13-exec-timeout-json/exit --
+4
+-- zh-CN/13-exec-timeout-json/stdout --
+-- zh-CN/13-exec-timeout-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/vcjobs/cpu-job/exec\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/v1/vcjobs/cpu-job/exec\": context deadline exceeded"
+  }
+}
+-- zh-CN/14-exec-timeout-text/argv --
+crater job exec cpu-job --no-interactive -- uname
+-- zh-CN/14-exec-timeout-text/exit --
+4
+-- zh-CN/14-exec-timeout-text/stdout --
+-- zh-CN/14-exec-timeout-text/stderr --
+Error:
+  无法连接服务器：Get "https://example.invalid/api/v1/vcjobs/cpu-job/exec": context deadline exceeded
