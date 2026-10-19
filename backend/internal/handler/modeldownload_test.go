@@ -34,6 +34,8 @@ import (
 	"github.com/raids-lab/crater/internal/util"
 )
 
+const testNewDownloadRevision = "new"
+
 type testSQLStateError struct {
 	state string
 }
@@ -189,7 +191,7 @@ func TestCheckRetryRevisionConflictIncludesSoftDeletedRecords(t *testing.T) {
 		Status: model.ModelDownloadStatusFailed, CreatorID: 1,
 	}
 	softDeleted := active
-	softDeleted.Revision = "new"
+	softDeleted.Revision = testNewDownloadRevision
 	if err := db.Create(&active).Error; err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +203,7 @@ func TestCheckRetryRevisionConflictIncludesSoftDeletedRecords(t *testing.T) {
 	}
 
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
-	revision := "new"
+	revision := testNewDownloadRevision
 	err = checkRetryRevisionConflict(ginContext, query.Use(db), &active, &revision)
 	if !errors.Is(err, bizerr.Conflict.Base) {
 		t.Fatalf("expected a conflict for soft-deleted revision, got %v", err)
@@ -389,7 +391,7 @@ func TestRestoreReadyDownloadAfterOutputCleanup(t *testing.T) {
 				attempt := history
 				attempt.ID = 0
 				attempt.DeletedAt = gorm.DeletedAt{}
-				attempt.Source, attempt.Revision = model.ModelSourceHuggingFace, "new"
+				attempt.Source, attempt.Revision = model.ModelSourceHuggingFace, testNewDownloadRevision
 				attempt.Status = model.ModelDownloadStatusPending
 				if err := db.Create(&attempt).Error; err != nil {
 					t.Fatal(err)
