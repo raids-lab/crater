@@ -27,6 +27,7 @@ func TestEvaluateCompatibility(t *testing.T) {
 		want       CompatibilityStatus
 	}{
 		{name: "compatible", cli: 2, minBackend: 1, backend: 2, minCLI: 1, want: CompatibilityCompatible},
+		{name: "compatible with previous backend", cli: 2, minBackend: 1, backend: 1, minCLI: 1, want: CompatibilityCompatible},
 		{name: "cli too old", cli: 1, minBackend: 1, backend: 2, minCLI: 2, want: CompatibilityCLITooOld},
 		{name: "backend too old", cli: 2, minBackend: 2, backend: 1, minCLI: 1, want: CompatibilityBackendTooOld},
 		{name: "explicit zero backend is pre-contract", cli: 1, minBackend: 1, backend: 0, minCLI: 0, want: CompatibilityBackendTooOld},
@@ -149,5 +150,17 @@ func TestFileContractCompatibility(t *testing.T) {
 	}
 	if got := EvaluateCompatibility(MinSupportedBackendAPIVersion, 1); got != CompatibilityCompatible {
 		t.Fatalf("backend with required contract: got %s, want %s", got, CompatibilityCompatible)
+	}
+}
+
+func TestModelDownloadReuseContractCompatibility(t *testing.T) {
+	if APIVersion != 4 || MinSupportedBackendAPIVersion != 3 {
+		t.Fatalf("download reuse contract = %d, minimum backend = %d, want 4/3",
+			APIVersion, MinSupportedBackendAPIVersion)
+	}
+	for _, backendVersion := range []int{3, 4} {
+		if got := EvaluateCompatibility(backendVersion, 3); got != CompatibilityCompatible {
+			t.Fatalf("backend API %d with minimum CLI 3: got %s, want compatible", backendVersion, got)
+		}
 	}
 }

@@ -21,8 +21,8 @@ var catalogDownload = map[Language]map[string]string{
 		// Flag descriptions
 		"flag_name":          "Resource name in owner/name format",
 		"flag_category":      "Download category (model | dataset)",
-		"flag_source":        "Download source (modelscope | ms | huggingface | hf)",
-		"flag_revision":      "Optional branch, tag, or revision",
+		"flag_source":        "Requested source (modelscope | ms | huggingface | hf); an existing shared resource may use another source",
+		"flag_revision":      "Requested branch, tag, or revision; existing resources may be reused, not copied per revision",
 		"flag_token":         "Optional access token for gated or private repositories",
 		"flag_token-env":     "Read the optional repository access token from an environment variable",
 		"flag_token-stdin":   "Read the optional repository access token from stdin",
@@ -60,6 +60,15 @@ var catalogDownload = map[Language]map[string]string{
 		"err_download_follow_json":           "--follow cannot be combined with --json",
 
 		// Human-readable messages
+		"download_revision_unspecified": "(unspecified; exact revision not confirmed)",
+		"download_shared_resource_notice": "One public resource is shared per name and category; " +
+			"requesting another source or revision does not create a separate copy and may reuse an existing resource.",
+		"download_requested_source_not_used":         "The requested source was not used.",
+		"download_requested_revision_not_downloaded": "The requested revision was not downloaded.",
+		"download_reuse_warning": "Warning: reusing an existing shared resource.\n" +
+			"  Requested source: %s; requested revision: %s\n" +
+			"  Actual source: %s; actual revision: %s; status: %s\n" +
+			"  Path: %s\n  %s",
 		"download_task_summary":   "Download task:\n  ID: %d\n  Name: %s\n  Category: %s\n  Source: %s\n  Status: %s\n  Path: %s",
 		"download_remove_confirm": "Remove download task %d?",
 		"download_remove_success": "Removed download task:\n  ID: %d",
@@ -91,8 +100,8 @@ var catalogDownload = map[Language]map[string]string{
 		// Flag descriptions
 		"flag_name":          "资源名称，格式为 owner/name",
 		"flag_category":      "下载类别 (model | dataset)",
-		"flag_source":        "下载来源 (modelscope | ms | huggingface | hf)",
-		"flag_revision":      "可选的分支、tag 或 revision",
+		"flag_source":        "请求来源 (modelscope | ms | huggingface | hf)；可能复用其他来源的公共资源",
+		"flag_revision":      "请求的分支、tag 或 revision；可能复用已有版本，不按版本创建独立副本",
 		"flag_token":         "用于 gated 或私有仓库的可选访问令牌",
 		"flag_token-env":     "从环境变量读取可选的仓库访问令牌",
 		"flag_token-stdin":   "从 stdin 读取可选的仓库访问令牌",
@@ -130,6 +139,14 @@ var catalogDownload = map[Language]map[string]string{
 		"err_download_follow_json":           "--follow 不能与 --json 同时使用",
 
 		// Human-readable messages
+		"download_revision_unspecified":              "（未指定，未确认具体版本）",
+		"download_shared_resource_notice":            "同名同类别只共享一份公共资源；请求其他来源或版本不会创建独立副本，可能复用已有资源。",
+		"download_requested_source_not_used":         "未采用请求的下载来源。",
+		"download_requested_revision_not_downloaded": "未下载请求版本。",
+		"download_reuse_warning": "警告：已复用现有公共资源。\n" +
+			"  请求来源：%s；请求版本：%s\n" +
+			"  实际来源：%s；实际版本：%s；状态：%s\n" +
+			"  路径：%s\n  %s",
 		"download_task_summary":   "下载任务：\n  ID：%d\n  名称：%s\n  类别：%s\n  来源：%s\n  状态：%s\n  路径：%s",
 		"download_remove_confirm": "是否移除下载任务 %d？",
 		"download_remove_success": "已移除下载任务：\n  ID：%d",
