@@ -45,6 +45,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
 import ImagePhaseBadge from '@/components/badge/image-phase-badge'
 import DocsButton from '@/components/button/docs-button'
 import ListedButton from '@/components/button/listed-button'
@@ -481,6 +482,15 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
       >
         {!isAdminMode ? (
           <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
+            <AgentActionButton
+              context={{
+                action: 'assist-form',
+                title: '选择镜像构建方式',
+                prompt: '说明基础镜像、依赖和构建目标，Agent 将推荐合适的构建方式。',
+                route: '/portal/env/registry',
+              }}
+              label="AI 辅助构建"
+            />
             <DocsButton title="查看文档" url="image/imageCreate" />
             <ListedButton
               icon={<PackagePlusIcon />}

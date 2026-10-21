@@ -62,11 +62,36 @@ export interface AdminAgentConversationPage {
   pageSize: number
 }
 
+export interface AdminAgentSubject {
+  userId: number
+  username: string
+  nickname: string
+  identityScope: AgentIdentity
+  conversationCount: number
+  messageCount: number
+  updatedAt: number
+}
+
+export interface AdminAgentSubjectPage {
+  items: AdminAgentSubject[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export interface AdminAgentSubjectQuery {
+  page: number
+  pageSize: number
+  search?: string
+  identityScope?: AgentIdentity
+}
+
 export interface AdminAgentConversationQuery {
   page: number
   pageSize: number
   search?: string
   identityScope?: AgentIdentity
+  userId?: number
 }
 
 export const apiGetPersonalLLMConfig = () =>
@@ -87,6 +112,24 @@ export const apiGetAgentConversations = (identity: AgentIdentity) =>
 export const apiGetAgentConversationMessages = (identity: AgentIdentity, conversationID: string) =>
   agentRequest<UIMessage[]>('get', `agent/conversations/${conversationID}/messages`, identity)
 
+export const apiCancelAgentConversationRun = (identity: AgentIdentity, conversationID: string) =>
+  agentRequest<boolean>('post', `agent/conversations/${conversationID}/cancel`, identity)
+
+export interface AgentToolOutputInput {
+  messageId: string
+  toolCallId: string
+  state: 'output-available' | 'output-error'
+  output?: unknown
+  errorText?: string
+}
+
+export const apiSaveAgentToolOutput = (
+  identity: AgentIdentity,
+  conversationID: string,
+  input: AgentToolOutputInput
+) =>
+  agentRequest<string>('post', `agent/conversations/${conversationID}/tool-output`, identity, input)
+
 export const apiRenameAgentConversation = (
   identity: AgentIdentity,
   conversationID: string,
@@ -103,9 +146,20 @@ export const apiAdminGetAgentConversations = (params: AdminAgentConversationQuer
   }
   if (params.search) searchParams.search = params.search
   if (params.identityScope) searchParams.identityScope = params.identityScope
+  if (params.userId) searchParams.userId = params.userId
   return apiV1Get<IResponse<AdminAgentConversationPage>>('admin/agent/conversations', {
     searchParams,
   })
+}
+
+export const apiAdminGetAgentSubjects = (params: AdminAgentSubjectQuery) => {
+  const searchParams: Record<string, string | number> = {
+    page: params.page,
+    pageSize: params.pageSize,
+  }
+  if (params.search) searchParams.search = params.search
+  if (params.identityScope) searchParams.identityScope = params.identityScope
+  return apiV1Get<IResponse<AdminAgentSubjectPage>>('admin/agent/subjects', { searchParams })
 }
 
 export const apiAdminGetAgentConversationMessages = (conversationID: string) =>

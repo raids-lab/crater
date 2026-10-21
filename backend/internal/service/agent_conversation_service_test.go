@@ -124,6 +124,24 @@ func TestAgentConversationTitleAndRunCompletionAreIdempotent(t *testing.T) {
 	}
 }
 
+func TestMergeAgentToolOutputAcceptsJobDetailNavigation(t *testing.T) {
+	t.Parallel()
+	parts := []byte(`[
+		{"type":"text","text":"可以打开这个作业的详情查看日志。"},
+		{"type":"tool-navigate_to_job_detail","toolCallId":"job-detail-1","state":"input-available","input":{"jobName":"sg-wangjh-260926-d52cc"}}
+	]`)
+	updated, err := mergeAgentToolOutput(parts, &AgentToolOutput{
+		ToolCallID: "job-detail-1",
+		State:      "output-available",
+		Output:     json.RawMessage(`{"status":"accepted","jobName":"sg-wangjh-260926-d52cc"}`),
+	})
+	mustAgentTestNoError(t, err)
+	if !strings.Contains(string(updated), `"state":"output-available"`) ||
+		!strings.Contains(string(updated), `"jobName":"sg-wangjh-260926-d52cc"`) {
+		t.Fatalf("job detail navigation output was not merged: %s", updated)
+	}
+}
+
 func TestAgentRunCompletionSupportsGeneratedIDAndCancellation(t *testing.T) {
 	t.Parallel()
 	db := newAgentConversationTestDB(t)
@@ -157,12 +175,38 @@ func TestAgentRunCompletionSupportsGeneratedIDAndCancellation(t *testing.T) {
 		agentTestUserMessagePointer("question-2", "停止回答"),
 	)
 	mustAgentTestNoError(t, err)
+	canceled, err := service.CancelActiveRun(ctx, 12, AgentIdentityUser, conversationID)
+	mustAgentTestNoError(t, err)
+	if !canceled {
+		t.Fatal("active Agent run was not canceled")
+	}
+	canceled, err = service.CancelActiveRun(ctx, 12, AgentIdentityUser, conversationID)
+	mustAgentTestNoError(t, err)
+	if canceled {
+		t.Fatal("canceling an already canceled Agent run should be idempotent")
+	}
+
+	// A late completion callback from the interrupted runtime must not revive the canceled run.
 	mustAgentTestNoError(t, service.CompleteRun(ctx, 12, AgentIdentityUser, cancelRun.RunID, AgentRunCompletion{
-		Status: AgentRunStatusCanceled,
+		Status:  AgentRunStatusCompleted,
+		Message: testAgentAssistantPointer("late-assistant", "不应保存"),
 	}))
 	var storedRun model.AgentRun
 	mustAgentTestNoError(t, db.First(&storedRun, "id = ?", cancelRun.RunID).Error)
 	mustAgentTestEqual(t, storedRun.Status, AgentRunStatusCanceled)
+
+	messages, err = service.GetMessages(ctx, 12, AgentIdentityUser, conversationID)
+	mustAgentTestNoError(t, err)
+	mustAgentTestLength(t, len(messages), 3)
+	mustAgentTestEqual(t, messages[2].ID, "question-2")
+	nextRun, err := service.PrepareRun(
+		ctx, 12, AgentIdentityUser, conversationID, agentTestStringPointer("question-2"), AgentRunModeAppend,
+		agentTestUserMessagePointer("question-3", "继续提问"),
+	)
+	mustAgentTestNoError(t, err)
+	mustAgentTestNoError(t, service.CompleteRun(ctx, 12, AgentIdentityUser, nextRun.RunID, AgentRunCompletion{
+		Status: AgentRunStatusCanceled,
+	}))
 }
 
 func TestAgentPrepareRunRejectsStaleAppendAndAllowsExplicitReplacement(t *testing.T) {
@@ -266,11 +310,14 @@ func TestAdminAgentConversationListSupportsPaginationAndFiltering(t *testing.T) 
 	mustAgentTestNoError(t, db.Exec(`
 		INSERT INTO users (id, name, nickname) VALUES
 			(41, 'alice', 'Alice'),
-			(42, 'bob', 'Bob')
+			(42, 'bob', 'Bob'),
+			(43, 'charlie', 'Charlie')
 	`).Error)
 	now := time.Now()
 	mustAgentTestNoError(t, db.Create(&[]model.AgentConversation{
 		{ID: uuid.NewString(), UserID: 41, IdentityScope: string(AgentIdentityUser), Title: "Dataset help", CreatedAt: now, UpdatedAt: now},
+		{ID: uuid.NewString(), UserID: 41, IdentityScope: string(AgentIdentityUser), Title: "Job help", CreatedAt: now, UpdatedAt: now},
+		{ID: uuid.NewString(), UserID: 41, IdentityScope: string(AgentIdentityAdmin), Title: "Admin review", CreatedAt: now, UpdatedAt: now},
 		{ID: uuid.NewString(), UserID: 42, IdentityScope: string(AgentIdentityAdmin), Title: "Cluster review", CreatedAt: now, UpdatedAt: now},
 	}).Error)
 
@@ -282,6 +329,35 @@ func TestAdminAgentConversationListSupportsPaginationAndFiltering(t *testing.T) 
 	mustAgentTestLength(t, len(page.Items), 1)
 	if page.Total != 1 || page.Items[0].Username != "bob" || page.Items[0].IdentityScope != AgentIdentityAdmin {
 		t.Fatalf("unexpected admin conversation page: %+v", page)
+	}
+	aliceUserPage, err := service.ListAllConversations(context.Background(), AdminAgentConversationQuery{
+		Page: 1, PageSize: 20, UserID: 41, IdentityScope: AgentIdentityUser,
+	})
+	mustAgentTestNoError(t, err)
+	if aliceUserPage.Total != 2 || len(aliceUserPage.Items) != 2 {
+		t.Fatalf("unexpected user-scoped conversation page: %+v", aliceUserPage)
+	}
+	for _, item := range aliceUserPage.Items {
+		if item.UserID != 41 || item.IdentityScope != AgentIdentityUser {
+			t.Fatalf("conversation escaped the selected user identity: %+v", item)
+		}
+	}
+
+	subjects, err := service.ListAdminSubjects(context.Background(), AdminAgentSubjectQuery{
+		Page: 1, PageSize: 20, Search: "alice",
+	})
+	mustAgentTestNoError(t, err)
+	if subjects.Total != 2 || len(subjects.Items) != 2 {
+		t.Fatalf("expected separate user and admin subjects for alice: %+v", subjects)
+	}
+
+	userSubjects, err := service.ListAdminSubjects(context.Background(), AdminAgentSubjectQuery{
+		Page: 1, PageSize: 20, IdentityScope: AgentIdentityUser,
+	})
+	mustAgentTestNoError(t, err)
+	if userSubjects.Total != 1 || len(userSubjects.Items) != 1 ||
+		userSubjects.Items[0].UserID != 41 || userSubjects.Items[0].ConversationCount != 2 {
+		t.Fatalf("unexpected grouped user subjects: %+v", userSubjects)
 	}
 }
 

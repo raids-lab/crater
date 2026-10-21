@@ -36,6 +36,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -109,6 +115,65 @@ const formSchema = z.object({
 })
 
 type FormSchema = z.infer<typeof formSchema>
+
+const agentFields = defineAgentFormFields<FormSchema>()([
+  { path: 'jobName', label: '作业名称', valueType: 'string', includeCurrentValue: true },
+  {
+    path: 'task.image.imageLink',
+    label: '容器镜像',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'task.resource.cpu', label: 'CPU 核数', valueType: 'number', includeCurrentValue: true },
+  {
+    path: 'task.resource.memory',
+    label: '内存 GiB',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.gpu.count',
+    label: '加速卡数量',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.gpu.model',
+    label: '加速卡型号',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.network.enabled',
+    label: '启用 RDMA',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.network.model',
+    label: 'RDMA 型号',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'task.workingDir', label: '工作目录', valueType: 'string', includeCurrentValue: true },
+  { path: 'volumeMounts', label: '数据与文件挂载', valueType: 'json' },
+  { path: 'forwards', label: '端口转发', valueType: 'json' },
+  { path: 'alertEnabled', label: '异常提醒', valueType: 'boolean', includeCurrentValue: true },
+  { path: 'cpuPinningEnabled', label: 'CPU 绑核', valueType: 'boolean', includeCurrentValue: true },
+  {
+    path: 'nodeSelector.enable',
+    label: '限制工作节点',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'nodeSelector.mode',
+    label: '节点限制模式',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'nodeSelector.nodes', label: '工作节点', valueType: 'string-array' },
+])
 
 const dataProcessor = (data: FormSchema) => {
   // 处理镜像字段兼容性
@@ -218,6 +283,12 @@ function RouteComponent() {
     control: form.control,
   })
 
+  useAgentFormCapability({
+    capability: agentFormCapabilities.jupyterJob,
+    fields: agentFields,
+    form,
+  })
+
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
@@ -265,6 +336,15 @@ function RouteComponent() {
             tipContent={`版本 ${MetadataFormJupyter.version}`}
           >
             <div className="items-centor flex w-full flex-wrap justify-start gap-2 sm:w-fit sm:flex-nowrap sm:justify-end sm:gap-3">
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'Jupyter 作业辅助填写',
+                  prompt: '说明用途、镜像和资源需求，Agent 将生成可确认的表单修改建议。',
+                  route: agentFormCapabilities.jupyterJob.route,
+                  capabilityId: agentFormCapabilities.jupyterJob.id,
+                }}
+              />
               <FormImportButton
                 metadata={MetadataFormJupyter}
                 dataProcessor={dataProcessor}

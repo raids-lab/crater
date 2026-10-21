@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
@@ -39,6 +40,8 @@ type AgentMgr struct {
 	name          string
 	service       *service.AgentConfigService
 	conversations *service.AgentConversationService
+	diagnostics   *service.AgentJobDiagnosticService
+	platformRead  *service.AgentPlatformReadService
 }
 
 func NewAgentMgr(conf *RegisterConfig) Manager {
@@ -46,6 +49,8 @@ func NewAgentMgr(conf *RegisterConfig) Manager {
 		name:          "agent",
 		service:       conf.AgentConfigService,
 		conversations: conf.AgentConversationService,
+		diagnostics:   service.NewAgentJobDiagnosticService(query.GetDB(), conf.KubeClient),
+		platformRead:  service.NewAgentPlatformReadService(query.GetDB(), conf.KubeClient),
 	}
 }
 
@@ -54,6 +59,12 @@ func (mgr *AgentMgr) GetName() string { return mgr.name }
 func (mgr *AgentMgr) RegisterPublic(g *gin.RouterGroup) {
 	g.POST("/llm/chat/completions", mgr.ProxyLLMChatCompletion)
 	g.POST("/runs/:id/complete", mgr.CompleteAgentRun)
+	g.GET("/jobs/:name/diagnostic", mgr.GetAgentJobDiagnostic)
+	g.GET("/jobs/:name/scheduling-diagnosis", mgr.GetAgentJobSchedulingDiagnosis)
+	g.GET("/jobs", mgr.ListAgentJobs)
+	g.GET("/nodes", mgr.ListAgentNodes)
+	g.GET("/nodes/:name/capacity", mgr.GetAgentNodeCapacity)
+	g.GET("/capacity", mgr.GetAgentClusterCapacity)
 }
 
 func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
@@ -63,13 +74,20 @@ func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/llm-config/test", mgr.UserTestPersonalLLMConfig)
 	g.POST("/chat", mgr.UserChat)
 	g.POST("/title", mgr.UserGenerateTitle)
+	mgr.registerConversationRoutes(g)
+}
+
+func (mgr *AgentMgr) registerConversationRoutes(g *gin.RouterGroup) {
 	g.GET("/conversations", mgr.UserListAgentConversations)
 	g.GET("/conversations/:id/messages", mgr.UserGetAgentConversationMessages)
+	g.POST("/conversations/:id/cancel", mgr.UserCancelAgentConversationRun)
+	g.POST("/conversations/:id/tool-output", mgr.UserSaveAgentToolOutput)
 	g.PUT("/conversations/:id", mgr.UserRenameAgentConversation)
 	g.DELETE("/conversations/:id", mgr.UserDeleteAgentConversation)
 }
 
 func (mgr *AgentMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/subjects", mgr.AdminListAgentSubjects)
 	g.GET("/conversations", mgr.AdminListAgentConversations)
 	g.GET("/conversations/:id/messages", mgr.AdminGetAgentConversationMessages)
 }
@@ -246,6 +264,10 @@ func (mgr *AgentMgr) UserChat(c *gin.Context) {
 		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid Agent chat request"))
 		return
 	}
+	if err := service.ValidateAgentPageContext(req.PageContext, identity); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
 	userID := util.GetToken(c).UserID
 	prepared, err := mgr.conversations.PrepareRun(
 		c.Request.Context(), userID, identity, req.ConversationID, req.ParentMessageID, req.Mode, req.Message,
@@ -254,6 +276,8 @@ func (mgr *AgentMgr) UserChat(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	prepared.IdentityScope = identity
+	prepared.PageContext = req.PageContext
 	body, err = json.Marshal(prepared)
 	if err != nil {
 		_ = mgr.conversations.FailRun(c.Request.Context(), userID, identity, prepared.RunID, err)
@@ -276,10 +300,11 @@ func (mgr *AgentMgr) UserChat(c *gin.Context) {
 }
 
 type agentChatReq struct {
-	ConversationID  string                  `json:"conversationId"`
-	ParentMessageID *string                 `json:"parentMessageId"`
-	Mode            string                  `json:"mode"`
-	Message         *service.AgentUIMessage `json:"message"`
+	ConversationID  string                    `json:"conversationId"`
+	ParentMessageID *string                   `json:"parentMessageId"`
+	Mode            string                    `json:"mode"`
+	Message         *service.AgentUIMessage   `json:"message"`
+	PageContext     *service.AgentPageContext `json:"pageContext,omitempty"`
 }
 
 type generateAgentTitleReq struct {
@@ -372,7 +397,8 @@ func (mgr *AgentMgr) requestAgentRuntime(
 ) (*http.Response, error) {
 	serviceToken := strings.TrimSpace(os.Getenv(service.AgentInternalTokenEnv))
 	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
-	contextToken, err := service.SignAgentContext(util.GetToken(c).UserID, identity, contextSigningKey)
+	token := util.GetToken(c)
+	contextToken, err := service.SignAgentContext(token.UserID, token.AccountID, identity, contextSigningKey)
 	if err != nil {
 		return nil, err
 	}

@@ -3,9 +3,6 @@ package handler
 import (
 	"crypto/subtle"
 	"encoding/json"
-	"net/http"
-	"os"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -19,7 +16,23 @@ type renameAgentConversationReq struct {
 	Title string `json:"title" binding:"required,max=320"`
 }
 
+type saveAgentToolOutputReq struct {
+	MessageID  string          `json:"messageId" binding:"required,max=128"`
+	ToolCallID string          `json:"toolCallId" binding:"required,max=128"`
+	State      string          `json:"state" binding:"required,oneof=output-available output-error"`
+	Output     json.RawMessage `json:"output"`
+	ErrorText  string          `json:"errorText" binding:"omitempty,max=2048"`
+}
+
 type adminListAgentConversationsReq struct {
+	Page          int                   `form:"page" binding:"omitempty,min=1"`
+	PageSize      int                   `form:"pageSize" binding:"omitempty,min=1,max=100"`
+	Search        string                `form:"search" binding:"omitempty,max=120"`
+	IdentityScope service.AgentIdentity `form:"identityScope" binding:"omitempty,oneof=user admin"`
+	UserID        uint                  `form:"userId" binding:"omitempty,min=1"`
+}
+
+type adminListAgentSubjectsReq struct {
 	Page          int                   `form:"page" binding:"omitempty,min=1"`
 	PageSize      int                   `form:"pageSize" binding:"omitempty,min=1,max=100"`
 	Search        string                `form:"search" binding:"omitempty,max=120"`
@@ -75,6 +88,71 @@ func (mgr *AgentMgr) UserGetAgentConversationMessages(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, items)
+}
+
+// UserCancelAgentConversationRun cancels the active generation for an owned conversation.
+//
+//	@Summary		Cancel the active Agent response
+//	@Tags			Agent
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			X-Crater-Agent-Identity	header		string	false	"Agent identity scope" Enums(user,admin)
+//	@Param			id						path		string	true	"Conversation ID"
+//	@Success		200						{object}	resputil.Response[bool]
+//	@Router			/v1/agent/conversations/{id}/cancel [post]
+func (mgr *AgentMgr) UserCancelAgentConversationRun(c *gin.Context) {
+	identity, err := resolveAgentIdentity(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	canceled, err := mgr.conversations.CancelActiveRun(
+		c.Request.Context(), util.GetToken(c).UserID, identity, c.Param("id"),
+	)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.Success(c, canceled)
+}
+
+// UserSaveAgentToolOutput persists a user-confirmed client-side tool result.
+//
+//	@Summary		Save an Agent tool result
+//	@Tags			Agent
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			X-Crater-Agent-Identity	header		string				false	"Agent identity scope" Enums(user,admin)
+//	@Param			id						path		string				true	"Conversation ID"
+//	@Param			request					body		saveAgentToolOutputReq	true	"Resolved tool result"
+//	@Success		200						{object}	resputil.Response[string]
+//	@Router			/v1/agent/conversations/{id}/tool-output [post]
+func (mgr *AgentMgr) UserSaveAgentToolOutput(c *gin.Context) {
+	var req saveAgentToolOutputReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid Agent tool output"))
+		return
+	}
+	identity, err := resolveAgentIdentity(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	if err := mgr.conversations.SaveToolOutput(
+		c.Request.Context(),
+		util.GetToken(c).UserID,
+		identity,
+		c.Param("id"),
+		&service.AgentToolOutput{
+			MessageID: req.MessageID, ToolCallID: req.ToolCallID, State: req.State,
+			Output: req.Output, ErrorText: req.ErrorText,
+		},
+	); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.Success(c, "Agent tool output saved successfully")
 }
 
 // UserRenameAgentConversation updates the title of an owned conversation.
@@ -135,15 +213,8 @@ func (mgr *AgentMgr) UserDeleteAgentConversation(c *gin.Context) {
 }
 
 func (mgr *AgentMgr) CompleteAgentRun(c *gin.Context) {
-	serviceToken := strings.TrimSpace(os.Getenv(service.AgentInternalTokenEnv))
-	if !constantTimeTokenEqual(bearerToken(c.GetHeader("Authorization")), serviceToken) {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid Agent service token"})
-		return
-	}
-	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
-	claims, err := service.ParseAgentContext(c.GetHeader("X-Crater-Agent-Context"), contextSigningKey)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid Agent context"})
+	claims, ok := getInternalAgentClaims(c)
+	if !ok {
 		return
 	}
 	body, err := readLimitedBody(c.Request.Body, agentChatBodyLimit)
@@ -165,6 +236,34 @@ func (mgr *AgentMgr) CompleteAgentRun(c *gin.Context) {
 	resputil.Success(c, "Agent run completed successfully")
 }
 
+// AdminListAgentSubjects lists users with Agent history, separated by identity scope.
+//
+//	@Summary		List users with Agent conversation history
+//	@Tags			Agent Admin
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			page			query		int		false	"Page number" minimum(1)
+//	@Param			pageSize		query		int		false	"Items per page" minimum(1) maximum(100)
+//	@Param			search			query		string	false	"Username, nickname, or user ID"
+//	@Param			identityScope	query		string	false	"Agent identity scope" Enums(user,admin)
+//	@Success		200				{object}	resputil.Response[service.AdminAgentSubjectPage]
+//	@Router			/v1/admin/agent/subjects [get]
+func (mgr *AgentMgr) AdminListAgentSubjects(c *gin.Context) {
+	var req adminListAgentSubjectsReq
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid Agent user query"))
+		return
+	}
+	items, err := mgr.conversations.ListAdminSubjects(c.Request.Context(), service.AdminAgentSubjectQuery{
+		Page: req.Page, PageSize: req.PageSize, Search: req.Search, IdentityScope: req.IdentityScope,
+	})
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.Success(c, items)
+}
+
 // AdminListAgentConversations lists searchable Agent conversations for administrators.
 //
 //	@Summary		List all Agent conversations
@@ -175,6 +274,7 @@ func (mgr *AgentMgr) CompleteAgentRun(c *gin.Context) {
 //	@Param			pageSize		query		int		false	"Items per page" minimum(1) maximum(100)
 //	@Param			search			query		string	false	"Username, nickname, user ID, or title"
 //	@Param			identityScope	query		string	false	"Agent identity scope" Enums(user,admin)
+//	@Param			userId			query		int		false	"User ID" minimum(1)
 //	@Success		200				{object}	resputil.Response[service.AdminAgentConversationPage]
 //	@Router			/v1/admin/agent/conversations [get]
 func (mgr *AgentMgr) AdminListAgentConversations(c *gin.Context) {
@@ -188,6 +288,7 @@ func (mgr *AgentMgr) AdminListAgentConversations(c *gin.Context) {
 		PageSize:      req.PageSize,
 		Search:        req.Search,
 		IdentityScope: req.IdentityScope,
+		UserID:        req.UserID,
 	})
 	if err != nil {
 		resputil.HandleError(c, err)

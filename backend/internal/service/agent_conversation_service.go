@@ -60,6 +60,7 @@ type AdminAgentConversationQuery struct {
 	PageSize      int
 	Search        string
 	IdentityScope AgentIdentity
+	UserID        uint
 }
 
 type AdminAgentConversationPage struct {
@@ -67,6 +68,30 @@ type AdminAgentConversationPage struct {
 	Total    int64                           `json:"total"`
 	Page     int                             `json:"page"`
 	PageSize int                             `json:"pageSize"`
+}
+
+type AdminAgentSubjectSummary struct {
+	UserID            uint          `json:"userId"`
+	Username          string        `json:"username"`
+	Nickname          string        `json:"nickname"`
+	IdentityScope     AgentIdentity `json:"identityScope"`
+	ConversationCount int64         `json:"conversationCount"`
+	MessageCount      int64         `json:"messageCount"`
+	UpdatedAt         int64         `json:"updatedAt"`
+}
+
+type AdminAgentSubjectQuery struct {
+	Page          int
+	PageSize      int
+	Search        string
+	IdentityScope AgentIdentity
+}
+
+type AdminAgentSubjectPage struct {
+	Items    []AdminAgentSubjectSummary `json:"items"`
+	Total    int64                      `json:"total"`
+	Page     int                        `json:"page"`
+	PageSize int                        `json:"pageSize"`
 }
 
 // AgentUIMessage is the versioned wire representation stored by Crater. Parts
@@ -80,8 +105,10 @@ type AgentUIMessage struct {
 }
 
 type PreparedAgentRun struct {
-	RunID    string           `json:"runId"`
-	Messages []AgentUIMessage `json:"messages"`
+	RunID         string            `json:"runId"`
+	Messages      []AgentUIMessage  `json:"messages"`
+	IdentityScope AgentIdentity     `json:"identityScope"`
+	PageContext   *AgentPageContext `json:"pageContext,omitempty"`
 }
 
 type AgentRunCompletion struct {
@@ -92,6 +119,106 @@ type AgentRunCompletion struct {
 
 func NewAgentConversationService(db *gorm.DB) *AgentConversationService {
 	return &AgentConversationService{db: db}
+}
+
+func normalizeAdminAgentPage(page, pageSize int) (normalizedPage, normalizedPageSize int) {
+	const (
+		defaultPageSize = 20
+		maximumPageSize = 100
+	)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = defaultPageSize
+	} else if pageSize > maximumPageSize {
+		pageSize = maximumPageSize
+	}
+	return page, pageSize
+}
+
+func (s *AgentConversationService) ListAdminSubjects(
+	ctx context.Context,
+	options AdminAgentSubjectQuery,
+) (*AdminAgentSubjectPage, error) {
+	options.Page, options.PageSize = normalizeAdminAgentPage(options.Page, options.PageSize)
+	if options.IdentityScope != "" {
+		if _, err := ParseAgentIdentity(string(options.IdentityScope)); err != nil {
+			return nil, err
+		}
+	}
+
+	baseQuery := func() *gorm.DB {
+		query := s.db.WithContext(ctx).
+			Table("agent_conversations AS conversation").
+			Joins("JOIN users ON users.id = conversation.user_id").
+			Where("conversation.deleted_at IS NULL")
+		if search := strings.TrimSpace(options.Search); search != "" {
+			pattern := "%" + search + "%"
+			query = query.Where(
+				`LOWER(users.name) LIKE LOWER(?) OR LOWER(users.nickname) LIKE LOWER(?)
+					OR CAST(conversation.user_id AS TEXT) LIKE ?`,
+				pattern, pattern, pattern,
+			)
+		}
+		if options.IdentityScope != "" {
+			query = query.Where("conversation.identity_scope = ?", options.IdentityScope)
+		}
+		return query
+	}
+
+	groupedSubjects := baseQuery().
+		Select("conversation.user_id, conversation.identity_scope").
+		Group("conversation.user_id, conversation.identity_scope")
+	var total int64
+	if err := s.db.WithContext(ctx).Table("(?) AS subject", groupedSubjects).Count(&total).Error; err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to count Agent users for administrators")
+	}
+
+	type adminSubjectRecord struct {
+		UserID            uint
+		Username          string
+		Nickname          string
+		IdentityScope     string
+		ConversationCount int64
+		MessageCount      int64
+		UpdatedAt         time.Time
+	}
+	var records []adminSubjectRecord
+	err := baseQuery().
+		Select(`conversation.user_id AS user_id, users.name AS username, users.nickname AS nickname,
+			conversation.identity_scope AS identity_scope,
+			COUNT(DISTINCT conversation.id) AS conversation_count,
+			COUNT(message.id) AS message_count, MAX(conversation.updated_at) AS updated_at`).
+		Joins(`LEFT JOIN agent_messages AS message ON message.conversation_id = conversation.id
+			AND message.superseded_at IS NULL`).
+		Group("conversation.user_id, conversation.identity_scope, users.id").
+		Order("MAX(conversation.updated_at) DESC").
+		Order("conversation.user_id ASC").
+		Order("conversation.identity_scope ASC").
+		Offset((options.Page - 1) * options.PageSize).
+		Limit(options.PageSize).
+		Scan(&records).Error
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to list Agent users for administrators")
+	}
+
+	items := make([]AdminAgentSubjectSummary, 0, len(records))
+	for index := range records {
+		record := &records[index]
+		items = append(items, AdminAgentSubjectSummary{
+			UserID:            record.UserID,
+			Username:          record.Username,
+			Nickname:          record.Nickname,
+			IdentityScope:     AgentIdentity(record.IdentityScope),
+			ConversationCount: record.ConversationCount,
+			MessageCount:      record.MessageCount,
+			UpdatedAt:         record.UpdatedAt.UnixMilli(),
+		})
+	}
+	return &AdminAgentSubjectPage{
+		Items: items, Total: total, Page: options.Page, PageSize: options.PageSize,
+	}, nil
 }
 
 func (s *AgentConversationService) ListConversations(
@@ -117,18 +244,7 @@ func (s *AgentConversationService) ListAllConversations(
 	ctx context.Context,
 	options AdminAgentConversationQuery,
 ) (*AdminAgentConversationPage, error) {
-	const (
-		defaultPageSize = 20
-		maximumPageSize = 100
-	)
-	if options.Page < 1 {
-		options.Page = 1
-	}
-	if options.PageSize < 1 {
-		options.PageSize = defaultPageSize
-	} else if options.PageSize > maximumPageSize {
-		options.PageSize = maximumPageSize
-	}
+	options.Page, options.PageSize = normalizeAdminAgentPage(options.Page, options.PageSize)
 	if options.IdentityScope != "" {
 		if _, err := ParseAgentIdentity(string(options.IdentityScope)); err != nil {
 			return nil, err
@@ -157,6 +273,9 @@ func (s *AgentConversationService) ListAllConversations(
 		if options.IdentityScope != "" {
 			query = query.Where("conversation.identity_scope = ?", options.IdentityScope)
 		}
+		if options.UserID != 0 {
+			query = query.Where("conversation.user_id = ?", options.UserID)
+		}
 		return query
 	}
 
@@ -173,6 +292,7 @@ func (s *AgentConversationService) ListAllConversations(
 			AND message.superseded_at IS NULL`).
 		Group("conversation.id, users.id").
 		Order("conversation.updated_at DESC").
+		Order("conversation.id ASC").
 		Offset((options.Page - 1) * options.PageSize).
 		Limit(options.PageSize).
 		Scan(&records).Error
@@ -330,6 +450,40 @@ func (s *AgentConversationService) DeleteConversation(
 		}
 		return nil
 	})
+}
+
+func (s *AgentConversationService) CancelActiveRun(
+	ctx context.Context,
+	userID uint,
+	identity AgentIdentity,
+	conversationID string,
+) (bool, error) {
+	if err := validateConversationID(conversationID); err != nil {
+		return false, err
+	}
+	canceled := false
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.ensureOwnedConversation(ctx, tx, userID, identity, conversationID); err != nil {
+			return err
+		}
+		now := time.Now()
+		result := tx.Model(&model.AgentRun{}).
+			Where(
+				"conversation_id = ? AND user_id = ? AND identity_scope = ? AND status = ?",
+				conversationID, userID, identity, AgentRunStatusRunning,
+			).
+			Updates(map[string]any{
+				"status":        AgentRunStatusCanceled,
+				"finished_at":   now,
+				"error_message": "Agent response canceled by user",
+			})
+		if result.Error != nil {
+			return bizerr.Internal.DatabaseError.Wrap(result.Error, "failed to cancel Agent response")
+		}
+		canceled = result.RowsAffected > 0
+		return nil
+	})
+	return canceled, err
 }
 
 func (s *AgentConversationService) PrepareRun(

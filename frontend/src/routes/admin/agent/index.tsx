@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { UIMessage } from 'ai'
 import { format } from 'date-fns'
-import { BotIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon } from 'lucide-react'
+import { ArrowLeftIcon, BotIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounceValue } from 'usehooks-ts'
@@ -40,9 +40,11 @@ import PageTitle from '@/components/layout/page-title'
 
 import {
   type AdminAgentConversation,
+  type AdminAgentSubject,
   type AgentIdentity,
   apiAdminGetAgentConversationMessages,
   apiAdminGetAgentConversations,
+  apiAdminGetAgentSubjects,
 } from '@/services/api/agent'
 
 import { cn } from '@/lib/utils'
@@ -56,6 +58,10 @@ function getMessageText(message: UIMessage) {
     .filter((part) => part.type === 'text')
     .map((part) => part.text)
     .join('')
+}
+
+function identityLabel(identity: AgentIdentity, t: ReturnType<typeof useTranslation>['t']) {
+  return identity === 'admin' ? t('agentAudit.identityAdmin') : t('agentAudit.identityUser')
 }
 
 function ConversationMessages({ conversation }: { conversation: AdminAgentConversation }) {
@@ -74,7 +80,7 @@ function ConversationMessages({ conversation }: { conversation: AdminAgentConver
   }
 
   return (
-    <ScrollArea className="h-[min(68vh,720px)] pr-4">
+    <ScrollArea className="h-[min(62vh,680px)] pr-4">
       <div className="space-y-4">
         {(data ?? []).map((message) => {
           const text = getMessageText(message)
@@ -113,27 +119,145 @@ function ConversationMessages({ conversation }: { conversation: AdminAgentConver
   )
 }
 
+function SubjectConversationList({
+  subject,
+  onSelect,
+}: {
+  subject: AdminAgentSubject
+  onSelect: (conversation: AdminAgentConversation) => void
+}) {
+  const { t } = useTranslation()
+  const [page, setPage] = useState(1)
+  const pageSize = 20
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      'admin',
+      'agent',
+      'conversations',
+      subject.userId,
+      subject.identityScope,
+      page,
+      pageSize,
+    ],
+    queryFn: () =>
+      apiAdminGetAgentConversations({
+        page,
+        pageSize,
+        userId: subject.userId,
+        identityScope: subject.identityScope,
+      }).then((res) => res.data),
+  })
+  const conversations = data?.items ?? []
+  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / pageSize))
+
+  return (
+    <div className="space-y-4">
+      <ScrollArea className="h-[min(56vh,600px)] pr-3">
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('agentAudit.conversationTitle')}</TableHead>
+                <TableHead>{t('agentAudit.messageCount')}</TableHead>
+                <TableHead>{t('agentAudit.updatedAt')}</TableHead>
+                <TableHead className="w-20 text-right">{t('agentAudit.actions')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {conversations.map((conversation) => (
+                <TableRow key={conversation.id}>
+                  <TableCell
+                    className="max-w-96 truncate font-medium"
+                    title={conversation.title || t('craterAgent.newConversation')}
+                  >
+                    {conversation.title || t('craterAgent.newConversation')}
+                  </TableCell>
+                  <TableCell>{conversation.messageCount}</TableCell>
+                  <TableCell>{format(conversation.updatedAt, 'yyyy-MM-dd HH:mm:ss')}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t('agentAudit.viewConversation')}
+                      onClick={() => onSelect(conversation)}
+                    >
+                      <EyeIcon />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {!isLoading && conversations.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-muted-foreground h-24 text-center">
+                    {t('agentAudit.emptyConversations')}
+                  </TableCell>
+                </TableRow>
+              )}
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-muted-foreground h-24 text-center">
+                    {t('agentAudit.loadingConversations')}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </ScrollArea>
+      <div className="flex items-center justify-end gap-3">
+        <span className="text-muted-foreground text-sm">
+          {t('agentAudit.pagination', { page, totalPages, total: data?.total ?? 0 })}
+        </span>
+        <Button
+          size="icon"
+          variant="outline"
+          aria-label={t('agentAudit.previousPage')}
+          disabled={page <= 1 || isLoading}
+          onClick={() => setPage((current) => Math.max(1, current - 1))}
+        >
+          <ChevronLeftIcon />
+        </Button>
+        <Button
+          size="icon"
+          variant="outline"
+          aria-label={t('agentAudit.nextPage')}
+          disabled={page >= totalPages || isLoading}
+          onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+        >
+          <ChevronRightIcon />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function AgentOperationsPage() {
   const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [debouncedSearch] = useDebounceValue(search.trim(), 300)
   const [identity, setIdentity] = useState<'all' | AgentIdentity>('all')
   const [page, setPage] = useState(1)
+  const [selectedSubject, setSelectedSubject] = useState<AdminAgentSubject>()
   const [selectedConversation, setSelectedConversation] = useState<AdminAgentConversation>()
   const pageSize = 20
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'agent', 'conversations', page, pageSize, debouncedSearch, identity],
+    queryKey: ['admin', 'agent', 'subjects', page, pageSize, debouncedSearch, identity],
     queryFn: () =>
-      apiAdminGetAgentConversations({
+      apiAdminGetAgentSubjects({
         page,
         pageSize,
         search: debouncedSearch || undefined,
         identityScope: identity === 'all' ? undefined : identity,
       }).then((res) => res.data),
   })
-  const conversations = data?.items ?? []
+  const subjects = data?.items ?? []
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / pageSize))
+
+  const closeSubject = () => {
+    setSelectedSubject(undefined)
+    setSelectedConversation(undefined)
+  }
 
   return (
     <div className="space-y-4">
@@ -168,57 +292,54 @@ function AgentOperationsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="overflow-hidden rounded-md border">
+          <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('agentAudit.user')}</TableHead>
                   <TableHead>{t('agentAudit.identity')}</TableHead>
-                  <TableHead>{t('agentAudit.conversationTitle')}</TableHead>
+                  <TableHead>{t('agentAudit.conversationCount')}</TableHead>
                   <TableHead>{t('agentAudit.messageCount')}</TableHead>
                   <TableHead>{t('agentAudit.updatedAt')}</TableHead>
                   <TableHead className="w-20 text-right">{t('agentAudit.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {conversations.map((conversation) => (
-                  <TableRow key={conversation.id}>
+                {subjects.map((subject) => (
+                  <TableRow key={`${subject.userId}-${subject.identityScope}`}>
                     <TableCell>
-                      <div className="font-medium">
-                        {conversation.nickname || conversation.username}
-                      </div>
-                      <div className="text-muted-foreground text-xs">@{conversation.username}</div>
+                      <Button
+                        variant="link"
+                        className="h-auto flex-col items-start p-0 text-left"
+                        onClick={() => setSelectedSubject(subject)}
+                      >
+                        <span className="font-medium">{subject.nickname || subject.username}</span>
+                        <span className="text-muted-foreground text-xs font-normal">
+                          @{subject.username}
+                        </span>
+                      </Button>
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={conversation.identityScope === 'admin' ? 'default' : 'secondary'}
-                      >
-                        {conversation.identityScope === 'admin'
-                          ? t('agentAudit.identityAdmin')
-                          : t('agentAudit.identityUser')}
+                      <Badge variant={subject.identityScope === 'admin' ? 'default' : 'secondary'}>
+                        {identityLabel(subject.identityScope, t)}
                       </Badge>
                     </TableCell>
-                    <TableCell
-                      className="max-w-80 truncate"
-                      title={conversation.title || t('craterAgent.newConversation')}
-                    >
-                      {conversation.title || t('craterAgent.newConversation')}
-                    </TableCell>
-                    <TableCell>{conversation.messageCount}</TableCell>
-                    <TableCell>{format(conversation.updatedAt, 'yyyy-MM-dd HH:mm:ss')}</TableCell>
+                    <TableCell>{subject.conversationCount}</TableCell>
+                    <TableCell>{subject.messageCount}</TableCell>
+                    <TableCell>{format(subject.updatedAt, 'yyyy-MM-dd HH:mm:ss')}</TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="icon"
                         variant="ghost"
-                        aria-label={t('agentAudit.viewConversation')}
-                        onClick={() => setSelectedConversation(conversation)}
+                        aria-label={t('agentAudit.viewHistory')}
+                        onClick={() => setSelectedSubject(subject)}
                       >
                         <EyeIcon />
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
-                {!isLoading && conversations.length === 0 && (
+                {!isLoading && subjects.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-muted-foreground h-24 text-center">
                       {t('agentAudit.empty')}
@@ -237,7 +358,7 @@ function AgentOperationsPage() {
           </div>
           <div className="flex items-center justify-end gap-3">
             <span className="text-muted-foreground text-sm">
-              {t('agentAudit.pagination', { page, totalPages, total: data?.total ?? 0 })}
+              {t('agentAudit.subjectPagination', { page, totalPages, total: data?.total ?? 0 })}
             </span>
             <Button
               size="icon"
@@ -262,32 +383,52 @@ function AgentOperationsPage() {
       </Card>
 
       <Dialog
-        open={selectedConversation !== undefined}
+        open={selectedSubject !== undefined}
         onOpenChange={(open) => {
-          if (!open) setSelectedConversation(undefined)
+          if (!open) closeSubject()
         }}
       >
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-5xl">
           <DialogHeader>
+            {selectedConversation && (
+              <div>
+                <Button
+                  variant="ghost"
+                  className="-ml-2 h-8 px-2"
+                  onClick={() => setSelectedConversation(undefined)}
+                >
+                  <ArrowLeftIcon />
+                  {t('agentAudit.backToConversationList')}
+                </Button>
+              </div>
+            )}
             <DialogTitle className="flex items-center gap-2 pr-8">
-              <BotIcon className="text-primary size-5" />
+              <BotIcon className="text-primary size-5 shrink-0" />
               <span className="truncate">
-                {selectedConversation?.title || t('craterAgent.newConversation')}
+                {selectedConversation
+                  ? selectedConversation.title || t('craterAgent.newConversation')
+                  : selectedSubject?.nickname || selectedSubject?.username}
               </span>
             </DialogTitle>
             <DialogDescription>
-              {selectedConversation &&
+              {selectedSubject &&
                 t('agentAudit.dialogDescription', {
-                  nickname: selectedConversation.nickname || selectedConversation.username,
-                  username: selectedConversation.username,
-                  identity:
-                    selectedConversation.identityScope === 'admin'
-                      ? t('agentAudit.identityAdmin')
-                      : t('agentAudit.identityUser'),
+                  nickname: selectedSubject.nickname || selectedSubject.username,
+                  username: selectedSubject.username,
+                  identity: identityLabel(selectedSubject.identityScope, t),
                 })}
             </DialogDescription>
           </DialogHeader>
-          {selectedConversation && <ConversationMessages conversation={selectedConversation} />}
+          {selectedSubject && selectedConversation && (
+            <ConversationMessages conversation={selectedConversation} />
+          )}
+          {selectedSubject && !selectedConversation && (
+            <SubjectConversationList
+              key={`${selectedSubject.userId}-${selectedSubject.identityScope}`}
+              subject={selectedSubject}
+              onSelect={setSelectedConversation}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

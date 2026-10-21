@@ -14,12 +14,25 @@ import { z } from "zod";
 
 import { createCraterAgent, createCraterModel } from "../agent/crater-agent.js";
 import { matchesBearerToken } from "../auth.js";
+import { requestJobDiagnosticSnapshot } from "../backend/job-diagnostics.js";
 import type { AgentConfig } from "../config.js";
+import {
+  agentIdentitySchema,
+  pageContextSchema,
+  type AgentIdentity,
+} from "../page-context.js";
+import { createFormAssistantSkill } from "../skills/form-assistant.js";
+import {
+  createJobDiagnosisSkill,
+  createJobDiagnosisUnavailableSkill,
+} from "../skills/job-diagnosis.js";
 import { selectSkill } from "../skills/select.js";
 
 const chatBodySchema = z.object({
   runId: z.uuid(),
   messages: z.array(z.unknown()).min(1).max(100),
+  identityScope: agentIdentitySchema,
+  pageContext: pageContextSchema.optional(),
 });
 const titleBodySchema = z.object({
   firstMessage: z.string().trim().min(1).max(8_192),
@@ -77,7 +90,24 @@ export function createChatRoutes(config: AgentConfig) {
       return context.json({ error: "invalid chat messages" }, 400);
     }
     const messages = validated.data;
-    const skill = selectSkill(userConversationTexts(messages));
+    if (
+      !pageContextMatchesIdentity(
+        parsed.data.pageContext,
+        parsed.data.identityScope,
+      )
+    ) {
+      return context.json(
+        { error: "page context does not match Agent identity" },
+        400,
+      );
+    }
+    const skill = await selectChatSkill(
+      config,
+      contextToken,
+      parsed.data.identityScope,
+      parsed.data.pageContext,
+      messages,
+    );
     if (skill.staticResponse) {
       return createStaticResponse(
         messages,
@@ -91,7 +121,12 @@ export function createChatRoutes(config: AgentConfig) {
           ),
       );
     }
-    const agent = createCraterAgent(config, contextToken, skill);
+    const agent = createCraterAgent(
+      config,
+      contextToken,
+      skill,
+      parsed.data.identityScope,
+    );
     const result = await agent.stream({
       messages: await convertToModelMessages(messages),
       abortSignal: context.req.raw.signal,
@@ -144,6 +179,41 @@ export function createChatRoutes(config: AgentConfig) {
   });
 
   return routes;
+}
+
+async function selectChatSkill(
+  config: AgentConfig,
+  contextToken: string,
+  identity: AgentIdentity,
+  pageContext: z.infer<typeof pageContextSchema> | undefined,
+  messages: UIMessage[],
+): Promise<ReturnType<typeof selectSkill>> {
+  if (pageContext?.resource?.kind === "job") {
+    try {
+      const snapshot = await requestJobDiagnosticSnapshot(
+        config,
+        contextToken,
+        pageContext.resource.jobName,
+      );
+      return createJobDiagnosisSkill(pageContext, snapshot, identity);
+    } catch (error) {
+      console.error("Crater-Agent job diagnostic preload failed", error);
+      return createJobDiagnosisUnavailableSkill(pageContext, identity);
+    }
+  }
+  return pageContext
+    ? createFormAssistantSkill(pageContext, identity)
+    : selectSkill(userConversationTexts(messages), identity);
+}
+
+function pageContextMatchesIdentity(
+  pageContext: z.infer<typeof pageContextSchema> | undefined,
+  identity: AgentIdentity,
+): boolean {
+  if (!pageContext) return true;
+  return pageContext.route.startsWith(
+    identity === "admin" ? "/admin/" : "/portal/",
+  );
 }
 
 function createStaticResponse(

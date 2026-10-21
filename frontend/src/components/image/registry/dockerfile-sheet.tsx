@@ -31,6 +31,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import LoadableButton from '@/components/button/loadable-button'
 import FormExportButton from '@/components/form/form-export-button'
 import FormImportButton from '@/components/form/form-import-button'
@@ -139,6 +145,16 @@ const dockerfileFormSchema = z.object({
 
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>
 
+const agentFields = defineAgentFormFields<DockerfileFormValues>()([
+  { path: 'dockerfile', label: 'Dockerfile', valueType: 'string', includeCurrentValue: true },
+  { path: 'description', label: '镜像描述', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageName', label: '镜像名称', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageTag', label: '镜像标签', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageArchs', label: '镜像架构', valueType: 'json' },
+  { path: 'volumeMounts', label: '构建挂载', valueType: 'json' },
+  { path: 'tags', label: '分类标签', valueType: 'json' },
+])
+
 interface DockerfileSheetContentProps {
   closeSheet: () => void
   imagePackName?: string
@@ -164,6 +180,12 @@ function DockerfileSheetContent({
       imageArchs: [{ value: 'linux/amd64' }],
       volumeMounts: [],
     },
+  })
+
+  useAgentFormCapability({
+    capability: agentFormCapabilities.imageDockerfile,
+    fields: agentFields,
+    form,
   })
 
   const { mutate: submitDockerfileSheet, isPending } = useMutation({
@@ -237,6 +259,15 @@ function DockerfileSheetContent({
         <SandwichLayout
           footer={
             <>
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'Dockerfile 镜像辅助填写',
+                  prompt: '说明运行环境和构建目标，Agent 将生成可确认的 Dockerfile 表单建议。',
+                  route: agentFormCapabilities.imageDockerfile.route,
+                  capabilityId: agentFormCapabilities.imageDockerfile.id,
+                }}
+              />
               <FormImportButton metadata={MetadataFormDockerfile} form={form} />
               <FormExportButton metadata={MetadataFormDockerfile} form={form} />
               <LoadableButton isLoading={isPending} isLoadingText="正在提交" type="submit">

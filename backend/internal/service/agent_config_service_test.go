@@ -163,7 +163,7 @@ func TestRotateStoredLLMCredentialsUsesCurrentKey(t *testing.T) {
 
 func TestAgentContextRoundTrip(t *testing.T) {
 	const secret = "this-is-a-test-secret-with-at-least-32-bytes"
-	token, err := SignAgentContext(42, AgentIdentityAdmin, secret)
+	token, err := SignAgentContext(42, 7, AgentIdentityAdmin, secret)
 	if err != nil {
 		t.Fatalf("sign context: %v", err)
 	}
@@ -173,6 +173,9 @@ func TestAgentContextRoundTrip(t *testing.T) {
 	}
 	if claims.UserID != 42 {
 		t.Fatalf("user ID = %d, want 42", claims.UserID)
+	}
+	if claims.AccountID != 7 {
+		t.Fatalf("account ID = %d, want 7", claims.AccountID)
 	}
 	if claims.IdentityScope != AgentIdentityAdmin {
 		t.Fatalf("identity = %q, want %q", claims.IdentityScope, AgentIdentityAdmin)
@@ -202,7 +205,7 @@ func openAgentConfigTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}, &model.UserLLMConfig{}); err != nil {
+	if err := db.AutoMigrate(&model.SystemConfig{}, &model.UserLLMConfig{}); err != nil {
 		t.Fatalf("migrate test database: %v", err)
 	}
 	return db
