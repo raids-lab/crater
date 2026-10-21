@@ -426,7 +426,9 @@ function NodesForAdmin() {
         query={nodeQuery}
         columns={columns}
         toolbarConfig={nodesToolbarConfig}
-        briefChildren={<SnapshotStatus observedAt={observedAt} />}
+        briefChildren={
+          <SnapshotStatus observedAt={observedAt} hasMore={nodeSnapshotQuery.hasNextPage} />
+        }
         paginate={false}
         withI18n
         footer={

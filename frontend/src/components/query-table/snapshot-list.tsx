@@ -23,19 +23,28 @@ interface SnapshotListProps<T> {
 export function SnapshotList<T>({ observedAt, ...props }: SnapshotListProps<T>) {
   return (
     <div className="space-y-2">
-      <SnapshotStatus observedAt={observedAt} />
+      <SnapshotStatus observedAt={observedAt} hasMore={props.hasMore} />
       <CursorList {...props} />
     </div>
   )
 }
 
-export function SnapshotStatus({ observedAt }: { observedAt?: string }) {
+export function SnapshotStatus({
+  observedAt,
+  hasMore = false,
+}: {
+  observedAt?: string
+  hasMore?: boolean
+}) {
   const { t } = useTranslation()
-  if (!observedAt) return null
+  if (!observedAt && !hasMore) return null
 
   return (
-    <p className="text-muted-foreground text-xs">
-      {t('snapshotList.observedAt', { time: new Date(observedAt).toLocaleString() })}
-    </p>
+    <div className="text-muted-foreground space-y-1 text-xs">
+      {observedAt && (
+        <p>{t('snapshotList.observedAt', { time: new Date(observedAt).toLocaleString() })}</p>
+      )}
+      {hasMore && <p>{t('snapshotList.partialSearch')}</p>}
+    </div>
   )
 }
