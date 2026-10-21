@@ -32,6 +32,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import LoadableButton from '@/components/button/loadable-button'
 import Combobox from '@/components/form/combobox'
 import FormExportButton from '@/components/form/form-export-button'
@@ -158,6 +164,17 @@ const pipAptFormSchema = z.object({
 
 export type PipAptFormValues = z.infer<typeof pipAptFormSchema>
 
+const agentFields = defineAgentFormFields<PipAptFormValues>()([
+  { path: 'baseImage', label: '基础镜像', valueType: 'string', includeCurrentValue: true },
+  { path: 'requirements', label: 'Python 依赖', valueType: 'string', includeCurrentValue: true },
+  { path: 'aptPackages', label: 'APT 软件包', valueType: 'string', includeCurrentValue: true },
+  { path: 'description', label: '镜像描述', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageName', label: '镜像名称', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageTag', label: '镜像标签', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageArchs', label: '镜像架构', valueType: 'option-array' },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
+])
+
 interface PipAptSheetContentProps {
   closeSheet: () => void
   imagePackName?: string
@@ -183,6 +200,12 @@ function PipAptSheetContent({
       tags: [],
       imageArchs: [{ value: 'linux/amd64' }],
     },
+  })
+
+  useAgentFormCapability({
+    capability: agentFormCapabilities.imagePipApt,
+    fields: agentFields,
+    form,
   })
 
   const { mutate: submitDockerfileSheet, isPending } = useMutation({
@@ -259,6 +282,15 @@ function PipAptSheetContent({
         <SandwichLayout
           footer={
             <>
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'Pip/Apt 镜像辅助填写',
+                  prompt: '说明基础镜像和依赖需求，Agent 将生成可确认的表单建议。',
+                  route: agentFormCapabilities.imagePipApt.route,
+                  capabilityId: agentFormCapabilities.imagePipApt.id,
+                }}
+              />
               <FormImportButton metadata={MetadataFormPipApt} form={form} />
               <FormExportButton metadata={MetadataFormPipApt} form={form} />
               <LoadableButton isLoading={isPending} isLoadingText="正在提交" type="submit">

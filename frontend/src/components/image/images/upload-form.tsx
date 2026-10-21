@@ -30,6 +30,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import LoadableButton from '@/components/button/loadable-button'
 import FormLabelMust from '@/components/form/form-label-must'
 import { TagsInput } from '@/components/form/tags-input'
@@ -63,6 +69,12 @@ const formSchema = z.object({
 })
 
 type FormSchema = z.infer<typeof formSchema>
+
+const agentFields = defineAgentFormFields<FormSchema>()([
+  { path: 'imageLink', label: '镜像地址', valueType: 'string', includeCurrentValue: true },
+  { path: 'description', label: '镜像描述', valueType: 'string', includeCurrentValue: true },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
+])
 
 interface ImageUploadSheetContentProps {
   closeSheet: () => void
@@ -106,6 +118,12 @@ function ImageUploadSheetContent({ closeSheet }: ImageUploadSheetContentProps) {
     },
   })
 
+  useAgentFormCapability({
+    capability: agentFormCapabilities.imageImport,
+    fields: agentFields,
+    form,
+  })
+
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
@@ -118,10 +136,21 @@ function ImageUploadSheetContent({ closeSheet }: ImageUploadSheetContentProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-6">
         <SandwichLayout
           footer={
-            <LoadableButton isLoading={isPending} isLoadingText="正在提交" type="submit">
-              <PackagePlusIcon />
-              确认提交
-            </LoadableButton>
+            <div className="flex gap-2">
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: '镜像导入辅助填写',
+                  prompt: '说明要导入的镜像及用途，Agent 将生成可确认的表单建议。',
+                  route: agentFormCapabilities.imageImport.route,
+                  capabilityId: agentFormCapabilities.imageImport.id,
+                }}
+              />
+              <LoadableButton isLoading={isPending} isLoadingText="正在提交" type="submit">
+                <PackagePlusIcon />
+                确认提交
+              </LoadableButton>
+            </div>
           }
         >
           <FormField

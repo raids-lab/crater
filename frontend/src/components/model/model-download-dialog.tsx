@@ -34,6 +34,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import LoadableButton from '@/components/button/loadable-button'
 import { SandwichLayout } from '@/components/sheet/sandwich-sheet'
 import {
@@ -70,6 +76,15 @@ const createFormSchema = (t: TFunction) =>
     token: z.string().optional(),
   })
 
+type ModelDownloadFormValues = z.infer<ReturnType<typeof createFormSchema>>
+
+const agentFields = defineAgentFormFields<ModelDownloadFormValues>()([
+  { path: 'source', label: '下载来源', valueType: 'string', includeCurrentValue: true },
+  { path: 'category', label: '资源类型', valueType: 'string', includeCurrentValue: true },
+  { path: 'name', label: '模型或数据集名称', valueType: 'string', includeCurrentValue: true },
+  { path: 'revision', label: '版本', valueType: 'string', includeCurrentValue: true },
+])
+
 interface ModelDownloadDialogProps {
   closeSheet: () => void
   defaultCategory?: 'model' | 'dataset'
@@ -89,7 +104,7 @@ export function ModelDownloadDialog({
     queryFn: () => apiGetModelDownloadLimitConfig().then((res) => res.data),
   })
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<ModelDownloadFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -98,6 +113,16 @@ export function ModelDownloadDialog({
       category: defaultCategory,
       token: '',
     },
+  })
+  const agentCapability =
+    defaultCategory === 'dataset'
+      ? agentFormCapabilities.datasetDownload
+      : agentFormCapabilities.modelDownload
+
+  useAgentFormCapability({
+    capability: agentCapability,
+    fields: agentFields,
+    form,
   })
 
   const source = form.watch('source')
@@ -190,13 +215,24 @@ export function ModelDownloadDialog({
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <SandwichLayout
             footer={
-              <LoadableButton
-                type="submit"
-                isLoading={status === 'pending'}
-                isLoadingText={t('modelDownload.dialog.submitting')}
-              >
-                {t('modelDownload.dialog.startDownload')}
-              </LoadableButton>
+              <div className="flex gap-2">
+                <AgentActionButton
+                  context={{
+                    action: 'assist-form',
+                    title: '模型或数据集下载辅助填写',
+                    prompt: '说明需要的模型或数据集及版本，Agent 将生成可确认的下载表单建议。',
+                    route: agentCapability.route,
+                    capabilityId: agentCapability.id,
+                  }}
+                />
+                <LoadableButton
+                  type="submit"
+                  isLoading={status === 'pending'}
+                  isLoadingText={t('modelDownload.dialog.submitting')}
+                >
+                  {t('modelDownload.dialog.startDownload')}
+                </LoadableButton>
+              </div>
             }
           >
             <FormField

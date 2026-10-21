@@ -24,6 +24,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
 import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
@@ -311,6 +312,15 @@ function RouteComponent() {
       ]}
     >
       <div className="flex flex-row gap-3">
+        <AgentActionButton
+          context={{
+            action: 'choose-job-type',
+            title: '选择交互式作业',
+            prompt: '说明开发或调试目标，Agent 将推荐 Jupyter 或 Web IDE 并提供页面跳转。',
+            route: '/portal/jobs/inter',
+          }}
+          label="AI 帮我选择"
+        />
         <DocsButton title="查看文档" url="quick-start/interactive" />
         <ListedNewJobButton mode="inter" />
       </div>

@@ -20,6 +20,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
 import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
@@ -248,6 +249,15 @@ const VolcanoOverview = () => {
       ]}
     >
       <div className="flex flex-row gap-3">
+        <AgentActionButton
+          context={{
+            action: 'choose-job-type',
+            title: '选择自定义作业',
+            prompt: '说明训练或批处理目标，Agent 将推荐单机或分布式作业并提供页面跳转。',
+            route: '/portal/jobs/custom',
+          }}
+          label="AI 帮我选择"
+        />
         <DocsButton title="查看文档" url="quick-start/batchprocess" />
         <ListedNewJobButton mode="custom" />
       </div>

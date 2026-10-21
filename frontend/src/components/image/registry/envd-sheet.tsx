@@ -34,6 +34,12 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import LoadableButton from '@/components/button/loadable-button'
 import Combobox from '@/components/form/combobox'
 import FormExportButton from '@/components/form/form-export-button'
@@ -157,6 +163,19 @@ const envdFormSchema = z.object({
 
 export type EnvdFormValues = z.infer<typeof envdFormSchema>
 
+const agentFields = defineAgentFormFields<EnvdFormValues>()([
+  { path: 'python', label: 'Python 版本', valueType: 'string', includeCurrentValue: true },
+  { path: 'base', label: '基础镜像', valueType: 'string', includeCurrentValue: true },
+  { path: 'aptPackages', label: 'APT 软件包', valueType: 'string', includeCurrentValue: true },
+  { path: 'requirements', label: 'Python 依赖', valueType: 'string', includeCurrentValue: true },
+  { path: 'enableJupyter', label: '启用 Jupyter', valueType: 'boolean', includeCurrentValue: true },
+  { path: 'enableZsh', label: '启用 Zsh', valueType: 'boolean', includeCurrentValue: true },
+  { path: 'description', label: '镜像描述', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageName', label: '镜像名称', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageTag', label: '镜像标签', valueType: 'string', includeCurrentValue: true },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
+])
+
 interface EnvdSheetContentProps {
   closeSheet: () => void
   imagePackName: string
@@ -177,6 +196,8 @@ function EnvdSheetContent({ closeSheet, imagePackName, setImagePackName }: EnvdS
       enableZsh: true,
     },
   })
+
+  useAgentFormCapability({ capability: agentFormCapabilities.imageEnvd, fields: agentFields, form })
 
   const { mutate: submitDockerfileSheet, isPending } = useMutation({
     mutationFn: (values: EnvdFormValues) =>
@@ -253,6 +274,15 @@ function EnvdSheetContent({ closeSheet, imagePackName, setImagePackName }: EnvdS
         <SandwichLayout
           footer={
             <>
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'envd 镜像辅助填写',
+                  prompt: '说明基础环境和依赖需求，Agent 将生成可确认的镜像构建表单建议。',
+                  route: agentFormCapabilities.imageEnvd.route,
+                  capabilityId: agentFormCapabilities.imageEnvd.id,
+                }}
+              />
               <FormImportButton metadata={MetadataFormEnvdAdvanced} form={form} />
               <FormExportButton metadata={MetadataFormEnvdAdvanced} form={form} />
               <LoadableButton isLoading={isPending} isLoadingText="正在提交" type="submit">
