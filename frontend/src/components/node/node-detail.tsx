@@ -669,7 +669,10 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
                 toolbarConfig={toolbarConfig}
                 paginate={false}
                 briefChildren={
-                  <SnapshotStatus observedAt={podsSnapshotQuery.data?.pages[0]?.data.observed_at} />
+                  <SnapshotStatus
+                    observedAt={podsSnapshotQuery.data?.pages[0]?.data.observed_at}
+                    hasMore={podsSnapshotQuery.hasNextPage}
+                  />
                 }
                 footer={
                   <SnapshotControls

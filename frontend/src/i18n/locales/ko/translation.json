@@ -1286,6 +1286,7 @@
   "smallDataCard.title": "제목",
   "snapshotList.loadMore": "더 보기",
   "snapshotList.observedAt": "스냅샷 시간: {{time}}",
+  "snapshotList.partialSearch": "검색과 필터는 불러온 항목에만 적용됩니다. 더 불러오면 검색 범위가 넓어집니다.",
   "snapshotList.refresh": "스냅샷 새로 고침",
   "statistics.overview": "Overview",
   "statistics.trend.title": "Trend Chart",

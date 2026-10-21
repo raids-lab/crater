@@ -266,7 +266,9 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
         toolbarConfig={toolbarConfig}
         query={query}
         columns={columns}
-        briefChildren={<SnapshotStatus observedAt={observedAt} />}
+        briefChildren={
+          <SnapshotStatus observedAt={observedAt} hasMore={podSnapshotQuery.hasNextPage} />
+        }
         paginate={false}
         withI18n
         footer={
