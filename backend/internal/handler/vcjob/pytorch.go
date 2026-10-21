@@ -27,7 +27,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		return
 	}
 
-	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
+	if err := util.CheckStorageQuota(token.Username, req.VolumeMounts, mgr.kubeClient, mgr.config); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
