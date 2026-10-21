@@ -6,13 +6,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/pagination"
+	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/patrol"
 	"github.com/samber/lo"
+	"gorm.io/gen/field"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
-
-	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/pkg/patrol"
 )
 
 // UpdateCronjobConfig godoc
@@ -201,39 +205,6 @@ func (mgr *OperationsMgr) GetCronjobRecordTimeRange(c *gin.Context) {
 	})
 }
 
-type GetCronJobRecordsReq struct {
-	Name      []string   `json:"name" form:"name"`
-	StartTime *time.Time `json:"startTime" form:"startTime"`
-	EndTime   *time.Time `json:"endTime" form:"endTime"`
-	Status    *string    `json:"status" form:"status"`
-}
-
-func (cm *OperationsMgr) GetCronjobRecords(c *gin.Context) {
-	req := &GetCronJobRecordsReq{}
-	if err := c.ShouldBindJSON(req); err != nil {
-		klog.Error(err)
-		resputil.Error(c, err.Error(), resputil.InvalidRequest)
-		return
-	}
-
-	records, err := cm.cronJobManager.GetCronjobRecords(
-		c,
-		req.Name,
-		req.StartTime,
-		req.EndTime,
-		req.Status,
-	)
-	if err != nil {
-		klog.Error(err)
-		resputil.Error(c, err.Error(), resputil.ServiceError)
-		return
-	}
-
-	resputil.Success(c, map[string]any{
-		"records": records,
-	})
-}
-
 type DeleteCronJobRecordsReq struct {
 	ID        []uint     `json:"id"`
 	StartTime *time.Time `json:"startTime"`
@@ -288,4 +259,109 @@ func (cm *OperationsMgr) GetLastCronjobRecord(c *gin.Context) {
 	}
 
 	resputil.Success(c, records)
+}
+
+type cronJobRecordPageQuery struct {
+	Page      int        `form:"page,default=1" binding:"min=1"`
+	PageSize  int        `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search    string     `form:"search"`
+	Sort      string     `form:"sort"`
+	StartTime *time.Time `form:"start_time" time_format:"2006-01-02T15:04:05Z07:00"`
+	EndTime   *time.Time `form:"end_time" time_format:"2006-01-02T15:04:05Z07:00"`
+}
+
+var cronJobRecordSortFields = map[string]string{
+	"name":        "name",
+	"executeTime": "execute_time",
+	"status":      "status",
+	"createdAt":   "created_at",
+}
+
+var cronJobRecordStatuses = map[string]struct{}{
+	string(model.CronJobRecordStatusUnknown): {},
+	string(model.CronJobRecordStatusSuccess): {},
+	string(model.CronJobRecordStatusFailed):  {},
+}
+
+func cronJobRecordSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, cronJobRecordSortFields, "id DESC")
+}
+
+func bindCronJobRecordPageQuery(c *gin.Context) (cronJobRecordPageQuery, []string, error) {
+	var request cronJobRecordPageQuery
+	if err := c.ShouldBindQuery(&request); err != nil {
+		return cronJobRecordPageQuery{}, nil, bizerr.BadRequest.ParameterError.Wrap(
+			err,
+			"invalid cronjob record list query",
+		)
+	}
+	var err error
+	request.Search, err = pagination.NormalizePageQuery(request.Search, request.Page, request.PageSize)
+	if err != nil {
+		return cronJobRecordPageQuery{}, nil, err
+	}
+	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, "-executeTime", cronJobRecordSortFields)
+	if err != nil {
+		return cronJobRecordPageQuery{}, nil, err
+	}
+
+	statuses := c.QueryArray("status")
+	for _, status := range statuses {
+		if _, ok := cronJobRecordStatuses[status]; !ok {
+			return cronJobRecordPageQuery{}, nil, bizerr.BadRequest.ParameterError.New(
+				fmt.Sprintf("unsupported cronjob record status %q", status),
+			)
+		}
+	}
+	return request, statuses, nil
+}
+
+// GetCronjobRecords returns cronjob records using the shared page protocol.
+//
+//	@Summary	获取定时任务执行记录分页
+//	@Description	按统一分页协议获取执行记录，搜索、筛选、排序和分页在数据库中执行
+//	@Tags		Operations
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page	query	int	false	"Page number"
+//	@Param		page_size	query	int	false	"Page size, 1-200"
+//	@Param		search	query	string	false	"Search job name or message"
+//	@Param		status	query	string	false	"Filter by status; repeatable"
+//	@Param		scope_name	query	string	false	"Restrict to job names; repeatable"
+//	@Param		start_time	query	string	false	"Start time, RFC3339"
+//	@Param		end_time	query	string	false	"End time, RFC3339"
+//	@Param		sort	query	string	false	"Sort fields"
+//	@Success	200	{object}	resputil.Response[resputil.Page[model.CronJobRecord]]
+//	@Router		/v1/admin/operations/cronjob/record/list [get]
+func (mgr *OperationsMgr) GetCronjobRecords(c *gin.Context) {
+	request, statuses, err := bindCronJobRecordPageQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	q := query.CronJobRecord
+	db := q.WithContext(c)
+	if names := c.QueryArray("scope_name"); len(names) > 0 {
+		db = db.Where(q.Name.In(names...))
+	}
+	if request.StartTime != nil {
+		db = db.Where(q.ExecuteTime.Gte(*request.StartTime))
+	}
+	if request.EndTime != nil {
+		db = db.Where(q.ExecuteTime.Lte(*request.EndTime))
+	}
+	if len(statuses) > 0 {
+		db = db.Where(q.Status.In(statuses...))
+	}
+	if request.Search != "" {
+		pattern := util.ContainsPattern(request.Search)
+		db = db.Where(field.Or(q.Name.Lower().Like(pattern), q.Message.Lower().Like(pattern)))
+	}
+	records, total, err := db.Order(pagination.SortFields(request.Sort, cronJobRecordSortFields, "id DESC")...).
+		FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list cronjob records failed"))
+		return
+	}
+	resputil.Success(c, resputil.NewPage(records, total, request.Page, request.PageSize))
 }

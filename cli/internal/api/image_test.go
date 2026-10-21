@@ -42,8 +42,8 @@ func TestImageClientRoutesMatchBackend(t *testing.T) {
 		query  string
 		call   func(*Client) error
 	}{
-		{"list user builds", http.MethodGet, "/api/v1/images/kaniko", "", func(c *Client) error { _, err := c.ListKaniko(false); return err }},
-		{"list admin builds", http.MethodGet, "/api/v1/admin/images/kaniko", "", func(c *Client) error { _, err := c.ListKaniko(true); return err }},
+		{"list user builds", http.MethodGet, "/api/v1/images/kaniko", "page=1&page_size=200&sort=-createdAt", func(c *Client) error { _, err := c.ListKaniko(false); return err }},
+		{"list admin builds", http.MethodGet, "/api/v1/admin/images/kaniko", "page=1&page_size=200&sort=-createdAt", func(c *Client) error { _, err := c.ListKaniko(true); return err }},
 		{"get build", http.MethodGet, "/api/v1/images/getbyname", "name=build-1", func(c *Client) error { _, err := c.GetKanikoByName("build-1"); return err }},
 		{"get build template", http.MethodGet, "/api/v1/images/template", "name=build-1", func(c *Client) error { _, err := c.GetKanikoTemplateByName("build-1"); return err }},
 		{"get build pod", http.MethodGet, "/api/v1/images/podname", "id=7", func(c *Client) error { _, err := c.GetKanikoPod(7); return err }},
@@ -52,8 +52,8 @@ func TestImageClientRoutesMatchBackend(t *testing.T) {
 		{"create envd build", http.MethodPost, "/api/v1/images/envd", "", func(c *Client) error { _, err := c.CreateEnvd(EnvdBuildRequest{}); return err }},
 		{"remove user builds", http.MethodPost, "/api/v1/images/remove", "", func(c *Client) error { _, err := c.RemoveKaniko([]uint{7}, false); return err }},
 		{"remove admin builds", http.MethodPost, "/api/v1/admin/images/remove", "", func(c *Client) error { _, err := c.RemoveKaniko([]uint{7}, true); return err }},
-		{"list user images", http.MethodGet, "/api/v1/images/image", "", func(c *Client) error { _, err := c.ListImageRecords(false); return err }},
-		{"list admin images", http.MethodGet, "/api/v1/admin/images/image", "", func(c *Client) error { _, err := c.ListImageRecords(true); return err }},
+		{"list user images", http.MethodGet, "/api/v1/images/image", "page=1&page_size=200&sort=-createdAt", func(c *Client) error { _, err := c.ListImageRecords(false); return err }},
+		{"list admin images", http.MethodGet, "/api/v1/admin/images/image", "page=1&page_size=200&sort=-createdAt", func(c *Client) error { _, err := c.ListImageRecords(true); return err }},
 		{"list available images", http.MethodGet, "/api/v1/images/available", "", func(c *Client) error { _, err := c.ListAvailableImages(); return err }},
 		{"upload image", http.MethodPost, "/api/v1/images/image", "", func(c *Client) error { _, err := c.UploadImage(ImageUploadRequest{}); return err }},
 		{"delete image", http.MethodDelete, "/api/v1/images/image/7", "", func(c *Client) error { _, err := c.DeleteImage(7); return err }},

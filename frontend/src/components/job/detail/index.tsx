@@ -103,6 +103,7 @@ import { REFETCH_INTERVAL } from '@/lib/constants'
 
 import { getNewJobLink } from '../new-job-button'
 import JobOrderList from './job-order-list'
+import { shouldReadJobAccessPods } from './pod-read-policy'
 import { PodTable } from './pod-table'
 import { SSHPortDialog } from './s-s-h-port-dialog'
 
@@ -136,12 +137,18 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
     select: (res) => res.data,
   })
 
-  // Pod 相关信息获取
+  const needsJobAccessPods = shouldReadJobAccessPods({
+    jobName,
+    isRunning: data?.status === JobPhase.Running,
+    isSingleJob: !!data && isSingleJob(data.jobType),
+  })
+
+  // Only read legacy Pod data while the ordinary single-job access controls are visible.
   const podQuery = useQuery({
     queryKey: ['job', 'detail', jobName, 'pods'],
     queryFn: () => apiJobGetPods(jobName),
     select: (res) => res.data.sort((a, b) => a.name.localeCompare(b.name)),
-    enabled: !!jobName,
+    enabled: needsJobAccessPods,
   })
 
   // 使用 useMemo 缓存 namespace 和 podName，避免每次渲染都重新取值
@@ -158,7 +165,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
       const response = await apiGetPodIngresses(namespace, podName)
       return response.data.ingresses
     },
-    enabled: !!namespace && !!podName && podQuery.isSuccess,
+    enabled: needsJobAccessPods && !!namespace && !!podName && podQuery.isSuccess,
   })
 
   // 用 useMemo 缓存 ingressNames 和 ingressPrefixes，避免不必要的计算
@@ -192,7 +199,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   })
 
   // 判断作业所在节点是否被禁止调度
-  const snapshotDisabled = useSnapshotDisabled(jobName)
+  const snapshotDisabled = useSnapshotDisabled(needsJobAccessPods ? jobName : undefined)
 
   const showGPUDashboard = useMemo(() => {
     if (!data) {

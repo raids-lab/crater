@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,6 +22,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
 	commonerr "github.com/raids-lab/crater/internal/bizerr/common"
+	"github.com/raids-lab/crater/internal/pagination"
 	"github.com/raids-lab/crater/internal/payload"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
@@ -314,42 +317,88 @@ func (mgr *AccountMgr) writeAccountBillingMemberIssueAmountResp(
 	resputil.Success(c, resp)
 }
 
-// AdminListAccounts lists all accounts (admin API)
-//
-//	@Summary		Get all accounts
-//	@Description	Get summary info of all accounts, supports filtering, pagination and sorting
-//	@Tags			Project
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			page	query		ListAllReq				true	"分页参数"
-//	@Success		200		{object}	resputil.Response[any]	"账户列表"
-//	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
-//	@Failure		500		{object}	resputil.Response[any]	"其他错误"
-//	@Router			/v1/admin/projects [get]
-func (mgr *AccountMgr) AdminListAccounts(c *gin.Context) {
-	q := query.Account
+const adminAccountDefaultSort = "name"
 
-	queues, err := q.WithContext(c).Order(q.ID.Asc()).Find()
+type adminAccountPageQuery struct {
+	Page     int    `form:"page,default=1" binding:"min=1"`
+	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
+}
+
+var adminAccountSortFields = map[string]string{
+	"id":        "id",
+	"name":      "name",
+	"nickname":  "nickname",
+	"createdAt": "created_at",
+	"expiredAt": "expired_at",
+}
+
+func validateAdminAccountSort(sortValue string) error {
+	return pagination.ValidateSort(sortValue, adminAccountSortFields)
+}
+
+func adminAccountSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, adminAccountSortFields, "id DESC")
+}
+
+func bindAdminAccountPageQuery(c *gin.Context) (adminAccountPageQuery, error) {
+	var request adminAccountPageQuery
+	if err := pagination.PrepareBoundPageQuery(
+		c.ShouldBindQuery(&request), "invalid account list query", &request.Search,
+		request.Page, request.PageSize, &request.Sort, adminAccountDefaultSort, adminAccountSortFields,
+	); err != nil {
+		return adminAccountPageQuery{}, err
+	}
+	return request, nil
+}
+
+// AdminListAccounts returns administrator-visible accounts using the shared page protocol.
+//
+//	@Summary	管理员获取账户分页
+//	@Description	按统一分页协议获取账户列表，搜索、排序和分页在数据库中执行
+//	@Tags		Project
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page	query	int	false	"Page number"
+//	@Param		page_size	query	int	false	"Page size, 1-200"
+//	@Param		search	query	string	false	"Search account name or nickname"
+//	@Param		sort	query	string	false	"Sort fields"
+//	@Success	200	{object}	resputil.Response[resputil.Page[ListAllResp]]
+//	@Router		/v1/admin/accounts [get]
+func (mgr *AccountMgr) AdminListAccounts(c *gin.Context) {
+	request, err := bindAdminAccountPageQuery(c)
 	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to list all accounts"))
+		resputil.HandleError(c, err)
 		return
 	}
 
-	lists := make([]ListAllResp, len(queues))
-	for i := range queues {
-		queue := queues[i]
-		lists[i] = ListAllResp{
-			ID:        queue.ID,
-			Name:      queue.Name,
-			Nickname:  queue.Nickname,
-			Space:     queue.Space,
-			Quota:     queue.Quota.Data(),
-			ExpiredAt: queue.ExpiredAt,
+	a := query.Account
+	db := a.WithContext(c)
+	if request.Search != "" {
+		pattern := util.ContainsPattern(request.Search)
+		db = db.Where(field.Or(a.Name.Lower().Like(pattern), a.Nickname.Lower().Like(pattern)))
+	}
+	for _, clause := range adminAccountSortClauses(request.Sort) {
+		parts := strings.Fields(clause)
+		column, _ := a.GetFieldByName(parts[0])
+		if parts[1] == "DESC" {
+			db = db.Order(column.Desc())
+		} else {
+			db = db.Order(column)
 		}
 	}
+	accounts, total, err := db.FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list accounts failed"))
+		return
+	}
 
-	resputil.Success(c, lists)
+	items := make([]ListAllResp, 0, len(accounts))
+	for _, account := range accounts {
+		items = append(items, buildListAllResp(account))
+	}
+	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
 }
 
 type AccountIDReq struct {
@@ -1304,12 +1353,16 @@ type UpdateAccountBillingMemberIssueAmountReq struct {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			aid	path		uint					true	"aid"
-//	@Success		200	{object}	resputil.Response[any]	"User account entries"
+//	@Param		page	query	int	false	"Page number (1-based)"
+//	@Param		page_size	query	int	false	"Page size (1-200)"
+//	@Param		search	query	string	false	"Search by username"
+//	@Param		sort	query	string	false	"Sort by name, role or accessmode; prefix - for descending"
+//	@Param		role	query	[]string	false	"Member roles: 2 (user), 3 (admin)" collectionFormat(multi)
+//	@Param		accessmode	query	[]string	false	"Access modes: 1 (none), 2 (read), 3 (write), 4 (append)" collectionFormat(multi)
+//	@Success		200	{object}	resputil.Response[resputil.Page[UserProjectGetResp]]	"User account entries"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
-//	@Router			/v1/admin/projects/userIn/{aid} [get]
-//
-//nolint:dupl // AdminListAccountMembers and AdminListUsersOutOfAccount have similar structure but different query logic
+//	@Router			/v1/admin/accounts/userIn/{aid} [get]
 func (mgr *AccountMgr) AdminListAccountMembers(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -1323,15 +1376,32 @@ func (mgr *AccountMgr) AdminListAccountMembers(c *gin.Context) {
 		return
 	}
 
-	resp, err := mgr.getUsersInAccount(c, req.ID)
+	page, err := bindAccountMembersPageQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resp, total, err := mgr.getUsersInAccountPage(c, req.ID, page)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
-	resputil.Success(c, resp)
+	resputil.Success(c, resputil.NewPage(resp, total, page.Page, page.PageSize))
 }
 
+// AdminListAccountBillingMembers returns billing details for account members.
+//
+//	@Summary		List account billing members
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			aid	path	uint	true	"Account ID"
+//	@Param			user_id	query	[]uint	false	"Filter to these user IDs" collectionFormat(multi)
+//	@Success		200	{object}	resputil.Response[any]
+//	@Failure		400	{object}	resputil.Response[any]
+//	@Router			/v1/admin/accounts/{aid}/billing/members [get]
 func (mgr *AccountMgr) AdminListAccountBillingMembers(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -1343,8 +1413,17 @@ func (mgr *AccountMgr) AdminListAccountBillingMembers(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	var userIDs []uint
+	if rawUserIDs := c.QueryArray("user_id"); len(rawUserIDs) > 0 {
+		parsedUserIDs, parseErr := pagination.ParsePositiveUintValues(rawUserIDs, "user_id")
+		if parseErr != nil {
+			resputil.HandleError(c, parseErr)
+			return
+		}
+		userIDs = parsedUserIDs
+	}
 
-	resp, err := mgr.getBillingMembersInAccount(c, req.ID)
+	resp, err := mgr.getBillingMembersInAccount(c, req.ID, userIDs)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -1460,9 +1539,7 @@ func checkResource(_ *gin.Context, ls v1.ResourceList) error {
 //	@Success		200	{object}	resputil.Response[any]	"User account entries"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
-//	@Router			/v1/admin/projects/userOutOf/{aid} [get]
-//
-//nolint:dupl // AdminListUsersOutOfAccount and AdminListAccountMembers have similar structure but different query logic
+//	@Router			/v1/admin/accounts/userOutOf/{aid} [get]
 func (mgr *AccountMgr) AdminListUsersOutOfAccount(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -1875,22 +1952,93 @@ func (mgr *AccountMgr) deleteUserAccount(c *gin.Context, accountID, userID uint)
 	return nil
 }
 
-// getUsersInAccount gets list of users in account
-func (mgr *AccountMgr) getUsersInAccount(c *gin.Context, accountID uint) ([]UserProjectGetResp, error) {
-	u := query.User
-	uq := query.UserAccount
-
-	var resp []UserProjectGetResp
-	exec := u.WithContext(c).Join(uq, uq.UserID.EqCol(u.ID)).Where(uq.DeletedAt.IsNull())
-	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, u.Attributes, uq.Quota)
-	if err := exec.Where(uq.AccountID.Eq(accountID)).Distinct().Scan(&resp); err != nil {
-		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to get users in account")
-	}
-	return resp, nil
+type accountMembersPageQuery struct {
+	Page     int    `form:"page,default=1" binding:"min=1"`
+	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
 }
 
-func (mgr *AccountMgr) getBillingMembersInAccount(c *gin.Context, accountID uint) ([]AccountBillingMemberResp, error) {
+var accountMembersSortFields = map[string]string{
+	"name":       "users.name",
+	"role":       "user_accounts.role",
+	"accessmode": "user_accounts.access_mode",
+}
+
+var accountMemberRoles = map[string]struct{}{"2": {}, "3": {}}
+var accountMemberAccessModes = map[string]struct{}{"1": {}, "2": {}, "3": {}, "4": {}}
+
+func bindAccountMembersPageQuery(c *gin.Context) (accountMembersPageQuery, error) {
+	var request accountMembersPageQuery
+	if err := pagination.PrepareBoundPageQuery(
+		c.ShouldBindQuery(&request), "invalid account members query", &request.Search,
+		request.Page, request.PageSize, &request.Sort, "name", accountMembersSortFields,
+	); err != nil {
+		return accountMembersPageQuery{}, err
+	}
+	if err := pagination.ValidateAllowedValues(c.QueryArray("role"), accountMemberRoles, "role"); err != nil {
+		return accountMembersPageQuery{}, err
+	}
+	if err := pagination.ValidateAllowedValues(c.QueryArray("accessmode"), accountMemberAccessModes, "access mode"); err != nil {
+		return accountMembersPageQuery{}, err
+	}
+	return request, nil
+}
+
+func (mgr *AccountMgr) getUsersInAccountPage(
+	c *gin.Context,
+	accountID uint,
+	request accountMembersPageQuery,
+) ([]UserProjectGetResp, int64, error) {
+	u, ua := query.User, query.UserAccount
+	db := u.WithContext(c).Join(ua, ua.UserID.EqCol(u.ID)).
+		Where(ua.AccountID.Eq(accountID), ua.DeletedAt.IsNull(), u.DeletedAt.IsNull())
+	if request.Search != "" {
+		db = db.Where(u.Name.Lower().Like(util.ContainsPattern(request.Search)))
+	}
+	if roles := c.QueryArray("role"); len(roles) > 0 {
+		roleIDs := make([]uint8, 0, len(roles))
+		for _, role := range roles {
+			id, _ := strconv.ParseUint(role, 10, 8)
+			roleIDs = append(roleIDs, uint8(id))
+		}
+		db = db.Where(ua.Role.In(roleIDs...))
+	}
+	if accessModes := c.QueryArray("accessmode"); len(accessModes) > 0 {
+		accessModeIDs := make([]uint8, 0, len(accessModes))
+		for _, accessMode := range accessModes {
+			id, _ := strconv.ParseUint(accessMode, 10, 8)
+			accessModeIDs = append(accessModeIDs, uint8(id))
+		}
+		db = db.Where(ua.AccessMode.In(accessModeIDs...))
+	}
+
+	total, err := db.Distinct(u.ID).Count()
+	if err != nil {
+		return nil, 0, bizerr.Internal.DatabaseError.Wrap(err, "failed to count account members")
+	}
+
+	var items []UserProjectGetResp
+	err = db.
+		Distinct().
+		Select(u.ID, u.Name, ua.Role, ua.AccessMode, u.Attributes, ua.Quota).
+		Order(pagination.SortFields(request.Sort, accountMembersSortFields, "users.id ASC")...).
+		Offset((request.Page - 1) * request.PageSize).
+		Limit(request.PageSize).
+		Scan(&items)
+	if err != nil {
+		return nil, 0, bizerr.Internal.DatabaseError.Wrap(err, "failed to get account members page")
+	}
+	return items, total, nil
+}
+
+func (mgr *AccountMgr) getBillingMembersInAccount(
+	c *gin.Context, accountID uint, filterUserIDs []uint,
+) ([]AccountBillingMemberResp, error) {
 	if mgr.billingService == nil || !mgr.isBillingFeatureEnabled(c.Request.Context()) {
+		return []AccountBillingMemberResp{}, nil
+	}
+	if filterUserIDs != nil && len(filterUserIDs) == 0 {
 		return []AccountBillingMemberResp{}, nil
 	}
 
@@ -1902,8 +2050,12 @@ func (mgr *AccountMgr) getBillingMembersInAccount(c *gin.Context, accountID uint
 	ua := query.UserAccount
 	u := query.User
 
-	userAccounts, err := ua.WithContext(c).
-		Where(ua.AccountID.Eq(accountID), ua.DeletedAt.IsNull()).
+	userAccountsQuery := ua.WithContext(c).
+		Where(ua.AccountID.Eq(accountID), ua.DeletedAt.IsNull())
+	if filterUserIDs != nil {
+		userAccountsQuery = userAccountsQuery.Where(ua.UserID.In(filterUserIDs...))
+	}
+	userAccounts, err := userAccountsQuery.
 		Order(ua.UserID).
 		Find()
 	if err != nil {
@@ -2443,13 +2595,17 @@ func (mgr *AccountMgr) UserRemoveAccountMember(c *gin.Context) {
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			aid	path		uint					true	"aid"
-//	@Success		200	{object}	resputil.Response[any]	"User account entries"
+//	@Param		page	query	int	false	"Page number (1-based)"
+//	@Param		page_size	query	int	false	"Page size (1-200)"
+//	@Param		search	query	string	false	"Search by username"
+//	@Param		sort	query	string	false	"Sort by name, role or accessmode; prefix - for descending"
+//	@Param		role	query	[]string	false	"Member roles: 2 (user), 3 (admin)" collectionFormat(multi)
+//	@Param		accessmode	query	[]string	false	"Access modes: 1 (none), 2 (read), 3 (write), 4 (append)" collectionFormat(multi)
+//	@Success		200	{object}	resputil.Response[resputil.Page[UserProjectGetResp]]	"User account entries"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		403	{object}	resputil.Response[any]	"Forbidden - user not in account"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/accounts/{aid}/users [get]
-//
-//nolint:dupl // UserListAccountMembers and UserListUsersOutOfAccount have similar structure but different query logic
 func (mgr *AccountMgr) UserListAccountMembers(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -2470,15 +2626,33 @@ func (mgr *AccountMgr) UserListAccountMembers(c *gin.Context) {
 		return
 	}
 
-	resp, err := mgr.getUsersInAccount(c, req.ID)
+	page, err := bindAccountMembersPageQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resp, total, err := mgr.getUsersInAccountPage(c, req.ID, page)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
-	resputil.Success(c, resp)
+	resputil.Success(c, resputil.NewPage(resp, total, page.Page, page.PageSize))
 }
 
+// UserListAccountBillingMembers returns billing details for account members.
+//
+//	@Summary		List account billing members
+//	@Tags			Project
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			aid	path	uint	true	"Account ID"
+//	@Param			user_id	query	[]uint	false	"Filter to these user IDs" collectionFormat(multi)
+//	@Success		200	{object}	resputil.Response[any]
+//	@Failure		400	{object}	resputil.Response[any]
+//	@Failure		403	{object}	resputil.Response[any]
+//	@Router			/v1/accounts/{aid}/billing/members [get]
 func (mgr *AccountMgr) UserListAccountBillingMembers(c *gin.Context) {
 	if err := mgr.requireUserFacingBillingEnabled(c.Request.Context()); err != nil {
 		handleAccountBillingConfigUpdateErr(c, err)
@@ -2495,8 +2669,17 @@ func (mgr *AccountMgr) UserListAccountBillingMembers(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	var userIDs []uint
+	if rawUserIDs := c.QueryArray("user_id"); len(rawUserIDs) > 0 {
+		parsedUserIDs, parseErr := pagination.ParsePositiveUintValues(rawUserIDs, "user_id")
+		if parseErr != nil {
+			resputil.HandleError(c, parseErr)
+			return
+		}
+		userIDs = parsedUserIDs
+	}
 
-	resp, err := mgr.getBillingMembersInAccount(c, req.ID)
+	resp, err := mgr.getBillingMembersInAccount(c, req.ID, userIDs)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -2519,8 +2702,6 @@ func (mgr *AccountMgr) UserListAccountBillingMembers(c *gin.Context) {
 //	@Failure		403	{object}	resputil.Response[any]	"Forbidden - user not in account"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/accounts/{aid}/users/out [get]
-//
-//nolint:dupl // UserListUsersOutOfAccount and UserListAccountMembers have similar structure but different query logic
 func (mgr *AccountMgr) UserListUsersOutOfAccount(c *gin.Context) {
 	var req ProjectGetReq
 	if err := c.ShouldBindUri(&req); err != nil {

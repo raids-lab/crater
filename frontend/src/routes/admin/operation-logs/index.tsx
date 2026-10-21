@@ -1,14 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  ColumnDef,
-  PaginationState,
-  SortingState,
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
+import type { ColumnDef, SortingState } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { ArrowRight, CalendarIcon, EyeIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -27,37 +19,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
-import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
 import PageTitle from '@/components/layout/page-title'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
-import { DataTablePagination } from '@/components/query-table/pagination'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
 
 import {
-  IGetOperationLogsParams,
   IOperationLog,
   JsonObject,
   JsonValue,
-  getOperationLogs,
+  getOperationLogsPaged,
 } from '@/services/api/admin/operationLog'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { betterResourceQuantity, convertKResourceToResource } from '@/utils/resource'
 
 import { cn } from '@/lib/utils'
-
-type OperationLogFilters = {
-  operation_type: string
-  operator: string
-  target: string
-}
 
 type ResourceDiffRow = {
   resourceName: string
@@ -73,15 +52,9 @@ type ResourceDiffCard = {
 type ContainerResourceMap = Record<string, Record<string, string>>
 type OperationLogTimeRange = 'all' | '1d' | '3d' | '7d' | '15d' | '1m' | '3m'
 
-const INITIAL_FILTERS: OperationLogFilters = {
-  operation_type: 'all',
-  operator: '',
-  target: '',
-}
-
 const DEFAULT_SORTING: SortingState = [
   {
-    id: 'created_at',
+    id: 'createdAt',
     desc: true,
   },
 ]
@@ -741,18 +714,25 @@ const VpaResourceDiff = ({ details }: { details?: JsonObject }) => {
 
 function OperationLogsPage() {
   const { t } = useTranslation()
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
+  const tableState = useRemoteTableState('admin_operation_logs', {
+    sorting: DEFAULT_SORTING,
   })
-  const [filters, setFilters] = useState<OperationLogFilters>(INITIAL_FILTERS)
   const [timeRange, setTimeRange] = useState<OperationLogTimeRange>('all')
-  const [sorting, setSorting] = useState<SortingState>(() => [...DEFAULT_SORTING])
   const [selectedLog, setSelectedLog] = useState<IOperationLog | null>(null)
 
-  const handleFilterChange = (next: Partial<OperationLogFilters>) => {
-    setFilters((prev) => ({ ...prev, ...next }))
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+  const getFilterValue = (id: string): string => {
+    const filter = tableState.columnFilters.find((item) => item.id === id)
+    return typeof filter?.value === 'string' ? filter.value : ''
+  }
+
+  const setFilterValue = (id: string, value: string) => {
+    tableState.setColumnFilters((current) => {
+      const next = current.filter((item) => item.id !== id)
+      if (value && value !== 'all') {
+        next.push({ id, value })
+      }
+      return next
+    })
   }
 
   const operationTypeLabelMap = useMemo<Record<string, string>>(
@@ -794,7 +774,8 @@ function OperationLogsPage() {
   const columns = useMemo<ColumnDef<IOperationLog>[]>(
     () => [
       {
-        accessorKey: 'created_at',
+        id: 'createdAt',
+        accessorFn: (row) => row.created_at,
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
@@ -820,7 +801,8 @@ function OperationLogsPage() {
         ),
       },
       {
-        accessorKey: 'operation_type',
+        id: 'operationType',
+        accessorFn: (row) => row.operation_type,
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
@@ -881,70 +863,31 @@ function OperationLogsPage() {
     [operationTypeLabelMap, statusLabels, t]
   )
 
-  const queryParams: IGetOperationLogsParams = useMemo(() => {
-    const params: IGetOperationLogsParams = {
-      page: pagination.pageIndex + 1,
-      limit: pagination.pageSize,
-    }
+  const timeRangeParams = useMemo(() => {
     const startTime = getOperationLogStartTime(timeRange)
-
-    if (filters.operation_type && filters.operation_type !== 'all') {
-      params.operation_type = filters.operation_type
-    }
-    if (filters.operator) {
-      params.operator = filters.operator
-    }
-    if (filters.target) {
-      params.target = filters.target
-    }
     if (startTime) {
-      params.start_time = startTime
-      params.end_time = new Date().toISOString()
+      return {
+        start_time: startTime,
+        end_time: new Date().toISOString(),
+      }
     }
+    return {}
+  }, [timeRange])
 
-    return params
-  }, [filters, pagination, timeRange])
-
-  const { data, isLoading, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ['operation-logs', queryParams],
-    queryFn: () => getOperationLogs(queryParams),
-  })
-
-  const defaultData = useMemo<IOperationLog[]>(() => [], [])
-
-  const table = useReactTable({
-    data: data?.data?.items ?? defaultData,
-    columns,
-    pageCount: data?.data?.total ? Math.ceil(data.data.total / pagination.pageSize) : -1,
-    state: {
-      pagination,
-      sorting,
-    },
-    onPaginationChange: setPagination,
-    onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    manualPagination: true,
+  const operationLogsQuery = useQuery({
+    queryKey: [...buildRemoteQueryKey('admin-operation-logs', tableState.params), timeRangeParams],
+    queryFn: ({ signal }) => getOperationLogsPaged(tableState.params, timeRangeParams, signal),
+    select: (response) => response.data,
+    placeholderData: keepPreviousData,
+    refetchInterval: 30000,
   })
 
   const resetFilters = () => {
-    setFilters(INITIAL_FILTERS)
+    tableState.setColumnFilters([])
+    tableState.setSearch('')
     setTimeRange('all')
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-    setSorting([...DEFAULT_SORTING])
+    tableState.setSorting(DEFAULT_SORTING)
   }
-
-  const lastUpdatedAt = useMemo(() => {
-    if (!dataUpdatedAt) {
-      return '--'
-    }
-
-    return new Date(dataUpdatedAt).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    })
-  }, [dataUpdatedAt])
 
   const timeRangeLabelMap = useMemo(
     () =>
@@ -970,7 +913,7 @@ function OperationLogsPage() {
             value={timeRange}
             onValueChange={(value) => {
               setTimeRange(value as OperationLogTimeRange)
-              setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+              tableState.setPagination((prev) => ({ ...prev, pageIndex: 0 }))
             }}
           >
             <SelectTrigger className="bg-background h-9 w-[156px] pr-2 pl-3">
@@ -988,120 +931,85 @@ function OperationLogsPage() {
         </div>
       </PageTitle>
 
-      <section className="bg-card/40 rounded-lg border p-4 shadow-xs">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-          <div className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-xs font-medium">
-              {t('operationLog.column.type', { defaultValue: '操作类型' })}
-            </span>
-            <Select
-              value={filters.operation_type}
-              onValueChange={(value) => handleFilterChange({ operation_type: value })}
-            >
-              <SelectTrigger className="h-9 w-full">
-                <SelectValue
-                  placeholder={t('operationLog.column.type', { defaultValue: '操作类型' })}
+      <RemoteDataTable
+        query={operationLogsQuery}
+        state={tableState}
+        columns={columns}
+        getRowId={(row) => String(row.id)}
+        toolbarConfig={{
+          globalSearch: {
+            enabled: true,
+            placeholder: t('operationLog.filters.searchPlaceholder', {
+              defaultValue: '搜索操作人、类型、对象或消息',
+            }),
+          },
+          filterOptions: [],
+          getHeader: (key) => key,
+        }}
+        briefChildren={
+          <section className="bg-card/40 rounded-lg border p-4 shadow-xs">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground text-xs font-medium">
+                  {t('operationLog.column.type', { defaultValue: '操作类型' })}
+                </span>
+                <Select
+                  value={getFilterValue('operation_type') || 'all'}
+                  onValueChange={(value) => setFilterValue('operation_type', value)}
+                >
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue
+                      placeholder={t('operationLog.column.type', { defaultValue: '操作类型' })}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {operationTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground text-xs font-medium">
+                  {t('operationLog.column.operator', { defaultValue: '操作人' })}
+                </span>
+                <Input
+                  value={getFilterValue('operator')}
+                  onChange={(event) => setFilterValue('operator', event.target.value)}
+                  placeholder={t('operationLog.filters.operatorPlaceholder', {
+                    defaultValue: '输入操作人姓名，例如：张三',
+                  })}
+                  className="h-9"
                 />
-              </SelectTrigger>
-              <SelectContent>
-                {operationTypeOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-xs font-medium">
-              {t('operationLog.column.operator', { defaultValue: '操作人' })}
-            </span>
-            <Input
-              value={filters.operator}
-              onChange={(event) => handleFilterChange({ operator: event.target.value })}
-              placeholder={t('operationLog.filters.operatorPlaceholder', {
-                defaultValue: '输入操作人姓名，例如：张三',
-              })}
-              className="h-9"
-            />
-          </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-muted-foreground text-xs font-medium">
+                  {t('operationLog.column.target', { defaultValue: '操作对象' })}
+                </span>
+                <Input
+                  value={getFilterValue('target')}
+                  onChange={(event) => setFilterValue('target', event.target.value)}
+                  placeholder={t('operationLog.filters.targetPlaceholder', {
+                    defaultValue: '输入操作对象，例如：节点或资源',
+                  })}
+                  className="h-9"
+                />
+              </div>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-xs font-medium">
-              {t('operationLog.column.target', { defaultValue: '操作对象' })}
-            </span>
-            <Input
-              value={filters.target}
-              onChange={(event) => handleFilterChange({ target: event.target.value })}
-              placeholder={t('operationLog.filters.targetPlaceholder', {
-                defaultValue: '输入操作对象，例如：节点或资源',
-              })}
-              className="h-9"
-            />
-          </div>
-
-          <div className="flex items-end">
-            <Button variant="outline" className="h-9 w-full lg:w-auto" onClick={resetFilters}>
-              {t('common.reset', { defaultValue: '重置' })}
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <div className="bg-background overflow-hidden rounded-lg border shadow-xs">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="text-muted-foreground px-4 py-3 text-xs font-medium whitespace-nowrap"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length > 0 ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="px-4 py-3 text-sm">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-sm">
-                  {isLoading ? (
-                    <div className="flex items-center justify-center">
-                      <LoadingCircleIcon className="text-muted-foreground h-6 w-6 animate-spin" />
-                    </div>
-                  ) : (
-                    t('common.noData', { defaultValue: '暂无数据' })
-                  )}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="pt-2">
-        <DataTablePagination
-          table={table}
-          updatedAt={lastUpdatedAt}
-          refetch={() => void refetch()}
-        />
-      </div>
+              <div className="flex items-end">
+                <Button variant="outline" className="h-9 w-full lg:w-auto" onClick={resetFilters}>
+                  {t('common.reset', { defaultValue: '重置' })}
+                </Button>
+              </div>
+            </div>
+          </section>
+        }
+        withI18n
+      />
 
       <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
         <DialogContent className="max-w-3xl">

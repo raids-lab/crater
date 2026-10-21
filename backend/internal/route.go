@@ -58,6 +58,8 @@ func (b *Backend) RegisterService(conf *handler.RegisterConfig) {
 	for _, mgr := range managers {
 		mgr.RegisterProtected(protectedRouter.Group(mgr.GetName()))
 	}
+	// Standard VCJob details use the cursor-based Pod snapshot route.
+	handler.NewPodSnapshotHandler(conf).Register(protectedRouter.Group("vcjobs"))
 
 	///////////////////////////////////////
 	//// Admin routers, need admin role ///

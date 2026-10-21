@@ -70,6 +70,9 @@ export function useApprovalOrderLock() {
       queryClient.invalidateQueries({
         queryKey: ['portal', 'approvalorders'],
       })
+      queryClient.invalidateQueries({ queryKey: ['remote-list', 'approval-orders-admin'] })
+      queryClient.invalidateQueries({ queryKey: ['remote-list', 'approval-orders-me'] })
+      queryClient.invalidateQueries({ queryKey: ['approval-order-summary'] })
       setIsDelayDialogOpen(false)
       setSelectedOrder(null)
       setSelectedJob(null)

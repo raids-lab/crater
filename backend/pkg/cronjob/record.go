@@ -41,40 +41,6 @@ func (cm *CronJobManager) GetCronjobRecordTimeRange(ctx context.Context) (startT
 	return startTime, endTime, nil
 }
 
-// GetCronjobRecords retrieves cronjob records with pagination and filtering
-func (cm *CronJobManager) GetCronjobRecords(
-	ctx context.Context,
-	names []string,
-	startTime *time.Time,
-	endTime *time.Time,
-	status *string,
-) (records []*model.CronJobRecord, err error) {
-	recordQuery := query.CronJobRecord
-	tx := query.GetDB().WithContext(ctx)
-	if len(names) > 0 {
-		tx = tx.Where(recordQuery.Name.In(names...))
-	}
-	if startTime != nil {
-		tx = tx.Where(recordQuery.ExecuteTime.Gte(*startTime))
-	}
-	if endTime != nil {
-		tx = tx.Where(recordQuery.ExecuteTime.Lte(*endTime))
-	}
-	if status != nil {
-		tx = tx.Where(recordQuery.Status.Eq(*status))
-	}
-	err = tx.
-		Order(recordQuery.ExecuteTime.Desc()).
-		Find(&records).
-		Error
-	if err != nil {
-		err := fmt.Errorf("CronJobManager.GetCronjobRecords: %w", err)
-		klog.Error(err)
-		return nil, err
-	}
-	return records, nil
-}
-
 // DeleteCronjobRecords deletes cronjob records based on the given criteria
 func (cm *CronJobManager) DeleteCronjobRecords(
 	ctx context.Context,

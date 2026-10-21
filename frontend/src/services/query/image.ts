@@ -17,15 +17,21 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { ComboboxItem } from '@/components/form/combobox'
 
-import { ImageInfoResponse, apiUserGetKaniko } from '@/services/api/imagepack'
+import { apiAdminGetKanikoByID } from '@/services/api/admin/imagepack'
+import { ImageInfoResponse, apiUserGetKaniko, apiUserGetKanikoByID } from '@/services/api/imagepack'
 import { JobType, apiJTaskImageList } from '@/services/api/vcjob'
 
-export const queryBuildDetail = (name: string) =>
+export const queryBuildDetail = (name: string, id?: number, isAdmin = false) =>
   queryOptions({
-    queryKey: ['imagepack', 'get', name],
-    queryFn: () => apiUserGetKaniko(`${name}`),
+    queryKey: ['imagepack', 'get', isAdmin ? 'admin' : 'user', id ?? name],
+    queryFn: () => {
+      if (id) {
+        return isAdmin ? apiAdminGetKanikoByID(id) : apiUserGetKanikoByID(id)
+      }
+      return apiUserGetKaniko(name)
+    },
     select: (res) => res.data,
-    enabled: !!name,
+    enabled: !!name || !!id,
     retry: false,
     staleTime: 0,
   })

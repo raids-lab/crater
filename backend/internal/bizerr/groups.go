@@ -83,6 +83,8 @@ type conflictGroup struct {
 	DependencyConflict BizCode `code:"40904"`
 	// JobAdmissionFailed: 没有符合调度条件的节点组合能够满足作业的资源申请
 	JobAdmissionFailed BizCode `code:"40905"`
+	// CursorExpired: Kubernetes 快照游标已失效，需要重新获取快照首页
+	CursorExpired BizCode `code:"40906"`
 }
 
 // payloadTooLargeGroup 413xx - 数据过大

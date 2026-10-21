@@ -1,21 +1,22 @@
 package image
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"sort"
 
 	"github.com/gin-gonic/gin"
-	"k8s.io/klog/v2"
-
-	"gorm.io/datatypes"
-	"gorm.io/gorm"
-
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/pagination"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"gorm.io/datatypes"
+	"gorm.io/gen/field"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"k8s.io/klog/v2"
 )
 
 // UserUploadImage godoc
@@ -60,124 +61,6 @@ func (mgr *ImagePackMgr) UserUploadImage(c *gin.Context) {
 	resputil.Success(c, "")
 }
 
-// UserListImage godoc
-//
-//	@Summary		用户获取所有镜像数据
-//	@Description	返回该用户所有的镜像数据
-//	@Tags			ImagePack
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Router			/v1/images/image [GET]
-func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
-	var response ListImageResponse
-	imageInfoList := mgr.getImages(c)
-	response = ListImageResponse{ImageInfoList: imageInfoList}
-	resputil.Success(c, response)
-}
-
-func (mgr *ImagePackMgr) getImages(c *gin.Context) []*ImageInfo {
-	token := util.GetToken(c)
-	var err error
-	var imageInfoList []*ImageInfo
-	imageQuery := query.Image
-	// 1. 获取公共镜像	TODO: 移除IsPublic的兼容代码
-	var oldPublicImages []*model.Image
-	if oldPublicImages, err = imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.IsPublic.Is(true)).
-		Order(imageQuery.CreatedAt.Desc()).
-		Find(); err != nil {
-		klog.Errorf("fetch old public images failed, err:%v", err)
-	}
-	imageInfoList = mgr.processImageListResponse(oldPublicImages, model.Public, imageInfoList)
-	// 2. 获取公共镜像（ImageAccountID = 1）
-	newPublicImages := mgr.getPublicImages(c)
-	imageInfoList = mgr.processImageListResponse(newPublicImages, model.Public, imageInfoList)
-	// 3. 获取本账户拥有的镜像
-	accountSharedImages := mgr.getAccountSharedImages(c, token.AccountID)
-	imageInfoList = mgr.processImageListResponse(accountSharedImages, model.AccountShare, imageInfoList)
-	// 4. 获取私有镜像
-	var privateImages []*model.Image
-	if privateImages, err = imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.UserID.Eq(token.UserID)).
-		Order(imageQuery.CreatedAt.Desc()).
-		Find(); err != nil {
-		klog.Errorf("fetch kaniko entity failed, err:%v", err)
-	}
-	imageInfoList = mgr.processImageListResponse(privateImages, model.Private, imageInfoList)
-	// 5. 获取其他用户分享的镜像
-	userSharedImages := mgr.getUserSharedImages(c, token.UserID)
-	imageInfoList = mgr.processImageListResponse(userSharedImages, model.UserShare, imageInfoList)
-	// 6. 去除重复的镜像
-	imageInfoList = mgr.deduplicate(imageInfoList)
-	// 7. 降序排序
-	sort.Slice(imageInfoList, func(i, j int) bool {
-		return imageInfoList[i].CreatedAt.After(imageInfoList[j].CreatedAt)
-	})
-	return imageInfoList
-}
-
-// AdminListImage godoc
-//
-//	@Summary		管理员获取所有镜像数据
-//	@Description	所有的镜像数据
-//	@Tags			ImagePack
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Router			/v1/admin/images/image [GET]
-func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
-	var publicImages []*model.Image
-	var privateImages []*model.Image
-	var publicImageIDs []uint
-	var oldPublicImages []uint
-	var imageInfoList []*ImageInfo
-	var err error
-	imageAccountQuery := query.ImageAccount
-	imageQuery := query.Image
-	if err = imageAccountQuery.WithContext(c).
-		Where(imageAccountQuery.AccountID.Eq(model.DefaultAccountID)).
-		Pluck(imageAccountQuery.ImageID, &publicImageIDs); err != nil {
-		klog.Errorf("get public account ids failed, err:%v", err)
-		resputil.Error(c, "get public account ids failed", resputil.NotSpecified)
-		return
-	}
-	// TODO: 移除IsPublic的兼容代码
-	if err = imageQuery.WithContext(c).
-		Where(imageQuery.IsPublic).
-		Pluck(imageQuery.ID, &oldPublicImages); err != nil {
-		klog.Errorf("get old public account ids failed, err:%v", err)
-		resputil.Error(c, "get old public account ids failed", resputil.NotSpecified)
-		return
-	}
-	publicImageIDs = append(publicImageIDs, oldPublicImages...)
-	if publicImages, err = imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.ID.In(publicImageIDs...)).
-		Find(); err != nil {
-		klog.Errorf("fetch public image entity failed, err:%v", err)
-		resputil.Error(c, "fetch public image entity failed", resputil.NotSpecified)
-		return
-	}
-	imageInfoList = mgr.processImageListResponse(publicImages, model.Public, imageInfoList)
-	if privateImages, err = imageQuery.WithContext(c).
-		Preload(query.Image.User).
-		Where(imageQuery.ID.NotIn(publicImageIDs...)).
-		Find(); err != nil {
-		klog.Errorf("fetch public image entity failed, err:%v", err)
-		resputil.Error(c, "fetch public image entity failed", resputil.NotSpecified)
-		return
-	}
-	imageInfoList = mgr.processImageListResponse(privateImages, model.Private, imageInfoList)
-	sort.Slice(imageInfoList, func(i, j int) bool {
-		return imageInfoList[i].CreatedAt.After(imageInfoList[j].CreatedAt)
-	})
-	response := ListImageResponse{ImageInfoList: imageInfoList}
-	resputil.Success(c, response)
-}
-
 // ListAvailableImages godoc
 //
 //	@Summary		用户在运行作业时选择镜像需要调用此接口，来获取可以用的镜像
@@ -189,78 +72,19 @@ func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
 //	@Param			type	query	ListAvailableImageRequest	true	"包含了镜像类型"
 //	@Router			/v1/images/available [GET]
 func (mgr *ImagePackMgr) ListAvailableImages(c *gin.Context) {
-	imageList := mgr.getImages(c)
-	resp := ListAvailableImageResponse{Images: imageList}
-	resputil.Success(c, resp)
-}
-
-//nolint:dupl // ignore duplicate code
-func (mgr *ImagePackMgr) getUserSharedImages(c *gin.Context, userID uint) []*model.Image {
-	sharedImages := []*model.Image{}
-	imageShareQuery := query.ImageUser
-	imageShares, err := imageShareQuery.WithContext(c).
-		Preload(imageShareQuery.Image).
-		Preload(imageShareQuery.Image.User).
-		Where(imageShareQuery.UserID.Eq(userID)).
-		Find()
+	db, visibility := visibleImageQuery(c, false, "")
+	rows := make([]visibleImageRow, 0)
+	if err := db.Select("images.id, ? AS image_share_status", visibility).
+		Order("images.created_at DESC, images.id DESC").Scan(&rows).Error; err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list available images failed"))
+		return
+	}
+	items, err := mgr.imageItemsForRows(c, rows)
 	if err != nil {
-		klog.Errorf("fetch shared image failed, err:%v", err)
-		return sharedImages
+		resputil.HandleError(c, err)
+		return
 	}
-
-	for _, imageShare := range imageShares {
-		sharedImages = append(sharedImages, &imageShare.Image)
-	}
-	return sharedImages
-}
-
-func (mgr *ImagePackMgr) getPublicImages(c *gin.Context) []*model.Image {
-	sharedImages := []*model.Image{}
-	imageShareQuery := query.ImageAccount
-	imageShares, err := imageShareQuery.WithContext(c).
-		Preload(imageShareQuery.Image).
-		Preload(imageShareQuery.Image.User).
-		Where(imageShareQuery.AccountID.Eq(model.DefaultAccountID)).
-		Find()
-	if err != nil {
-		klog.Errorf("fetch shared image failed, err:%v", err)
-		return sharedImages
-	}
-	for _, imageShare := range imageShares {
-		sharedImages = append(sharedImages, &imageShare.Image)
-	}
-	return sharedImages
-}
-
-//nolint:dupl // ignore duplicate code
-func (mgr *ImagePackMgr) getAccountSharedImages(c *gin.Context, accountID uint) []*model.Image {
-	sharedImages := []*model.Image{}
-	imageShareQuery := query.ImageAccount
-	imageShares, err := imageShareQuery.WithContext(c).
-		Preload(imageShareQuery.Image).
-		Preload(imageShareQuery.Image.User).
-		Where(imageShareQuery.AccountID.Eq(accountID)).
-		Find()
-	if err != nil {
-		klog.Errorf("fetch shared image failed, err:%v", err)
-		return sharedImages
-	}
-	for _, imageShare := range imageShares {
-		sharedImages = append(sharedImages, &imageShare.Image)
-	}
-	return sharedImages
-}
-
-func (mgr *ImagePackMgr) deduplicate(imageInfoList []*ImageInfo) []*ImageInfo {
-	seen := make(map[uint]struct{})
-	result := []*ImageInfo{}
-	for _, img := range imageInfoList {
-		if _, exists := seen[img.ID]; !exists {
-			seen[img.ID] = struct{}{}
-			result = append(result, img)
-		}
-	}
-	return result
+	resputil.Success(c, ListAvailableImageResponse{Images: items})
 }
 
 // DeleteImageByID godoc
@@ -533,52 +357,31 @@ func (mgr ImagePackMgr) changeImageTaskType(c *gin.Context, isAdminMode bool, im
 	resputil.Success(c, "")
 }
 
-func (mgr *ImagePackMgr) processImageListResponse(
-	images []*model.Image,
-	status model.ImageShareType,
-	imageInfoList []*ImageInfo,
-) []*ImageInfo {
-	imageInfos := []*ImageInfo{}
-	for i := range images {
-		image := images[i]
-
-		// 跳过无效数据
-		if image.ID == 0 || image.ImageLink == "" {
-			klog.Warningf("skipping invalid image data: ID=%d, ImageLink=%s", image.ID, image.ImageLink)
-			continue
-		}
-
-		archs := image.Archs.Data()
-		// TODO: remove temporary fix for empty archs
-		if image.Archs.Data() == nil {
-			archs = []string{"linux/amd64"}
-		}
-
-		// 处理用户信息为空的情况
-		userInfo := model.UserInfo{}
-		if image.User.ID != 0 {
-			userInfo.Username = image.User.Name
-			userInfo.Nickname = image.User.Nickname
-		}
-
-		imageInfo := &ImageInfo{
-			ID:               image.ID,
-			ImageLink:        image.ImageLink,
-			Description:      image.Description,
-			CreatedAt:        image.CreatedAt,
-			IsPublic:         image.IsPublic,
-			TaskType:         image.TaskType,
-			UserInfo:         userInfo,
-			Tags:             image.Tags.Data(),
-			Archs:            archs,
-			ImageBuildSource: image.ImageSource,
-			ImagePackName:    image.ImagePackName,
-			ImageShareStatus: status,
-		}
-		imageInfos = append(imageInfos, imageInfo)
+func (mgr *ImagePackMgr) imageInfoFromModel(image *model.Image, status model.ImageShareType) *ImageInfo {
+	archs := image.Archs.Data()
+	// TODO: remove temporary fix for empty archs
+	if archs == nil {
+		archs = []string{"linux/amd64"}
 	}
-	imageInfoList = append(imageInfoList, imageInfos...)
-	return imageInfoList
+	userInfo := model.UserInfo{}
+	if image.User.ID != 0 {
+		userInfo.Username = image.User.Name
+		userInfo.Nickname = image.User.Nickname
+	}
+	return &ImageInfo{
+		ID:               image.ID,
+		ImageLink:        image.ImageLink,
+		Description:      image.Description,
+		CreatedAt:        image.CreatedAt,
+		IsPublic:         image.IsPublic,
+		TaskType:         image.TaskType,
+		UserInfo:         userInfo,
+		Tags:             image.Tags.Data(),
+		Archs:            archs,
+		ImageBuildSource: image.ImageSource,
+		ImagePackName:    image.ImagePackName,
+		ImageShareStatus: status,
+	}
 }
 
 // UserChangeImageTagsType godoc
@@ -1190,4 +993,227 @@ func (mgr *ImagePackMgr) requireImageOwner(c *gin.Context, imageID uint) bool {
 		return false
 	}
 	return true
+}
+
+type imageListPageQuery struct {
+	Page     int    `form:"page,default=1" binding:"min=1"`
+	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
+}
+
+var imageListSortFields = map[string]string{
+	"image":            "images.image_link",
+	"userInfo":         "users.name",
+	"createdAt":        "images.created_at",
+	"imageShareStatus": "image_share_status",
+}
+
+var imageListShareStatuses = map[string]struct{}{
+	string(model.Public):       {},
+	string(model.Private):      {},
+	string(model.UserShare):    {},
+	string(model.AccountShare): {},
+}
+
+func imageListSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, imageListSortFields, "images.id DESC")
+}
+
+func bindImageListPageQuery(c *gin.Context) (imageListPageQuery, []string, error) {
+	var request imageListPageQuery
+	if err := pagination.PrepareBoundPageQuery(
+		c.ShouldBindQuery(&request), "invalid image list query", &request.Search,
+		request.Page, request.PageSize, &request.Sort, "-createdAt", imageListSortFields,
+	); err != nil {
+		return imageListPageQuery{}, nil, err
+	}
+
+	shareStatuses := c.QueryArray("imageShareStatus")
+	if err := pagination.ValidateAllowedValues(shareStatuses, imageListShareStatuses, "image visibility"); err != nil {
+		return imageListPageQuery{}, nil, err
+	}
+	return request, shareStatuses, nil
+}
+
+func imageVisibilityExpression(ctx context.Context, userID, accountID uint, isAdmin bool) clause.Expr {
+	i, ia, iu := query.Image, query.ImageAccount, query.ImageUser
+	accountImages := func(account uint) field.Expr {
+		subquery := ia.WithContext(ctx).Select(ia.ImageID).Where(ia.AccountID.Eq(account)).UnderlyingDB()
+		return field.ContainsSubQuery([]field.Expr{i.ID}, subquery)
+	}
+	public := field.Or(i.IsPublic.Is(true), accountImages(model.DefaultAccountID))
+	if isAdmin {
+		return clause.Expr{SQL: "CASE WHEN ? THEN ? ELSE ? END", Vars: []any{public.RawExpr(), string(model.Public), string(model.Private)}}
+	}
+	userImages := iu.WithContext(ctx).Select(iu.ImageID).Where(iu.UserID.Eq(userID)).UnderlyingDB()
+	// Only the derived visibility label needs CASE. All IDs, labels and association
+	// subqueries are bound by GORM; there is no formatted or concatenated SQL.
+	return clause.Expr{
+		SQL: "CASE WHEN ? THEN ? WHEN ? THEN ? WHEN ? THEN ? WHEN ? THEN ? ELSE NULL END",
+		Vars: []any{public.RawExpr(), string(model.Public), accountImages(accountID).RawExpr(), string(model.AccountShare),
+			i.UserID.Eq(userID).RawExpr(), string(model.Private),
+			field.ContainsSubQuery([]field.Expr{i.ID}, userImages).RawExpr(), string(model.UserShare)},
+	}
+}
+
+type visibleImageRow struct {
+	ID               uint                 `gorm:"column:id"`
+	ImageShareStatus model.ImageShareType `gorm:"column:image_share_status"`
+}
+
+func imageBuildIDsByImagePackName(kanikos []*model.Kaniko) map[string]uint {
+	buildIDs := make(map[string]uint, len(kanikos))
+	for _, kaniko := range kanikos {
+		buildIDs[kaniko.ImagePackName] = kaniko.ID
+	}
+	return buildIDs
+}
+
+func imageBuildIDsForImages(c *gin.Context, images []*model.Image) (map[string]uint, error) {
+	imagePackNames := make([]string, 0, len(images))
+	for _, image := range images {
+		if image.ImageSource == model.ImageCreateType && image.ImagePackName != nil && *image.ImagePackName != "" {
+			imagePackNames = append(imagePackNames, *image.ImagePackName)
+		}
+	}
+	if len(imagePackNames) == 0 {
+		return map[string]uint{}, nil
+	}
+
+	kanikoQuery := query.Kaniko
+	kanikos, err := kanikoQuery.WithContext(c).
+		Select(kanikoQuery.ID, kanikoQuery.ImagePackName).
+		Where(kanikoQuery.ImagePackName.In(imagePackNames...)).
+		Find()
+	if err != nil {
+		return nil, err
+	}
+	return imageBuildIDsByImagePackName(kanikos), nil
+}
+
+func (mgr *ImagePackMgr) imageItemsForRows(c *gin.Context, rows []visibleImageRow) ([]*ImageInfo, error) {
+	if len(rows) == 0 {
+		return []*ImageInfo{}, nil
+	}
+	ids := make([]uint, len(rows))
+	for i, row := range rows {
+		ids[i] = row.ID
+	}
+	imageQuery := query.Image
+	images, err := imageQuery.WithContext(c).
+		Preload(imageQuery.User).
+		Where(imageQuery.ID.In(ids...)).
+		Find()
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "load visible images failed")
+	}
+	imagesByID := make(map[uint]*model.Image, len(images))
+	for _, image := range images {
+		imagesByID[image.ID] = image
+	}
+	buildIDsByImagePackName, err := imageBuildIDsForImages(c, images)
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "load image build IDs failed")
+	}
+
+	items := make([]*ImageInfo, 0, len(rows))
+	for _, row := range rows {
+		image := imagesByID[row.ID]
+		if image == nil {
+			continue
+		}
+		item := mgr.imageInfoFromModel(image, row.ImageShareStatus)
+		if image.ImageSource == model.ImageCreateType && image.ImagePackName != nil {
+			if buildID, ok := buildIDsByImagePackName[*image.ImagePackName]; ok {
+				item.ImageBuildID = &buildID
+			}
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (mgr *ImagePackMgr) listImagePage(c *gin.Context, isAdmin bool) {
+	request, shareStatuses, err := bindImageListPageQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	db, visibility := visibleImageQuery(c, isAdmin, request.Search)
+	if len(shareStatuses) > 0 {
+		db = db.Where(clause.Expr{SQL: "(?) IN ?", Vars: []any{visibility, shareStatuses}})
+	}
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "count visible images failed"))
+		return
+	}
+	for _, order := range imageListSortClauses(request.Sort) {
+		db = db.Order(order)
+	}
+	rows := make([]visibleImageRow, 0, request.PageSize)
+	if err := db.Select("images.id, ? AS image_share_status", visibility).
+		Offset((request.Page - 1) * request.PageSize).Limit(request.PageSize).Scan(&rows).Error; err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list visible images failed"))
+		return
+	}
+	items, err := mgr.imageItemsForRows(c, rows)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
+}
+
+// UserListImage returns images visible to the current user using the shared page protocol.
+//
+//	@Summary	分页获取当前用户可见镜像
+//	@Tags		ImagePack
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page				query	int		false	"Page number"
+//	@Param		page_size			query	int		false	"Page size, 1-200"
+//	@Param		search				query	string	false	"Search image, description, or creator"
+//	@Param		imageShareStatus	query	string	false	"Filter by visibility; repeatable"
+//	@Param		sort				query	string	false	"Sort fields"
+//	@Success	200					{object}	resputil.Response[resputil.Page[ImageInfo]]
+//	@Router		/v1/images/image [get]
+func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
+	mgr.listImagePage(c, false)
+}
+
+// AdminListImage returns all images using the shared page protocol.
+//
+//	@Summary	分页获取全部镜像
+//	@Tags		ImagePack
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page				query	int		false	"Page number"
+//	@Param		page_size			query	int		false	"Page size, 1-200"
+//	@Param		search				query	string	false	"Search image, description, or creator"
+//	@Param		imageShareStatus	query	string	false	"Filter by visibility; repeatable"
+//	@Param		sort				query	string	false	"Sort fields"
+//	@Success	200					{object}	resputil.Response[resputil.Page[ImageInfo]]
+//	@Router		/v1/admin/images/image [get]
+func (mgr *ImagePackMgr) AdminListImage(c *gin.Context) {
+	mgr.listImagePage(c, true)
+}
+
+// visibleImageQuery is shared by management tables and the complete job-image selector.
+func visibleImageQuery(c *gin.Context, isAdmin bool, search string) (*gorm.DB, clause.Expr) {
+	i, u := query.Image, query.User
+	token := util.GetToken(c)
+	visibility := imageVisibilityExpression(c, token.UserID, token.AccountID, isAdmin)
+	db := i.WithContext(c).LeftJoin(u, i.UserID.EqCol(u.ID)).Where(i.ImageLink.Neq(""))
+	if search != "" {
+		pattern := util.ContainsPattern(search)
+		db = db.Where(field.Or(i.ImageLink.Lower().Like(pattern), i.Description.Lower().Like(pattern),
+			i.ImagePackName.Lower().Like(pattern), u.Name.Lower().Like(pattern), u.Nickname.Lower().Like(pattern)))
+	}
+	result := db.UnderlyingDB()
+	if !isAdmin {
+		result = result.Where(clause.Expr{SQL: "(?) IS NOT NULL", Vars: []any{visibility}})
+	}
+	return result, visibility
 }
