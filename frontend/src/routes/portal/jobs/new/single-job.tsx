@@ -149,8 +149,8 @@ const agentFields = defineAgentFormFields<FormSchema>()([
   { path: 'task.shell', label: 'Shell', valueType: 'string', includeCurrentValue: true },
   { path: 'task.command', label: '启动命令', valueType: 'string', includeCurrentValue: true },
   { path: 'task.workingDir', label: '工作目录', valueType: 'string', includeCurrentValue: true },
-  { path: 'volumeMounts', label: '数据与文件挂载', valueType: 'json' },
-  { path: 'forwards', label: '端口转发', valueType: 'json' },
+  { path: 'volumeMounts', label: '数据与文件挂载', valueType: 'volume-mount-array' },
+  { path: 'forwards', label: '端口转发', valueType: 'forward-array' },
   { path: 'alertEnabled', label: '异常提醒', valueType: 'boolean', includeCurrentValue: true },
   { path: 'cpuPinningEnabled', label: 'CPU 绑核', valueType: 'boolean', includeCurrentValue: true },
   {

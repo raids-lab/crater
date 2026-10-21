@@ -140,13 +140,15 @@ func decryptionKeys() ([][]byte, error) {
 		if previous == "" {
 			continue
 		}
-		key, parseErr := parseSecretKey(previous)
-		if parseErr != nil {
-			return nil, parseErr
-		}
-		keys = appendUniqueKey(keys, key)
+		keys = appendUniqueKey(keys, normalizeLegacySecretKey(previous))
 	}
 	return appendUniqueKey(keys, []byte(legacyDefaultKey)), nil
+}
+
+func normalizeLegacySecretKey(value string) []byte {
+	key := make([]byte, aesKeyLength)
+	copy(key, value)
+	return key
 }
 
 func parseSecretKey(value string) ([]byte, error) {

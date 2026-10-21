@@ -6,7 +6,15 @@ export type AgentIdentity = z.infer<typeof agentIdentitySchema>;
 const fieldSchema = z.object({
   path: z.string().min(1).max(128),
   label: z.string().min(1).max(512),
-  valueType: z.enum(["string", "number", "boolean", "string-array", "json"]),
+  valueType: z.enum([
+    "string",
+    "number",
+    "boolean",
+    "string-array",
+    "option-array",
+    "volume-mount-array",
+    "forward-array",
+  ]),
   description: z.string().max(512).optional(),
 });
 

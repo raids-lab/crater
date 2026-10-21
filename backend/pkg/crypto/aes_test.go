@@ -35,6 +35,24 @@ func TestDecryptWithRotationUsesPreviousKey(t *testing.T) {
 	}
 }
 
+func TestDecryptWithRotationNormalizesLegacyPreviousKey(t *testing.T) {
+	legacyKey := "legacy-short-key"
+	legacyCiphertext, err := encryptWithKey("legacy-secret", normalizeLegacySecretKey(legacyKey))
+	if err != nil {
+		t.Fatalf("encrypt with normalized legacy key: %v", err)
+	}
+
+	t.Setenv(secretKeyEnv, testCurrentKey)
+	t.Setenv(previousSecretKeyEnv, legacyKey)
+	plainText, needsRotation, err := DecryptWithRotation(legacyCiphertext)
+	if err != nil {
+		t.Fatalf("decrypt with normalized legacy key: %v", err)
+	}
+	if plainText != "legacy-secret" || !needsRotation {
+		t.Fatalf("decryption result = %q/%t, want legacy-secret/true", plainText, needsRotation)
+	}
+}
+
 func TestDecryptWithRotationMigratesLegacyDefault(t *testing.T) {
 	legacyCiphertext, err := encryptWithKey("legacy-secret", []byte(legacyDefaultKey))
 	if err != nil {

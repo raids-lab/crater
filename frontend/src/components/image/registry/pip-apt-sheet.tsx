@@ -171,8 +171,8 @@ const agentFields = defineAgentFormFields<PipAptFormValues>()([
   { path: 'description', label: '镜像描述', valueType: 'string', includeCurrentValue: true },
   { path: 'imageName', label: '镜像名称', valueType: 'string', includeCurrentValue: true },
   { path: 'imageTag', label: '镜像标签', valueType: 'string', includeCurrentValue: true },
-  { path: 'imageArchs', label: '镜像架构', valueType: 'json' },
-  { path: 'tags', label: '分类标签', valueType: 'json' },
+  { path: 'imageArchs', label: '镜像架构', valueType: 'option-array' },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
 ])
 
 interface PipAptSheetContentProps {

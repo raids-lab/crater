@@ -77,7 +77,7 @@ const agentFields = defineAgentFormFields<DataFormSchema>()([
   { path: 'describe', label: '资源描述', valueType: 'string', includeCurrentValue: true },
   { path: 'url', label: '平台文件路径', valueType: 'string', includeCurrentValue: true },
   { path: 'weburl', label: '来源网址', valueType: 'string', includeCurrentValue: true },
-  { path: 'tags', label: '分类标签', valueType: 'json' },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
   { path: 'ispublic', label: '公开资源', valueType: 'boolean', includeCurrentValue: true },
   { path: 'readOnly', label: '只读挂载', valueType: 'boolean', includeCurrentValue: true },
 ])
@@ -137,7 +137,11 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
     },
   })
   const capability =
-    type === 'model' ? agentFormCapabilities.modelCreate : agentFormCapabilities.datasetCreate
+    type === 'model'
+      ? agentFormCapabilities.modelCreate
+      : type === 'sharefile'
+        ? agentFormCapabilities.sharedFileCreate
+        : agentFormCapabilities.datasetCreate
   useAgentFormCapability({ capability, fields: agentFields, form })
   useEffect(() => {
     if (type === 'sharefile') {

@@ -73,7 +73,7 @@ type FormSchema = z.infer<typeof formSchema>
 const agentFields = defineAgentFormFields<FormSchema>()([
   { path: 'imageLink', label: '镜像地址', valueType: 'string', includeCurrentValue: true },
   { path: 'description', label: '镜像描述', valueType: 'string', includeCurrentValue: true },
-  { path: 'tags', label: '分类标签', valueType: 'json' },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
 ])
 
 interface ImageUploadSheetContentProps {

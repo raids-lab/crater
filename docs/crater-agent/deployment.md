@@ -19,9 +19,10 @@ agent:
   existingSecretName: crater-agent-internal
 ```
 
-The referenced Secret must contain an `internal-token` key with at least 32
-characters. Without `existingSecretName`, Helm creates and retains a random
-token for the release.
+The referenced Secret must contain `internal-token` and `context-signing-key`,
+each with at least 32 characters, plus an `encryption-key` containing exactly
+32 bytes. Without `existingSecretName`, Helm generates and retains all three
+values for the release.
 
 Every Helm install or upgrade runs the backend image's `./migrate` binary in an
 init container before starting the backend. This automatically creates or
@@ -66,6 +67,17 @@ Use `make agent-local-smoke` to repeat health checks and
 unless `CRATER_LOCAL_RUN_MIGRATIONS=true` is explicitly set. The migration uses
 the same idempotent binary as the Helm init container and writes schema changes
 to the PostgreSQL instance from the selected backend configuration.
+
+The local launcher stores generated Agent tokens and the database encryption
+key in `${XDG_STATE_HOME:-$HOME/.local/state}/crater/crater-agent-local.env` and
+reuses them across `up` and `down`. Set `CRATER_LOCAL_SECRET_FILE` to keep a
+separate key set for each database. When connecting to a database that already
+contains encrypted LLM credentials, initialize that file with the database's
+existing `SYSTEM_SECRET_KEY` and any rotation key in
+`SYSTEM_SECRET_KEY_PREVIOUS`; generating an unrelated key makes those
+credentials unreadable. The launcher creates a temporary copy of the backend
+configuration with container port `8098`, leaving the source configuration
+unchanged.
 
 The Crater backend also runs Kubernetes reconcilers. Do not run this mode in
 parallel with another development backend connected to the same cluster. The

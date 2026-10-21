@@ -2,8 +2,8 @@
 
 ## Scope
 
-This milestone provides authenticated, streaming model conversation and two-level
-LLM credentials. It intentionally contains no Crater business tools.
+This milestone provides authenticated streaming conversations, two-level LLM
+credentials, page-aware form assistance, and bounded read-only Crater tools.
 
 ## Request path
 
@@ -53,14 +53,15 @@ and unresolved destinations are rejected to prevent server-side network access.
 
 The runtime selects an explicit Skill from the user conversation. Every Skill
 declares its capabilities, limitations, and active tools; that contract is added
-to model instructions for every request. The current `platform-guide` Skill
-combines invariant safety instructions with curated, version-controlled user
-documentation and does not query live platform state. Clearly unrelated and
-prompt-override requests receive a deterministic scope response without calling
-the model. Business capabilities are added through the typed tool registry in
-`crater-agent/src/tools/registry.ts`, and only tools explicitly selected by the
+to model instructions for every request. The platform and diagnosis Skills can
+query authorized job summaries, bounded diagnostic snapshots, node capacity,
+and aggregate cluster capacity through the Go backend. Navigation and form
+patch tools only create proposals; the browser executes them after explicit
+user confirmation. Business capabilities are registered in the typed tool
+registry in `crater-agent/src/tools/registry.ts`, and only tools selected by the
 active Skill are exposed. Authorization and data ownership remain enforced by
-the Go backend.
+the Go backend, which keeps database and Kubernetes credentials out of the Agent
+runtime.
 
 ## Deployment
 

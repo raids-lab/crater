@@ -117,7 +117,7 @@ const agentFields = defineAgentFormFields<EnvdRawFormValues>()([
   { path: 'description', label: '镜像描述', valueType: 'string', includeCurrentValue: true },
   { path: 'imageName', label: '镜像名称', valueType: 'string', includeCurrentValue: true },
   { path: 'imageTag', label: '镜像标签', valueType: 'string', includeCurrentValue: true },
-  { path: 'tags', label: '分类标签', valueType: 'json' },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
 ])
 
 interface EnvdRawSheetContentProps {

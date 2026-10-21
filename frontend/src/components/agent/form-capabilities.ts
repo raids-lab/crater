@@ -19,6 +19,7 @@ export const agentFormCapabilities = {
   imageImport: capability('image.import', '/portal/env/images', 'Image Import'),
   datasetCreate: capability('data.dataset-create', '/portal/data/datasets', 'Dataset'),
   modelCreate: capability('data.model-create', '/portal/data/models', 'Model'),
+  sharedFileCreate: capability('data.shared-file-create', '/portal/data/blocks', 'Shared File'),
   modelDownload: capability('data.model-download', '/portal/data/models', 'Model Download'),
   datasetDownload: capability('data.dataset-download', '/portal/data/datasets', 'Dataset Download'),
 } as const

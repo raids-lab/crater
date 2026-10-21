@@ -6,7 +6,14 @@ export type AgentActionKind =
   | 'recreate-job'
   | 'diagnose-job'
 
-export type AgentFieldValueType = 'string' | 'number' | 'boolean' | 'string-array' | 'json'
+export type AgentFieldValueType =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'string-array'
+  | 'option-array'
+  | 'volume-mount-array'
+  | 'forward-array'
 
 export interface AgentFormFieldDescriptor {
   path: string

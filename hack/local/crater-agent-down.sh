@@ -17,5 +17,5 @@ readonly RUNTIME_ENV="$RUNTIME_DIR/compose.env"
 if [[ -f "$RUNTIME_ENV" ]]; then
   docker compose --env-file "$RUNTIME_ENV" --file "$COMPOSE_FILE" down --remove-orphans
 fi
-rm -f "$RUNTIME_ENV" "$RUNTIME_DIR/kubeconfig"
+rm -f "$RUNTIME_ENV" "$RUNTIME_DIR/kubeconfig" "$RUNTIME_DIR/backend-config.yaml"
 rmdir "$RUNTIME_DIR" 2>/dev/null || true

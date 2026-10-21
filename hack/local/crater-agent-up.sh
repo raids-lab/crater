@@ -14,6 +14,8 @@ readonly COMPOSE_FILE="$ROOT_DIR/hack/local/compose.yaml"
 readonly RUNTIME_DIR="${TMPDIR:-/tmp}/crater-agent-local-${UID}"
 readonly RUNTIME_ENV="$RUNTIME_DIR/compose.env"
 readonly FLAT_KUBECONFIG="$RUNTIME_DIR/kubeconfig"
+readonly RUNTIME_BACKEND_CONFIG="$RUNTIME_DIR/backend-config.yaml"
+readonly SECRET_ENV="${CRATER_LOCAL_SECRET_FILE:-${XDG_STATE_HOME:-$HOME/.local/state}/crater/crater-agent-local.env}"
 
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -61,22 +63,55 @@ prepare_runtime_config() {
     --raw --flatten --minify >"$FLAT_KUBECONFIG"
   chmod 600 "$FLAT_KUBECONFIG"
 
-  local internal_token
-  local context_signing_key
-  local encryption_key
-  internal_token="$(openssl rand -hex 32)"
-  context_signing_key="$(openssl rand -hex 32)"
-  encryption_key="$(openssl rand -hex 16)"
+  if ! awk '
+    BEGIN { updated = 0 }
+    updated == 0 && /^port:[[:space:]]*/ { print "port: :8098"; updated = 1; next }
+    { print }
+    END { if (updated == 0) exit 1 }
+  ' "$backend_config" >"$RUNTIME_BACKEND_CONFIG"; then
+    printf 'Backend configuration must contain a top-level port field: %s\n' "$backend_config" >&2
+    exit 1
+  fi
+  chmod 600 "$RUNTIME_BACKEND_CONFIG"
+
   {
-    printf 'CRATER_AGENT_INTERNAL_TOKEN=%s\n' "$internal_token"
-    printf 'CRATER_AGENT_CONTEXT_SIGNING_KEY=%s\n' "$context_signing_key"
-    printf 'SYSTEM_SECRET_KEY=%s\n' "$encryption_key"
-    printf 'CRATER_LOCAL_BACKEND_CONFIG=%s\n' "$backend_config"
+    printf 'CRATER_AGENT_INTERNAL_TOKEN=%s\n' "$CRATER_AGENT_INTERNAL_TOKEN"
+    printf 'CRATER_AGENT_CONTEXT_SIGNING_KEY=%s\n' "$CRATER_AGENT_CONTEXT_SIGNING_KEY"
+    printf 'SYSTEM_SECRET_KEY=%s\n' "$SYSTEM_SECRET_KEY"
+    if [[ -n "${SYSTEM_SECRET_KEY_PREVIOUS:-}" ]]; then
+      printf 'SYSTEM_SECRET_KEY_PREVIOUS=%s\n' "$SYSTEM_SECRET_KEY_PREVIOUS"
+    fi
+    printf 'CRATER_LOCAL_BACKEND_CONFIG=%s\n' "$RUNTIME_BACKEND_CONFIG"
     printf 'CRATER_LOCAL_KUBECONFIG=%s\n' "$FLAT_KUBECONFIG"
     printf 'CRATER_LOCAL_HTTP_PORT=%s\n' "${CRATER_LOCAL_HTTP_PORT:-5180}"
     printf 'CRATER_LOCAL_BACKEND_PORT=%s\n' "${CRATER_LOCAL_BACKEND_PORT:-8098}"
   } >"$RUNTIME_ENV"
   chmod 600 "$RUNTIME_ENV"
+}
+
+prepare_runtime_secrets() {
+  if [[ ! -f "$SECRET_ENV" ]]; then
+    mkdir -p "$(dirname "$SECRET_ENV")"
+    {
+      printf 'CRATER_AGENT_INTERNAL_TOKEN=%s\n' \
+        "${CRATER_AGENT_INTERNAL_TOKEN:-$(openssl rand -hex 32)}"
+      printf 'CRATER_AGENT_CONTEXT_SIGNING_KEY=%s\n' \
+        "${CRATER_AGENT_CONTEXT_SIGNING_KEY:-$(openssl rand -hex 32)}"
+      printf 'SYSTEM_SECRET_KEY=%s\n' "${SYSTEM_SECRET_KEY:-$(openssl rand -hex 16)}"
+      if [[ -n "${SYSTEM_SECRET_KEY_PREVIOUS:-}" ]]; then
+        printf 'SYSTEM_SECRET_KEY_PREVIOUS=%s\n' "$SYSTEM_SECRET_KEY_PREVIOUS"
+      fi
+    } >"$SECRET_ENV"
+  fi
+  chmod 600 "$SECRET_ENV"
+
+  set -a
+  # shellcheck disable=SC1090
+  source "$SECRET_ENV"
+  set +a
+  : "${CRATER_AGENT_INTERNAL_TOKEN:?missing CRATER_AGENT_INTERNAL_TOKEN in $SECRET_ENV}"
+  : "${CRATER_AGENT_CONTEXT_SIGNING_KEY:?missing CRATER_AGENT_CONTEXT_SIGNING_KEY in $SECRET_ENV}"
+  : "${SYSTEM_SECRET_KEY:?missing SYSTEM_SECRET_KEY in $SECRET_ENV}"
 }
 
 build_agent_image() {
@@ -118,11 +153,10 @@ run_database_migrations() {
   if [[ "${CRATER_LOCAL_RUN_MIGRATIONS:-false}" != "true" ]]; then
     return
   fi
-  local backend_config="${CRATER_LOCAL_BACKEND_CONFIG:-$ROOT_DIR/backend/etc/debug-config.yaml}"
   docker run --rm \
     --entrypoint /migrate \
     --env-file "$RUNTIME_ENV" \
-    --volume "$backend_config:/etc/config/config.yaml:ro" \
+    --volume "$RUNTIME_BACKEND_CONFIG:/etc/config/config.yaml:ro" \
     crater-backend:local
 }
 
@@ -134,6 +168,7 @@ main() {
   docker buildx version >/dev/null
   docker info >/dev/null
 
+  prepare_runtime_secrets
   prepare_runtime_config
 
   local go_arch
@@ -150,6 +185,7 @@ main() {
   printf '\nCrater local deployment: http://localhost:%s\n' "${CRATER_LOCAL_HTTP_PORT:-5180}"
   printf 'Backend health endpoint: http://localhost:%s/healthz\n' \
     "${CRATER_LOCAL_BACKEND_PORT:-8098}"
+  printf 'Persistent local Agent secrets: %s\n' "$SECRET_ENV"
   printf 'The backend is using cluster context: '
   kubectl --kubeconfig "$FLAT_KUBECONFIG" config current-context
 }

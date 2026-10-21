@@ -8,6 +8,7 @@ import (
 
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/bizerr"
@@ -75,7 +76,7 @@ func saveAgentToolOutputTransaction(
 	}
 
 	var message model.AgentMessage
-	if err := tx.WithContext(ctx).Where(
+	if err := tx.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Where(
 		"id = ? AND conversation_id = ? AND role = ? AND superseded_at IS NULL",
 		toolOutput.MessageID, conversationID, "assistant",
 	).First(&message).Error; err != nil {
