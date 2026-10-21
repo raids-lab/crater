@@ -1,7 +1,11 @@
 definitions:
   datatypes.JSONType-array_string:
     type: object
+  datatypes.JSONType-github_com_raids-lab_crater_dao_model_ExtraContent:
+    type: object
   datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota:
+    type: object
+  datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute:
     type: object
   datatypes.JSONType-v1_ResourceList:
     type: object
@@ -92,6 +96,22 @@ definitions:
     - Snapshot
     - EnvdAdvanced
     - EnvdRaw
+  github_com_raids-lab_crater_dao_model.BuildStatus:
+    enum:
+    - Initial
+    - Pending
+    - Running
+    - Finished
+    - Failed
+    - Canceled
+    type: string
+    x-enum-varnames:
+    - BuildJobInitial
+    - BuildJobPending
+    - BuildJobRunning
+    - BuildJobFinished
+    - BuildJobFailed
+    - BuildJobCanceled
   github_com_raids-lab_crater_dao_model.CraterResourceType:
     enum:
     - gpu
@@ -139,6 +159,39 @@ definitions:
     - CronJobConfigStatusSuspended
     - CronJobConfigStatusIdle
     - CronJobConfigStatusRunning
+  github_com_raids-lab_crater_dao_model.CronJobRecord:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      executeTime:
+        type: string
+      id:
+        type: integer
+      jobData:
+        items:
+          type: integer
+        type: array
+      message:
+        type: string
+      name:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CronJobRecordStatus'
+      updatedAt:
+        type: string
+    type: object
+  github_com_raids-lab_crater_dao_model.CronJobRecordStatus:
+    enum:
+    - unknown
+    - success
+    - failed
+    type: string
+    x-enum-varnames:
+    - CronJobRecordStatusUnknown
+    - CronJobRecordStatusSuccess
+    - CronJobRecordStatusFailed
   github_com_raids-lab_crater_dao_model.CronJobType:
     enum:
     - cleaner_function
@@ -200,6 +253,36 @@ definitions:
       userName:
         type: string
     type: object
+  github_com_raids-lab_crater_dao_model.ImageShareType:
+    enum:
+    - Private
+    - Public
+    - UserShare
+    - AccountShare
+    type: string
+    x-enum-varnames:
+    - Private
+    - Public
+    - UserShare
+    - AccountShare
+  github_com_raids-lab_crater_dao_model.ImageSourceType:
+    enum:
+    - 0
+    - 1
+    - 2
+    format: int32
+    type: integer
+    x-enum-comments:
+      ImageCreateType: 镜像制造
+      ImageUploadType: 镜像上传
+    x-enum-descriptions:
+    - ""
+    - 镜像制造
+    - 镜像上传
+    x-enum-varnames:
+    - _
+    - ImageCreateType
+    - ImageUploadType
   github_com_raids-lab_crater_dao_model.JobType:
     enum:
     - all
@@ -222,6 +305,54 @@ definitions:
     - JobTypeDeepSpeed
     - JobTypeOpenMPI
     - JobTypeCustom
+  github_com_raids-lab_crater_dao_model.QueueQuota:
+    properties:
+      capability:
+        $ref: '#/definitions/v1.ResourceList'
+      deserved:
+        $ref: '#/definitions/v1.ResourceList'
+      guaranteed:
+        $ref: '#/definitions/v1.ResourceList'
+    type: object
+  github_com_raids-lab_crater_dao_model.Resource:
+    properties:
+      amount:
+        description: Resource quantity
+        type: integer
+      amountSingleMax:
+        type: integer
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      format:
+        type: string
+      id:
+        type: integer
+      label:
+        type: string
+      name:
+        description: Resource name
+        type: string
+      networks:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Resource'
+        type: array
+      priority:
+        type: integer
+      resourceType:
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CraterResourceType'
+        description: Resource relationship
+      unitPrice:
+        type: integer
+      updatedAt:
+        type: string
+      vendorDomain:
+        type: string
+    type: object
   github_com_raids-lab_crater_dao_model.ReviewStatus:
     enum:
     - 0
@@ -346,14 +477,6 @@ definitions:
       username:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_payload.Order:
-    enum:
-    - asc
-    - desc
-    type: string
-    x-enum-varnames:
-    - Asc
-    - Desc
   github_com_raids-lab_crater_internal_payload.ResourceDetail:
     properties:
       label:
@@ -407,12 +530,172 @@ definitions:
           type: array
         type: object
     type: object
-  github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp:
+  github_com_raids-lab_crater_internal_resputil.Page-github_com_raids-lab_crater_dao_model_CronJobRecord:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CronJobRecord'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ApprovalOrderResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.ApprovalOrderResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_DatasetResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.DatasetResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_GpuAnalysisWithJobInfo:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.GpuAnalysisWithJobInfo'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_JobTemplateresp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.JobTemplateresp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ListAllResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.ListAllResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ResourceResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.ResourceResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserOfDatasetResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.UserOfDatasetResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserProjectGetResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.UserProjectGetResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserResp:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler.UserResp'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_image_ImageInfo:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler_image.ImageInfo'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_image_KanikoInfo:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_handler_image.KanikoInfo'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_operations_OperationLogResp:
     properties:
       items:
         items:
           $ref: '#/definitions/internal_handler_operations.OperationLogResp'
         type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
       total:
         type: integer
     type: object
@@ -438,18 +721,6 @@ definitions:
       msg:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod:
-    properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        items:
-          $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod'
-        type: array
-      msg:
-        type: string
-    type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_AccountResp:
     properties:
       code:
@@ -470,30 +741,6 @@ definitions:
       data:
         items:
           $ref: '#/definitions/internal_handler.ApprovalOrderResp'
-        type: array
-      msg:
-        type: string
-    type: object
-  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo:
-    properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        items:
-          $ref: '#/definitions/internal_handler.GpuAnalysisWithJobInfo'
-        type: array
-      msg:
-        type: string
-    type: object
-  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp:
-    properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        items:
-          $ref: '#/definitions/internal_handler.ModelDownloadResp'
         type: array
       msg:
         type: string
@@ -528,13 +775,133 @@ definitions:
       msg:
         type: string
     type: object
-  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-github_com_raids-lab_crater_dao_model_CronJobRecord
   : properties:
       code:
         description: 依然保持 int (ErrorCode) 类型
         type: integer
       data:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.List-internal_handler_operations_OperationLogResp'
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-github_com_raids-lab_crater_dao_model_CronJobRecord'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ApprovalOrderResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ApprovalOrderResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_DatasetResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_DatasetResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_GpuAnalysisWithJobInfo
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_GpuAnalysisWithJobInfo'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_JobTemplateresp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_JobTemplateresp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ListAllResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ListAllResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ResourceResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ResourceResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserOfDatasetResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserOfDatasetResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserProjectGetResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserProjectGetResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserResp'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_image_ImageInfo
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_image_ImageInfo'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_image_KanikoInfo
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_image_KanikoInfo'
+      msg:
+        type: string
+    type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_operations_OperationLogResp
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_operations_OperationLogResp'
       msg:
         type: string
     type: object
@@ -615,6 +982,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.ApprovalOrderResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderSummaryResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.ApprovalOrderSummaryResp'
       msg:
         type: string
     type: object
@@ -748,6 +1125,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeSnapshotPage:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.NodeSnapshotPage'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodBandwidthConfigResp:
     properties:
       code:
@@ -755,6 +1142,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.PodBandwidthConfigResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodSnapshotPage:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.PodSnapshotPage'
       msg:
         type: string
     type: object
@@ -878,6 +1275,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler_image.GetKanikoResponse'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngress:
     properties:
       code:
@@ -925,6 +1332,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-map_string_int64:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/map_string_int64'
       msg:
         type: string
     type: object
@@ -1109,6 +1526,51 @@ definitions:
           type: array
         type: object
     type: object
+  github_com_raids-lab_crater_pkg_crclient.NodeBriefInfo:
+    properties:
+      address:
+        type: string
+      allocatable:
+        $ref: '#/definitions/v1.ResourceList'
+      annotations:
+        additionalProperties:
+          type: string
+        type: object
+      arch:
+        type: string
+      capacity:
+        $ref: '#/definitions/v1.ResourceList'
+      gpuDriver:
+        type: string
+      kernelVersion:
+        type: string
+      name:
+        type: string
+      role:
+        $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.NodeRole'
+      status:
+        $ref: '#/definitions/v1.NodeConditionType'
+      taints:
+        items:
+          $ref: '#/definitions/v1.Taint'
+        type: array
+      used:
+        $ref: '#/definitions/v1.ResourceList'
+      vendor:
+        type: string
+      workloads:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_pkg_crclient.NodeRole:
+    enum:
+    - control-plane
+    - worker
+    - virtual
+    type: string
+    x-enum-varnames:
+    - NodeRoleControlPlane
+    - NodeRoleWorker
+    - NodeRoleVirtual
   github_com_raids-lab_crater_pkg_crclient.Pod:
     properties:
       accountID:
@@ -1132,6 +1594,8 @@ definitions:
         type: string
       namespace:
         type: string
+      nodeName:
+        type: string
       ownerReference:
         items:
           $ref: '#/definitions/v1.OwnerReference'
@@ -1150,6 +1614,8 @@ definitions:
         type: string
       status:
         $ref: '#/definitions/v1.PodPhase'
+      type:
+        type: string
       userID:
         description: 用户ID（用于跳转）
         type: integer
@@ -1277,6 +1743,17 @@ definitions:
       type:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderType'
     type: object
+  internal_handler.ApprovalOrderSummaryResp:
+    properties:
+      pendingDataset:
+        type: integer
+      pendingJobDelay:
+        type: integer
+      totalPending:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
   internal_handler.ApprovalOrderreq:
     properties:
       approvalOrderExtensionHours:
@@ -1403,6 +1880,65 @@ definitions:
     - describe
     - name
     - url
+    type: object
+  internal_handler.DatasetResp:
+    properties:
+      createdAt:
+        type: string
+      describe:
+        type: string
+      displayName:
+        type: string
+      downloadCount:
+        type: integer
+      extra:
+        $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_ExtraContent'
+      id:
+        type: integer
+      library:
+        type: string
+      license:
+        type: string
+      likes:
+        type: integer
+      loginRequired:
+        type: boolean
+      modelType:
+        type: string
+      mountCount:
+        type: integer
+      name:
+        type: string
+      organization:
+        type: string
+      organizationUrl:
+        type: string
+      parameterCount:
+        type: integer
+      readme:
+        type: string
+      sizeBytes:
+        type: integer
+      source:
+        type: string
+      sourceCreatedAt:
+        type: string
+      sourceGated:
+        type: boolean
+      sourcePrivate:
+        type: boolean
+      sourceUpdatedAt:
+        type: string
+      task:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.DataType'
+      updatedAt:
+        type: string
+      url:
+        type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
     type: object
   internal_handler.DeleteProjectResp:
     properties:
@@ -1548,6 +2084,23 @@ definitions:
     - name
     - template
     type: object
+  internal_handler.JobTemplateresp:
+    properties:
+      createdAt:
+        type: string
+      describe:
+        type: string
+      document:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      template:
+        type: string
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+    type: object
   internal_handler.LLMConfigResp:
     properties:
       apiKey:
@@ -1576,6 +2129,21 @@ definitions:
         type: integer
     required:
     - rdmaId
+    type: object
+  internal_handler.ListAllResp:
+    properties:
+      expiredAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      nickname:
+        type: string
+      quota:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.QueueQuota'
+      space:
+        type: string
     type: object
   internal_handler.LoginReq:
     properties:
@@ -1625,6 +2193,10 @@ definitions:
         items:
           $ref: '#/definitions/internal_handler.ModelDownloadResp'
         type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
       summary:
         additionalProperties:
           format: int64
@@ -1738,6 +2310,23 @@ definitions:
         description: 操作原因
         type: string
     type: object
+  internal_handler.NodeSnapshotPage:
+    properties:
+      has_more:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.NodeBriefInfo'
+        type: array
+      next_cursor:
+        type: string
+      observed_at:
+        type: string
+      resource_version:
+        type: string
+      snapshot_id:
+        type: string
+    type: object
   internal_handler.NodeTaint:
     properties:
       effect:
@@ -1763,6 +2352,23 @@ definitions:
       jobIngressBandwidth:
         type: string
       modelDownloadBandwidth:
+        type: string
+    type: object
+  internal_handler.PodSnapshotPage:
+    properties:
+      has_more:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_pkg_crclient.Pod'
+        type: array
+      next_cursor:
+        type: string
+      observed_at:
+        type: string
+      resource_version:
+        type: string
+      snapshot_id:
         type: string
     type: object
   internal_handler.ProjectCreateResp:
@@ -1826,6 +2432,33 @@ definitions:
         additionalProperties:
           type: string
         type: object
+    type: object
+  internal_handler.ResourceResp:
+    properties:
+      ID:
+        type: integer
+      amount:
+        type: integer
+      amountSingleMax:
+        type: integer
+      format:
+        type: string
+      label:
+        type: string
+      name:
+        type: string
+      networks:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Resource'
+        type: array
+      priority:
+        type: integer
+      resourceType:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.CraterResourceType'
+      vendorDomain:
+        type: string
     type: object
   internal_handler.ReviewApprovalOrderReq:
     properties:
@@ -2225,6 +2858,32 @@ definitions:
         description: 导师
         type: string
     type: object
+  internal_handler.UserOfDatasetResp:
+    properties:
+      id:
+        type: integer
+      isowner:
+        type: boolean
+      name:
+        type: string
+      userInfo:
+        $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute'
+    type: object
+  internal_handler.UserProjectGetResp:
+    properties:
+      accessmode:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      quota:
+        $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota'
+      role:
+        type: string
+      userInfo:
+        $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute'
+    type: object
   internal_handler.UserPutUserInProjectReq:
     properties:
       accessmode:
@@ -2233,6 +2892,43 @@ definitions:
         $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota'
       role:
         type: string
+    type: object
+  internal_handler.UserResp:
+    properties:
+      attributes:
+        allOf:
+        - $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute'
+        description: 用户额外属性
+      banRestrictions:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+        description: 当前生效的封禁限制，未封禁时为空
+      banned:
+        description: 当前是否处于封禁状态
+        type: boolean
+      bannedTimestamp:
+        description: 用户封禁截止时间
+        type: string
+      extraBalance:
+        description: 用户额外点数
+        type: number
+      id:
+        description: 用户ID
+        type: integer
+      name:
+        description: 用户名称
+        type: string
+      permanentBanned:
+        description: 是否永久封禁
+        type: boolean
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Role'
+        description: 用户角色
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Status'
+        description: 用户状态
     type: object
   internal_handler.VersionInfo:
     properties:
@@ -2399,6 +3095,93 @@ definitions:
     - imageLabel
     - label
     - value
+    type: object
+  internal_handler_image.GetKanikoResponse:
+    properties:
+      ID:
+        type: integer
+      buildSource:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildSource'
+      createdAt:
+        type: string
+      description:
+        type: string
+      dockerfile:
+        type: string
+      imageLink:
+        type: string
+      imagepackName:
+        type: string
+      nodeName:
+        type: string
+      podName:
+        type: string
+      podNameSpace:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus'
+    type: object
+  internal_handler_image.ImageInfo:
+    properties:
+      ID:
+        type: integer
+      archs:
+        items:
+          type: string
+        type: array
+      createdAt:
+        type: string
+      description:
+        type: string
+      imageBuildID:
+        type: integer
+      imageBuildSource:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ImageSourceType'
+      imageLink:
+        type: string
+      imageShareStatus:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ImageShareType'
+      imagepackName:
+        type: string
+      isPublic:
+        type: boolean
+      tags:
+        items:
+          type: string
+        type: array
+      taskType:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+    type: object
+  internal_handler_image.KanikoInfo:
+    properties:
+      ID:
+        type: integer
+      archs:
+        items:
+          type: string
+        type: array
+      buildSource:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildSource'
+      createdAt:
+        type: string
+      description:
+        type: string
+      imageLink:
+        type: string
+      imagepackName:
+        type: string
+      size:
+        type: integer
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus'
+      tags:
+        items:
+          type: string
+        type: array
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
     type: object
   internal_handler_image.UpdateImageArchRequest:
     properties:
@@ -2651,6 +3434,11 @@ definitions:
         type: string
       token:
         type: string
+    type: object
+  map_string_int64:
+    additionalProperties:
+      format: int64
+      type: integer
     type: object
   map_string_string:
     additionalProperties:
@@ -2916,6 +3704,40 @@ definitions:
           +optional
         type: boolean
     type: object
+  v1.Taint:
+    properties:
+      effect:
+        allOf:
+        - $ref: '#/definitions/v1.TaintEffect'
+        description: |-
+          Required. The effect of the taint on pods
+          that do not tolerate the taint.
+          Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
+      key:
+        description: Required. The taint key to be applied to a node.
+        type: string
+      timeAdded:
+        description: |-
+          TimeAdded represents the time at which the taint was added.
+          It is only written for NoExecute taints.
+          +optional
+        type: string
+      value:
+        description: |-
+          The taint value corresponding to the taint key.
+          +optional
+        type: string
+    type: object
+  v1.TaintEffect:
+    enum:
+    - NoSchedule
+    - PreferNoSchedule
+    - NoExecute
+    type: string
+    x-enum-varnames:
+    - TaintEffectNoSchedule
+    - TaintEffectPreferNoSchedule
+    - TaintEffectNoExecute
   volcano_sh_apis_pkg_apis_batch_v1alpha1.JobPhase:
     enum:
     - Pending
@@ -2947,37 +3769,6 @@ info:
   title: Crater API
   version: 1.0.0
 paths:
-  /admin/nodes/{name}/pods:
-    get:
-      consumes:
-      - application/json
-      description: 获取节点Pod信息，包含作业和用户信息
-      parameters:
-      - description: 节点名称
-        in: path
-        name: name
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 成功返回值描述
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取节点Pod信息（管理员）
-      tags:
-      - Node
   /auth/check:
     get:
       consumes:
@@ -3147,6 +3938,43 @@ paths:
       summary: Get all accounts for user
       tags:
       - Project
+  /v1/accounts/{aid}/billing/members:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Account ID
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - collectionFormat: multi
+        description: Filter to these user IDs
+        in: query
+        items:
+          type: integer
+        name: user_id
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: List account billing members
+      tags:
+      - Project
   /v1/accounts/{aid}/users:
     get:
       consumes:
@@ -3158,13 +3986,43 @@ paths:
         name: aid
         required: true
         type: integer
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (1-200)
+        in: query
+        name: page_size
+        type: integer
+      - description: Search by username
+        in: query
+        name: search
+        type: string
+      - description: Sort by name, role or accessmode; prefix - for descending
+        in: query
+        name: sort
+        type: string
+      - collectionFormat: multi
+        description: 'Member roles: 2 (user), 3 (admin)'
+        in: query
+        items:
+          type: string
+        name: role
+        type: array
+      - collectionFormat: multi
+        description: 'Access modes: 1 (none), 2 (read), 3 (write), 4 (append)'
+        in: query
+        items:
+          type: string
+        name: accessmode
+        type: array
       produces:
       - application/json
       responses:
         "200":
           description: User account entries
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserProjectGetResp'
         "400":
           description: Request parameter error
           schema:
@@ -3422,6 +4280,38 @@ paths:
       summary: 获取指定账户
       tags:
       - Project
+  /v1/admin/accounts:
+    get:
+      description: 按统一分页协议获取账户列表，搜索、排序和分页在数据库中执行
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search account name or nickname
+        in: query
+        name: search
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ListAllResp'
+      security:
+      - Bearer: []
+      summary: 管理员获取账户分页
+      tags:
+      - Project
   /v1/admin/accounts/{aid}:
     get:
       consumes:
@@ -3452,29 +4342,169 @@ paths:
       summary: 获取指定账户
       tags:
       - Project
-  /v1/admin/approvalorder:
+  /v1/admin/accounts/{aid}/billing/members:
     get:
       consumes:
       - application/json
-      description: 展示所有审批订单
+      parameters:
+      - description: Account ID
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - collectionFormat: multi
+        description: Filter to these user IDs
+        in: query
+        items:
+          type: integer
+        name: user_id
+        type: array
       produces:
       - application/json
       responses:
         "200":
-          description: 成功返回值描述
+          description: OK
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: 服务器错误
+          description: Bad Request
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 展示所有审批订单
+      summary: List account billing members
+      tags:
+      - Project
+  /v1/admin/accounts/userIn/{aid}:
+    get:
+      consumes:
+      - application/json
+      description: SQL query with join
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (1-200)
+        in: query
+        name: page_size
+        type: integer
+      - description: Search by username
+        in: query
+        name: search
+        type: string
+      - description: Sort by name, role or accessmode; prefix - for descending
+        in: query
+        name: sort
+        type: string
+      - collectionFormat: multi
+        description: 'Member roles: 2 (user), 3 (admin)'
+        in: query
+        items:
+          type: string
+        name: role
+        type: array
+      - collectionFormat: multi
+        description: 'Access modes: 1 (none), 2 (read), 3 (write), 4 (append)'
+        in: query
+        items:
+          type: string
+        name: accessmode
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User account entries
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserProjectGetResp'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get users in account
+      tags:
+      - Project
+  /v1/admin/accounts/userOutOf/{aid}:
+    get:
+      consumes:
+      - application/json
+      description: SQL query with subquery
+      parameters:
+      - description: aid
+        in: path
+        name: aid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User account entries
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get users not in account
+      tags:
+      - Project
+  /v1/admin/approvalorder:
+    get:
+      description: 按统一分页协议获取所有审批工单
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search order names
+        in: query
+        name: search
+        type: string
+      - description: Filter by order type; repeatable
+        in: query
+        name: type
+        type: string
+      - description: Filter by order status; repeatable
+        in: query
+        name: status
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ApprovalOrderResp'
+      security:
+      - Bearer: []
+      summary: 管理员获取审批工单分页
       tags:
       - approvalorder
   /v1/admin/approvalorder/{id}:
@@ -3570,29 +4600,63 @@ paths:
       summary: 检查待审批作业工单有效性
       tags:
       - approvalorder
-  /v1/admin/dataset/alldataset:
+  /v1/admin/approvalorder/summary:
     get:
-      consumes:
-      - application/json
-      description: 获取所有数据集
+      description: 返回与列表分页无关的审批工单统计数据
       produces:
       - application/json
       responses:
         "200":
-          description: 成功返回值描述
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApprovalOrderSummaryResp'
+      security:
+      - Bearer: []
+      summary: 获取审批工单聚合统计
+      tags:
+      - approvalorder
+  /v1/admin/dataset/alldataset:
+    get:
+      description: 按类型、搜索和排序条件过滤后分页返回数据资源
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search name or description
+        in: query
+        name: search
+        type: string
+      - description: Filter by type; repeatable
+        in: query
+        name: type
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_DatasetResp'
         "400":
-          description: Request parameter error
+          description: Bad Request
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: Other errors
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取所有数据集
+      summary: 管理员分页获取所有数据资源
       tags:
       - Dataset
   /v1/admin/dataset/cancelshare/queue:
@@ -3725,21 +4789,50 @@ paths:
       - Dataset
   /v1/admin/gpu-analysis:
     get:
-      description: 按创建时间降序列出所有 GPU 分析记录，并附带关联作业的类型、资源和节点信息
+      description: 按搜索、审核状态和风险等级过滤后排序分页返回 GPU 分析记录
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search job or user name
+        in: query
+        name: search
+        type: string
+      - description: Filter by review status; repeatable
+        in: query
+        name: ReviewStatus
+        type: integer
+      - description: Filter by risk level; repeatable
+        in: query
+        name: Phase2Score
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 成功
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_GpuAnalysisWithJobInfo'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_GpuAnalysisWithJobInfo'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: 服务器错误
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 列出所有 GPU 分析记录（包含作业信息）
+      summary: 管理员分页获取 GPU 分析记录
       tags:
       - GpuAnalysis
   /v1/admin/gpu-analysis/{id}/confirm-stop:
@@ -3965,30 +5058,102 @@ paths:
       summary: 管理员模式下更新镜像的描述
       tags:
       - ImagePack
-  /v1/admin/images/image:
+  /v1/admin/images/getbyid:
     get:
-      consumes:
-      - application/json
-      description: 所有的镜像数据
+      parameters:
+      - description: 镜像构建记录 ID
+        in: query
+        name: id
+        required: true
+        type: integer
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: Image build details
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse'
+        "400":
+          description: Invalid request parameter
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Image build not found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 管理员获取所有镜像数据
+      summary: 管理员获取镜像构建详情
+      tags:
+      - ImagePack
+  /v1/admin/images/image:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search image, description, or creator
+        in: query
+        name: search
+        type: string
+      - description: Filter by visibility; repeatable
+        in: query
+        name: imageShareStatus
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_image_ImageInfo'
+      security:
+      - Bearer: []
+      summary: 分页获取全部镜像
       tags:
       - ImagePack
   /v1/admin/images/kaniko:
     get:
-      consumes:
-      - application/json
-      description: 管理员获取所有镜像制作信息
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search image, description, or creator
+        in: query
+        name: search
+        type: string
+      - description: Filter by status; repeatable
+        in: query
+        name: status
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_image_KanikoInfo'
       security:
       - Bearer: []
-      summary: 管理员获取相关镜像的功能
+      summary: 分页获取全部镜像制作记录
       tags:
       - ImagePack
     post:
@@ -4058,21 +5223,43 @@ paths:
       summary: 管理员更新镜像的任务类型
       tags:
       - ImagePack
-  /v1/admin/models/downloads:
+  /v1/admin/model-download/models/downloads:
     get:
-      consumes:
-      - application/json
-      description: 管理员查看所有用户的模型下载任务
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search download name
+        in: query
+        name: search
+        type: string
+      - description: Filter by model or dataset
+        in: query
+        name: category
+        type: string
+      - description: Filter by status; repeatable
+        in: query
+        name: status
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ModelDownloadResp'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp'
       security:
       - Bearer: []
-      summary: 管理员获取所有模型下载任务
+      summary: 分页获取模型下载任务
       tags:
       - ModelDownload
   /v1/admin/models/downloads/{id}:
@@ -4129,6 +5316,42 @@ paths:
       summary: 排空节点
       tags:
       - admin
+  /v1/admin/nodes/{name}/pods:
+    get:
+      parameters:
+      - description: Node name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Page size, 1-200
+        in: query
+        name: limit
+        type: integer
+      - description: Opaque Kubernetes continue token
+        in: query
+        name: cursor
+        type: string
+      - description: Kubernetes resource version
+        in: query
+        name: resource_version
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodSnapshotPage'
+        "409":
+          description: Snapshot cursor expired
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 管理员分页获取节点Pod信息
+      tags:
+      - Node
   /v1/admin/operation-logs:
     delete:
       consumes:
@@ -4151,41 +5374,43 @@ paths:
       tags:
       - OperationLog
     get:
-      consumes:
-      - application/json
-      description: 获取操作日志列表，支持分页和筛选
+      description: 按统一分页协议获取操作日志，筛选和排序在数据库中执行
       parameters:
-      - description: 页码
+      - description: Page number
         in: query
         name: page
         type: integer
-      - description: 每页数量
+      - description: Page size, 1-200
         in: query
-        name: limit
+        name: page_size
         type: integer
-      - description: 操作类型
-        in: query
-        name: operation_type
-        type: string
-      - description: 操作人
-        in: query
-        name: operator
-        type: string
-      - description: 操作对象
-        in: query
-        name: target
-        type: string
-      - description: 模糊搜索关键词
+      - description: Search operator, type, target, or message
         in: query
         name: search
         type: string
-      - description: 开始时间，格式例如：2024-01-02T15:04:05Z
+      - description: Filter by operation type
+        in: query
+        name: operation_type
+        type: string
+      - description: Filter by operator
+        in: query
+        name: operator
+        type: string
+      - description: Filter by target
+        in: query
+        name: target
+        type: string
+      - description: Start time, RFC3339
         in: query
         name: start_time
         type: string
-      - description: 结束时间，格式例如：2024-01-02T15:04:05Z
+      - description: End time, RFC3339
         in: query
         name: end_time
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
         type: string
       produces:
       - application/json
@@ -4193,75 +5418,60 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_List-internal_handler_operations_OperationLogResp'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_operations_OperationLogResp'
       security:
       - Bearer: []
-      summary: 获取操作日志列表
+      summary: 获取操作日志分页
       tags:
       - OperationLog
-  /v1/admin/projects:
+  /v1/admin/operations/cronjob/record/list:
     get:
-      consumes:
-      - application/json
-      description: Get summary info of all accounts, supports filtering, pagination
-        and sorting
+      description: 按统一分页协议获取执行记录，搜索、筛选、排序和分页在数据库中执行
       parameters:
-      - description: 部分匹配账户名称
+      - description: Page number
         in: query
-        name: nameLike
-        type: string
-      - description: 排序方式（升序、降序）
-        enum:
-        - asc
-        - desc
-        in: query
-        name: order
-        type: string
-        x-enum-varnames:
-        - Asc
-        - Desc
-      - description: 排序字段
-        in: query
-        name: orderCol
-        type: string
-      - description: 第几页（从0开始）
-        in: query
-        name: pageIndex
-        required: true
+        name: page
         type: integer
-      - description: 每页大小
+      - description: Page size, 1-200
         in: query
-        name: pageSize
-        required: true
+        name: page_size
         type: integer
+      - description: Search job name or message
+        in: query
+        name: search
+        type: string
+      - description: Filter by status; repeatable
+        in: query
+        name: status
+        type: string
+      - description: Restrict to job names; repeatable
+        in: query
+        name: scope_name
+        type: string
+      - description: Start time, RFC3339
+        in: query
+        name: start_time
+        type: string
+      - description: End time, RFC3339
+        in: query
+        name: end_time
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 账户列表
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-github_com_raids-lab_crater_dao_model_CronJobRecord'
       security:
       - Bearer: []
-      summary: Get all accounts
+      summary: 获取定时任务执行记录分页
       tags:
-      - Project
+      - Operations
   /v1/admin/projects/{aid}:
     delete:
       consumes:
@@ -4474,36 +5684,6 @@ paths:
       tags:
       - Project
   /v1/admin/projects/userIn/{aid}:
-    get:
-      consumes:
-      - application/json
-      description: SQL query with join
-      parameters:
-      - description: aid
-        in: path
-        name: aid
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: User account entries
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: Request parameter error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Other errors
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: Get users in account
-      tags:
-      - Project
     put:
       consumes:
       - application/json
@@ -4538,37 +5718,6 @@ paths:
       security:
       - Bearer: []
       summary: Batch update user-account relationship
-      tags:
-      - Project
-  /v1/admin/projects/userOutOf/{aid}:
-    get:
-      consumes:
-      - application/json
-      description: SQL query with subquery
-      parameters:
-      - description: aid
-        in: path
-        name: aid
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: User account entries
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: Request parameter error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Other errors
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: Get users not in account
       tags:
       - Project
   /v1/admin/queue-quotas:
@@ -5318,27 +6467,46 @@ paths:
       - SystemConfig
   /v1/admin/users:
     get:
-      consumes:
-      - application/json
-      description: 列出用户信息（包含私人配额）
+      description: 按统一分页协议获取用户列表，搜索、筛选、排序和分页在数据库中执行
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search username or nickname
+        in: query
+        name: search
+        type: string
+      - description: Filter by role; repeatable
+        in: query
+        name: role
+        type: integer
+      - description: Filter by status; repeatable
+        in: query
+        name: status
+        type: integer
+      - description: Filter by current ban status; repeatable
+        in: query
+        name: banned
+        type: boolean
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 成功获取用户信息
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: 其他错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserResp'
       security:
       - Bearer: []
-      summary: 列出用户信息
+      summary: 管理员获取用户分页
       tags:
       - User
   /v1/admin/users/{name}:
@@ -5816,27 +6984,42 @@ paths:
       - ImagePack
   /v1/approvalorder:
     get:
-      consumes:
-      - application/json
-      description: 获取当前用户创建的所有审批工单
+      description: 按统一分页协议获取当前用户创建的审批工单
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search order names
+        in: query
+        name: search
+        type: string
+      - description: Filter by order type; repeatable
+        in: query
+        name: type
+        type: string
+      - description: Filter by order status; repeatable
+        in: query
+        name: status
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 成功返回工单列表
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ApprovalOrderResp'
       security:
       - Bearer: []
-      summary: 获取我的审批工单
+      summary: 获取我的审批工单分页
       tags:
       - approvalorder
     post:
@@ -6266,13 +7449,29 @@ paths:
         name: datasetId
         required: true
         type: integer
+      - description: Page number (1-based)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (1-200)
+        in: query
+        name: page_size
+        type: integer
+      - description: Search shared usernames
+        in: query
+        name: search
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 成功返回值描述
+          description: Shared users page
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserOfDatasetResp'
         "400":
           description: Request parameter error
           schema:
@@ -6474,27 +7673,50 @@ paths:
       - Dataset
   /v1/dataset/mydataset:
     get:
-      consumes:
-      - application/json
-      description: 获取数据集
+      description: 按权限、类型、搜索和排序条件过滤后分页返回数据资源
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search name or description
+        in: query
+        name: search
+        type: string
+      - description: 'Owner scope: all, mine, or others'
+        in: query
+        name: owner
+        type: string
+      - description: Sort by createdAt, updatedAt, or mountCount
+        in: query
+        name: sort
+        type: string
+      - description: 'Resource type: dataset, model, or sharefile'
+        in: query
+        name: type
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 成功返回值描述
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_DatasetResp'
         "400":
-          description: Request parameter error
+          description: Bad Request
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: Other errors
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取数据集
+      summary: 获取可访问数据资源分页
       tags:
       - Dataset
   /v1/dataset/share/queue:
@@ -6803,20 +8025,56 @@ paths:
       summary: 获取imagepack的模板信息
       tags:
       - ImagePack
+  /v1/images/getbyid:
+    get:
+      description: 通过镜像构建记录 ID 获取详情；按名称查询保留在 getbyname 作为兼容接口
+      parameters:
+      - description: 镜像构建记录 ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Image build details
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse'
+        "400":
+          description: Invalid request parameter
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Image build not found or inaccessible
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取当前用户的镜像构建详情
+      tags:
+      - ImagePack
   /v1/images/getbyname:
     get:
       consumes:
       - application/json
-      description: 获取imagepackname，搜索到imagepack
+      description: 按名称获取镜像构建详情；也兼容通过 id 查询，列表页优先使用 id
       parameters:
-      - description: 获取ImagePack的name
+      - description: 兼容：获取ImagePack的name
         in: query
         name: name
-        required: true
         type: string
+      - description: 镜像构建记录 ID
+        in: query
+        name: id
+        type: integer
       produces:
       - application/json
-      responses: {}
+      responses:
+        "400":
+          description: Legacy parameter or lookup failure
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 获取imagepack的详细信息
@@ -6850,15 +8108,37 @@ paths:
       - ImagePack
   /v1/images/image:
     get:
-      consumes:
-      - application/json
-      description: 返回该用户所有的镜像数据
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search image, description, or creator
+        in: query
+        name: search
+        type: string
+      - description: Filter by visibility; repeatable
+        in: query
+        name: imageShareStatus
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_image_ImageInfo'
       security:
       - Bearer: []
-      summary: 用户获取所有镜像数据
+      summary: 分页获取当前用户可见镜像
       tags:
       - ImagePack
     post:
@@ -6902,15 +8182,37 @@ paths:
       - ImagePack
   /v1/images/kaniko:
     get:
-      consumes:
-      - application/json
-      description: 返回该用户所有的镜像构建数据
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search image, description, or creator
+        in: query
+        name: search
+        type: string
+      - description: Filter by status; repeatable
+        in: query
+        name: status
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_image_KanikoInfo'
       security:
       - Bearer: []
-      summary: 用户获取镜像构建信息
+      summary: 分页获取当前用户的镜像制作记录
       tags:
       - ImagePack
     post:
@@ -7180,14 +8482,36 @@ paths:
     get:
       consumes:
       - application/json
-      description: 展示所有作业模板
+      description: List job templates with server-side pagination, search, owner filtering,
+        and sorting
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search template names
+        in: query
+        name: search
+        type: string
+      - description: 'Owner scope: all, mine, or others'
+        in: query
+        name: owner
+        type: string
+      - description: Sort by createdAt or -createdAt
+        in: query
+        name: sort
+        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 成功返回值描述
+          description: Job template page
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_JobTemplateresp'
         "400":
           description: Request parameter error
           schema:
@@ -7198,7 +8522,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 展示所有作业模板
+      summary: List job templates
       tags:
       - jobtemplate
   /v1/jobtemplate/update:
@@ -7233,6 +8557,64 @@ paths:
       summary: 更新作业模板
       tags:
       - jobtemplate
+  /v1/model-download/models/downloads:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search download name
+        in: query
+        name: search
+        type: string
+      - description: Filter by model or dataset
+        in: query
+        name: category
+        type: string
+      - description: Filter by status; repeatable
+        in: query
+        name: status
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp'
+      security:
+      - Bearer: []
+      summary: 分页获取模型下载任务
+      tags:
+      - ModelDownload
+  /v1/model-download/models/downloads/summary:
+    get:
+      parameters:
+      - description: Filter by model or dataset
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_int64'
+      security:
+      - Bearer: []
+      summary: 获取模型下载任务状态汇总
+      tags:
+      - ModelDownload
   /v1/models/download:
     post:
       consumes:
@@ -7256,44 +8638,6 @@ paths:
       security:
       - Bearer: []
       summary: 创建或复用模型/数据集下载任务
-      tags:
-      - ModelDownload
-  /v1/models/downloads:
-    get:
-      consumes:
-      - application/json
-      description: 下载记录对全平台用户可见。带 page 参数时返回分页结构(含状态汇总),否则返回全量数组(兼容旧客户端)
-      parameters:
-      - description: '过滤类别: model 或 dataset'
-        in: query
-        name: category
-        type: string
-      - description: 页码(从1开始);不传则返回全量数组
-        in: query
-        name: page
-        type: integer
-      - description: 每页数量,默认20,最大100
-        in: query
-        name: pageSize
-        type: integer
-      - description: '过滤状态: Pending/Downloading/Paused/Ready/Failed'
-        in: query
-        name: status
-        type: string
-      - description: 按名称模糊搜索
-        in: query
-        name: search
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadListResp'
-      security:
-      - Bearer: []
-      summary: 获取模型下载任务列表
       tags:
       - ModelDownload
   /v1/models/downloads/{id}:
@@ -8152,34 +9496,40 @@ paths:
       summary: 获取节点标记信息
       tags:
       - Node
-  /v1/nodes/{name}/pod/:
+  /v1/nodes/{name}/pods:
     get:
-      consumes:
-      - application/json
-      description: kubectl + prometheus获取节点Pod信息
       parameters:
-      - description: 节点名称
-        in: query
+      - description: Node name
+        in: path
         name: name
+        required: true
+        type: string
+      - description: Page size, 1-200
+        in: query
+        name: limit
+        type: integer
+      - description: Opaque Kubernetes continue token
+        in: query
+        name: cursor
+        type: string
+      - description: Kubernetes resource version
+        in: query
+        name: resource_version
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: 成功返回值描述
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: 其他错误
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodSnapshotPage'
+        "409":
+          description: Snapshot cursor expired
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取节点Pod信息
+      summary: 分页获取节点Pod信息
       tags:
       - Node
   /v1/nodes/{name}/taint:
@@ -8436,33 +9786,45 @@ paths:
       - Project
   /v1/resources:
     get:
-      consumes:
-      - application/json
-      description: If the vendorDomain parameter is provided, the API will return
-        a list of resources that match the specified vendor domain.
       parameters:
-      - description: "Vendor domain of the resource (For example: 'nvidia.com'\t)"
+      - description: Page number
         in: query
-        name: vendorDomain
+        name: page
+        type: integer
+      - description: Page size, 1-200
+        in: query
+        name: page_size
+        type: integer
+      - description: Search resource name, label, or vendor
+        in: query
+        name: search
+        type: string
+      - description: Resource type filter; repeatable
+        in: query
+        name: type
+        type: string
+      - description: Sort fields
+        in: query
+        name: sort
+        type: string
+      - description: Only resources with GPU type
+        in: query
+        name: withVendorDomain
+        type: boolean
+      - description: Vendor domain prefix
+        in: query
+        name: domainPrefix
         type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Success
+          description: OK
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: Request parameter error
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "500":
-          description: Other errors
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_ResourceResp'
       security:
       - Bearer: []
-      summary: Get a list of resources based on the specified parameters
+      summary: 分页获取集群资源
       tags:
       - Resource
   /v1/resources/gpu/{gpuId}/networks:
@@ -8495,6 +9857,42 @@ paths:
       security:
       - Bearer: []
       summary: Get all RDMA resources linked to a GPU resource
+      tags:
+      - Resource
+  /v1/resources/snapshot:
+    get:
+      description: 使用 Kubernetes limit/continue 返回只读节点快照，不返回数据库 total
+      parameters:
+      - description: 每页数量，1-200
+        in: query
+        name: limit
+        type: integer
+      - description: 不透明 continue 游标
+        in: query
+        name: cursor
+        type: string
+      - description: Kubernetes label selector
+        in: query
+        name: selector
+        type: string
+      - description: Kubernetes resource version
+        in: query
+        name: resource_version
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_NodeSnapshotPage'
+        "409":
+          description: 游标过期
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取 Kubernetes 节点快照
       tags:
       - Resource
   /v1/spjobs/{name}/events:
@@ -8971,6 +10369,43 @@ paths:
       summary: 获取任务的Pod列表
       tags:
       - VolcanoJob
+  /v1/vcjobs/{name}/pods/snapshot:
+    get:
+      description: 使用 Kubernetes limit/continue 返回作业范围的只读 Pod 快照
+      parameters:
+      - description: 作业名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 每页数量，1-200
+        in: query
+        name: limit
+        type: integer
+      - description: 不透明 continue 游标
+        in: query
+        name: cursor
+        type: string
+      - description: Kubernetes resource version
+        in: query
+        name: resource_version
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PodSnapshotPage'
+        "409":
+          description: 游标过期
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取作业 Pod 快照
+      tags:
+      - PodSnapshot
   /v1/vcjobs/{name}/secret:
     get:
       consumes:

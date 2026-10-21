@@ -13,8 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
+import { fetchAllPages } from '@/services/api/pagination'
 import { apiV1Delete, apiV1Get, apiV1Put } from '@/services/client'
 import { IResponse } from '@/services/types'
+import type { IPage } from '@/services/types'
 
 import { ProjectStatus } from '../account'
 import { Role } from '../auth'
@@ -82,7 +89,16 @@ export interface IUpdateUserBanReq {
   reason: string
 }
 
-export const apiAdminUserList = () => apiV1Get<IResponse<IUser[]>>('admin/users')
+export const apiAdminUserList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IUser>>>('admin/users', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
+
+export const apiAdminUserListAll = (signal?: AbortSignal) =>
+  fetchAllPages((page) =>
+    apiAdminUserList({ page, page_size: 200, sort: '-id', filters: {} }, signal)
+  )
 
 export const apiAdminUserDelete = (userName: string) =>
   apiV1Delete<IResponse<string>>(`admin/users/${userName}`)

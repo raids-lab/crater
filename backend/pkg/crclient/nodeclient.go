@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -82,6 +83,7 @@ type NodeBriefInfo struct {
 type Pod struct {
 	Name             string                  `json:"name"`
 	Namespace        string                  `json:"namespace"`
+	NodeName         string                  `json:"nodeName,omitempty"`
 	OwnerReference   []metav1.OwnerReference `json:"ownerReference"`
 	IP               string                  `json:"ip"`
 	CreateTime       metav1.Time             `json:"createTime"`
@@ -89,6 +91,7 @@ type Pod struct {
 	Status           corev1.PodPhase         `json:"status"`
 	Resources        corev1.ResourceList     `json:"resources"`        // Limits
 	RequestResources corev1.ResourceList     `json:"requestResources"` // Requests
+	Type             string                  `json:"type,omitempty"`
 	Locked           bool                    `json:"locked"`
 	PermanentLocked  bool                    `json:"permanentLocked"`
 	LockedTimestamp  metav1.Time             `json:"lockedTimestamp"`
@@ -105,6 +108,7 @@ func podInfoFromKubePod(pod *corev1.Pod) Pod {
 	return Pod{
 		Name:             pod.Name,
 		Namespace:        pod.Namespace,
+		NodeName:         pod.Spec.NodeName,
 		IP:               pod.Status.PodIP,
 		CreateTime:       pod.CreationTimestamp,
 		StartTime:        pod.Status.StartTime,
@@ -115,6 +119,12 @@ func podInfoFromKubePod(pod *corev1.Pod) Pod {
 		Locked:           false,
 		LockedTimestamp:  metav1.Time{},
 	}
+}
+
+// PodInfoFromKubePod converts a read-only Kubernetes Pod object to the
+// platform's common pod response shape.
+func PodInfoFromKubePod(pod *corev1.Pod) Pod {
+	return podInfoFromKubePod(pod)
 }
 
 type ClusterNodeDetail struct {
@@ -343,6 +353,55 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 	return nodeInfos, nil
 }
 
+// ListNodesSnapshot lists nodes through the Kubernetes pagination contract.
+// The continue token is returned unchanged so callers can treat it as opaque.
+func (nc *NodeClient) ListNodesSnapshot(
+	ctx context.Context,
+	options *metav1.ListOptions,
+) (items []NodeBriefInfo, nextCursor, resourceVersion string, err error) {
+	nodes, err := nc.KubeClient.CoreV1().Nodes().List(ctx, *options)
+	if err != nil {
+		return nil, "", "", err
+	}
+	items = make([]NodeBriefInfo, 0, len(nodes.Items))
+	for i := range nodes.Items {
+		node := &nodes.Items[i]
+		// Reuse the manager's active-Pod index instead of listing every Pod
+		// from the API server again for each node page. Usage is live cache
+		// metadata; the continuation token pins only the Node list itself.
+		podList := &corev1.PodList{}
+		if err := nc.List(ctx, podList, indexer.MatchingPodsByNodeName(node.Name)); err != nil {
+			return nil, "", "", fmt.Errorf("list cached pods for node %s: %w", node.Name, err)
+		}
+		usedResources := make(corev1.ResourceList)
+		workloads := 0
+		for j := range podList.Items {
+			pod := &podList.Items[j]
+			usedResources = utils.SumResources(usedResources, utils.CalculateRequsetsByContainers(pod.Spec.Containers))
+			if pod.Namespace == config.GetConfig().Namespaces.Job {
+				workloads++
+			}
+		}
+		items = append(items, NodeBriefInfo{
+			Name:          node.Name,
+			Role:          getNodeRole(node),
+			Arch:          node.Status.NodeInfo.Architecture,
+			Status:        getNodeStatus(node),
+			Vendor:        node.Labels["crater.raids-lab.io/instance-type"],
+			Taints:        node.Spec.Taints,
+			Capacity:      node.Status.Capacity,
+			Allocatable:   node.Status.Allocatable,
+			Used:          usedResources,
+			Workloads:     workloads,
+			Annotations:   node.Annotations,
+			KernelVersion: node.Status.NodeInfo.KernelVersion,
+			GPUDriver:     node.Labels["nvidia.com/cuda.driver-version.full"],
+			Address:       getNodeIP(node),
+		})
+	}
+	return items, nodes.Continue, nodes.ResourceVersion, nil
+}
+
 // GetNode 获取指定 Node 的信息
 func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDetail, error) {
 	node := &corev1.Node{}
@@ -447,110 +506,104 @@ func (nc *NodeClient) UpdateNodeunschedule(ctx context.Context, name, reason, op
 	return wasUnschedulable, nil
 }
 
-// getPodsForNode 获取节点上的 Pod 列表（内部辅助方法）
-func (nc *NodeClient) getPodsForNode(ctx context.Context, nodeName string) (*corev1.PodList, error) {
-	podList := &corev1.PodList{}
-	if err := nc.List(ctx, podList, indexer.MatchingPodsByNodeName(nodeName)); err != nil {
-		klog.Errorf("Failed to get pods for node %s: %v", nodeName, err)
-		return nil, err
-	}
-	return podList, nil
-}
-
-func (nc *NodeClient) GetPodsForNode(ctx context.Context, nodeName string) ([]Pod, error) {
-	// Get Pods for the node, which is a costly operation
-	podList, err := nc.getPodsForNode(ctx, nodeName)
+// ListPodsForNodeSnapshot reads one Kubernetes page and enriches only that page
+// with Crater job metadata. Kubernetes' opaque continue token remains unchanged.
+func (nc *NodeClient) ListPodsForNodeSnapshot(
+	ctx context.Context,
+	nodeName string,
+	options *metav1.ListOptions,
+	admin bool,
+) (pods []Pod, nextCursor, resourceVersion string, err error) {
+	options.FieldSelector = fields.OneTermEqualSelector("spec.nodeName", nodeName).String()
+	page, err := nc.KubeClient.CoreV1().Pods("").List(ctx, *options)
 	if err != nil {
-		return nil, err
+		return nil, "", "", err
 	}
 
-	// Initialize the return value
-	pods := make([]Pod, len(podList.Items))
-	for i := range podList.Items {
-		pod := &podList.Items[i]
+	pods = make([]Pod, len(page.Items))
+	jobNames := make([]string, 0, len(page.Items))
+	seenJobs := make(map[string]struct{}, len(page.Items))
+	for i := range page.Items {
+		pod := &page.Items[i]
 		pods[i] = podInfoFromKubePod(pod)
-		if len(pod.OwnerReferences) == 0 {
-			continue
-		}
-		owner := pod.OwnerReferences[0]
-		if owner.Kind != VCJOBKIND || owner.APIVersion != VCJOBAPIVERSION {
-			continue
-		}
-		// VCJob Pod, Check if it is locked
-		jobDB := query.Job
-		job, err := jobDB.WithContext(ctx).Where(jobDB.JobName.Eq(owner.Name)).First()
-		if err != nil {
-			klog.Errorf("Get job %s failed, err: %v", owner.Name, err)
-			continue
-		}
-		pods[i].Locked = job.LockedTimestamp.After(utils.GetLocalTime())
-		pods[i].PermanentLocked = utils.IsPermanentTime(job.LockedTimestamp)
-		pods[i].LockedTimestamp = metav1.NewTime(job.LockedTimestamp)
-	}
-
-	return pods, nil
-}
-
-// AdminGetPodsForNode 获取节点上的 Pod 列表（管理员接口）
-// 返回包含作业和用户信息的 Pod 列表
-func (nc *NodeClient) AdminGetPodsForNode(ctx context.Context, nodeName string) ([]Pod, error) {
-	podList, err := nc.getPodsForNode(ctx, nodeName)
-	if err != nil {
-		return nil, err
-	}
-
-	// Initialize the return value
-	pods := make([]Pod, len(podList.Items))
-	jobDB := query.Job
-	jobNamespace := config.GetConfig().Namespaces.Job
-
-	for i := range podList.Items {
-		pod := &podList.Items[i]
-
-		pods[i] = podInfoFromKubePod(pod)
-
-		// 如果是 crater 作业命名空间中的 VolcanoJob Pod，查询作业和用户信息
-		if pod.Namespace == jobNamespace && len(pod.OwnerReferences) > 0 {
-			for _, owner := range pod.OwnerReferences {
-				if owner.Kind != VCJOBKIND || owner.APIVersion != VCJOBAPIVERSION {
-					continue
-				}
-
-				job, err := jobDB.WithContext(ctx).
-					Preload(jobDB.User).
-					Preload(jobDB.Account).
-					Where(jobDB.JobName.Eq(owner.Name)).
-					First()
-				if err != nil {
-					klog.Errorf("Get job %s failed, err: %v", owner.Name, err)
-					break
-				}
-
-				// 用户信息
-				pods[i].UserID = job.UserID
-				pods[i].UserRealName = job.User.Name
-				pods[i].UserName = job.User.Nickname
-				if pods[i].UserName == "" {
-					pods[i].UserName = job.User.Name
-				}
-
-				// 账户信息
-				pods[i].AccountID = job.AccountID
-				pods[i].AccountRealName = job.Account.Name
-				pods[i].AccountName = job.Account.Nickname
-				if pods[i].AccountName == "" {
-					pods[i].AccountName = job.Account.Name
-				}
-
-				// 检查锁定状态
-				pods[i].Locked = job.LockedTimestamp.After(utils.GetLocalTime())
-				pods[i].PermanentLocked = utils.IsPermanentTime(job.LockedTimestamp)
-				pods[i].LockedTimestamp = metav1.NewTime(job.LockedTimestamp)
-				break
+		for _, owner := range pod.OwnerReferences {
+			if owner.Kind != VCJOBKIND || owner.APIVersion != VCJOBAPIVERSION {
+				continue
+			}
+			if _, exists := seenJobs[owner.Name]; !exists {
+				seenJobs[owner.Name] = struct{}{}
+				jobNames = append(jobNames, owner.Name)
 			}
 		}
 	}
 
+	if len(jobNames) == 0 {
+		return pods, page.Continue, page.ResourceVersion, nil
+	}
+
+	jobQuery := query.Job
+	db := jobQuery.WithContext(ctx)
+	if admin {
+		db = db.Preload(jobQuery.User).Preload(jobQuery.Account)
+	}
+	jobs, err := db.Where(jobQuery.JobName.In(jobNames...)).Find()
+	if err != nil {
+		// Preserve the Kubernetes page when optional Crater metadata is unavailable.
+		klog.Errorf("Get node Pod job metadata failed, node: %s, err: %v", nodeName, err)
+		return pods, page.Continue, page.ResourceVersion, nil
+	}
+	jobsByName := make(map[string]*model.Job, len(jobs))
+	for _, job := range jobs {
+		jobsByName[job.JobName] = job
+	}
+	enrichNodePodJobs(page.Items, pods, jobsByName, admin)
+	return pods, page.Continue, page.ResourceVersion, nil
+}
+
+func enrichNodePodJobs(kubePods []corev1.Pod, pods []Pod, jobsByName map[string]*model.Job, admin bool) {
+	jobNamespace := config.GetConfig().Namespaces.Job
+	for i := range kubePods {
+		pod := &kubePods[i]
+		for _, owner := range pod.OwnerReferences {
+			if owner.Kind != VCJOBKIND || owner.APIVersion != VCJOBAPIVERSION {
+				continue
+			}
+			job, ok := jobsByName[owner.Name]
+			if !ok {
+				break
+			}
+			// Keep the common Pod response and lock behavior unchanged. Admin-only
+			// identity fields are filled below only for Crater workspace jobs.
+			jobRecord := job
+			pods[i].Locked = jobRecord.LockedTimestamp.After(utils.GetLocalTime())
+			pods[i].PermanentLocked = utils.IsPermanentTime(jobRecord.LockedTimestamp)
+			pods[i].LockedTimestamp = metav1.NewTime(jobRecord.LockedTimestamp)
+			if admin && pod.Namespace == jobNamespace {
+				pods[i].UserID = jobRecord.UserID
+				pods[i].UserRealName = jobRecord.User.Name
+				pods[i].UserName = jobRecord.User.Nickname
+				if pods[i].UserName == "" {
+					pods[i].UserName = jobRecord.User.Name
+				}
+				pods[i].AccountID = jobRecord.AccountID
+				pods[i].AccountRealName = jobRecord.Account.Name
+				pods[i].AccountName = jobRecord.Account.Nickname
+				if pods[i].AccountName == "" {
+					pods[i].AccountName = jobRecord.Account.Name
+				}
+			}
+			break
+		}
+	}
+}
+
+// getPodsForNode loads a node's Pods for internal eviction handling.
+func (nc *NodeClient) getPodsForNode(ctx context.Context, nodeName string) (*corev1.PodList, error) {
+	pods := &corev1.PodList{}
+	if err := nc.List(ctx, pods, indexer.MatchingPodsByNodeName(nodeName)); err != nil {
+		klog.Errorf("Failed to get pods for node %s: %v", nodeName, err)
+		return nil, err
+	}
 	return pods, nil
 }
 

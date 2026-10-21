@@ -271,9 +271,9 @@ crater download ls --no-interactive --json --category model
 {
   "category": "api_error",
   "code": "ERR_NETWORK_FAILURE",
-  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/model-download/models/downloads?category=model\u0026page=1\u0026pageSize=15\": context deadline exceeded",
+  "message": "无法连接服务器：Get \"https://example.invalid/api/v1/model-download/models/downloads?category=model\u0026page=1\u0026page_size=15\": context deadline exceeded",
   "context": {
-    "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads?category=model\u0026page=1\u0026pageSize=15\": context deadline exceeded"
+    "msg": "network error: Get \"https://example.invalid/api/v1/model-download/models/downloads?category=model\u0026page=1\u0026page_size=15\": context deadline exceeded"
   }
 }
 -- zh-CN/26-ls-invalid-category-nojson/argv --

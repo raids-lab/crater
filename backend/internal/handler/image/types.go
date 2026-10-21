@@ -73,7 +73,8 @@ type (
 	}
 
 	GetKanikoRequest struct {
-		ImagePackName string `form:"name" binding:"required"`
+		ImagePackName string `form:"name"`
+		ID            uint   `form:"id"`
 	}
 
 	GetKanikoPodRequest struct {
@@ -230,12 +231,9 @@ type (
 		Archs         []string          `json:"archs"`
 	}
 
-	ListKanikoResponse struct {
-		KanikoInfoList []KanikoInfo `json:"kanikoList"`
-	}
-
 	ImageInfo struct {
 		ID               uint                  `json:"ID"`
+		ImageBuildID     *uint                 `json:"imageBuildID,omitempty"`
 		ImageLink        string                `json:"imageLink"`
 		Description      *string               `json:"description"`
 		CreatedAt        time.Time             `json:"createdAt"`

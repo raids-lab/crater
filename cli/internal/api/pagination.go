@@ -66,3 +66,28 @@ func FetchAllPages[T any](
 		options.Page++
 	}
 }
+
+// fetchAllListPages adapts paginated list endpoints to complete-list consumers.
+func fetchAllListPages[T any](client *Client, path, sort string) ([]T, error) {
+	return fetchAllListPagesWithParams[T](client, path, map[string]string{"sort": sort})
+}
+
+func fetchAllListPagesWithParams[T any](client *Client, path string, params map[string]string) ([]T, error) {
+	return FetchAllPages(ListOptions{PageSize: 200}, func(options ListOptions) (Page[T], error) {
+		var result Response[Page[T]]
+		values := make(map[string]string, len(params)+2)
+		for key, value := range params {
+			values[key] = value
+		}
+		values["page"] = strconv.Itoa(options.Page)
+		values["page_size"] = strconv.Itoa(options.PageSize)
+		response, err := client.rawRequest(values).SetSuccessResult(&result).SetErrorResult(&result).Get(path)
+		if err != nil {
+			return Page[T]{}, &NetworkError{Cause: err}
+		}
+		if err := errorFromResponse(response, result.Code, result.Message); err != nil {
+			return Page[T]{}, err
+		}
+		return result.Data, nil
+	})
+}

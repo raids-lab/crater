@@ -202,13 +202,32 @@ func runNodePods(cmd *cobra.Command, args []string) error {
 	}
 	normalizePodTypes(pods)
 	pods = filterNodePods(pods, options)
-	sort.SliceStable(pods, func(left, right int) bool {
-		if pods[left].Name != pods[right].Name {
-			return pods[left].Name < pods[right].Name
+	sort.SliceStable(pods, func(i, j int) bool {
+		if pods[i].Name != pods[j].Name {
+			return pods[i].Name < pods[j].Name
 		}
-		return pods[left].Namespace < pods[right].Namespace
+		return pods[i].Namespace < pods[j].Namespace
 	})
-	page := paginateList(pods, options.ListOptions)
+
+	listOptions := options.ListOptions.Normalize()
+	page := api.Page[api.PodInfo]{
+		Items:    pods,
+		Total:    int64(len(pods)),
+		Page:     listOptions.Page,
+		PageSize: listOptions.PageSize,
+	}
+	if !options.AllPages {
+		start := (listOptions.Page - 1) * listOptions.PageSize
+		if start >= len(pods) {
+			page.Items = []api.PodInfo{}
+		} else {
+			end := start + listOptions.PageSize
+			if end > len(pods) {
+				end = len(pods)
+			}
+			page.Items = pods[start:end]
+		}
+	}
 	return writeListPage("pods", page, options.AllPages, printNodePodTable)
 }
 

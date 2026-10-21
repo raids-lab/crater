@@ -3,6 +3,7 @@ package operations
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -10,7 +11,9 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
+	"github.com/raids-lab/crater/internal/pagination"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 )
@@ -40,15 +43,51 @@ func (mgr *OperationLogMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.DELETE("", mgr.ClearOperationLogs)
 }
 
-type ListOperationLogsReq struct {
-	Page      int    `form:"page,default=1"`
-	PageSize  int    `form:"limit,default=10"`
-	Type      string `form:"operation_type"`
-	Operator  string `form:"operator"`
-	Target    string `form:"target"`
-	Search    string `form:"search"`
-	StartTime string `form:"start_time"`
-	EndTime   string `form:"end_time"`
+type operationLogPageQuery struct {
+	Page     int    `form:"page,default=1" binding:"min=1"`
+	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
+}
+
+var operationLogSortFields = map[string]string{
+	"createdAt":     "created_at",
+	"updatedAt":     "updated_at",
+	"operator":      "operator",
+	"operationType": "operation_type",
+	"target":        "target",
+	"status":        "status",
+}
+
+func operationLogSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, operationLogSortFields, "id DESC")
+}
+
+func firstOperationLogQueryValue(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(values[0])
+}
+
+func (mgr *OperationLogMgr) bindPageQuery(c *gin.Context) (operationLogPageQuery, error) {
+	var request operationLogPageQuery
+	if err := c.ShouldBindQuery(&request); err != nil {
+		return operationLogPageQuery{}, bizerr.BadRequest.ParameterError.Wrap(
+			err,
+			"invalid operation log list query",
+		)
+	}
+	var err error
+	request.Search, err = pagination.NormalizePageQuery(request.Search, request.Page, request.PageSize)
+	if err != nil {
+		return operationLogPageQuery{}, err
+	}
+	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, "-createdAt", operationLogSortFields)
+	if err != nil {
+		return operationLogPageQuery{}, err
+	}
+	return request, nil
 }
 
 type OperationLogResp struct {
@@ -109,56 +148,10 @@ func (mgr *OperationLogMgr) buildOperatorDisplayMap(c *gin.Context, logs []*mode
 	return result
 }
 
-// ListOperationLogs godoc
-//
-//	@Summary		获取操作日志列表
-//	@Description	获取操作日志列表，支持分页和筛选
-//	@Tags			OperationLog
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param		page			query		int		false	"页码"
-//	@Param		limit		query		int		false	"每页数量"
-//	@Param		operation_type	query		string	false	"操作类型"
-//	@Param		operator		query		string	false	"操作人"
-//	@Param		target		query		string	false	"操作对象"
-//	@Param		search		query		string	false	"模糊搜索关键词"
-//	@Param		start_time		query		string	false	"开始时间，格式例如：2024-01-02T15:04:05Z"
-//	@Param		end_time		query		string	false	"结束时间，格式例如：2024-01-02T15:04:05Z"
-//	@Success		200			{object}	resputil.Response[resputil.List[OperationLogResp]]
-//	@Failure		400			{object}	resputil.Response[any]
-//	@Failure		500			{object}	resputil.Response[any]
-//	@Router			/v1/admin/operation-logs [get]
-func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
-	var req ListOperationLogsReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		klog.Errorf("Bind Query failed, err: %v", err)
-		resputil.BadRequestError(c, "invalid request parameter")
-		return
-	}
-
-	startTime, endTime, err := parseOperationLogTimeRange(req.StartTime, req.EndTime)
-	if err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
-
-	logs, total, err := service.OpLog.List(
-		c,
-		req.Page,
-		req.PageSize,
-		req.Operator,
-		req.Type,
-		req.Target,
-		req.Search,
-		startTime,
-		endTime,
-	)
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("list operation logs failed, err %v", err), resputil.NotSpecified)
-		return
-	}
-
+func (mgr *OperationLogMgr) buildOperationLogResponses(
+	c *gin.Context,
+	logs []*model.OperationLog,
+) []OperationLogResp {
 	operatorDisplay := mgr.buildOperatorDisplayMap(c, logs)
 	logResps := make([]OperationLogResp, 0, len(logs))
 	for _, log := range logs {
@@ -187,11 +180,66 @@ func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
 			UpdatedAt:     log.UpdatedAt,
 		})
 	}
+	return logResps
+}
 
-	resputil.Success(c, resputil.List[OperationLogResp]{
-		Total: total,
-		Items: logResps,
-	})
+// ListOperationLogs returns operation logs using the shared page protocol.
+//
+//	@Summary	获取操作日志分页
+//	@Description	按统一分页协议获取操作日志，筛选和排序在数据库中执行
+//	@Tags		OperationLog
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page		query	int		false	"Page number"
+//	@Param		page_size	query	int		false	"Page size, 1-200"
+//	@Param		search		query	string	false	"Search operator, type, target, or message"
+//	@Param		operation_type	query	string	false	"Filter by operation type"
+//	@Param		operator	query	string	false	"Filter by operator"
+//	@Param		target		query	string	false	"Filter by target"
+//	@Param		start_time	query	string	false	"Start time, RFC3339"
+//	@Param		end_time	query	string	false	"End time, RFC3339"
+//	@Param		sort		query	string	false	"Sort fields"
+//	@Success	200	{object}	resputil.Response[resputil.Page[OperationLogResp]]
+//	@Router		/v1/admin/operation-logs [get]
+func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
+	request, err := mgr.bindPageQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
+	startTime, endTime, err := parseOperationLogTimeRange(
+		c.Query("start_time"),
+		c.Query("end_time"),
+	)
+	if err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid operation log time range"))
+		return
+	}
+
+	logs, total, err := service.OpLog.List(
+		c,
+		request.Page,
+		request.PageSize,
+		firstOperationLogQueryValue(c.QueryArray("operator")),
+		firstOperationLogQueryValue(c.QueryArray("operation_type")),
+		firstOperationLogQueryValue(c.QueryArray("target")),
+		request.Search,
+		startTime,
+		endTime,
+		pagination.SortFields(request.Sort, operationLogSortFields, "id DESC")...,
+	)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list operation logs failed"))
+		return
+	}
+
+	resputil.Success(c, resputil.NewPage(
+		mgr.buildOperationLogResponses(c, logs),
+		total,
+		request.Page,
+		request.PageSize,
+	))
 }
 
 func parseOperationLogTimeRange(

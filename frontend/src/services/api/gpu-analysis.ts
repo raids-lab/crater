@@ -1,5 +1,11 @@
 // 请将此文件保存或替换为 src/services/api/gpu-analysis.ts
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
 import { apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
+import type { IPage } from '@/services/types'
 
 import { IResponse } from '../types'
 // 新增结束
@@ -91,8 +97,12 @@ export interface IGpuAnalysis {
  * GET /v1/admin/gpu-analysis
  * 现在，响应中包含了来自关联 Job 的额外详细信息。
  */
-export const apiAdminListGpuAnalyses = () =>
-  apiV1Get<IResponse<IGpuAnalysis[]>>('admin/gpu-analysis')
+
+export const apiAdminListGpuAnalysesPaged = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IGpuAnalysis>>>('admin/gpu-analysis', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 /**
  * 更新特定分析记录的管理员审核状态。

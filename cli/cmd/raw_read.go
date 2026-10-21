@@ -17,6 +17,7 @@ type rawReadSpec struct {
 	Path       string
 	Params     func(*cobra.Command) map[string]string
 	Table      func(interface{})
+	AllPages   bool
 }
 
 func runRawRead(cmd *cobra.Command, spec rawReadSpec) error {
@@ -24,7 +25,12 @@ func runRawRead(cmd *cobra.Command, spec rawReadSpec) error {
 	if err != nil {
 		return err
 	}
-	data, err := client.GetRaw(spec.Path, spec.Params(cmd))
+	var data interface{}
+	if spec.AllPages {
+		data, err = client.GetRawPages(spec.Path, spec.Params(cmd))
+	} else {
+		data, err = client.GetRaw(spec.Path, spec.Params(cmd))
+	}
 	if err != nil {
 		return cliErrFromAPI(err)
 	}

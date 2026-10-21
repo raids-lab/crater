@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 // Modified code
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { LinkIcon } from 'lucide-react'
 import { useState } from 'react'
@@ -37,8 +37,12 @@ import {
   createViewOnlyConfig,
 } from '@/components/approval-order/approval-order-operations'
 import { CopyButton } from '@/components/button/copy-button'
+import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
 
-import { type ApprovalOrder, listMyApprovalOrder } from '@/services/api/approvalorder'
+import { type ApprovalOrder, apiGetApprovalOrderPage } from '@/services/api/approvalorder'
+import type { IPage } from '@/services/types'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 export const Route = createFileRoute('/portal/more/orders/')({
   component: RouteComponent,
@@ -48,20 +52,15 @@ function RouteComponent() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [urgentApprovalOrder, setUrgentApprovalOrder] = useState<ApprovalOrder | null>(null)
+  const tableState = useRemoteTableState('portal_approvalorder_management', {
+    sorting: [{ id: 'createdAt', desc: true }],
+  })
 
-  const query = useQuery({
-    queryKey: ['portal', 'approvalorders', 'me'],
-    queryFn: () => listMyApprovalOrder(),
-    select: (res) =>
-      [...(res.data ?? [])].sort((a, b) => {
-        // 先按状态排序：待审批 > 已批准 > 已拒绝
-        const statusOrder = { Pending: 0, Approved: 1, Rejected: 2, Canceled: 3 }
-        const statusDiff = (statusOrder[a.status] ?? 4) - (statusOrder[b.status] ?? 4)
-        if (statusDiff !== 0) return statusDiff
-
-        // 状态相同时按创建时间倒序排列（最新的在前）
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      }),
+  const query = useQuery<IPage<ApprovalOrder>, Error>({
+    queryKey: buildRemoteQueryKey('approval-orders-me', tableState.params),
+    queryFn: ({ signal }) =>
+      apiGetApprovalOrderPage(tableState.params, false, signal).then((res) => res.data),
+    placeholderData: keepPreviousData,
   })
 
   const handleViewOrder = (order: ApprovalOrder) => {
@@ -124,6 +123,7 @@ function RouteComponent() {
     <>
       <ApprovalOrderDataTable
         query={query}
+        remoteState={tableState}
         storageKey="portal_approvalorder_management"
         info={{
           title: t('ApprovalOrderTable.info.title'),
