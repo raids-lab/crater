@@ -70,6 +70,7 @@ import {
 
 import useIsAdmin from '@/hooks/use-admin'
 
+import { globalSettings } from '@/utils/store'
 import { configGrafanaJobAtom, configGrafanaNodeAtom } from '@/utils/store/config'
 
 import ResourceBadges from '../badge/resource-badges'
@@ -523,6 +524,7 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
   })
 
   const isAdminView = useIsAdmin()
+  const scheduler = useAtomValue(globalSettings).scheduler
   const queryClient = useQueryClient()
   const podsSnapshotQuery = useInfiniteQuery({
     queryKey: ['nodes', nodeName, 'pods', 'snapshot', isAdminView],
@@ -602,13 +604,21 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
               value: 'batch.volcano.sh/v1alpha1/Job',
               label: 'BASE',
             },
+            {
+              value: 'aisystem.github.com/v1alpha1/AIJob',
+              label: 'EMIAS',
+            },
           ],
-          defaultValues: ['batch.volcano.sh/v1alpha1/Job'],
+          defaultValues: [
+            scheduler === 'volcano'
+              ? 'batch.volcano.sh/v1alpha1/Job'
+              : 'aisystem.github.com/v1alpha1/AIJob',
+          ],
         },
       ],
       getHeader: (key: string) => getHeader(key, t),
     }
-  }, [namespaces, t])
+  }, [namespaces, scheduler, t])
 
   if (!nodeDetail) return null
 
