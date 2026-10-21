@@ -7,17 +7,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/pagination"
+	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/utils"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"k8s.io/klog/v2"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
-
-	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/bizerr"
-	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/utils"
 )
 
 const autoApprovalReason = "without review, approved by system"
@@ -53,6 +53,7 @@ func (mgr *ApprovalOrderMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *ApprovalOrderMgr) RegisterAdmin(g *gin.RouterGroup) {
 	// 管理员接口
 	g.GET("", mgr.ListAllApprovalOrders)                // 获取所有审批工单
+	g.GET("/summary", mgr.GetApprovalOrderSummary)      // 获取审批工单聚合统计
 	g.GET("/:id", mgr.GetApprovalOrderAdmin)            // 管理员通过ID获取审批工单详情
 	g.PUT("/:id/review", mgr.ReviewApprovalOrderAdmin)  // 管理员审核审批工单
 	g.PUT("/check", mgr.UpdateApprovalOrderByJobStatus) // 管理员检查待审批的作业锁定工单有效性
@@ -192,46 +193,6 @@ type ApprovalOrderResp struct {
 	Reviewer   model.UserInfo `json:"reviewer"`
 }
 
-// swagger
-//
-//	@Summary		获取我的审批工单
-//	@Description	获取当前用户创建的所有审批工单
-//	@Tags			approvalorder
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[any]	"成功返回工单列表"
-//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
-//	@Failure		500	{object}	resputil.Response[any]	"服务器错误"
-//	@Router			/v1/approvalorder [get]
-//
-// GetMyApprovalOrders 获取当前用户创建的所有审批工单
-func (mgr *ApprovalOrderMgr) GetMyApprovalOrders(c *gin.Context) {
-	// 1. 获取当前用户信息
-	token := util.GetToken(c)
-	if token.UserID == 0 {
-		resputil.Error(c, "cannot get user id", resputil.NotSpecified)
-		return
-	}
-
-	// 2. 查询当前用户作为创建人的所有工单
-	ao := query.ApprovalOrder
-	creatorOrders, err := ao.WithContext(c).
-		Preload(ao.Creator).  // 预加载创建人信息
-		Preload(ao.Reviewer). // 预加载审批人信息（可能为空）
-		Where(ao.CreatorID.Eq(token.UserID)).
-		Find()
-	if err != nil {
-		klog.Errorf("failed to query created approval orders, userID: %d, err: %v", token.UserID, err)
-		resputil.Error(c, "failed to get my approval orders", resputil.NotSpecified)
-		return
-	}
-
-	// 3. 转换为响应格式
-	result := convertToApprovalOrderResps(creatorOrders)
-	resputil.Success(c, result)
-}
-
 // 辅助函数：将 datatypes.JSONType 转换为 ApprovalOrderContent
 func unmarshalApprovalOrderContent(content datatypes.JSONType[model.ApprovalOrderContent]) model.ApprovalOrderContent {
 	var result model.ApprovalOrderContent
@@ -278,37 +239,6 @@ func convertToApprovalOrderResps(orders []*model.ApprovalOrder) []ApprovalOrderR
 		result = append(result, resp)
 	}
 	return result
-}
-
-// swagger
-//
-//	@Summary		展示所有审批订单
-//	@Description	展示所有审批订单
-//	@Tags			approvalorder
-//	@Accept			json
-//	@Produce		json
-//	@Success		200 {object} resputil.Response[any] "成功返回值描述"
-//	@Failure		400	{object} resputil.Response[any]	"请求参数错误"
-//	@Failure		500	{object} resputil.Response[any] "服务器错误"
-//	@Security		Bearer
-//	@Router			/v1/admin/approvalorder [get]
-func (mgr *ApprovalOrderMgr) ListAllApprovalOrders(c *gin.Context) {
-	klog.Infof("List all approval orders")
-
-	ao := query.ApprovalOrder
-	allOrders, err := ao.WithContext(c).
-		Preload(ao.Creator).  // 预加载创建人信息
-		Preload(ao.Reviewer). // 预加载审批人信息（可能为空）
-		Order(ao.CreatedAt.Desc()).
-		Find()
-	if err != nil {
-		klog.Errorf("failed to query all approval orders, err: %v", err)
-		resputil.Error(c, "failed to list all approval orders", resputil.NotSpecified)
-		return
-	}
-
-	result := convertToApprovalOrderResps(allOrders)
-	resputil.Success(c, result)
 }
 
 type ApprovalOrderreq struct {
@@ -945,4 +875,207 @@ func (mgr *ApprovalOrderMgr) lockJobForApproval(c *gin.Context, jobName string, 
 
 	klog.Infof("auto-locked job %s until %s", jobName, lockTime.Format("2006-01-02 15:04:05"))
 	return nil
+}
+
+const approvalOrderMaxSearchRunes = pagination.MaxSearchRunes
+
+type approvalOrderListQuery struct {
+	Page     int    `form:"page,default=1" binding:"min=1"`
+	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
+}
+
+func bindApprovalOrderListQuery(
+	c *gin.Context,
+) (request approvalOrderListQuery, types, statuses []string, err error) {
+	if err := c.ShouldBindQuery(&request); err != nil {
+		return approvalOrderListQuery{}, nil, nil, bizerr.BadRequest.ParameterError.Wrap(
+			err,
+			"invalid approval order list query",
+		)
+	}
+	request.Search, err = pagination.NormalizePageQuery(request.Search, request.Page, request.PageSize)
+	if err != nil {
+		return approvalOrderListQuery{}, nil, nil, err
+	}
+
+	types, err = validateApprovalOrderFilters(c.QueryArray("type"), approvalOrderTypes)
+	if err != nil {
+		return approvalOrderListQuery{}, nil, nil, err
+	}
+	statuses, err = validateApprovalOrderFilters(c.QueryArray("status"), approvalOrderStatuses)
+	if err != nil {
+		return approvalOrderListQuery{}, nil, nil, err
+	}
+	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, "-createdAt", approvalOrderSortFields)
+	if err != nil {
+		return approvalOrderListQuery{}, nil, nil, err
+	}
+	return request, types, statuses, nil
+}
+
+var approvalOrderTypes = map[string]struct{}{
+	string(model.ApprovalOrderTypeJob):     {},
+	string(model.ApprovalOrderTypeDataset): {},
+}
+
+var approvalOrderStatuses = map[string]struct{}{
+	string(model.ApprovalOrderStatusPending):   {},
+	string(model.ApprovalOrderStatusApproved):  {},
+	string(model.ApprovalOrderStatusRejected):  {},
+	string(model.ApprovalOrderStatusCancelled): {},
+}
+
+func validateApprovalOrderFilters(values []string, allowed map[string]struct{}) ([]string, error) {
+	valid := make([]string, 0, len(values))
+	for _, value := range values {
+		if _, ok := allowed[value]; !ok {
+			return nil, bizerr.BadRequest.ParameterError.New(
+				fmt.Sprintf("unsupported approval order filter %q", value),
+			)
+		}
+		valid = append(valid, value)
+	}
+	return valid, nil
+}
+
+var approvalOrderSortFields = map[string]string{
+	"name":      "name",
+	"type":      "type",
+	"status":    "status",
+	"createdAt": "created_at",
+}
+
+func approvalOrderSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, approvalOrderSortFields, "id DESC")
+}
+
+func (mgr *ApprovalOrderMgr) listApprovalOrdersPage(c *gin.Context, creatorID *uint) {
+	request, types, statuses, err := bindApprovalOrderListQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	q := query.ApprovalOrder
+	db := q.WithContext(c).Preload(q.Creator, q.Reviewer)
+	if creatorID != nil {
+		db = db.Where(q.CreatorID.Eq(*creatorID))
+	}
+	if len(types) > 0 {
+		db = db.Where(q.Type.In(types...))
+	}
+	if len(statuses) > 0 {
+		db = db.Where(q.Status.In(statuses...))
+	}
+	if request.Search != "" {
+		db = db.Where(q.Name.Lower().Like(util.ContainsPattern(request.Search)))
+	}
+	orders, total, err := db.Order(pagination.SortFields(request.Sort, approvalOrderSortFields, "id DESC")...).
+		FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list approval orders failed"))
+		return
+	}
+	resputil.Success(c, resputil.NewPage(convertToApprovalOrderResps(orders), total, request.Page, request.PageSize))
+}
+
+// GetMyApprovalOrders returns the current user's approval orders in a page.
+//
+//	@Summary	获取我的审批工单分页
+//	@Description	按统一分页协议获取当前用户创建的审批工单
+//	@Tags		approvalorder
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page		query	int	false	"Page number"
+//	@Param		page_size	query	int	false	"Page size, 1-200"
+//	@Param		search		query	string	false	"Search order names"
+//	@Param		type		query	string	false	"Filter by order type; repeatable"
+//	@Param		status		query	string	false	"Filter by order status; repeatable"
+//	@Param		sort		query	string	false	"Sort fields"
+//	@Success	200	{object}	resputil.Response[resputil.Page[ApprovalOrderResp]]
+//	@Router		/v1/approvalorder [get]
+func (mgr *ApprovalOrderMgr) GetMyApprovalOrders(c *gin.Context) {
+	token := util.GetToken(c)
+	if token.UserID == 0 {
+		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("cannot get user id"))
+		return
+	}
+	mgr.listApprovalOrdersPage(c, &token.UserID)
+}
+
+// ListAllApprovalOrders returns all approval orders in a page for administrators.
+//
+//	@Summary	管理员获取审批工单分页
+//	@Description	按统一分页协议获取所有审批工单
+//	@Tags		approvalorder
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page		query	int	false	"Page number"
+//	@Param		page_size	query	int	false	"Page size, 1-200"
+//	@Param		search		query	string	false	"Search order names"
+//	@Param		type		query	string	false	"Filter by order type; repeatable"
+//	@Param		status		query	string	false	"Filter by order status; repeatable"
+//	@Param		sort		query	string	false	"Sort fields"
+//	@Success	200	{object}	resputil.Response[resputil.Page[ApprovalOrderResp]]
+//	@Router		/v1/admin/approvalorder [get]
+func (mgr *ApprovalOrderMgr) ListAllApprovalOrders(c *gin.Context) {
+	mgr.listApprovalOrdersPage(c, nil)
+}
+
+type ApprovalOrderSummaryResp struct {
+	TotalPending    int64  `json:"totalPending"`
+	PendingJobDelay int64  `json:"pendingJobDelay"`
+	PendingDataset  int64  `json:"pendingDataset"`
+	UpdatedAt       string `json:"updatedAt"`
+}
+
+// GetApprovalOrderSummary returns aggregate counts independent of the current page.
+//
+//	@Summary	获取审批工单聚合统计
+//	@Description	返回与列表分页无关的审批工单统计数据
+//	@Tags		approvalorder
+//	@Produce	json
+//	@Security	Bearer
+//	@Success	200	{object}	resputil.Response[ApprovalOrderSummaryResp]
+//	@Router		/v1/admin/approvalorder/summary [get]
+func (mgr *ApprovalOrderMgr) GetApprovalOrderSummary(c *gin.Context) {
+	db := query.ApprovalOrder.WithContext(c).UnderlyingDB().Model(&model.ApprovalOrder{})
+	count := func(conditions ...any) (int64, error) {
+		var total int64
+		err := db.Session(&gorm.Session{}).Where(conditions[0], conditions[1:]...).Count(&total).Error
+		return total, err
+	}
+
+	totalPending, err := count("status = ?", string(model.ApprovalOrderStatusPending))
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "count pending approval orders failed"))
+		return
+	}
+	pendingJobDelay, err := count(
+		"status = ? AND type = ? AND COALESCE((content->>'approvalorderExtensionHours')::int, 0) > 0",
+		string(model.ApprovalOrderStatusPending),
+		string(model.ApprovalOrderTypeJob),
+	)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "count pending job approval orders failed"))
+		return
+	}
+	pendingDataset, err := count(
+		"status = ? AND type = ?",
+		string(model.ApprovalOrderStatusPending),
+		string(model.ApprovalOrderTypeDataset),
+	)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "count pending dataset approval orders failed"))
+		return
+	}
+
+	result := ApprovalOrderSummaryResp{
+		TotalPending:    totalPending,
+		PendingJobDelay: pendingJobDelay,
+		PendingDataset:  pendingDataset,
+		UpdatedAt:       time.Now().UTC().Format(time.RFC3339),
+	}
+	resputil.Success(c, result)
 }

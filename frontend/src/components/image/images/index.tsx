@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { linkOptions } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
@@ -52,28 +52,29 @@ import { TimeDistance } from '@/components/custom/time-distance'
 import ImageLabel from '@/components/label/image-label'
 import TooltipLink from '@/components/label/tooltip-link'
 import UserLabel from '@/components/label/user-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
+import { type RemoteTableParams, buildRemoteQueryKey } from '@/components/query-table/remote-state'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
   ImageInfoResponse,
   ImageLinkPair,
-  ListImageResponse,
   UpdateDescription,
   UpdateImageArch,
   UpdateImageTag,
   apiUserChangeImageDescription,
   apiUserChangeImagePublicStatus,
   apiUserDeleteImageList,
-  apiUserListImage,
+  apiUserListImagePage,
   apiUserUpdateImageArchs,
   apiUserUpdateImageTags,
   getHeader,
 } from '@/services/api/imagepack'
-import { IResponse } from '@/services/types'
+import { IPage, IResponse } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { logger } from '@/utils/loglevel'
 import { atomUserInfo } from '@/utils/store'
@@ -90,13 +91,13 @@ import { ValidDialog } from './valid-dialog'
 const adminDetailLinkOptions = linkOptions({
   to: '/admin/env/registry/$name',
   params: { name: '' },
-  search: { tab: '' },
+  search: { tab: '', id: undefined as number | undefined },
 })
 
 const portalDetailLinkOptions = linkOptions({
   to: '/portal/env/registry/$name',
   params: { name: '' },
-  search: { tab: '' },
+  search: { tab: '', id: undefined as number | undefined },
 })
 
 const toolbarConfig: DataTableToolbarConfig = {
@@ -108,6 +109,7 @@ const toolbarConfig: DataTableToolbarConfig = {
       key: 'imageShareStatus',
       title: '可见性',
       option: visibilityTypes,
+      remoteFacets: true,
     },
   ],
   getHeader: getHeader,
@@ -125,7 +127,7 @@ enum Dialogs {
 export const Component: FC = () => {
   return (
     <ImageListTable
-      apiListImage={apiUserListImage}
+      apiListImage={apiUserListImagePage}
       apiDeleteImageList={apiUserDeleteImageList}
       apiChangeImagePublicStatus={apiUserChangeImagePublicStatus}
       apiChangeImageDescription={apiUserChangeImageDescription}
@@ -135,7 +137,10 @@ export const Component: FC = () => {
 }
 
 interface ImageListTableProps {
-  apiListImage: () => Promise<IResponse<ListImageResponse>>
+  apiListImage: (
+    params: RemoteTableParams,
+    signal?: AbortSignal
+  ) => Promise<IResponse<IPage<ImageInfoResponse>>>
   apiDeleteImageList: (idList: number[]) => Promise<IResponse<string>>
   apiChangeImagePublicStatus: (id: number) => Promise<IResponse<string>>
   apiChangeImageDescription: (data: UpdateDescription) => Promise<IResponse<string>>
@@ -154,24 +159,36 @@ export const ImageListTable: FC<ImageListTableProps> = ({
   const [openCheckDialog, setCheckOpenDialog] = useState(false)
   const [selectedLinkPairs, setSelectedLinkPairs] = useState<ImageLinkPair[]>([])
   const isAdminView = useIsAdmin()
+  const tableState = useRemoteTableState(`imagelink_${isAdminMode ? 'admin' : 'user'}`, {
+    sorting: [{ id: 'createdAt', desc: true }],
+  })
 
   const user = useAtomValue(atomUserInfo)
-  const imageInfo = useQuery({
-    queryKey: ['imagelink', 'list'],
-    queryFn: () => apiListImage(),
-    select: (res) =>
-      res.data.imageList.map((i) => ({
-        ...i,
-        visibility: i.imageShareStatus,
-        isPublic: i.imageShareStatus == Visibility.Public,
-        image: `${i.imageLink} (${i.description})`,
-      })),
+  const imageInfo = useQuery<IPage<ImageInfoResponse>, Error>({
+    queryKey: buildRemoteQueryKey(`imagelink-${isAdminMode ? 'admin' : 'user'}`, tableState.params),
+    queryFn: async ({ signal }) => {
+      const response = await apiListImage(tableState.params, signal)
+      return {
+        ...response.data,
+        items: response.data.items.map((item) => ({
+          ...item,
+          visibility: item.imageShareStatus,
+          isPublic: item.imageShareStatus == Visibility.Public,
+          image: `${item.imageLink} (${item.description})`,
+        })),
+      }
+    },
+    placeholderData: keepPreviousData,
   })
 
   const refetchImagePackList = async () => {
     try {
       // 并行发送所有异步请求
-      await Promise.all([queryClient.invalidateQueries({ queryKey: ['imagelink', 'list'] })])
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['remote-list', `imagelink-${isAdminMode ? 'admin' : 'user'}`],
+        }),
+      ])
     } catch (error) {
       logger.error('更新查询失败', error)
     }
@@ -218,7 +235,11 @@ export const ImageListTable: FC<ImageListTableProps> = ({
       accessorKey: 'image',
       header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('image')} />,
       cell: ({ row }) => {
-        if (row.original.imageBuildSource == 1) {
+        if (
+          row.original.imageBuildSource === 1 &&
+          row.original.imageBuildID &&
+          (isAdminView || row.original.userInfo.username === user?.name)
+        ) {
           return (
             <TooltipLink
               name={
@@ -230,6 +251,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
               }
               {...(isAdminView ? adminDetailLinkOptions : portalDetailLinkOptions)}
               params={{ name: row.original.imagepackName }}
+              search={{ tab: '', id: row.original.imageBuildID }}
               tooltip={`查看镜像详情`}
             />
           )
@@ -247,6 +269,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
     {
       id: 'archs',
       accessorKey: 'archs',
+      enableSorting: false,
       header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('archs')} />,
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
@@ -317,13 +340,14 @@ export const ImageListTable: FC<ImageListTableProps> = ({
 
   return (
     <>
-      <DataTable
+      <RemoteDataTable
         info={{
           title: '镜像列表',
           description: '展示可用的公共或私有镜像，在作业提交时可供选择',
         }}
-        storageKey="imagelink"
         query={imageInfo}
+        state={tableState}
+        getRowId={(row) => String(row.ID)}
         columns={columns}
         toolbarConfig={toolbarConfig}
         className="col-span-3"
@@ -427,7 +451,7 @@ export const ImageListTable: FC<ImageListTableProps> = ({
             导入镜像
           </Button>
         ) : null}
-      </DataTable>
+      </RemoteDataTable>
       <ImageUploadForm
         isOpen={openUploadSheet}
         onOpenChange={setOpenUploadSheet}

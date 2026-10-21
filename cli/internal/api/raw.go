@@ -62,3 +62,8 @@ func NamedPath(prefix, name, suffix string) string {
 	}
 	return fmt.Sprintf("%s/%s/%s", prefix, name, suffix)
 }
+
+// GetRawPages preserves complete-list command output over paginated endpoints.
+func (c *Client) GetRawPages(path string, params map[string]string) (interface{}, error) {
+	return fetchAllListPagesWithParams[interface{}](c, path, params)
+}

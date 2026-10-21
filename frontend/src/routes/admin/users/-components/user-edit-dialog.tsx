@@ -81,6 +81,7 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
     onSuccess: () => {
       toast.success(t('userEditDialog.successToast'))
       queryClient.invalidateQueries({ queryKey: ['admin', 'userlist'] })
+      queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-users'] })
       onOpenChange(false)
     },
     onError: () => toast.error(t('userEditDialog.errorToast')),

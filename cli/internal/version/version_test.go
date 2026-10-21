@@ -153,14 +153,20 @@ func TestFileContractCompatibility(t *testing.T) {
 	}
 }
 
-func TestModelDownloadReuseContractCompatibility(t *testing.T) {
-	if APIVersion != 4 || MinSupportedBackendAPIVersion != 3 {
-		t.Fatalf("download reuse contract = %d, minimum backend = %d, want 4/3",
+func TestUnifiedListContractCompatibility(t *testing.T) {
+	if APIVersion != 5 || MinSupportedBackendAPIVersion != 5 {
+		t.Fatalf("paginated list contract = %d, minimum backend = %d, want 5/5",
 			APIVersion, MinSupportedBackendAPIVersion)
 	}
 	for _, backendVersion := range []int{3, 4} {
-		if got := EvaluateCompatibility(backendVersion, 3); got != CompatibilityCompatible {
-			t.Fatalf("backend API %d with minimum CLI 3: got %s, want compatible", backendVersion, got)
+		if got := EvaluateCompatibility(backendVersion, 3); got != CompatibilityBackendTooOld {
+			t.Fatalf("backend API %d uses the legacy template or admin list: got %s, want backend too old", backendVersion, got)
 		}
+	}
+	if got := EvaluateCompatibility(6, 5); got != CompatibilityCompatible {
+		t.Fatalf("backend API 6 with minimum CLI 5: got %s, want compatible", got)
+	}
+	if got := evaluateCompatibility(5, 5, 6, 6); got != CompatibilityCLITooOld {
+		t.Fatalf("CLI API 5 against the paginated admin-list backend: got %s, want CLI too old", got)
 	}
 }

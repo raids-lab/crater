@@ -39,6 +39,7 @@ import DetailPageLog from '@/components/codeblock/detail-page-log'
 import { TimeDistance } from '@/components/custom/time-distance'
 import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page'
 import PageTitle from '@/components/layout/page-title'
+import NotFound from '@/components/placeholder/not-found'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -87,7 +88,7 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
         // 删除操作:先移除查询缓存,再导航到列表页
         // 移除当前镜像的查询缓存,避免路由卸载时重新获取已删除的数据
         if (variables.name) {
-          queryClient.removeQueries({ queryKey: ['imagepack', 'get', variables.name] })
+          queryClient.removeQueries({ queryKey: ['imagepack', 'get'] })
         }
         const targetPath = isAdmin ? '/admin/env/registry' : '/portal/env/registry'
         await navigate({ to: targetPath })
@@ -291,8 +292,21 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
   )
 }
 
-const RegistryDetail = ({ name, ...props }: DetailPageCoreProps & { name: string }) => {
-  const { data: kanikoInfo } = useQuery(queryBuildDetail(name))
+const RegistryDetail = ({
+  name,
+  id,
+  isAdmin,
+  ...props
+}: DetailPageCoreProps & {
+  name: string
+  id?: number
+  isAdmin?: boolean
+}) => {
+  const { data: kanikoInfo, isError } = useQuery(queryBuildDetail(name, id, isAdmin))
+
+  if (isError) {
+    return <NotFound />
+  }
 
   return <RegistryInfo kanikoInfo={kanikoInfo} name={name} {...props} />
 }

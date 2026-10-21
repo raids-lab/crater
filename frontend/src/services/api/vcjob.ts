@@ -703,17 +703,6 @@ export interface CronJobRecord {
   }
 }
 
-export interface CronJobRecordListReq {
-  name?: string[]
-  startTime?: string
-  endTime?: string
-  status?: string
-}
-
-export interface CronJobRecordListResp {
-  records: CronJobRecord[]
-}
-
 export const apiAdminCronJobNameList = () =>
   apiV1Post<IResponse<string[]>>('admin/operations/cronjob/config/name')
 
@@ -722,8 +711,21 @@ export const apiAdminCronJobRecordTimeRange = () =>
     'admin/operations/cronjob/record/time'
   )
 
-export const apiAdminCronJobRecordList = (param: CronJobRecordListReq) =>
-  apiV1Post<IResponse<CronJobRecordListResp>>('admin/operations/cronjob/record/list', param)
+export const apiAdminCronJobRecordPage = (
+  params: RemoteTableParams,
+  options: { startTime?: string; endTime?: string; scopeNames?: string[] },
+  signal?: AbortSignal
+) => {
+  const searchParams = buildRemoteSearchParams(params)
+  if (options.startTime) searchParams.set('start_time', options.startTime)
+  if (options.endTime) searchParams.set('end_time', options.endTime)
+  for (const name of options.scopeNames ?? []) searchParams.append('scope_name', name)
+
+  return apiV1Get<IResponse<IPage<CronJobRecord>>>('admin/operations/cronjob/record/list', {
+    searchParams,
+    signal,
+  })
+}
 
 export interface DeleteCronJobRecordsReq {
   id?: number[]

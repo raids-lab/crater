@@ -73,8 +73,8 @@ function RouteComponent() {
 
   const accountUsersQuery = useQuery({
     queryKey: ['account', pid, 'users'],
-    queryFn: () => apiUserInProjectList(pid),
-    select: (res) => res.data,
+    queryFn: () => apiUserInProjectList(pid, { page: 1, page_size: 1, filters: {} }),
+    select: (res) => res.data.total,
     enabled: !!accountInfo, // 只在账户信息加载成功后再查询用户列表
   })
 
@@ -123,7 +123,7 @@ function RouteComponent() {
     {
       icon: Users,
       title: t('accountDetail.info.userCount'),
-      value: accountUsersQuery.data?.length || '加载中...',
+      value: accountUsersQuery.data ?? '加载中...',
     },
     {
       icon: Layers,

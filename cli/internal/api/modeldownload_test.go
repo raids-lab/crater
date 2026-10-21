@@ -30,11 +30,11 @@ func TestListDownloadPageSendsPagingAndServerFilters(t *testing.T) {
 		}
 		query := request.URL.Query()
 		want := map[string][]string{
-			"page":     {"2"},
-			"pageSize": {"25"},
-			"category": {"model"},
-			"status":   {"Downloading"},
-			"search":   {"Qwen"},
+			"page":      {"2"},
+			"page_size": {"25"},
+			"category":  {"model"},
+			"status":    {"Downloading"},
+			"search":    {"Qwen"},
 		}
 		if !reflect.DeepEqual(map[string][]string(query), want) {
 			t.Fatalf("unexpected query: %#v", query)
@@ -101,17 +101,17 @@ func TestListDownloadPageNormalizesEmptyCollections(t *testing.T) {
 	}
 }
 
-func TestListDownloadsKeepsLegacyUnpagedContract(t *testing.T) {
+func TestListDownloadsAggregatesSharedPages(t *testing.T) {
 	client := modelDownloadTestClient(t, func(writer http.ResponseWriter, request *http.Request) {
-		if got := request.URL.Query().Get("page"); got != "" {
-			t.Fatalf("legacy request unexpectedly contains page=%q", got)
+		if got := request.URL.Query().Get("page"); got != "1" {
+			t.Fatalf("first page = %q, want 1", got)
 		}
 		if got := request.URL.Query().Get("category"); got != "dataset" {
 			t.Fatalf("category = %q, want dataset", got)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(writer).Encode(Response[[]ModelDownloadResp]{
-			Data: []ModelDownloadResp{{ID: 9}},
+		_ = json.NewEncoder(writer).Encode(Response[Page[ModelDownloadResp]]{
+			Data: Page[ModelDownloadResp]{Items: []ModelDownloadResp{{ID: 9}}, Total: 1},
 		})
 	})
 
@@ -130,12 +130,12 @@ func TestListAdminDownloadsUsesAdminEndpoint(t *testing.T) {
 		if request.Method != http.MethodGet || request.URL.Path != wantPath {
 			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
 		}
-		if request.URL.RawQuery != "" {
-			t.Fatalf("admin list unexpectedly sent query: %q", request.URL.RawQuery)
+		if request.URL.Query().Get("page_size") != "200" {
+			t.Fatalf("admin list missing page size: %q", request.URL.RawQuery)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(writer).Encode(Response[[]ModelDownloadResp]{
-			Data: []ModelDownloadResp{{ID: 11, Name: "Qwen/Qwen3"}},
+		_ = json.NewEncoder(writer).Encode(Response[Page[ModelDownloadResp]]{
+			Data: Page[ModelDownloadResp]{Items: []ModelDownloadResp{{ID: 11, Name: "Qwen/Qwen3"}}, Total: 1},
 		})
 	})
 

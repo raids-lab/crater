@@ -1,10 +1,24 @@
 package api
 
+import (
+	"net/url"
+	"strconv"
+)
+
 type NodeClient interface {
 	ListNodes() ([]NodeBrief, error)
 	GetNode(name string) (*NodeDetail, error)
 	GetNodePods(name string) ([]PodInfo, error)
 	GetNodeGPU(name string) (*NodeGPUInfo, error)
+}
+
+type NodePodsSnapshotPage struct {
+	Items           []PodInfo `json:"items"`
+	NextCursor      *string   `json:"next_cursor"`
+	HasMore         bool      `json:"has_more"`
+	SnapshotID      string    `json:"snapshot_id"`
+	ResourceVersion string    `json:"resource_version"`
+	ObservedAt      string    `json:"observed_at"`
 }
 
 type NodeTaint struct {
@@ -139,16 +153,38 @@ func (c *Client) GetNode(name string) (*NodeDetail, error) {
 }
 
 func (c *Client) GetNodePods(name string) ([]PodInfo, error) {
-	var result Response[[]PodInfo]
+	const pageLimit = 200
+	items := make([]PodInfo, 0)
+	cursor := ""
+	for {
+		page, err := c.ListNodePodsSnapshot(name, pageLimit, cursor)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, page.Items...)
+		if page.NextCursor == nil || *page.NextCursor == "" {
+			return items, nil
+		}
+		cursor = *page.NextCursor
+	}
+}
+
+func (c *Client) ListNodePodsSnapshot(name string, limit int, cursor string) (NodePodsSnapshotPage, error) {
+	values := url.Values{"limit": {strconv.Itoa(limit)}}
+	if cursor != "" {
+		values.Set("cursor", cursor)
+	}
+	var result Response[NodePodsSnapshotPage]
 	resp, err := c.httpClient.R().
 		SetSuccessResult(&result).
 		SetErrorResult(&result).
-		Get(NodeListPath + "/" + name + "/pods")
+		SetQueryParamsFromValues(values).
+		Get(NodeListPath + "/" + url.PathEscape(name) + "/pods")
 	if err != nil {
-		return nil, &NetworkError{Cause: err}
+		return NodePodsSnapshotPage{}, &NetworkError{Cause: err}
 	}
 	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return nil, err
+		return NodePodsSnapshotPage{}, err
 	}
 	return result.Data, nil
 }

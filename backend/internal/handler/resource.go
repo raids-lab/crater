@@ -1,20 +1,28 @@
 package handler
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/pagination"
+	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/crclient"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-
-	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/internal/service"
 )
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
@@ -25,13 +33,19 @@ func init() {
 type ResourceMgr struct {
 	name           string
 	kubeClient     kubernetes.Interface
+	nodeClient     *crclient.NodeClient
 	billingService *service.BillingService
 }
 
 func NewResourceMgr(conf *RegisterConfig) Manager {
 	return &ResourceMgr{
-		name:           "resources",
-		kubeClient:     conf.KubeClient,
+		name:       "resources",
+		kubeClient: conf.KubeClient,
+		nodeClient: &crclient.NodeClient{
+			Client:           conf.Client,
+			KubeClient:       conf.KubeClient,
+			PrometheusClient: conf.PrometheusClient,
+		},
 		billingService: conf.BillingService,
 	}
 }
@@ -50,9 +64,92 @@ func (mgr *ResourceMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ResourceMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.ListResource)
+	g.GET("/snapshot", mgr.ListNodeSnapshot)
 	g.GET("/billing/prices", mgr.ListBillingPrices)
 	g.GET("/:id/networks", mgr.GetGPUNetworks)
 	g.GET(":id/vgpu", mgr.GetGPUVGPUResources)
+}
+
+type NodeSnapshotQuery struct {
+	Limit           int64  `form:"limit"`
+	Cursor          string `form:"cursor"`
+	Selector        string `form:"selector"`
+	ResourceVersion string `form:"resource_version"`
+}
+
+type NodeSnapshotPage struct {
+	Items           []crclient.NodeBriefInfo `json:"items"`
+	NextCursor      *string                  `json:"next_cursor"`
+	HasMore         bool                     `json:"has_more"`
+	SnapshotID      string                   `json:"snapshot_id"`
+	ResourceVersion string                   `json:"resource_version"`
+	ObservedAt      string                   `json:"observed_at"`
+}
+
+// ListNodeSnapshot godoc
+//
+//	@Summary		获取 Kubernetes 节点快照
+//	@Description	使用 Kubernetes limit/continue 返回只读节点快照，不返回数据库 total
+//	@Tags		Resource
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		limit	query	int	false	"每页数量，1-200"
+//	@Param		cursor	query	string	false	"不透明 continue 游标"
+//	@Param		selector	query	string	false	"Kubernetes label selector"
+//	@Param		resource_version	query	string	false	"Kubernetes resource version"
+//	@Success	200	{object}	resputil.Response[NodeSnapshotPage]
+//	@Failure	409	{object}	resputil.Response[any]	"游标过期"
+//	@Router		/v1/resources/snapshot [get]
+//
+// The handler serves a read-only Kubernetes NodeList using an opaque
+// Kubernetes continue token. It deliberately does not expose a database total.
+func (mgr *ResourceMgr) ListNodeSnapshot(c *gin.Context) {
+	var req NodeSnapshotQuery
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid snapshot query"))
+		return
+	}
+	if req.Limit == 0 {
+		req.Limit = 50
+	}
+	if req.Limit < 1 || req.Limit > 200 {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("limit must be between 1 and 200"))
+		return
+	}
+
+	items, next, resourceVersion, err := mgr.nodeClient.ListNodesSnapshot(c, &metav1.ListOptions{
+		Limit:           req.Limit,
+		Continue:        req.Cursor,
+		LabelSelector:   req.Selector,
+		ResourceVersion: req.ResourceVersion,
+	})
+	if err != nil {
+		if apierrors.IsResourceExpired(err) || apierrors.IsGone(err) {
+			resputil.HandleError(c, bizerr.Conflict.CursorExpired.New("snapshot cursor expired; refresh and retry"))
+			return
+		}
+		if apierrors.IsInvalid(err) {
+			resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid node snapshot query"))
+			return
+		}
+		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "list node snapshot failed"))
+		return
+	}
+
+	var nextCursor *string
+	if next != "" {
+		nextCursor = &next
+	}
+	hashInput := resourceVersion + "\x00" + req.Selector
+	hash := sha256.Sum256([]byte(hashInput))
+	resputil.Success(c, NodeSnapshotPage{
+		Items:           items,
+		NextCursor:      nextCursor,
+		HasMore:         next != "",
+		SnapshotID:      hex.EncodeToString(hash[:8]),
+		ResourceVersion: resourceVersion,
+		ObservedAt:      time.Now().UTC().Format(time.RFC3339Nano),
+	})
 }
 
 func (mgr *ResourceMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -71,12 +168,6 @@ func (mgr *ResourceMgr) RegisterAdmin(g *gin.RouterGroup) {
 }
 
 type (
-	ListResourceReq struct {
-		// VendorDomain of the resource in parameter (optional)
-		WithVendorDomain bool    `form:"withVendorDomain"`
-		DomainPrefix     *string `form:"domainPrefix" binding:"omitempty,hostname_rfc1123"`
-	}
-
 	ResourceResp struct {
 		ID              uint                      `json:"ID"`
 		Name            string                    `json:"name"`
@@ -118,48 +209,18 @@ func buildResourceResp(modelResource *model.Resource) ResourceResp {
 	}
 }
 
-// ListResource godoc
-//
-//	@Summary		Get a list of resources based on the specified parameters
-//	@Description	If the vendorDomain parameter is provided, the API will return a list of resources that match the specified vendor domain.
-//	@Tags			Resource
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			vendorDomain	query		string					false	"Vendor domain of the resource (For example: 'nvidia.com'	)"
-//	@Success		200				{object}	resputil.Response[any]	"Success"
-//	@Failure		400				{object}	resputil.Response[any]	"Request parameter error"
-//	@Failure		500				{object}	resputil.Response[any]	"Other errors"
-//	@Router			/v1/resources [get]
-func (mgr *ResourceMgr) ListResource(c *gin.Context) {
-	var req ListResourceReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("failed to bind request: %v", err))
-		return
-	}
-
-	r := query.Resource
-	q := r.WithContext(c).Order(r.Priority.Desc())
-	if req.WithVendorDomain {
-		// default use nvidia.com
-		q = q.Where(r.Type.Eq(string(model.ResourceTypeGPU)))
-	}
-	resources, err := q.Find()
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("failed to list resources: %v", err), resputil.NotSpecified)
-		return
-	}
-
-	resp := make([]ResourceResp, 0, len(resources))
-	for i := range resources {
-		resp = append(resp, buildResourceResp(resources[i]))
-	}
-	resputil.Success(c, resp)
-}
-
 func (mgr *ResourceMgr) ListBillingPrices(c *gin.Context) {
 	r := query.Resource
-	resources, err := r.WithContext(c).Order(r.Priority.Desc()).Find()
+	resourceIDs, err := bindResourcePriceIDs(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resourceQuery := r.WithContext(c)
+	if len(resourceIDs) > 0 {
+		resourceQuery = resourceQuery.Where(r.ID.In(resourceIDs...))
+	}
+	resources, err := resourceQuery.Order(r.Priority.Desc()).Find()
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("failed to list billing prices: %v", err), resputil.NotSpecified)
 		return
@@ -956,4 +1017,122 @@ func (mgr *ResourceMgr) DeleteGPUVGPULink(c *gin.Context) {
 	}
 
 	resputil.Success(c, nil)
+}
+
+type resourcePageQuery struct {
+	Page             int     `form:"page,default=1" binding:"min=1"`
+	PageSize         int     `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search           string  `form:"search"`
+	Sort             string  `form:"sort"`
+	WithVendorDomain bool    `form:"withVendorDomain"`
+	DomainPrefix     *string `form:"domainPrefix" binding:"omitempty,hostname_rfc1123"`
+}
+
+var resourcePageSortFields = map[string]string{
+	"name":            "resource_name",
+	"type":            "type",
+	"amount":          "amount",
+	"amountSingleMax": "amount_single_max",
+	"format":          "format",
+	"priority":        "priority",
+	"label":           "label",
+}
+
+var resourcePageTypes = map[string]struct{}{
+	string(model.ResourceTypeGPU):  {},
+	string(model.ResourceTypeRDMA): {},
+	string(model.ResourceTypeVGPU): {},
+}
+
+func resourcePageSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, resourcePageSortFields, "id ASC")
+}
+
+func bindResourcePageQuery(c *gin.Context) (resourcePageQuery, []string, error) {
+	var request resourcePageQuery
+	if err := c.ShouldBindQuery(&request); err != nil {
+		return resourcePageQuery{}, nil, bizerr.BadRequest.ParameterError.Wrap(
+			err,
+			"invalid resource list query",
+		)
+	}
+	var err error
+	request.Search, err = pagination.NormalizePageQuery(request.Search, request.Page, request.PageSize)
+	if err != nil {
+		return resourcePageQuery{}, nil, err
+	}
+	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, "name", resourcePageSortFields)
+	if err != nil {
+		return resourcePageQuery{}, nil, err
+	}
+
+	resourceTypes := c.QueryArray("type")
+	for _, resourceType := range resourceTypes {
+		if _, ok := resourcePageTypes[resourceType]; !ok {
+			return resourcePageQuery{}, nil, bizerr.BadRequest.ParameterError.New(
+				fmt.Sprintf("unsupported resource type %q", resourceType),
+			)
+		}
+	}
+	return request, resourceTypes, nil
+}
+
+func bindResourcePriceIDs(c *gin.Context) ([]uint, error) {
+	return pagination.ParsePositiveUintValues(c.QueryArray("resource_id"), "resource_id")
+}
+
+// ListResource returns resources using the shared page protocol.
+//
+//	@Summary	分页获取集群资源
+//	@Tags		Resource
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page				query	int		false	"Page number"
+//	@Param		page_size			query	int		false	"Page size, 1-200"
+//	@Param		search				query	string	false	"Search resource name, label, or vendor"
+//	@Param		type				query	string	false	"Resource type filter; repeatable"
+//	@Param		sort				query	string	false	"Sort fields"
+//	@Param		withVendorDomain	query	bool	false	"Only resources with GPU type"
+//	@Param		domainPrefix		query	string	false	"Vendor domain prefix"
+//	@Success	200					{object}	resputil.Response[resputil.Page[ResourceResp]]
+//	@Router		/v1/resources [get]
+func (mgr *ResourceMgr) ListResource(c *gin.Context) {
+	mgr.listResourcePageWithDB(c, query.GetDB())
+}
+
+func (mgr *ResourceMgr) listResourcePageWithDB(c *gin.Context, baseDB *gorm.DB) {
+	request, resourceTypes, err := bindResourcePageQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	r := query.Use(baseDB).Resource
+	db := r.WithContext(c).Preload(r.Networks)
+	if request.WithVendorDomain {
+		db = db.Where(r.Type.Eq(string(model.ResourceTypeGPU)))
+	}
+	if request.DomainPrefix != nil {
+		db = db.Where(r.VendorDomain.Eq(*request.DomainPrefix))
+	}
+	if len(resourceTypes) > 0 {
+		db = db.Where(r.Type.In(resourceTypes...))
+	}
+	if request.Search != "" {
+		pattern := util.ContainsPattern(request.Search)
+		db = db.Where(field.Or(
+			r.ResourceName.Lower().Like(pattern), r.Label.Lower().Like(pattern),
+			r.VendorDomain.Lower().Like(pattern), r.ResourceType.Lower().Like(pattern),
+		))
+	}
+	resources, total, err := db.Order(pagination.SortFields(request.Sort, resourcePageSortFields, "id ASC")...).
+		FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list resources failed"))
+		return
+	}
+	items := make([]ResourceResp, 0, len(resources))
+	for _, resource := range resources {
+		items = append(items, buildResourceResp(resource))
+	}
+	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
 }

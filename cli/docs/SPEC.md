@@ -28,9 +28,11 @@
 
 ### 列表分页
 
+后端列表使用原列表路径和统一 `{items,total,page,page_size}` 响应。完整列表命令在 API 层逐页聚合；需要本地筛选的命令取得全部候选页后再筛选，任意页失败均不输出部分成功结果。前端与 CLI 使用同一列表实现，不保留独立的 `/page` 兼容入口。模型下载列表额外保留 `summary`，查询参数统一为 `page_size`。
+
 高基数列表按 [COMMANDS.md](./COMMANDS.md) 的指令级约定采用公共 `--page`、`--page-size`、`--all-pages` 契约；不得因此机械截断未采用这些 flags 的低基数列表。
 
-- `--page` 默认 `1` 且必须大于等于 `1`；`--page-size` 默认 `15`。公共最大值为 `200`，若后端端点有更小上限（当前 `download ls` 及兼容的 `model-download ls`/管理员列表为 `100`），命令必须使用该上限并写入 COMMANDS。
+- `--page` 默认 `1` 且必须大于等于 `1`；`--page-size` 默认 `15`。公共最大值为 `200`；`download ls` 及兼容的 `model-download ls`/管理员列表继续将命令级上限限制为 `100`。各命令的更小上限必须写入 COMMANDS。
 - `--all-pages` 从第一页开始返回完整筛选结果，省略 JSON `data.pagination`。服务端分页命令在用户未显式提供 `--page-size` 时采用端点允许的最大批量，显式合法值优先；默认分页 JSON 在 `data` 中同时返回资源数组和 `pagination: {page, page_size, total}`，人类可读表格应显示公共页摘要。
 - 后端支持分页与筛选时优先透传，由 `internal/api` 暴露 typed page DTO；后端只返回完整数组时，在 `cmd` 层先完成筛选和稳定排序，再本地分页。若一个命令同时有服务端分页与本地筛选，必须先顺序读取全部候选服务端页，再本地筛选和重新分页，确保 `total` 与页面边界针对最终筛选结果。
 - 分页字段错误必须与状态、类型、namespace 等同一次调用中的其它本地用法错误一起收集，经 `errUsageFromIssues` 一次返回；不得先因分页参数 fail-fast 而丢失其它可同时发现的问题。
@@ -97,7 +99,7 @@
 这套机制只对齐用户自行管理的 CLI 与运维团队部署的后端，不包含随平台部署的前端。版本更新决策以根 [CONTRIBUTING.md](../../CONTRIBUTING.md#cli--backend-api-compatibility-versions) 为准。
 
 - CLI 的 `APIVersion` 与 `MinSupportedBackendAPIVersion` 定义在 `internal/version/version.go`；它们分别表示 CLI 编译时所依据的共享契约版本、CLI 能支持的最低后端契约版本。
-- 当前共享契约版本为 `4`，标识模型/数据集按 `name + category` 跨来源、版本复用的语义。双方最低支持版本仍为 `3`：基本请求仍兼容，不因复用语义变化强制淘汰版本 `3` 的 CLI 或后端；接口 URL 中的 `/api/v1` 不变。
+- 当前共享契约版本为 `5`，提供 CLI 使用的分页列表契约；CLI 与后端都不再兼容分页前的列表响应，因此双方最低对端版本均为 `5`。列表复用原路径，接口 URL 中的 `/api/v1` 不变；该契约计数与 URL 版本分开管理。
 - 正式 API 契约从 `1` 开始，`0` 不得作为受支持的正式契约发布。握手接口明确返回 `0` 时，CLI 将其作为早于正式契约的旧版本参与最低版本比较，以便输出具体的不兼容条件；字段缺失或负数仍表示未知或非法。
 - 所有经统一客户端发出的请求都带 `User-Agent: crater-cli/<product-version>` 和 `X-Crater-API-Version: <APIVersion>`。两者仅用于日志与诊断，不能作为服务端兼容性判断、鉴权或强制拦截依据。
 - 只有显式执行 `crater compatibility` 时才调用一次公开的 `GET /api/cli/compatibility`。响应提供后端 `apiVersion` 与 `minSupportedCliApiVersion`，以及产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间；CLI 只使用两个 API 版本字段检查当前 CLI 是否低于后端最低要求、当前后端是否低于 CLI 最低要求。构建信息仅用于展示和排障，缺失时显示未知，不得影响兼容性结论。

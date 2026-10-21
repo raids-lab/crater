@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	// v4 allows model/dataset downloads to reuse another source or revision.
-	APIVersion = 4
-	// v3 first exposes /admin/system-config/scheduler-extender, which this CLI calls with no fallback.
-	MinSupportedBackendAPIVersion    = 3
+	// v5 consolidates paginated lists, including cursor-based node Pod snapshots.
+	APIVersion = 5
+	// v5 requires the backend pagination contract and has no fallback to legacy list responses.
+	MinSupportedBackendAPIVersion    = 5
 	APIVersionHeader                 = "X-Crater-API-Version"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"
