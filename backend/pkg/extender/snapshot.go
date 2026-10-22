@@ -2,11 +2,13 @@ package extender
 
 import (
 	"context"
+	"sort"
 	"strconv"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -22,6 +24,8 @@ import (
 // pod group supplies the admission phase. The pair is strictly 1:1.
 type jobView struct {
 	name           string
+	namespace      string
+	uid            types.UID
 	userID         uint
 	queue          string
 	resources      v1.ResourceList
@@ -90,6 +94,14 @@ func (s *Server) buildSnapshot(ctx context.Context, current *settings) (*snapsho
 			snap.usageByOwner[key] = utils.SumResources(snap.usageByOwner[key], view.resources)
 		}
 	}
+	// Oldest first, so blockerFor names the longest-waiting blocker.
+	sort.Slice(snap.views, func(i, j int) bool {
+		a, b := snap.views[i], snap.views[j]
+		if !a.createdAt.Equal(b.createdAt) {
+			return a.createdAt.Before(b.createdAt)
+		}
+		return a.name < b.name
+	})
 	return snap, nil
 }
 
@@ -119,6 +131,8 @@ func newJobView(job *batch.Job, group *scheduling.PodGroup) *jobView {
 	resources := vcjobservice.CalculateJobResources(job)
 	view := &jobView{
 		name:           job.Name,
+		namespace:      job.Namespace,
+		uid:            job.UID,
 		userID:         annotationUserID(job.Annotations),
 		queue:          job.Spec.Queue,
 		resources:      resources,
@@ -136,6 +150,17 @@ func newJobView(job *batch.Job, group *scheduling.PodGroup) *jobView {
 		}
 	}
 	return view
+}
+
+// reference addresses events at the vcjob without fetching it from the cache again.
+func (view *jobView) reference() *v1.ObjectReference {
+	return &v1.ObjectReference{
+		Kind:       vcJobKind,
+		APIVersion: batch.SchemeGroupVersion.String(),
+		Namespace:  view.namespace,
+		Name:       view.name,
+		UID:        view.uid,
+	}
 }
 
 // isWaiting covers the window before volcano admits the job; the empty phase is the state a freshly
