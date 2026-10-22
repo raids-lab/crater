@@ -219,7 +219,7 @@ export function LoginForm({
                         <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="top" align="start" className="max-w-64">
+                    <TooltipContent side="top" align="center" className="max-w-64">
                       <p>
                         用户名须为 2–20
                         个字符，以小写字母开头，以小写字母或数字结尾，中间可包含小写字母、数字和中划线。大写字母会自动转为小写。
