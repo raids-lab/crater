@@ -15,20 +15,21 @@
  */
 import { z } from 'zod'
 
-export const createLoginFormSchema = (t: (key: string) => string) =>
-  z.object({
-    username: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .min(1, { message: t('auth.usernameRequired') })
-      .max(20, { message: t('auth.usernameMaxLength') })
-      .regex(/^[a-z][a-z0-9-]*[a-z0-9]$/, { message: t('auth.usernameInvalid') }),
-    password: z
-      .string()
-      .min(1, { message: t('auth.passwordRequired') })
-      .max(20, { message: t('auth.passwordMaxLength') }),
-    acceptPrivacy: z.boolean().refine((value) => value === true, {
-      message: t('auth.privacyRequired'),
+export const loginFormSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(1, { message: '用户名不能为空' })
+    .max(20, { message: '用户名最多 20 个字符' })
+    .regex(/^[a-z][a-z0-9-]*[a-z0-9]$/, {
+      message: '用户名须以小写字母开头，以小写字母或数字结尾，只能包含小写字母、数字和中划线',
     }),
-  })
+  password: z
+    .string()
+    .min(1, { message: '密码不能为空' })
+    .max(20, { message: '密码最多 20 个字符' }),
+  acceptPrivacy: z.boolean().refine((value) => value === true, {
+    message: '请先阅读并同意隐私政策方可登录',
+  }),
+})

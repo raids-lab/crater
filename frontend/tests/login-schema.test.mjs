@@ -17,7 +17,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
 import { createFormControl } from 'react-hook-form'
 import ts from 'typescript'
@@ -39,8 +38,7 @@ vm.runInNewContext(outputText, {
     return { z }
   },
 })
-const { createLoginFormSchema } = schemaModule.exports
-const schema = createLoginFormSchema((key) => key)
+const { loginFormSchema: schema } = schemaModule.exports
 const resolver = zodResolver(schema)
 const validForm = { username: 'alice', password: ' PaSsWord ', acceptPrivacy: true }
 const resolve = (values) => resolver(values, {}, { fields: {}, shouldUseNativeValidation: false })
@@ -107,25 +105,4 @@ test('password and privacy validation still prevent submission', async () => {
   }
   const result = await resolve({ ...validForm, acceptPrivacy: false })
   assert.ok(result.errors.acceptPrivacy)
-})
-
-test('every locale includes the login rules and validation messages', () => {
-  for (const locale of ['zhCN', 'enUS', 'ja', 'ko']) {
-    const path = fileURLToPath(
-      new URL(`../src/i18n/locales/${locale}/translation.json`, import.meta.url)
-    )
-    const messages = JSON.parse(readFileSync(path, 'utf8'))
-    for (const key of [
-      'usernameHint',
-      'usernameInvalid',
-      'usernameRequired',
-      'usernameMaxLength',
-      'passwordRequired',
-      'passwordMaxLength',
-      'privacyRequired',
-    ]) {
-      assert.equal(typeof messages[`auth.${key}`], 'string')
-      assert.ok(messages[`auth.${key}`].length > 0)
-    }
-  }
 })

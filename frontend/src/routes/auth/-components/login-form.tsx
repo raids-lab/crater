@@ -18,9 +18,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { HTTPError } from 'ky'
+import { HelpCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -45,7 +45,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -53,6 +52,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import DocsButton from '@/components/button/docs-button'
 import LoadableButton from '@/components/button/loadable-button'
@@ -74,7 +74,7 @@ import { IErrorResponse, IResponse } from '@/services/types'
 import { atomPrivacyAccepted, atomUserContext, atomUserInfo, useResetStore } from '@/utils/store'
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 
-import { createLoginFormSchema } from './login-schema'
+import { loginFormSchema as formSchema } from './login-schema'
 
 export type LoginSearch = {
   redirect?: string
@@ -96,8 +96,6 @@ export function LoginForm({
   onForgotPasswordClick,
   searchParams,
 }: LoginFormProps) {
-  const { t } = useTranslation()
-  const formSchema = createLoginFormSchema(t)
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -209,7 +207,26 @@ export function LoginForm({
             name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>账号</FormLabel>
+                <div className="flex items-center gap-1.5">
+                  <FormLabel>账号</FormLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="用户名规则"
+                        className="text-muted-foreground/60 hover:text-muted-foreground focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                      >
+                        <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" align="start" className="max-w-64">
+                      <p>
+                        用户名须为 2–20
+                        个字符，以小写字母开头，以小写字母或数字结尾，中间可包含小写字母、数字和中划线。大写字母会自动转为小写。
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <FormControl>
                   <Input
                     autoComplete="username"
@@ -220,7 +237,6 @@ export function LoginForm({
                     }}
                   />
                 </FormControl>
-                <FormDescription className="text-xs">{t('auth.usernameHint')}</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
