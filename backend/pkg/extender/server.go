@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -47,6 +48,7 @@ type sessionState struct {
 // makes a single backend replica a hard requirement.
 type Server struct {
 	reader        client.Reader
+	recorder      record.EventRecorder
 	quotaService  *service.QueueQuotaService
 	configService *service.ConfigService
 	accumulator   *sessionAccumulator
@@ -63,12 +65,14 @@ type Server struct {
 
 func New(
 	reader client.Reader,
+	recorder record.EventRecorder,
 	quotaService *service.QueueQuotaService,
 	configService *service.ConfigService,
 	address string,
 ) *Server {
 	return &Server{
 		reader:        reader,
+		recorder:      recorder,
 		quotaService:  quotaService,
 		configService: configService,
 		accumulator:   newSessionAccumulator(),
