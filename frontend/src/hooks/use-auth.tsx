@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import Loading from '@/components/placeholder/loading-spinner'
 
 import { IAuthResponse, ILogin, IUserContext, apiCheckToken, apiLogin } from '@/services/api/auth'
+import { getAuthErrorMessage } from '@/services/auth-errors'
 import { IResponse } from '@/services/types'
 
 import { logger } from '@/utils/loglevel'
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       .catch((error) => {
         logger.error('Failed to check auth token:', error)
+        toast.error(getAuthErrorMessage(error))
         setUser(undefined)
         setContext(undefined)
         setBackendVersion(undefined)
