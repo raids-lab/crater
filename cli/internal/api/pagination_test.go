@@ -1,7 +1,9 @@
 package api
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -102,7 +104,7 @@ func TestFetchAllPagesStopsAfterMaximumPageRequests(t *testing.T) {
 	requests := 0
 	fetch := func(options ListOptions) (Page[int], error) {
 		requests++
-		return Page[int]{Items: []int{options.Page}, Total: int64(options.Page + 1)}, nil
+		return Page[int]{Items: []int{options.Page}, Total: int64(options.Page + 1), Page: options.Page, PageSize: 1}, nil
 	}
 
 	items, err := FetchAllPages(ListOptions{PageSize: 1}, fetch)
@@ -111,5 +113,102 @@ func TestFetchAllPagesStopsAfterMaximumPageRequests(t *testing.T) {
 	}
 	if requests != MaxPageRequests {
 		t.Fatalf("expected %d requests, got %d", MaxPageRequests, requests)
+	}
+	if items != nil {
+		t.Fatalf("expected no partial result, got %d items", len(items))
+	}
+}
+
+func TestFetchAllPagesRejectsInvalidPages(t *testing.T) {
+	first := Page[int]{Items: []int{1, 2}, Total: 4, Page: 1, PageSize: 2}
+	for _, tc := range []struct {
+		name  string
+		pages []Page[int]
+		want  string
+	}{
+		{"missing page", []Page[int]{{Total: 0, PageSize: 2}}, "requested page 1, received page 0"},
+		{"negative page", []Page[int]{{Page: -1, PageSize: 2}}, "received page -1"},
+		{"skipped first page", []Page[int]{{Page: 2, PageSize: 2}}, "received page 2"},
+		{"repeated page", []Page[int]{first, first}, "requested page 2, received page 1"},
+		{"skipped page", []Page[int]{first, {Page: 3, PageSize: 2}}, "requested page 2, received page 3"},
+		{"missing size", []Page[int]{{Page: 1}}, "page_size"},
+		{"negative size", []Page[int]{{Page: 1, PageSize: -1}}, "page_size"},
+		{"changing size", []Page[int]{first, {Items: []int{3}, Total: 3, Page: 2, PageSize: 1}}, "page_size"},
+		{"negative total", []Page[int]{{Total: -1, Page: 1, PageSize: 2}}, "invalid total"},
+		{"oversized page", []Page[int]{{Items: []int{1, 2, 3}, Total: 3, Page: 1, PageSize: 2}}, "item count"},
+		{"nonempty zero total", []Page[int]{{Items: []int{1}, Total: 0, Page: 1, PageSize: 2}}, "exceeding reported total"},
+		{"short intermediate page", []Page[int]{{Items: []int{1}, Total: 3, Page: 1, PageSize: 2}}, "short page 1"},
+		{"total below collected count", []Page[int]{first, {Items: []int{3, 4}, Total: 3, Page: 2, PageSize: 2}}, "exceeding reported total"},
+		{"empty page total below collected count", []Page[int]{first, {Total: 1, Page: 2, PageSize: 2}}, "exceeding reported total"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			requests := 0
+			items, err := FetchAllPages(ListOptions{PageSize: 2}, func(_ ListOptions) (Page[int], error) {
+				if requests >= len(tc.pages) {
+					t.Fatal("requested a page after invalid response")
+				}
+				page := tc.pages[requests]
+				requests++
+				return page, nil
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.want) || items != nil || requests != len(tc.pages) {
+				t.Fatalf("items=%v err=%v requests=%d; want nil, %q, %d", items, err, requests, tc.want, len(tc.pages))
+			}
+		})
+	}
+}
+
+func TestFetchAllPagesAcceptsConsistentDecreasingTotal(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		second Page[int]
+		want   []int
+	}{
+		{"short final page", Page[int]{Items: []int{3}, Total: 3, Page: 2, PageSize: 2}, []int{1, 2, 3}},
+		{"empty final page", Page[int]{Items: []int{}, Total: 2, Page: 2, PageSize: 2}, []int{1, 2}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			items, err := FetchAllPages(ListOptions{PageSize: 2}, func(options ListOptions) (Page[int], error) {
+				if options.Page == 1 {
+					return Page[int]{Items: []int{1, 2}, Total: 5, Page: 1, PageSize: 2}, nil
+				}
+				return tc.second, nil
+			})
+			if err != nil || !reflect.DeepEqual(items, tc.want) {
+				t.Fatalf("items=%v err=%v; want %v", items, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestFetchAllPagesAcceptsStableServerPageSizeAndEqualValues(t *testing.T) {
+	// Page size may be capped by the server; generic values need not be unique.
+	items, err := FetchAllPages(ListOptions{PageSize: 200}, func(options ListOptions) (Page[int], error) {
+		return Page[int]{Items: []int{1}, Total: 2, Page: options.Page, PageSize: 1}, nil
+	})
+	if err != nil || !reflect.DeepEqual(items, []int{1, 1}) {
+		t.Fatalf("items=%v err=%v; want [1 1]", items, err)
+	}
+}
+
+func TestFetchAllPagesPreservesRequestFailure(t *testing.T) {
+	failure := errors.New("network failure")
+	items, err := FetchAllPages(ListOptions{PageSize: 1}, func(options ListOptions) (Page[int], error) {
+		if options.Page == 1 {
+			return Page[int]{Items: []int{1}, Total: 2, Page: 1, PageSize: 1}, nil
+		}
+		return Page[int]{}, failure
+	})
+	if items != nil || !errors.Is(err, failure) {
+		t.Fatalf("items=%v err=%v; want nil and original failure", items, err)
+	}
+}
+
+func TestFetchAllPagesCanCompleteOnLastAllowedRequest(t *testing.T) {
+	items, err := FetchAllPages(ListOptions{PageSize: 1}, func(options ListOptions) (Page[int], error) {
+		return Page[int]{Items: []int{options.Page}, Total: MaxPageRequests, Page: options.Page, PageSize: 1}, nil
+	})
+	if err != nil || len(items) != MaxPageRequests {
+		t.Fatalf("items=%d err=%v", len(items), err)
 	}
 }

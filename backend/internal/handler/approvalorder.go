@@ -879,6 +879,8 @@ func (mgr *ApprovalOrderMgr) lockJobForApproval(c *gin.Context, jobName string, 
 
 const approvalOrderMaxSearchRunes = pagination.MaxSearchRunes
 
+const approvalOrderDefaultSort = "-createdAt"
+
 type approvalOrderListQuery struct {
 	Page     int    `form:"page,default=1" binding:"min=1"`
 	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
@@ -908,7 +910,7 @@ func bindApprovalOrderListQuery(
 	if err != nil {
 		return approvalOrderListQuery{}, nil, nil, err
 	}
-	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, "-createdAt", approvalOrderSortFields)
+	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, approvalOrderDefaultSort, approvalOrderSortFields)
 	if err != nil {
 		return approvalOrderListQuery{}, nil, nil, err
 	}
@@ -972,18 +974,24 @@ func (mgr *ApprovalOrderMgr) listApprovalOrdersPage(c *gin.Context, creatorID *u
 		db = db.Where(q.Name.Lower().Like(util.ContainsPattern(request.Search)))
 	}
 	orders, total, err := db.Order(pagination.SortFields(request.Sort, approvalOrderSortFields, "id DESC")...).
-		FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+		FindByPage(pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize))
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list approval orders failed"))
 		return
 	}
-	resputil.Success(c, resputil.NewPage(convertToApprovalOrderResps(orders), total, request.Page, request.PageSize))
+	items := convertToApprovalOrderResps(orders)
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, items)
+		return
+	}
+	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
 }
 
 // GetMyApprovalOrders returns the current user's approval orders in a page.
 //
 //	@Summary	获取我的审批工单分页
 //	@Description	按统一分页协议获取当前用户创建的审批工单
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags		approvalorder
 //	@Produce	json
 //	@Security	Bearer
@@ -1008,6 +1016,7 @@ func (mgr *ApprovalOrderMgr) GetMyApprovalOrders(c *gin.Context) {
 //
 //	@Summary	管理员获取审批工单分页
 //	@Description	按统一分页协议获取所有审批工单
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags		approvalorder
 //	@Produce	json
 //	@Security	Bearer

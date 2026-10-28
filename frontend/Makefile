@@ -171,6 +171,8 @@ test: ## 🧪 Run tests
 	@echo "$(CYAN)Running tests...$(RESET)"
 	pnpm test:data-list
 	pnpm test:pagination
+	pnpm test:node-pod-filter
+	pnpm test:pod-read-policy
 
 ## 🛡️  Code Generation & Backend Integration
 .PHONY: generate-error-code

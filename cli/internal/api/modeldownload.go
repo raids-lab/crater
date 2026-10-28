@@ -132,11 +132,7 @@ func (c *Client) ListAdminDownloads() ([]ModelDownloadResp, error) {
 // tasks for the active user.
 func (c *Client) ListDownloadPage(opts ModelDownloadListOptions) (ModelDownloadPage, error) {
 	opts.ListOptions = opts.ListOptions.Normalize()
-	var result Response[struct {
-		Items   []ModelDownloadResp `json:"items"`
-		Total   int64               `json:"total"`
-		Summary map[string]int64    `json:"summary"`
-	}]
+	var result Response[ModelDownloadPage]
 	resp, err := c.httpClient.R().
 		SetSuccessResult(&result).
 		SetErrorResult(&result).
@@ -154,15 +150,7 @@ func (c *Client) ListDownloadPage(opts ModelDownloadListOptions) (ModelDownloadP
 	if result.Data.Summary == nil {
 		result.Data.Summary = map[string]int64{}
 	}
-	return ModelDownloadPage{
-		Page: Page[ModelDownloadResp]{
-			Items:    result.Data.Items,
-			Total:    result.Data.Total,
-			Page:     opts.Page,
-			PageSize: opts.PageSize,
-		},
-		Summary: result.Data.Summary,
-	}, nil
+	return result.Data, nil
 }
 
 func modelDownloadListValues(opts ModelDownloadListOptions) url.Values {

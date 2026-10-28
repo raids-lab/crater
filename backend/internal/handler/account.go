@@ -357,6 +357,7 @@ func bindAdminAccountPageQuery(c *gin.Context) (adminAccountPageQuery, error) {
 //
 //	@Summary	管理员获取账户分页
 //	@Description	按统一分页协议获取账户列表，搜索、排序和分页在数据库中执行
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags		Project
 //	@Produce	json
 //	@Security	Bearer
@@ -388,7 +389,7 @@ func (mgr *AccountMgr) AdminListAccounts(c *gin.Context) {
 			db = db.Order(column)
 		}
 	}
-	accounts, total, err := db.FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+	accounts, total, err := db.FindByPage(pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize))
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list accounts failed"))
 		return
@@ -397,6 +398,10 @@ func (mgr *AccountMgr) AdminListAccounts(c *gin.Context) {
 	items := make([]ListAllResp, 0, len(accounts))
 	for _, account := range accounts {
 		items = append(items, buildListAllResp(account))
+	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, items)
+		return
 	}
 	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
 }
@@ -1348,6 +1353,7 @@ type UpdateAccountBillingMemberIssueAmountReq struct {
 //
 //	@Summary		Get users in account
 //	@Description	SQL query with join
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags			Project
 //	@Accept			json
 //	@Produce		json
@@ -1387,6 +1393,10 @@ func (mgr *AccountMgr) AdminListAccountMembers(c *gin.Context) {
 		return
 	}
 
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, resp)
+		return
+	}
 	resputil.Success(c, resputil.NewPage(resp, total, page.Page, page.PageSize))
 }
 
@@ -2018,13 +2028,14 @@ func (mgr *AccountMgr) getUsersInAccountPage(
 		return nil, 0, bizerr.Internal.DatabaseError.Wrap(err, "failed to count account members")
 	}
 
-	var items []UserProjectGetResp
+	items := make([]UserProjectGetResp, 0)
+	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
 	err = db.
 		Distinct().
 		Select(u.ID, u.Name, ua.Role, ua.AccessMode, u.Attributes, ua.Quota).
 		Order(pagination.SortFields(request.Sort, accountMembersSortFields, "users.id ASC")...).
-		Offset((request.Page - 1) * request.PageSize).
-		Limit(request.PageSize).
+		Offset(offset).
+		Limit(limit).
 		Scan(&items)
 	if err != nil {
 		return nil, 0, bizerr.Internal.DatabaseError.Wrap(err, "failed to get account members page")
@@ -2590,6 +2601,7 @@ func (mgr *AccountMgr) UserRemoveAccountMember(c *gin.Context) {
 //
 //	@Summary		Get users in account
 //	@Description	Get list of users in account (requires user to be in account)
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags			Project
 //	@Accept			json
 //	@Produce		json
@@ -2637,6 +2649,10 @@ func (mgr *AccountMgr) UserListAccountMembers(c *gin.Context) {
 		return
 	}
 
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, resp)
+		return
+	}
 	resputil.Success(c, resputil.NewPage(resp, total, page.Page, page.PageSize))
 }
 

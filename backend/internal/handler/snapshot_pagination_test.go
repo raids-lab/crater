@@ -42,6 +42,21 @@ import (
 
 const jobSnapshotTestCursor = "next-job-pod"
 
+func TestNodePodTypePreservesSchedulerOwners(t *testing.T) {
+	for _, owner := range []metav1.OwnerReference{
+		{APIVersion: "batch.volcano.sh/v1alpha1", Kind: "Job"},
+		{APIVersion: "aisystem.github.com/v1alpha1", Kind: "AIJob"},
+		{APIVersion: "kube-gpu-sparse.kube-gpu-sparse.io/v1", Kind: "RecommendDLJob"},
+	} {
+		t.Run(owner.Kind, func(t *testing.T) {
+			pod := crclient.Pod{OwnerReference: []metav1.OwnerReference{owner}}
+			if got, want := nodePodType(&pod), owner.APIVersion+"/"+owner.Kind; got != want {
+				t.Fatalf("node Pod type = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func snapshotTestToken() util.JWTMessage {
 	return util.JWTMessage{
 		UserID:            1,

@@ -16,6 +16,7 @@ package pagination
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -24,6 +25,43 @@ import (
 
 	"github.com/raids-lab/crater/internal/bizerr"
 )
+
+// Requested distinguishes explicit pagination from legacy complete-list requests.
+// Check presence before applying binding defaults; malformed supplied values must
+// still be rejected by the endpoint's normal validation.
+func Requested(values url.Values) bool {
+	return values.Has("page") || values.Has("page_size")
+}
+
+// Bounds reuses the same permission-scoped query for paged and complete reads.
+// A negative GORM limit cancels pagination; never substitute a large finite page.
+func Bounds(values url.Values, page, pageSize int) (offset, limit int) {
+	if !Requested(values) {
+		return 0, -1
+	}
+	return (page - 1) * pageSize, pageSize
+}
+
+// PageSizeAlias accepts an endpoint's historical spelling without changing the
+// canonical parameter or silently choosing between conflicting values.
+// A zero maximum preserves an already-unbounded legacy endpoint.
+func PageSizeAlias(values url.Values, pageSize int, alias string, maximum int) (int, error) {
+	raw, exists := values[alias]
+	if !exists {
+		return pageSize, nil
+	}
+	if len(raw) != 1 {
+		return 0, bizerr.BadRequest.ParameterError.New(alias + " must have one value")
+	}
+	size, err := strconv.Atoi(raw[0])
+	if err != nil || size < 1 || (maximum > 0 && size > maximum) {
+		return 0, bizerr.BadRequest.ParameterError.New("invalid " + alias)
+	}
+	if values.Has("page_size") && size != pageSize {
+		return 0, bizerr.BadRequest.ParameterError.New(alias + " conflicts with page_size")
+	}
+	return size, nil
+}
 
 const (
 	MaxSortFields   = 3

@@ -20,6 +20,7 @@ const (
 	APIVersion = 5
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
-	// v4 and older CLIs expect the pre-pagination list response shapes.
-	MinSupportedCLIAPIVersion = 5
+	// Explicit pagination keeps pre-pagination reads on the same routes, so the
+	// pre-v5 compatibility floor remains unchanged.
+	MinSupportedCLIAPIVersion = 3
 )

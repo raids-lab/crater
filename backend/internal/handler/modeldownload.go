@@ -156,8 +156,8 @@ const (
 )
 
 type ModelDownloadListResp struct {
-	Page     int                 `json:"page"`
-	PageSize int                 `json:"page_size"`
+	Page     int                 `json:"page,omitempty"`
+	PageSize int                 `json:"page_size,omitempty"`
 	Total    int64               `json:"total"`
 	Items    []ModelDownloadResp `json:"items"`
 	Summary  map[string]int64    `json:"summary"`
@@ -2214,6 +2214,7 @@ func modelDownloadSortClauses(sortValue string) []string {
 }
 
 func bindModelDownloadPageQuery(c *gin.Context) (modelDownloadPageQuery, []string, error) {
+	const legacyMaxPageSize, maxPageSize = 100, 200
 	var request modelDownloadPageQuery
 	if err := c.ShouldBindQuery(&request); err != nil {
 		return modelDownloadPageQuery{}, nil, bizerr.BadRequest.ParameterError.Wrap(
@@ -2222,6 +2223,26 @@ func bindModelDownloadPageQuery(c *gin.Context) (modelDownloadPageQuery, []strin
 		)
 	}
 	var err error
+	if !c.Request.URL.Query().Has("page_size") {
+		var legacy struct {
+			PageSize int `form:"pageSize"`
+		}
+		if err := c.ShouldBindQuery(&legacy); err != nil {
+			return modelDownloadPageQuery{}, nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid pageSize")
+		}
+		request.PageSize = legacy.PageSize
+		if request.PageSize <= 0 {
+			request.PageSize = 20
+		}
+		if request.PageSize > legacyMaxPageSize {
+			request.PageSize = legacyMaxPageSize
+		}
+	} else {
+		request.PageSize, err = pagination.PageSizeAlias(c.Request.URL.Query(), request.PageSize, "pageSize", maxPageSize)
+		if err != nil {
+			return modelDownloadPageQuery{}, nil, err
+		}
+	}
 	request.Search, err = pagination.NormalizePageQuery(request.Search, request.Page, request.PageSize)
 	if err != nil {
 		return modelDownloadPageQuery{}, nil, err
@@ -2231,7 +2252,11 @@ func bindModelDownloadPageQuery(c *gin.Context) (modelDownloadPageQuery, []strin
 			fmt.Sprintf("unsupported model download category %q", request.Category),
 		)
 	}
-	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, "-updatedAt", modelDownloadSortFields)
+	defaultSort := "-updatedAt"
+	if !pagination.Requested(c.Request.URL.Query()) {
+		defaultSort = "-createdAt"
+	}
+	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, defaultSort, modelDownloadSortFields)
 	if err != nil {
 		return modelDownloadPageQuery{}, nil, err
 	}
@@ -2250,11 +2275,14 @@ func bindModelDownloadPageQuery(c *gin.Context) (modelDownloadPageQuery, []strin
 // ListDownloads returns model download records using the shared page protocol.
 //
 //	@Summary	分页获取模型下载任务
+//	@Description	Omitting page and page_size returns the complete legacy array.
+//	@Description	Legacy page/pageSize requests keep items, total and summary; canonical page_size adds page metadata.
 //	@Tags		ModelDownload
 //	@Produce	json
 //	@Security	Bearer
 //	@Param		page		query	int		false	"Page number"
 //	@Param		page_size	query	int		false	"Page size, 1-200"
+//	@Param		pageSize	query	int		false	"Legacy page size, defaults to 20 and caps at 100"
 //	@Param		search		query	string	false	"Search download name"
 //	@Param		category	query	string	false	"Filter by model or dataset"
 //	@Param		status		query	string	false	"Filter by status; repeatable"
@@ -2280,7 +2308,7 @@ func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
 		db = db.Where(q.Name.Lower().Like(util.ContainsPattern(request.Search)))
 	}
 	downloads, total, err := db.Order(pagination.SortFields(request.Sort, modelDownloadSortFields, "model_downloads.id DESC")...).
-		FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+		FindByPage(pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize))
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list model downloads failed"))
 		return
@@ -2294,12 +2322,20 @@ func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, items)
+		return
+	}
 	summary, err := mgr.downloadStatusSummary(c, request.Category)
 	if err != nil {
 		klog.Warningf("count download status summary failed: %v", err)
 		summary = map[string]int64{}
 	}
-	resputil.Success(c, ModelDownloadListResp{Items: items, Total: total, Page: request.Page, PageSize: request.PageSize, Summary: summary})
+	response := ModelDownloadListResp{Items: items, Total: total, Page: request.Page, PageSize: request.PageSize, Summary: summary}
+	if !c.Request.URL.Query().Has("page_size") {
+		response.Page, response.PageSize = 0, 0
+	}
+	resputil.Success(c, response)
 }
 
 // ListDownloadsSummary returns status totals independently from list filters.

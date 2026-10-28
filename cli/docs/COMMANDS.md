@@ -123,7 +123,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
       "api_version": 5,
-      "min_supported_cli_api_version": 5
+      "min_supported_cli_api_version": 3
     }
   }
   ```
@@ -444,6 +444,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--all-pages` (bool): 不截断，返回全部过滤结果。
 - **处理逻辑**:
   - 调用 `/api/v1/nodes/{name}/pods`，按 Kubernetes 游标快照逐批读取；继续请求复用首次响应给出的不透明游标。
+  - 各批次必须保持同一个非空 `snapshot_id`，`has_more` 必须与继续游标一致；重复游标、快照不一致、游标过期或超过 10000 次请求时返回错误，不输出部分 Pod 列表。
   - 平台当前没有向普通用户暴露作业命名空间配置，因此 CLI 不猜测固定默认值；必须显式选择 `--namespace` 或 `--all-namespaces`。
   - CLI 逐批读取节点 Pod 游标快照，再在完整快照上执行命名空间、状态、类型和名称筛选，按名称与命名空间稳定排序，并应用 `--page` / `--page-size`。`--all-pages` 返回完整筛选结果。
   - 默认模式以表格展示 Pod 名称、命名空间、IP、状态、类型和资源。
@@ -766,12 +767,12 @@ This section records the read-only API surface covered by the CLI after the broa
 ### Dataset And Template Reads
 - `crater dataset ls`: `/api/v1/dataset/mydataset`，逐页聚合所有可见资源类型，保留完整 `datasets` 数组。
 - `crater dataset get <id>`: `/api/v1/dataset/detail/{id}`.
-- `crater dataset users <id>`: `/api/v1/dataset/{id}/usersIn`，逐页聚合已共享用户，保留完整 `data.users` 数组；任意页失败时返回错误，不输出部分成功结果。`crater dataset queues <id>`: `/api/v1/dataset/{id}/queuesIn`.
+- `crater dataset users <id>`: `/api/v1/dataset/{id}/usersIn`，读取完整的已共享用户数组，保留 `data.users` 数组；此接口不使用服务端分页。`crater dataset queues <id>`: `/api/v1/dataset/{id}/queuesIn`.
 - `crater dataset users-out <id>`: `/api/v1/dataset/{id}/usersNotIn`; `crater dataset queues-out <id>`: `/api/v1/dataset/{id}/queuesNotIn`.
 - `crater admin dataset ls`: `/api/v1/admin/dataset/alldataset`，逐页聚合完整数组。
 - `crater template ls`: `/api/v1/jobtemplate/list`，按创建时间、ID 升序自动读取全部分页，保持完整列表输出。`--json` 的 `data.templates` 为数组，空结果为 `[]`；任何一页读取失败时返回 API 错误，不输出不完整的成功列表。
 - `crater template get <id>`: `/api/v1/jobtemplate/{id}`.
-- API 契约 5 引入本次整合的 CLI 分页列表契约，覆盖模板、管理员用户/账户、数据集、资源、镜像及镜像构建、审批工单、模型下载、GPU 分析和节点 Pod 列表。CLI 会逐页聚合以保持完整列表命令的输出；它不回退到旧数组响应。后端和 CLI 当前契约版本及最低对端版本均为 5；旧 CLI 与新后端、或新 CLI 与旧后端，不受支持。API 版本头仅用于诊断，不改变响应格式或拦截业务请求。
+- API 契约 5 引入本次整合的 CLI 分页列表契约，覆盖模板、管理员用户/账户、数据集、资源、镜像及镜像构建、审批工单、模型下载、GPU 分析和节点 Pod 列表。CLI 会逐页聚合以保持完整列表命令的输出；它不回退到旧数组响应，因此最低后端版本为 5。新后端复用同一路由和权限查询，未显式请求分页的旧调用保留完整数组或 imageList、kanikoList 包装；模型下载与操作日志保留已有分页参数别名和响应。因此后端最低 CLI 版本保持原有的 3，兼容目标包括 API V4 CLI。API 版本头仅用于诊断，不改变响应格式或拦截业务请求。
 - JSON payload keys: `datasets`, `dataset`, `users`, `queues`, `templates`, `template`.
 
 ### Model Download Reads

@@ -17,13 +17,56 @@ import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { shouldReadJobAccessPods } from './pod-read-policy.ts'
+import { getJobPodReadPolicy, shouldReadJobAccessPods } from './pod-read-policy.ts'
 
 const runningSingleJob = {
   jobName: 'ordinary-job',
   isRunning: true,
   isSingleJob: true,
 }
+
+for (const scheduler of ['volcano', 'colocate', 'sparse']) {
+  test(`${scheduler} mounts exactly one compatible job Pod query`, () => {
+    const client = new QueryClient()
+    const policy = getJobPodReadPolicy('job-1', scheduler)
+    let snapshotCalls = 0
+    let legacyCalls = 0
+    const fetchSnapshot = async () => {
+      snapshotCalls++
+      return []
+    }
+    const fetchLegacy = async () => {
+      legacyCalls++
+      return []
+    }
+    const snapshot = new QueryObserver(client, {
+      queryKey: ['snapshot'],
+      queryFn: fetchSnapshot,
+      enabled: policy.snapshot,
+    })
+    const legacy = new QueryObserver(client, {
+      queryKey: ['legacy'],
+      queryFn: fetchLegacy,
+      enabled: policy.legacy,
+    })
+    const stopSnapshot = snapshot.subscribe(() => {})
+    const stopLegacy = legacy.subscribe(() => {})
+    try {
+      assert.equal(snapshotCalls, scheduler === 'volcano' ? 1 : 0)
+      assert.equal(legacyCalls, scheduler === 'volcano' ? 0 : 1)
+    } finally {
+      stopSnapshot()
+      stopLegacy()
+      client.clear()
+    }
+  })
+}
+
+test('job Pod queries stay disabled before a job is selected', () => {
+  for (const scheduler of ['volcano', 'colocate', 'sparse']) {
+    assert.deepEqual(getJobPodReadPolicy('', scheduler), { snapshot: false, legacy: false })
+  }
+})
 
 test('running ordinary single jobs keep their access Pod read enabled', () => {
   assert.equal(shouldReadJobAccessPods(runningSingleJob), true)

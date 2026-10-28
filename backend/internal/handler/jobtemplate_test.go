@@ -147,7 +147,7 @@ func TestJobTemplateRoutesUseSinglePaginatedList(t *testing.T) {
 		}
 	})
 	t.Run("filters apply to the existing list path", func(t *testing.T) {
-		response := requestJobTemplateRoute(t, router, "/v1/jobtemplate/list?owner=others")
+		response := requestJobTemplateRoute(t, router, "/v1/jobtemplate/list?page=1&owner=others")
 		var result resputil.Response[resputil.Page[JobTemplateresp]]
 		if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
 			t.Fatalf("decode filtered page: %v", err)
@@ -204,7 +204,7 @@ func TestJobTemplateEmptyListReturnsArray(t *testing.T) {
 			t.Fatalf("decode empty template page: %v", err)
 		}
 		page := result.Data
-		if result.Code != resputil.OK || string(page.Items) != "[]" || page.Total != 0 ||
+		if result.Code != resputil.OK || string(page.Items) != emptyJSONArray || page.Total != 0 ||
 			page.Page != 1 || page.PageSize != 10 {
 			t.Fatalf("unexpected empty page response: %s", response.Body.String())
 		}

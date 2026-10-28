@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/imroc/req/v3"
@@ -275,6 +276,7 @@ func TestFetchAllJobPagesSequentially(t *testing.T) {
 	requested := make([]string, 0, 2)
 	client := jobTestClient(t, func(writer http.ResponseWriter, request *http.Request) {
 		page := request.URL.Query().Get("page")
+		pageNumber, _ := strconv.Atoi(page)
 		requested = append(requested, page)
 		items := map[string][]JobInfo{
 			"1": {{Name: "job-1"}, {Name: "job-2"}},
@@ -282,7 +284,7 @@ func TestFetchAllJobPagesSequentially(t *testing.T) {
 		}[page]
 		writer.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(writer).Encode(Response[Page[JobInfo]]{
-			Data: Page[JobInfo]{Items: items, Total: 3, PageSize: 2},
+			Data: Page[JobInfo]{Items: items, Total: 3, Page: pageNumber, PageSize: 2},
 		})
 	})
 

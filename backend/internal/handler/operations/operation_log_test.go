@@ -51,3 +51,25 @@ func TestOperationLogSortClausesAlwaysHaveTieBreaker(t *testing.T) {
 		t.Fatalf("operationLogSortClauses() = %v, want %v", got, want)
 	}
 }
+
+func TestOperationLogHistoricalLimitRemainsCompatible(t *testing.T) {
+	for _, tc := range []struct {
+		query string
+		size  int
+		bad   bool
+	}{
+		{"page=2&limit=25", 25, false}, {"page=2&limit=500", 500, false},
+		{"page=2&page_size=25&limit=25", 25, false},
+		{"page=2&page_size=25&limit=26", 0, true},
+		{"page=2&limit=0", 0, true}, {"page=2&limit=invalid", 0, true},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			ctx.Request = httptest.NewRequest(http.MethodGet, "/?"+tc.query, http.NoBody)
+			request, err := (&OperationLogMgr{}).bindPageQuery(ctx)
+			if (err != nil) != tc.bad || (!tc.bad && request.PageSize != tc.size) {
+				t.Fatalf("request=%+v err=%v; want size %d, bad=%v", request, err, tc.size, tc.bad)
+			}
+		})
+	}
+}

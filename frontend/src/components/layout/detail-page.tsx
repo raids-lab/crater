@@ -72,10 +72,10 @@ export const detailValidateSearch = (search: Record<string, unknown>): DetailPag
   }
 }
 
-export const detailLinkOptions = (tab: string, id?: number) =>
+export const detailLinkOptions = (tab: string) =>
   linkOptions({
     to: '.',
-    search: { tab, id },
+    search: { tab },
     replace: true,
   })
 

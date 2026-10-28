@@ -389,7 +389,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Get list of users in account (requires user to be in account)",
+                "description": "Get list of users in account (requires user to be in account)\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "consumes": [
                     "application/json"
                 ],
@@ -810,7 +810,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "按统一分页协议获取账户列表，搜索、排序和分页在数据库中执行",
+                "description": "按统一分页协议获取账户列表，搜索、排序和分页在数据库中执行\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "produces": [
                     "application/json"
                 ],
@@ -861,7 +861,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "SQL query with join",
+                "description": "SQL query with join\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1103,7 +1103,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "按统一分页协议获取所有审批工单",
+                "description": "按统一分页协议获取所有审批工单\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "produces": [
                     "application/json"
                 ],
@@ -1338,7 +1338,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "按类型、搜索和排序条件过滤后分页返回数据资源",
+                "description": "按类型、搜索和排序条件过滤后分页返回数据资源\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "produces": [
                     "application/json"
                 ],
@@ -1611,7 +1611,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "按搜索、审核状态和风险等级过滤后排序分页返回 GPU 分析记录",
+                "description": "按搜索、审核状态和风险等级过滤后排序分页返回 GPU 分析记录\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "produces": [
                     "application/json"
                 ],
@@ -2086,6 +2086,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Supplying page or page_size returns a page; omitting both preserves the complete legacy imageList wrapper.",
                 "produces": [
                     "application/json"
                 ],
@@ -2142,6 +2143,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Supplying page or page_size returns a page; omitting both preserves the complete legacy kanikoList wrapper.",
                 "produces": [
                     "application/json"
                 ],
@@ -2305,6 +2307,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Omitting page and page_size returns the complete legacy array.\nLegacy page/pageSize requests keep items, total and summary; canonical page_size adds page metadata.",
                 "produces": [
                     "application/json"
                 ],
@@ -2323,6 +2326,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page size, 1-200",
                         "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Legacy page size, defaults to 20 and caps at 100",
+                        "name": "pageSize",
                         "in": "query"
                     },
                     {
@@ -2453,6 +2462,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Supplying limit, cursor or resource_version returns a snapshot page.\nOmitting all three preserves the complete legacy Pod array.",
                 "produces": [
                     "application/json"
                 ],
@@ -2510,7 +2520,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "按统一分页协议获取操作日志，筛选和排序在数据库中执行",
+                "description": "按统一分页协议获取操作日志，筛选和排序在数据库中执行\nLegacy limit requests keep the existing items/total response. Supplying page_size returns the shared page metadata.",
                 "produces": [
                     "application/json"
                 ],
@@ -2529,6 +2539,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page size, 1-200",
                         "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Legacy page size; conflicts with a different page_size",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
@@ -4256,7 +4272,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "按统一分页协议获取用户列表，搜索、筛选、排序和分页在数据库中执行",
+                "description": "按统一分页协议获取用户列表，搜索、筛选、排序和分页在数据库中执行\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "produces": [
                     "application/json"
                 ],
@@ -5074,7 +5090,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "按统一分页协议获取当前用户创建的审批工单",
+                "description": "按统一分页协议获取当前用户创建的审批工单\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "produces": [
                     "application/json"
                 ],
@@ -5953,7 +5969,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "按权限、类型、搜索和排序条件过滤后分页返回数据资源",
+                "description": "按权限、类型、搜索和排序条件过滤后分页返回数据资源\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "produces": [
                     "application/json"
                 ],
@@ -6293,37 +6309,13 @@ const docTemplate = `{
                         "name": "datasetId",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page number (1-based)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (1-200)",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search shared usernames",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sort fields",
-                        "name": "sort",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Shared users page",
+                        "description": "Shared users",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserOfDatasetResp"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserOfDatasetResp"
                         }
                     },
                     "400": {
@@ -6854,6 +6846,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Supplying page or page_size returns a page; omitting both preserves the complete legacy imageList wrapper.",
                 "produces": [
                     "application/json"
                 ],
@@ -6972,6 +6965,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Supplying page or page_size returns a page; omitting both preserves the complete legacy kanikoList wrapper.",
                 "produces": [
                     "application/json"
                 ],
@@ -7398,7 +7392,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "List job templates with server-side pagination, search, owner filtering, and sorting",
+                "description": "List job templates with server-side pagination, search, owner filtering, and sorting\nSupplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7570,6 +7564,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Omitting page and page_size returns the complete legacy array.\nLegacy page/pageSize requests keep items, total and summary; canonical page_size adds page metadata.",
                 "produces": [
                     "application/json"
                 ],
@@ -7588,6 +7583,12 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Page size, 1-200",
                         "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Legacy page size, defaults to 20 and caps at 100",
+                        "name": "pageSize",
                         "in": "query"
                     },
                     {
@@ -9039,6 +9040,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Supplying limit, cursor or resource_version returns a snapshot page.\nOmitting all three preserves the complete legacy Pod array.",
                 "produces": [
                     "application/json"
                 ],
@@ -9488,6 +9490,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.",
                 "produces": [
                     "application/json"
                 ],
@@ -12239,26 +12242,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserOfDatasetResp": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_handler.UserOfDatasetResp"
-                    }
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
         "github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserProjectGetResp": {
             "type": "object",
             "properties": {
@@ -12428,6 +12411,24 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserOfDatasetResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.UserOfDatasetResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis": {
             "type": "object",
             "properties": {
@@ -12572,21 +12573,6 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ResourceResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserOfDatasetResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserOfDatasetResp"
                 },
                 "msg": {
                     "type": "string"

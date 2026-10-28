@@ -58,3 +58,27 @@ func TestModelDownloadSortClausesAlwaysHaveTieBreaker(t *testing.T) {
 		t.Fatalf("modelDownloadSortClauses() = %v, want %v", got, want)
 	}
 }
+
+func TestModelDownloadHistoricalPageSizeRemainsCompatible(t *testing.T) {
+	for _, tc := range []struct {
+		query string
+		size  int
+		bad   bool
+	}{
+		{"page=2", 20, false}, {"page=2&pageSize=25", 25, false},
+		{"page=2&pageSize=0", 20, false}, {"page=2&pageSize=-1", 20, false},
+		{"page=2&pageSize=500", 100, false},
+		{"page=2&page_size=200", 200, false},
+		{"page=2&page_size=25&pageSize=25", 25, false},
+		{"page=2&page_size=25&pageSize=26", 0, true},
+	} {
+		t.Run(tc.query, func(t *testing.T) {
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			ctx.Request = httptest.NewRequest(http.MethodGet, "/?"+tc.query, http.NoBody)
+			request, _, err := bindModelDownloadPageQuery(ctx)
+			if (err != nil) != tc.bad || (!tc.bad && request.PageSize != tc.size) {
+				t.Fatalf("request=%+v err=%v; want size %d, bad=%v", request, err, tc.size, tc.bad)
+			}
+		})
+	}
+}

@@ -16,8 +16,10 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"slices"
 	"strings"
@@ -109,8 +111,17 @@ func newDatasetPageTestRouter(t *testing.T, visibleIDs []uint) *gin.Engine {
 
 func readDatasetTestPage(t *testing.T, router *gin.Engine, path string) resputil.Page[DatasetResp] {
 	t.Helper()
+	requestURL, err := url.Parse(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values := requestURL.Query()
+	if !values.Has("page") && !values.Has("page_size") {
+		values.Set("page", "1")
+		requestURL.RawQuery = values.Encode()
+	}
 	recorder := httptest.NewRecorder()
-	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, http.NoBody))
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, requestURL.String(), http.NoBody))
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("dataset page HTTP %d: %s", recorder.Code, recorder.Body.String())
 	}
@@ -135,38 +146,38 @@ func assertDatasetPageIDs(t *testing.T, page resputil.Page[DatasetResp], total i
 	}
 }
 
-func TestDatasetSharedUsersPageSortsAndRetainsAttributes(t *testing.T) {
+func TestDatasetSharedUsersReturnsCompleteArray(t *testing.T) {
 	router := newDatasetPageTestRouter(t, []uint{1})
 	db := query.User.WithContext(t.Context()).UnderlyingDB().Session(&gorm.Session{NewDB: true})
-	if err := db.Create(&model.UserDataset{UserID: 2, DatasetID: 1}).Error; err != nil {
-		t.Fatal(err)
+	for id := uint(2); id <= 14; id++ {
+		if id > 2 {
+			if err := db.Create(&model.User{Model: gorm.Model{ID: id}, Name: fmt.Sprintf("user-%02d", id), Space: fmt.Sprintf("/tmp/dataset-shared-user-%d", id), Status: model.StatusActive}).Error; err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := db.Create(&model.UserDataset{UserID: id, DatasetID: 1}).Error; err != nil {
+			t.Fatal(err)
+		}
 	}
 	if _, err := query.User.WithContext(t.Context()).Where(query.User.ID.Eq(2)).
 		Update(query.User.Attributes, datatypes.NewJSONType(model.UserAttribute{Nickname: "Bob"})); err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range []struct {
-		query string
-		want  uint
-		owner bool
-	}{
-		{"?sort=-name&page_size=1", 2, false},
-		{"?sort=-name&page=2&page_size=1", 1, true},
-	} {
+	for _, suffix := range []string{"", "?page=2&page_size=1"} {
 		recorder := httptest.NewRecorder()
-		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/dataset/1/usersIn"+tc.query, http.NoBody))
-		var result resputil.Response[resputil.Page[UserOfDatasetResp]]
-		if err := json.Unmarshal(recorder.Body.Bytes(), &result); err != nil {
-			t.Fatal(err)
-		}
-		page := result.Data
-		if recorder.Code != http.StatusOK || page.Total != 2 || len(page.Items) != 1 ||
-			page.Items[0].ID != tc.want || page.Items[0].IsOwner != tc.owner {
-			t.Fatalf("query=%s response=%s", tc.query, recorder.Body.String())
-		}
-		if tc.want == 2 && page.Items[0].UserInfo.Data().Nickname != "Bob" {
-			t.Fatalf("shared user attributes lost: %+v", page.Items[0])
-		}
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/dataset/1/usersIn"+suffix, http.NoBody))
+		assertDatasetSharedUsers(t, recorder, suffix)
+	}
+
+	// The unshared dataset must return an empty array, not null or other datasets' users.
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/dataset/3/usersIn", http.NoBody))
+	var empty resputil.Response[[]UserOfDatasetResp]
+	if err := json.Unmarshal(recorder.Body.Bytes(), &empty); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusOK || empty.Code != resputil.OK || empty.Data == nil || len(empty.Data) != 0 {
+		t.Fatalf("unexpected empty shared-user list: %s", recorder.Body.String())
 	}
 }
 
@@ -292,5 +303,27 @@ func TestDatasetListReadErrors(t *testing.T) {
 				t.Fatal("failure response exposed the database cause")
 			}
 		})
+	}
+}
+
+func assertDatasetSharedUsers(t *testing.T, recorder *httptest.ResponseRecorder, suffix string) {
+	t.Helper()
+	var result resputil.Response[[]UserOfDatasetResp]
+	if err := json.Unmarshal(recorder.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusOK || result.Code != resputil.OK || len(result.Data) != 14 {
+		t.Fatalf("query=%s response=%s", suffix, recorder.Body.String())
+	}
+	expectedID := uint(1)
+	for index := range result.Data {
+		user := &result.Data[index]
+		if user.ID != expectedID || user.IsOwner != (user.ID == 1) {
+			t.Fatalf("shared user identity changed: %+v", user)
+		}
+		expectedID++
+	}
+	if result.Data[1].UserInfo.Data().Nickname != "Bob" {
+		t.Fatalf("shared user attributes lost: %+v", result.Data[1])
 	}
 }

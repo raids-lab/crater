@@ -1153,8 +1153,9 @@ func (mgr *ImagePackMgr) listImagePage(c *gin.Context, isAdmin bool) {
 		db = db.Order(order)
 	}
 	rows := make([]visibleImageRow, 0, request.PageSize)
+	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
 	if err := db.Select("images.id, ? AS image_share_status", visibility).
-		Offset((request.Page - 1) * request.PageSize).Limit(request.PageSize).Scan(&rows).Error; err != nil {
+		Offset(offset).Limit(limit).Scan(&rows).Error; err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list visible images failed"))
 		return
 	}
@@ -1163,12 +1164,17 @@ func (mgr *ImagePackMgr) listImagePage(c *gin.Context, isAdmin bool) {
 		resputil.HandleError(c, err)
 		return
 	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, ListImageResponse{ImageInfoList: items})
+		return
+	}
 	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
 }
 
 // UserListImage returns images visible to the current user using the shared page protocol.
 //
 //	@Summary	分页获取当前用户可见镜像
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy imageList wrapper.
 //	@Tags		ImagePack
 //	@Produce	json
 //	@Security	Bearer
@@ -1186,6 +1192,7 @@ func (mgr *ImagePackMgr) UserListImage(c *gin.Context) {
 // AdminListImage returns all images using the shared page protocol.
 //
 //	@Summary	分页获取全部镜像
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy imageList wrapper.
 //	@Tags		ImagePack
 //	@Produce	json
 //	@Security	Bearer

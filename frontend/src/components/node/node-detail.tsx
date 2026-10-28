@@ -84,6 +84,7 @@ import DetailPage, { DetailPageCoreProps } from '../layout/detail-page'
 import PageTitle from '../layout/page-title'
 import NodeInfoTab from './node-info-tab'
 import { NodeAnnotations, NodeLabels, NodeTaints } from './node-mark'
+import { getNodePodTypeFilter } from './node-pod-filter'
 
 const formatLockDate = (timestamp?: string) => {
   const date = new Date(timestamp ?? Date.now())
@@ -599,21 +600,7 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
         {
           key: 'type',
           title: t('nodeDetail.table.filter.type'),
-          option: [
-            {
-              value: 'batch.volcano.sh/v1alpha1/Job',
-              label: 'BASE',
-            },
-            {
-              value: 'aisystem.github.com/v1alpha1/AIJob',
-              label: 'EMIAS',
-            },
-          ],
-          defaultValues: [
-            scheduler === 'volcano'
-              ? 'batch.volcano.sh/v1alpha1/Job'
-              : 'aisystem.github.com/v1alpha1/AIJob',
-          ],
+          ...getNodePodTypeFilter(scheduler),
         },
       ],
       getHeader: (key: string) => getHeader(key, t),

@@ -108,6 +108,7 @@ func convertJobTemplateResp(templates []*model.Jobtemplate) []JobTemplateresp {
 //
 //	@Summary		List job templates
 //	@Description	List job templates with server-side pagination, search, owner filtering, and sorting
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags			jobtemplate
 //	@Accept			json
 //	@Produce		json
@@ -129,9 +130,10 @@ func (mgr *JobTemplateMgr) UserListJobTemplates(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
+	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
 	templates, total, err := jobtemplateservice.List(c, jobtemplateservice.ListOptions{
-		Offset: request.offset(),
-		Limit:  request.PageSize,
+		Offset: offset,
+		Limit:  limit,
 		Search: request.Search,
 		Owner:  request.Owner,
 		Sort:   request.Sort,
@@ -142,8 +144,13 @@ func (mgr *JobTemplateMgr) UserListJobTemplates(c *gin.Context) {
 		return
 	}
 
+	items := convertJobTemplateResp(templates)
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, items)
+		return
+	}
 	resputil.Success(c, resputil.NewPage(
-		convertJobTemplateResp(templates),
+		items,
 		total,
 		request.Page,
 		request.PageSize,

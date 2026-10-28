@@ -95,6 +95,10 @@ func TestImageClientRoutesMatchBackend(t *testing.T) {
 				if r.URL.RawQuery != tt.query {
 					t.Errorf("query = %q, want %q", r.URL.RawQuery, tt.query)
 				}
+				if r.URL.Query().Has("page") {
+					writeJobTestResponse(t, w, Page[any]{Items: []any{}, Page: 1, PageSize: 200})
+					return
+				}
 				writeImageTestResponse(t, w)
 			})
 			if err := tt.call(client); err != nil {

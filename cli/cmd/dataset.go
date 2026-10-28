@@ -78,7 +78,6 @@ func runDatasetShareList(cmd *cobra.Command, args []string, payloadKey string, s
 		Path:       datasetShareListPath(id, suffix),
 		Params:     noParams,
 		Table:      printSimpleTableWrapper("id", "name", "nickname", "isowner"),
-		AllPages:   suffix == datasetUsersInSuffix,
 	})
 }
 

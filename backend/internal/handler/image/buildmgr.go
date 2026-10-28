@@ -477,18 +477,25 @@ func (mgr *ImagePackMgr) listKanikoPageWithDB(c *gin.Context, baseDB *gorm.DB, u
 		db = db.Where(field.Or(k.ImageLink.Lower().Like(pattern), k.ImagePackName.Lower().Like(pattern),
 			k.Description.Lower().Like(pattern), u.Name.Lower().Like(pattern), u.Nickname.Lower().Like(pattern)))
 	}
+	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
 	kanikos, total, err := db.Order(pagination.SortFields(request.Sort, kanikoListSortFields, "kanikos.id DESC")...).
-		FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+		FindByPage(offset, limit)
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list image builds failed"))
 		return
 	}
-	resputil.Success(c, resputil.NewPage(mgr.generateKanikoInfos(kanikos), total, request.Page, request.PageSize))
+	items := mgr.generateKanikoInfos(kanikos)
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, ListKanikoResponse{KanikoInfoList: items})
+		return
+	}
+	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
 }
 
 // UserListKaniko returns the current user's image build records using the shared page protocol.
 //
 //	@Summary	分页获取当前用户的镜像制作记录
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy kanikoList wrapper.
 //	@Tags		ImagePack
 //	@Produce	json
 //	@Security	Bearer
@@ -507,6 +514,7 @@ func (mgr *ImagePackMgr) UserListKaniko(c *gin.Context) {
 // AdminListKaniko returns all image build records using the shared page protocol.
 //
 //	@Summary	分页获取全部镜像制作记录
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy kanikoList wrapper.
 //	@Tags		ImagePack
 //	@Produce	json
 //	@Security	Bearer

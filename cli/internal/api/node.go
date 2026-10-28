@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 )
@@ -156,17 +157,39 @@ func (c *Client) GetNodePods(name string) ([]PodInfo, error) {
 	const pageLimit = 200
 	items := make([]PodInfo, 0)
 	cursor := ""
-	for {
+	seenCursors := make(map[string]struct{})
+	snapshotID := ""
+	for pageRequests := 0; pageRequests < MaxPageRequests; pageRequests++ {
 		page, err := c.ListNodePodsSnapshot(name, pageLimit, cursor)
 		if err != nil {
 			return nil, err
 		}
+		if page.SnapshotID == "" {
+			return nil, fmt.Errorf("get node pods: missing snapshot ID")
+		}
+		if pageRequests == 0 {
+			snapshotID = page.SnapshotID
+		} else if page.SnapshotID != snapshotID {
+			return nil, fmt.Errorf("get node pods: snapshot ID changed between pages; refresh and retry")
+		}
+		nextCursor := ""
+		if page.NextCursor != nil {
+			nextCursor = *page.NextCursor
+		}
+		if page.HasMore != (nextCursor != "") {
+			return nil, fmt.Errorf("get node pods: has_more does not match next_cursor")
+		}
 		items = append(items, page.Items...)
-		if page.NextCursor == nil || *page.NextCursor == "" {
+		if nextCursor == "" {
 			return items, nil
 		}
-		cursor = *page.NextCursor
+		if _, seen := seenCursors[nextCursor]; seen {
+			return nil, fmt.Errorf("get node pods: repeated pagination cursor")
+		}
+		seenCursors[nextCursor] = struct{}{}
+		cursor = nextCursor
 	}
+	return nil, fmt.Errorf("get node pods: exceeded maximum of %d page requests", MaxPageRequests)
 }
 
 func (c *Client) ListNodePodsSnapshot(name string, limit int, cursor string) (NodePodsSnapshotPage, error) {

@@ -191,15 +191,8 @@ export const apiListUsersNotInDataset = (datasetID: number) =>
 
 export const apiListQueuesNotInDataset = (datasetID: number) =>
   apiV1Get<IResponse<QueueDatasetGetResp[]>>(`dataset/${datasetID}/queuesNotIn`)
-export const apiListUsersInDataset = (
-  datasetID: number,
-  params: RemoteTableParams,
-  signal?: AbortSignal
-) =>
-  apiV1Get<IResponse<IPage<UserDatasetResp>>>(`dataset/${datasetID}/usersIn`, {
-    searchParams: buildRemoteSearchParams(params),
-    signal,
-  })
+export const apiListUsersInDataset = (datasetID: number) =>
+  apiV1Get<IResponse<UserDatasetResp[]>>(`dataset/${datasetID}/usersIn`)
 
 export const apiListQueuesInDataset = (datasetID: number) =>
   apiV1Get<IResponse<QueueDatasetGetResp[]>>(`dataset/${datasetID}/queuesIn`)

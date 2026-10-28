@@ -39,7 +39,7 @@ func TestBindApprovalOrderListQueryDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("bindApprovalOrderListQuery returned error: %v", err)
 	}
-	if request.Page != 1 || request.PageSize != 10 || request.Sort != "-createdAt" {
+	if request.Page != 1 || request.PageSize != 10 || request.Sort != approvalOrderDefaultSort {
 		t.Fatalf("unexpected defaults: %#v", request)
 	}
 	if len(types) != 0 || len(statuses) != 0 {

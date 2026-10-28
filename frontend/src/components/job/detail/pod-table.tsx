@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
 import { EthernetPort, GaugeIcon, LogsIcon, TerminalIcon } from 'lucide-react'
@@ -37,11 +37,13 @@ import { SnapshotStatus } from '@/components/query-table/snapshot-list'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import { type SnapshotPod, apiGetJobPodSnapshot } from '@/services/api/snapshot'
-import { PodDetail } from '@/services/api/vcjob'
+import { PodDetail, apiJobGetPods } from '@/services/api/vcjob'
 
+import { globalSettings } from '@/utils/store'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 
 import PodIngressDialog from './ingress'
+import { getJobPodReadPolicy } from './pod-read-policy'
 
 interface PodTableProps {
   jobName: string
@@ -97,6 +99,15 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
   const [showMonitor, setShowMonitor] = useState(false)
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const [grafanaUrl, setGrafanaUrl] = useState<string>('')
+  const scheduler = useAtomValue(globalSettings).scheduler
+  const readPolicy = getJobPodReadPolicy(jobName, scheduler)
+
+  const legacyPodsQuery = useQuery({
+    queryKey: ['job', 'detail', jobName, 'pods'],
+    queryFn: () => apiJobGetPods(jobName),
+    select: (res) => [...(res.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
+    enabled: readPolicy.legacy,
+  })
 
   const podSnapshotQuery = useInfiniteQuery({
     queryKey: ['job', 'detail', 'vcjobs', jobName, 'pods', 'snapshot'],
@@ -106,7 +117,7 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
       return apiGetJobPodSnapshot(jobName, params)
     },
     getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,
-    enabled: !!jobName,
+    enabled: readPolicy.snapshot,
   })
   const pods = useMemo(
     () =>
@@ -115,14 +126,16 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
         .sort((left, right) => left.name.localeCompare(right.name)),
     [podSnapshotQuery.data]
   )
-  const query = {
-    data: pods,
-    error: podSnapshotQuery.error,
-    isError: podSnapshotQuery.isError,
-    isLoading: podSnapshotQuery.isLoading,
-    dataUpdatedAt: podSnapshotQuery.dataUpdatedAt,
-    refetch: podSnapshotQuery.refetch,
-  }
+  const query = readPolicy.snapshot
+    ? {
+        data: pods,
+        error: podSnapshotQuery.error,
+        isError: podSnapshotQuery.isError,
+        isLoading: podSnapshotQuery.isLoading,
+        dataUpdatedAt: podSnapshotQuery.dataUpdatedAt,
+        refetch: podSnapshotQuery.refetch,
+      }
+    : legacyPodsQuery
   const observedAt = podSnapshotQuery.data?.pages[0]?.data.observed_at
 
   const columns: ColumnDef<PodDetail>[] = useMemo(
@@ -267,23 +280,27 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
         query={query}
         columns={columns}
         briefChildren={
-          <SnapshotStatus observedAt={observedAt} hasMore={podSnapshotQuery.hasNextPage} />
+          readPolicy.snapshot && (
+            <SnapshotStatus observedAt={observedAt} hasMore={podSnapshotQuery.hasNextPage} />
+          )
         }
-        paginate={false}
+        paginate={!readPolicy.snapshot}
         withI18n
         footer={
-          <SnapshotControls
-            hasMore={podSnapshotQuery.hasNextPage}
-            isLoading={podSnapshotQuery.isFetchingNextPage}
-            isRefreshing={podSnapshotQuery.isFetching && !podSnapshotQuery.isFetchingNextPage}
-            onLoadMore={() => void podSnapshotQuery.fetchNextPage()}
-            onRefresh={() =>
-              void queryClient.resetQueries({
-                queryKey: ['job', 'detail', 'vcjobs', jobName, 'pods', 'snapshot'],
-                exact: true,
-              })
-            }
-          />
+          readPolicy.snapshot && (
+            <SnapshotControls
+              hasMore={podSnapshotQuery.hasNextPage}
+              isLoading={podSnapshotQuery.isFetchingNextPage}
+              isRefreshing={podSnapshotQuery.isFetching && !podSnapshotQuery.isFetchingNextPage}
+              onLoadMore={() => void podSnapshotQuery.fetchNextPage()}
+              onRefresh={() =>
+                void queryClient.resetQueries({
+                  queryKey: ['job', 'detail', 'vcjobs', jobName, 'pods', 'snapshot'],
+                  exact: true,
+                })
+              }
+            />
+          )
         }
       />
       <LogDialog namespacedName={showLog} setNamespacedName={setShowLog} />

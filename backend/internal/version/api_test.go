@@ -17,8 +17,8 @@ package version
 import "testing"
 
 func TestUnifiedListContractVersion(t *testing.T) {
-	if APIVersion != 5 || MinSupportedCLIAPIVersion != 5 {
-		t.Fatalf("paginated list contract = %d, minimum CLI = %d, want 5/5",
+	if APIVersion != 5 || MinSupportedCLIAPIVersion != 3 {
+		t.Fatalf("paginated list contract = %d, minimum CLI = %d, want 5/3",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}
 }

@@ -1084,6 +1084,7 @@ func bindResourcePriceIDs(c *gin.Context) ([]uint, error) {
 // ListResource returns resources using the shared page protocol.
 //
 //	@Summary	分页获取集群资源
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags		Resource
 //	@Produce	json
 //	@Security	Bearer
@@ -1125,7 +1126,7 @@ func (mgr *ResourceMgr) listResourcePageWithDB(c *gin.Context, baseDB *gorm.DB) 
 		))
 	}
 	resources, total, err := db.Order(pagination.SortFields(request.Sort, resourcePageSortFields, "id ASC")...).
-		FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+		FindByPage(pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize))
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list resources failed"))
 		return
@@ -1133,6 +1134,10 @@ func (mgr *ResourceMgr) listResourcePageWithDB(c *gin.Context, baseDB *gorm.DB) 
 	items := make([]ResourceResp, 0, len(resources))
 	for _, resource := range resources {
 		items = append(items, buildResourceResp(resource))
+	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, items)
+		return
 	}
 	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
 }

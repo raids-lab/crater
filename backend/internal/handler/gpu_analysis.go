@@ -412,6 +412,7 @@ func gpuAnalysisSortClauses(sortValue string) []string {
 //
 //	@Summary	管理员分页获取 GPU 分析记录
 //	@Description	按搜索、审核状态和风险等级过滤后排序分页返回 GPU 分析记录
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags		GpuAnalysis
 //	@Produce	json
 //	@Security	Bearer
@@ -460,11 +461,16 @@ func (mgr *GpuAnalysisMgr) ListAnalyses(c *gin.Context) {
 		return
 	}
 	results := make([]GpuAnalysisWithJobInfo, 0, request.PageSize)
+	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
 	err = db.Select(ga.ALL, j.Name, j.JobType, j.Resources, j.Nodes, j.Status, j.LockedTimestamp, u.Nickname.As("user_nickname")).
 		Order(pagination.SortFields(request.Sort, gpuAnalysisSortFields, "gpu_analyses.id DESC")...).
-		Offset((request.Page - 1) * request.PageSize).Limit(request.PageSize).Scan(&results)
+		Offset(offset).Limit(limit).Scan(&results)
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list gpu analyses failed"))
+		return
+	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, results)
 		return
 	}
 	resputil.Success(c, resputil.NewPage(results, total, request.Page, request.PageSize))

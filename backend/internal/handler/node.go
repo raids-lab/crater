@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net/url"
 	"sort"
 	"time"
 
@@ -220,7 +221,11 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 	resputil.Success(c, fmt.Sprintf("update %s unschedulable ", urlReq.Name))
 }
 
-// listPodsSnapshot returns one bounded Kubernetes page for a node.
+func nodePodSnapshotRequested(values url.Values) bool {
+	return values.Has("limit") || values.Has("cursor") || values.Has("resource_version")
+}
+
+// listPodsSnapshot serves explicit snapshot pages and legacy complete arrays.
 func (mgr *NodeMgr) listPodsSnapshot(c *gin.Context, admin bool) {
 	var uri NodePodRequest
 	if err := c.ShouldBindUri(&uri); err != nil {
@@ -232,12 +237,16 @@ func (mgr *NodeMgr) listPodsSnapshot(c *gin.Context, admin bool) {
 		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid node Pod snapshot query"))
 		return
 	}
-	if request.Limit == 0 {
-		request.Limit = 50
-	}
-	if request.Limit < 1 || request.Limit > 200 {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("limit must be between 1 and 200"))
-		return
+	values := c.Request.URL.Query()
+	snapshot := nodePodSnapshotRequested(values)
+	if snapshot {
+		if request.Limit == 0 {
+			request.Limit = 50
+		}
+		if request.Limit < 1 || request.Limit > 200 {
+			resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("limit must be between 1 and 200"))
+			return
+		}
 	}
 	items, next, resourceVersion, err := mgr.nodeClient.ListPodsForNodeSnapshot(c, uri.Name, &metav1.ListOptions{
 		Limit: request.Limit, Continue: request.Cursor, ResourceVersion: request.ResourceVersion,
@@ -252,6 +261,14 @@ func (mgr *NodeMgr) listPodsSnapshot(c *gin.Context, admin bool) {
 	}
 	for i := range items {
 		items[i].Type = nodePodType(&items[i])
+	}
+	if !snapshot {
+		if next != "" {
+			resputil.HandleError(c, bizerr.Internal.K8sServiceError.New("incomplete node Pod list; retry with pagination"))
+			return
+		}
+		resputil.Success(c, items)
+		return
 	}
 	var nextCursor *string
 	if next != "" {
@@ -275,6 +292,8 @@ func nodePodType(pod *crclient.Pod) string {
 // GetPodsForNode returns node Pods through a cursor-based snapshot.
 //
 //	@Summary	分页获取节点Pod信息
+//	@Description	Supplying limit, cursor or resource_version returns a snapshot page.
+//	@Description	Omitting all three preserves the complete legacy Pod array.
 //	@Tags		Node
 //	@Produce	json
 //	@Security	Bearer
@@ -292,6 +311,8 @@ func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 // AdminGetPodsForNode returns node Pods with administrator metadata.
 //
 //	@Summary	管理员分页获取节点Pod信息
+//	@Description	Supplying limit, cursor or resource_version returns a snapshot page.
+//	@Description	Omitting all three preserves the complete legacy Pod array.
 //	@Tags		Node
 //	@Produce	json
 //	@Security	Bearer

@@ -79,6 +79,10 @@ func (mgr *OperationLogMgr) bindPageQuery(c *gin.Context) (operationLogPageQuery
 		)
 	}
 	var err error
+	request.PageSize, err = pagination.PageSizeAlias(c.Request.URL.Query(), request.PageSize, "limit", 0)
+	if err != nil {
+		return operationLogPageQuery{}, err
+	}
 	request.Search, err = pagination.NormalizePageQuery(request.Search, request.Page, request.PageSize)
 	if err != nil {
 		return operationLogPageQuery{}, err
@@ -187,11 +191,13 @@ func (mgr *OperationLogMgr) buildOperationLogResponses(
 //
 //	@Summary	获取操作日志分页
 //	@Description	按统一分页协议获取操作日志，筛选和排序在数据库中执行
+//	@Description	Legacy limit requests keep the existing items/total response. Supplying page_size returns the shared page metadata.
 //	@Tags		OperationLog
 //	@Produce	json
 //	@Security	Bearer
 //	@Param		page		query	int		false	"Page number"
 //	@Param		page_size	query	int		false	"Page size, 1-200"
+//	@Param		limit	query	int		false	"Legacy page size; conflicts with a different page_size"
 //	@Param		search		query	string	false	"Search operator, type, target, or message"
 //	@Param		operation_type	query	string	false	"Filter by operation type"
 //	@Param		operator	query	string	false	"Filter by operator"
@@ -234,8 +240,13 @@ func (mgr *OperationLogMgr) ListOperationLogs(c *gin.Context) {
 		return
 	}
 
+	items := mgr.buildOperationLogResponses(c, logs)
+	if !c.Request.URL.Query().Has("page_size") {
+		resputil.Success(c, resputil.List[OperationLogResp]{Items: items, Total: total})
+		return
+	}
 	resputil.Success(c, resputil.NewPage(
-		mgr.buildOperationLogResponses(c, logs),
+		items,
 		total,
 		request.Page,
 		request.PageSize,

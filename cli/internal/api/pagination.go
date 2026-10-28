@@ -9,8 +9,8 @@ import (
 // DefaultCLIPageSize keeps interactive list output compact unless callers opt in to more rows.
 const DefaultCLIPageSize = 15
 
-// MaxPageRequests bounds complete-list reads if a server reports a total that
-// grows indefinitely while pages are being fetched.
+// MaxPageRequests bounds complete-list reads when totals or continue tokens
+// keep advancing without ever reaching a terminal page.
 const MaxPageRequests = 10000
 
 type Page[T any] struct {
@@ -57,6 +57,7 @@ func FetchAllPages[T any](
 	options.Page = 1
 	items := make([]T, 0)
 	pageRequests := 0
+	pageSize := 0
 	for {
 		if pageRequests >= MaxPageRequests {
 			return nil, fmt.Errorf("fetch all pages: exceeded maximum of %d page requests", MaxPageRequests)
@@ -66,8 +67,22 @@ func FetchAllPages[T any](
 			return nil, err
 		}
 		pageRequests++
+		if page.Page != options.Page {
+			return nil, fmt.Errorf("fetch all pages: requested page %d, received page %d", options.Page, page.Page)
+		}
+		if page.PageSize < 1 || (pageSize != 0 && page.PageSize != pageSize) {
+			return nil, fmt.Errorf("fetch all pages: invalid or changing page_size on page %d", options.Page)
+		}
+		pageSize = page.PageSize
+		if page.Total < 0 || len(page.Items) > pageSize {
+			return nil, fmt.Errorf("fetch all pages: invalid total or item count on page %d", options.Page)
+		}
+		collected := int64(len(items)) + int64(len(page.Items))
+		if collected > page.Total {
+			return nil, fmt.Errorf("fetch all pages: collected %d items, exceeding reported total %d on page %d", collected, page.Total, options.Page)
+		}
 		if len(page.Items) == 0 {
-			if int64(len(items)) >= page.Total {
+			if collected == page.Total {
 				return items, nil
 			}
 			return nil, fmt.Errorf(
@@ -78,8 +93,13 @@ func FetchAllPages[T any](
 			)
 		}
 		items = append(items, page.Items...)
-		if int64(len(items)) >= page.Total {
+		if collected == page.Total {
 			return items, nil
+		}
+		// Offset pages must be full until the reported total is reached. Moving
+		// past a short intermediate page would skip records in the next offset.
+		if len(page.Items) < pageSize {
+			return nil, fmt.Errorf("fetch all pages: short page %d after collecting %d of %d reported items", options.Page, collected, page.Total)
 		}
 		options.Page++
 	}

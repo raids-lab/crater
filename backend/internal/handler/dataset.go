@@ -168,10 +168,6 @@ func bindDatasetListPageQuery(c *gin.Context) (datasetListPageQuery, error) {
 	return request, nil
 }
 
-func (request *datasetListPageQuery) offset() int {
-	return (request.Page - 1) * request.PageSize
-}
-
 func accessibleDatasetIDs(c *gin.Context, token util.JWTMessage) ([]uint, error) {
 	ud := query.UserDataset
 	userDatasets, err := ud.WithContext(c).Where(ud.UserID.Eq(token.UserID)).Find()
@@ -208,6 +204,7 @@ func accessibleDatasetIDs(c *gin.Context, token util.JWTMessage) ([]uint, error)
 //
 //	@Summary	获取可访问数据资源分页
 //	@Description	按权限、类型、搜索和排序条件过滤后分页返回数据资源
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags		Dataset
 //	@Produce	json
 //	@Security	Bearer
@@ -234,10 +231,11 @@ func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
 	datasets, total, err := datasetservice.List(c, &datasetservice.ListOptions{
 		AccessibleIDs: ids,
-		Offset:        request.offset(),
-		Limit:         request.PageSize,
+		Offset:        offset,
+		Limit:         limit,
 		Search:        request.Search,
 		Owner:         request.Owner,
 		Sort:          request.Sort,
@@ -254,6 +252,10 @@ func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 		return
 	}
 
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, result)
+		return
+	}
 	resputil.Success(c, resputil.NewPage(result, total, request.Page, request.PageSize))
 }
 
@@ -993,18 +995,6 @@ type UserOfDatasetResp struct {
 	UserInfo datatypes.JSONType[model.UserAttribute] `json:"userInfo"`
 }
 
-type datasetSharedUsersPageQuery struct {
-	Page     int    `form:"page,default=1" binding:"min=1"`
-	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
-	Search   string `form:"search"`
-	Sort     string `form:"sort"`
-}
-
-var datasetSharedUsersSortFields = map[string]string{
-	"name": "users.name",
-	"id":   "users.id",
-}
-
 // 函数名称 ListUserOfDataset
 //
 //	@Summary		获取该数据集共享用户
@@ -1014,11 +1004,7 @@ var datasetSharedUsersSortFields = map[string]string{
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			req	path		DatasetGetReq			true	"数据集ID"
-//	@Param	page	query	int	false	"Page number (1-based)"
-//	@Param	page_size	query	int	false	"Page size (1-200)"
-//	@Param	search	query	string	false	"Search shared usernames"
-//	@Param	sort	query	string	false	"Sort fields"
-//	@Success		200	{object}	resputil.Response[resputil.Page[UserOfDatasetResp]]	"Shared users page"
+//	@Success		200	{object}	resputil.Response[[]UserOfDatasetResp]	"Shared users"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/dataset/{datasetId}/usersIn [get]
@@ -1026,14 +1012,6 @@ func (mgr *DatasetMgr) ListUserOfDataset(c *gin.Context) {
 	var req DatasetGetReq
 	if err := c.ShouldBindUri(&req); err != nil {
 		resputil.BadRequestError(c, fmt.Sprintf("get dataset failed, detail: %v", err))
-		return
-	}
-	var page datasetSharedUsersPageQuery
-	if err := pagination.PrepareBoundPageQuery(
-		c.ShouldBindQuery(&page), "invalid shared users query", &page.Search,
-		page.Page, page.PageSize, &page.Sort, "name", datasetSharedUsersSortFields,
-	); err != nil {
-		resputil.HandleError(c, err)
 		return
 	}
 	d := query.Dataset
@@ -1045,30 +1023,20 @@ func (mgr *DatasetMgr) ListUserOfDataset(c *gin.Context) {
 	u, ud := query.User, query.UserDataset
 	db := u.WithContext(c).Join(ud, ud.UserID.EqCol(u.ID)).
 		Where(ud.DatasetID.Eq(dataset.ID), ud.DeletedAt.IsNull(), u.DeletedAt.IsNull())
-	if page.Search != "" {
-		db = db.Where(u.Name.Lower().Like(util.ContainsPattern(page.Search)))
-	}
-	total, err := db.Distinct(u.ID).Count()
-	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to count dataset shared users"))
-		return
-	}
-	var resp []UserOfDatasetResp
+	resp := make([]UserOfDatasetResp, 0)
 	err = db.
 		Distinct().
 		Select(u.ID, u.Name, u.Attributes.As("user_info")).
-		Order(pagination.SortFields(page.Sort, datasetSharedUsersSortFields, "users.id ASC")...).
-		Offset((page.Page - 1) * page.PageSize).
-		Limit(page.PageSize).
+		Order(u.ID.Asc()).
 		Scan(&resp)
 	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to get dataset shared users page"))
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to get dataset shared users"))
 		return
 	}
 	for i := range resp {
 		resp[i].IsOwner = resp[i].ID == dataset.UserID
 	}
-	resputil.Success(c, resputil.NewPage(resp, total, page.Page, page.PageSize))
+	resputil.Success(c, resp)
 }
 
 type QueueDatasetGetResp struct {
@@ -1543,6 +1511,7 @@ func adminDatasetSortClauses(sortValue string) []string {
 //
 //	@Summary	管理员分页获取所有数据资源
 //	@Description	按类型、搜索和排序条件过滤后分页返回数据资源
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags		Dataset
 //	@Produce	json
 //	@Security	Bearer
@@ -1582,7 +1551,8 @@ func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
 	}
 
 	datasets := make([]*model.Dataset, 0)
-	if err := db.Preload("User").Offset((request.Page - 1) * request.PageSize).Limit(request.PageSize).Find(&datasets).Error; err != nil {
+	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
+	if err := db.Preload("User").Offset(offset).Limit(limit).Find(&datasets).Error; err != nil {
 		klog.Errorf("failed to list admin datasets: %v", err)
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list admin datasets failed"))
 		return
@@ -1591,6 +1561,10 @@ func (mgr *DatasetMgr) GetAllDataset(c *gin.Context) {
 	result, err := convertDatasetBatch(c, datasets)
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "enrich admin datasets failed"))
+		return
+	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, result)
 		return
 	}
 	resputil.Success(c, resputil.NewPage(result, total, request.Page, request.PageSize))

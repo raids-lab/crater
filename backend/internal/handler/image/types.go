@@ -154,6 +154,10 @@ type (
 )
 
 type (
+	ListKanikoResponse struct {
+		KanikoInfoList []KanikoInfo `json:"kanikoList"`
+	}
+
 	ListImageResponse struct {
 		ImageInfoList []*ImageInfo `json:"imageList"`
 	}

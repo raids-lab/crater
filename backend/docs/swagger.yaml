@@ -621,19 +621,6 @@ definitions:
       total:
         type: integer
     type: object
-  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserOfDatasetResp:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/internal_handler.UserOfDatasetResp'
-        type: array
-      page:
-        type: integer
-      page_size:
-        type: integer
-      total:
-        type: integer
-    type: object
   github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserProjectGetResp:
     properties:
       items:
@@ -745,6 +732,18 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserOfDatasetResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.UserOfDatasetResp'
+        type: array
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis:
     properties:
       code:
@@ -842,16 +841,6 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_ResourceResp'
-      msg:
-        type: string
-    type: object
-  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserOfDatasetResp
-  : properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_UserOfDatasetResp'
       msg:
         type: string
     type: object
@@ -3979,7 +3968,9 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get list of users in account (requires user to be in account)
+      description: |-
+        Get list of users in account (requires user to be in account)
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: aid
         in: path
@@ -4282,7 +4273,9 @@ paths:
       - Project
   /v1/admin/accounts:
     get:
-      description: 按统一分页协议获取账户列表，搜索、排序和分页在数据库中执行
+      description: |-
+        按统一分页协议获取账户列表，搜索、排序和分页在数据库中执行
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query
@@ -4379,7 +4372,9 @@ paths:
     get:
       consumes:
       - application/json
-      description: SQL query with join
+      description: |-
+        SQL query with join
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: aid
         in: path
@@ -4469,7 +4464,9 @@ paths:
       - Project
   /v1/admin/approvalorder:
     get:
-      description: 按统一分页协议获取所有审批工单
+      description: |-
+        按统一分页协议获取所有审批工单
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query
@@ -4617,7 +4614,9 @@ paths:
       - approvalorder
   /v1/admin/dataset/alldataset:
     get:
-      description: 按类型、搜索和排序条件过滤后分页返回数据资源
+      description: |-
+        按类型、搜索和排序条件过滤后分页返回数据资源
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query
@@ -4789,7 +4788,9 @@ paths:
       - Dataset
   /v1/admin/gpu-analysis:
     get:
-      description: 按搜索、审核状态和风险等级过滤后排序分页返回 GPU 分析记录
+      description: |-
+        按搜索、审核状态和风险等级过滤后排序分页返回 GPU 分析记录
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query
@@ -5088,6 +5089,8 @@ paths:
       - ImagePack
   /v1/admin/images/image:
     get:
+      description: Supplying page or page_size returns a page; omitting both preserves
+        the complete legacy imageList wrapper.
       parameters:
       - description: Page number
         in: query
@@ -5123,6 +5126,8 @@ paths:
       - ImagePack
   /v1/admin/images/kaniko:
     get:
+      description: Supplying page or page_size returns a page; omitting both preserves
+        the complete legacy kanikoList wrapper.
       parameters:
       - description: Page number
         in: query
@@ -5225,6 +5230,9 @@ paths:
       - ImagePack
   /v1/admin/model-download/models/downloads:
     get:
+      description: |-
+        Omitting page and page_size returns the complete legacy array.
+        Legacy page/pageSize requests keep items, total and summary; canonical page_size adds page metadata.
       parameters:
       - description: Page number
         in: query
@@ -5233,6 +5241,10 @@ paths:
       - description: Page size, 1-200
         in: query
         name: page_size
+        type: integer
+      - description: Legacy page size, defaults to 20 and caps at 100
+        in: query
+        name: pageSize
         type: integer
       - description: Search download name
         in: query
@@ -5318,6 +5330,9 @@ paths:
       - admin
   /v1/admin/nodes/{name}/pods:
     get:
+      description: |-
+        Supplying limit, cursor or resource_version returns a snapshot page.
+        Omitting all three preserves the complete legacy Pod array.
       parameters:
       - description: Node name
         in: path
@@ -5374,7 +5389,9 @@ paths:
       tags:
       - OperationLog
     get:
-      description: 按统一分页协议获取操作日志，筛选和排序在数据库中执行
+      description: |-
+        按统一分页协议获取操作日志，筛选和排序在数据库中执行
+        Legacy limit requests keep the existing items/total response. Supplying page_size returns the shared page metadata.
       parameters:
       - description: Page number
         in: query
@@ -5383,6 +5400,10 @@ paths:
       - description: Page size, 1-200
         in: query
         name: page_size
+        type: integer
+      - description: Legacy page size; conflicts with a different page_size
+        in: query
+        name: limit
         type: integer
       - description: Search operator, type, target, or message
         in: query
@@ -6467,7 +6488,9 @@ paths:
       - SystemConfig
   /v1/admin/users:
     get:
-      description: 按统一分页协议获取用户列表，搜索、筛选、排序和分页在数据库中执行
+      description: |-
+        按统一分页协议获取用户列表，搜索、筛选、排序和分页在数据库中执行
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query
@@ -6984,7 +7007,9 @@ paths:
       - ImagePack
   /v1/approvalorder:
     get:
-      description: 按统一分页协议获取当前用户创建的审批工单
+      description: |-
+        按统一分页协议获取当前用户创建的审批工单
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query
@@ -7449,29 +7474,13 @@ paths:
         name: datasetId
         required: true
         type: integer
-      - description: Page number (1-based)
-        in: query
-        name: page
-        type: integer
-      - description: Page size (1-200)
-        in: query
-        name: page_size
-        type: integer
-      - description: Search shared usernames
-        in: query
-        name: search
-        type: string
-      - description: Sort fields
-        in: query
-        name: sort
-        type: string
       produces:
       - application/json
       responses:
         "200":
-          description: Shared users page
+          description: Shared users
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_UserOfDatasetResp'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserOfDatasetResp'
         "400":
           description: Request parameter error
           schema:
@@ -7673,7 +7682,9 @@ paths:
       - Dataset
   /v1/dataset/mydataset:
     get:
-      description: 按权限、类型、搜索和排序条件过滤后分页返回数据资源
+      description: |-
+        按权限、类型、搜索和排序条件过滤后分页返回数据资源
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query
@@ -8108,6 +8119,8 @@ paths:
       - ImagePack
   /v1/images/image:
     get:
+      description: Supplying page or page_size returns a page; omitting both preserves
+        the complete legacy imageList wrapper.
       parameters:
       - description: Page number
         in: query
@@ -8182,6 +8195,8 @@ paths:
       - ImagePack
   /v1/images/kaniko:
     get:
+      description: Supplying page or page_size returns a page; omitting both preserves
+        the complete legacy kanikoList wrapper.
       parameters:
       - description: Page number
         in: query
@@ -8482,8 +8497,9 @@ paths:
     get:
       consumes:
       - application/json
-      description: List job templates with server-side pagination, search, owner filtering,
-        and sorting
+      description: |-
+        List job templates with server-side pagination, search, owner filtering, and sorting
+        Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query
@@ -8559,6 +8575,9 @@ paths:
       - jobtemplate
   /v1/model-download/models/downloads:
     get:
+      description: |-
+        Omitting page and page_size returns the complete legacy array.
+        Legacy page/pageSize requests keep items, total and summary; canonical page_size adds page metadata.
       parameters:
       - description: Page number
         in: query
@@ -8567,6 +8586,10 @@ paths:
       - description: Page size, 1-200
         in: query
         name: page_size
+        type: integer
+      - description: Legacy page size, defaults to 20 and caps at 100
+        in: query
+        name: pageSize
         type: integer
       - description: Search download name
         in: query
@@ -9498,6 +9521,9 @@ paths:
       - Node
   /v1/nodes/{name}/pods:
     get:
+      description: |-
+        Supplying limit, cursor or resource_version returns a snapshot page.
+        Omitting all three preserves the complete legacy Pod array.
       parameters:
       - description: Node name
         in: path
@@ -9786,6 +9812,8 @@ paths:
       - Project
   /v1/resources:
     get:
+      description: Supplying page or page_size returns a page; omitting both preserves
+        the complete legacy array on the same route.
       parameters:
       - description: Page number
         in: query

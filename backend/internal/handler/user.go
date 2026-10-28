@@ -240,6 +240,7 @@ func parseAdminUserBannedFilters(c *gin.Context) ([]bool, error) {
 //
 //	@Summary	管理员获取用户分页
 //	@Description	按统一分页协议获取用户列表，搜索、筛选、排序和分页在数据库中执行
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
 //	@Tags		User
 //	@Produce	json
 //	@Security	Bearer
@@ -303,7 +304,7 @@ func (mgr *UserMgr) AdminListUsers(c *gin.Context) {
 			db = db.Order(column)
 		}
 	}
-	users, total, err := db.FindByPage((request.Page-1)*request.PageSize, request.PageSize)
+	users, total, err := db.FindByPage(pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize))
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list users failed"))
 		return
@@ -312,6 +313,10 @@ func (mgr *UserMgr) AdminListUsers(c *gin.Context) {
 	items := make([]UserResp, 0, len(users))
 	for _, user := range users {
 		items = append(items, mgr.buildUserResponse(user, c))
+	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, items)
+		return
 	}
 	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
 }
