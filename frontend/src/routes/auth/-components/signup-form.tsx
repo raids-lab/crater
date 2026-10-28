@@ -15,8 +15,6 @@
  */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
-import { HTTPError } from 'ky'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -34,35 +32,39 @@ import { Input } from '@/components/ui/input'
 import LoadableButton from '@/components/button/loadable-button'
 
 import { apiSignup } from '@/services/api/auth'
+import { getAuthErrorMessage } from '@/services/auth-errors'
+import { authMutationOptions } from '@/services/auth-mutation'
+import { authText } from '@/services/auth-text'
+import { getApiErrorData, markApiErrorHandled } from '@/services/client'
+import { ERROR_RESOURCE_ALREADY_EXISTS } from '@/services/error_code'
 
 const formSchema = z
   .object({
     username: z
       .string()
       .min(1, {
-        message: 'Username can not be empty.',
+        message: '用户名不能为空',
       })
-      .max(20, {
-        message: 'Username must be at most 20 characters.',
-      }),
+      .max(64, { message: authText('usernameTooLong') })
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/, { message: authText('usernameFormat') }),
     password: z
       .string()
       .min(1, {
-        message: 'Password can not be empty.',
+        message: '密码不能为空',
       })
-      .max(20, {
-        message: 'Password must be at most 20 characters.',
+      .refine((value) => new TextEncoder().encode(value).length <= 72, {
+        message: authText('passwordTooLong'),
       }),
     passwordConfirm: z.string(),
   })
   .refine((data) => data.password === data.passwordConfirm, {
-    message: "Passwords don't match",
+    message: '两次输入的密码不一致',
     path: ['passwordConfirm'],
   })
 
-export function SignupForm() {
-  const navigate = useNavigate()
+export function SignupForm({ onSuccess }: { onSuccess: () => void }) {
   const { mutate: loginUser, isPending } = useMutation({
+    ...authMutationOptions,
     mutationFn: (values: z.infer<typeof formSchema>) =>
       apiSignup({
         userName: values.username,
@@ -70,12 +72,18 @@ export function SignupForm() {
       }),
     onSuccess: () => {
       toast.success('注册成功')
-      navigate({ to: '/auth', search: { redirect: '/', token: '' } })
+      onSuccess()
     },
     onError: (error) => {
-      if (error instanceof HTTPError) {
-        // Handled by global apiRequest interceptor
+      markApiErrorHandled(error)
+      if (getApiErrorData(error)?.code === ERROR_RESOURCE_ALREADY_EXISTS) {
+        form.setError('username', {
+          type: 'server',
+          message: getAuthErrorMessage(error),
+        })
+        return
       }
+      form.setError('root.server', { type: 'server', message: getAuthErrorMessage(error) })
     },
   })
 
@@ -144,6 +152,11 @@ export function SignupForm() {
             </FormItem>
           )}
         />
+        {form.formState.errors.root?.server?.message && (
+          <p role="alert" className="text-destructive text-sm">
+            {form.formState.errors.root.server.message}
+          </p>
+        )}
         <LoadableButton
           isLoadingText="注册中"
           type="submit"

@@ -54,3 +54,19 @@ func TestSuccessKeepsEmptyMessage(t *testing.T) {
 		t.Fatalf("expected empty message, got %q", response.Message)
 	}
 }
+
+func TestHandleErrorUsesOuterPublicStatus(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	HandleError(ctx, bizerr.Internal.ThirdPartyApiError.Wrap(bizerr.Auth.InvalidCredentials.New("private cause"), "Service account rejected"))
+	if recorder.Code != http.StatusInternalServerError {
+		t.Fatalf("inner credential failure changed public HTTP status: %d", recorder.Code)
+	}
+	var response Response[any]
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != bizerr.Internal.ThirdPartyApiError || response.Message != "Service account rejected" {
+		t.Fatal("public error was lost")
+	}
+}
