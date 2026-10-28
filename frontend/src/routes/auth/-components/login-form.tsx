@@ -17,23 +17,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { HTTPError } from 'ky'
 import { HelpCircle } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
@@ -54,11 +43,12 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-import DocsButton from '@/components/button/docs-button'
 import LoadableButton from '@/components/button/loadable-button'
 
 import { AuthMode, IAuthResponse, ILogin, Role } from '@/services/api/auth'
-import { markApiErrorHandled } from '@/services/client'
+import { getAuthErrorMessage } from '@/services/auth-errors'
+import { authMutationOptions } from '@/services/auth-mutation'
+import { getApiErrorData, markApiErrorHandled } from '@/services/client'
 import {
   ERROR_INVALID_CREDENTIALS,
   ERROR_MUST_REGISTER,
@@ -69,10 +59,9 @@ import {
   LEGACY_ERROR_LDAP_USER_NOT_FOUND,
   LEGACY_ERROR_MUST_REGISTER,
 } from '@/services/error_code_legacy'
-import { IErrorResponse, IResponse } from '@/services/types'
+import { IResponse } from '@/services/types'
 
 import { atomPrivacyAccepted, atomUserContext, atomUserInfo, useResetStore } from '@/utils/store'
-import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 
 import { loginFormSchema as formSchema } from './login-schema'
 
@@ -96,13 +85,11 @@ export function LoginForm({
   onForgotPasswordClick,
   searchParams,
 }: LoginFormProps) {
-  const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const setUserState = useSetAtom(atomUserInfo)
   const setAccount = useSetAtom(atomUserContext)
   const { resetAll } = useResetStore()
-  const website = useAtomValue(configUrlWebsiteBaseAtom)
 
   const setPrivacyAccepted = useSetAtom(atomPrivacyAccepted)
   const privacyAccepted = useAtomValue(atomPrivacyAccepted)
@@ -117,6 +104,7 @@ export function LoginForm({
   })
 
   const { mutate: loginUser, status } = useMutation({
+    ...authMutationOptions,
     mutationFn: (values: { auth: string; username?: string; password?: string; token?: string }) =>
       login({
         auth: values.auth,
@@ -124,8 +112,8 @@ export function LoginForm({
         password: values.password,
         token: values.token,
       }),
-    onSuccess: async ({ data }) => {
-      await queryClient.invalidateQueries()
+    onSuccess: ({ data }) => {
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'authmode' })
       setUserState({
         ...data.user,
         space: data.context.space,
@@ -139,40 +127,32 @@ export function LoginForm({
       navigate({ to: searchParams.redirect || '/portal', replace: true })
     },
     onError: (error) => {
-      // The apiRequest interceptor in client.ts attaches .data to the error object
-      let errorData: IErrorResponse | undefined
-
-      if (error instanceof HTTPError) {
-        const augmentedError = error as HTTPError & { data?: IErrorResponse }
-        errorData = augmentedError.data
-      } else if (error && typeof error === 'object' && 'data' in error) {
-        errorData = (error as { data?: IErrorResponse }).data
-      }
-
-      if (errorData) {
-        switch (errorData.code) {
-          case ERROR_INVALID_CREDENTIALS:
-          case LEGACY_ERROR_INVALID_CREDENTIALS:
-            markApiErrorHandled(error)
-            form.setError('password', {
-              type: 'manual',
-              message: '用户名或密码错误',
-            })
-            return
-          case ERROR_REGISTER_NOT_FOUND:
-          case LEGACY_ERROR_LDAP_USER_NOT_FOUND:
-            markApiErrorHandled(error)
-            form.setError('username', {
-              type: 'manual',
-              message: '用户不存在或存在多个同名实体',
-            })
-            return
-          case ERROR_MUST_REGISTER:
-          case LEGACY_ERROR_MUST_REGISTER:
-            markApiErrorHandled(error)
-            setOpen(true)
-            return
-        }
+      markApiErrorHandled(error)
+      const errorData = getApiErrorData(error)
+      switch (errorData?.code) {
+        case ERROR_INVALID_CREDENTIALS:
+        case LEGACY_ERROR_INVALID_CREDENTIALS:
+          form.setError('password', {
+            type: 'server',
+            message: getAuthErrorMessage(error),
+          })
+          return
+        case ERROR_REGISTER_NOT_FOUND:
+        case LEGACY_ERROR_LDAP_USER_NOT_FOUND:
+          form.setError('username', {
+            type: 'server',
+            message: getAuthErrorMessage(error),
+          })
+          return
+        case ERROR_MUST_REGISTER:
+        case LEGACY_ERROR_MUST_REGISTER:
+          form.setError('root.server', {
+            type: 'server',
+            message: getAuthErrorMessage(error),
+          })
+          return
+        default:
+          form.setError('root.server', { type: 'server', message: getAuthErrorMessage(error) })
       }
     },
   })
@@ -292,6 +272,12 @@ export function LoginForm({
             )}
           />
 
+          {form.formState.errors.root?.server?.message && (
+            <p role="alert" className="text-destructive text-sm">
+              {form.formState.errors.root.server.message}
+            </p>
+          )}
+
           <LoadableButton
             isLoadingText="登录中"
             type="submit"
@@ -301,31 +287,11 @@ export function LoginForm({
             {authMode === AuthMode.LDAP
               ? ldapAlias
                 ? `${ldapAlias} 登录`
-                : 'LDAP 认证登录'
+                : '统一身份登录'
               : '登录'}
           </LoadableButton>
         </form>
       </Form>
-
-      {/* 首次登录未激活提示（原有逻辑） */}
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>账号未激活</AlertDialogTitle>
-            <AlertDialogDescription>
-              第一次登录平台时，需要从 LDAP 门户同步用户信息，请参考「
-              <a href={`${website}/docs/user/quick-start/login`}>平台访问指南</a>
-              」激活您的账号。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <DocsButton title="立即阅读" url="quick-start/login" />
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   )
 }
