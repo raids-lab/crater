@@ -1,5 +1,5 @@
 import { getDefaultStore } from 'jotai'
-import { HTTPError, Options } from 'ky'
+import ky, { HTTPError, Options } from 'ky'
 import { toast } from 'sonner'
 
 import { logger } from '@/utils/loglevel'
@@ -7,7 +7,6 @@ import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
 import { configAPIBaseAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
-import { getAuthErrorMessage } from './auth-errors'
 import {
   CONFLICT_ERROR_GROUP,
   ERROR_INVALID_CREDENTIALS,
@@ -16,6 +15,7 @@ import {
   ERROR_PERMISSION_DENIED,
   ERROR_REGISTER_NOT_FOUND,
   ERROR_SERVICE_ERROR,
+  ERROR_TOKEN_EXPIRED,
   ERROR_TOKEN_INVALID,
   ERROR_USER_BANNED,
   ERROR_USER_EMAIL_NOT_VERIFIED,
@@ -28,8 +28,7 @@ import {
   LEGACY_ERROR_NOT_SPECIFIED,
   LEGACY_ERROR_USER_NOT_ALLOWED,
 } from './error_code_legacy'
-import { createSessionClient } from './session-client'
-import type { IErrorResponse, IResponse } from './types'
+import type { IErrorResponse, IRefresh, IRefreshResponse, IResponse } from './types'
 
 const store = getDefaultStore()
 const apiBase = store.get(configAPIBaseAtom)
@@ -79,7 +78,7 @@ const ERROR_POLICY_TABLE: ErrorPolicy[] = [
   {
     action: 'toast',
     match: (code) => code === LEGACY_ERROR_LEGACY_TOKEN_NOT_SUPPORTED,
-    message: '不再支持这种登陆方式，请使用统一身份登录',
+    message: '不再支持这种登陆方式，直接通过 LDAP 登录即可',
   },
   {
     action: 'toast',
@@ -200,19 +199,110 @@ export const handleApiErrorByCode = (
   return true
 }
 
-export const apiClient = createSessionClient({
+// Token 刷新函数
+const refreshTokenFn = async (): Promise<string> => {
+  const data: IRefresh = {
+    refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY) || '',
+  }
+
+  // 使用基本的 ky 实例避免循环调用
+  const basicClient = ky.create({ prefixUrl: baseURL })
+
+  const response = await basicClient
+    .post('auth/refresh', { json: data })
+    .json<IResponse<IRefreshResponse>>()
+  const { accessToken, refreshToken } = response.data
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+  return accessToken
+}
+
+// 重试队列，避免并发刷新
+let isRefreshing = false
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (error: unknown) => void }> = []
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token!)
+    }
+  })
+
+  failedQueue = []
+}
+
+// 创建 ky 实例
+export const apiClient = ky.create({
   prefixUrl: baseURL,
-  getAccessToken: () => localStorage.getItem(ACCESS_TOKEN_KEY),
-  getRefreshToken: () => localStorage.getItem(REFRESH_TOKEN_KEY),
-  saveTokens: (access, refresh) => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, access)
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
-  },
-  onInvalid: (error) => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
-    sessionStorage.setItem('auth-session-hint', getAuthErrorMessage(error))
-    if (window.location.pathname.replace(/\/$/, '') !== '/auth') window.location.assign('/auth')
+  retry: 0,
+  timeout: 10000,
+  hooks: {
+    beforeRequest: [
+      (request) => {
+        // 添加认证头
+        const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+        if (token) {
+          request.headers.set('Authorization', `Bearer ${token}`)
+        }
+        request.headers.set('Content-Type', 'application/json')
+      },
+    ],
+    afterResponse: [
+      async (request, options, response) => {
+        // 如果响应成功，直接返回
+        if (response.ok) {
+          return response
+        }
+
+        // 处理错误响应
+        if (response.status === 401) {
+          let errorData: IErrorResponse
+          try {
+            errorData = await response.clone().json()
+          } catch {
+            throw new HTTPError(response, request, options)
+          }
+
+          // 处理 token 过期
+          if (errorData.code === ERROR_TOKEN_EXPIRED) {
+            if (isRefreshing) {
+              // 如果正在刷新，将请求加入队列
+              return new Promise((resolve, reject) => {
+                failedQueue.push({ resolve, reject })
+              }).then((token) => {
+                request.headers.set('Authorization', `Bearer ${token}`)
+                return ky(request)
+              })
+            }
+
+            isRefreshing = true
+
+            try {
+              const newToken = await refreshTokenFn()
+              processQueue(null, newToken)
+
+              // 重新发起原始请求
+              request.headers.set('Authorization', `Bearer ${newToken}`)
+              return ky(request)
+            } catch (error) {
+              processQueue(error, null)
+              // 跳转到登录页
+              if (!window.location.href.endsWith('/auth')) {
+                window.location.href = '/auth'
+                throw error
+              }
+            } finally {
+              isRefreshing = false
+            }
+          }
+        }
+
+        // 对于其他错误，让它继续抛出
+        throw new HTTPError(response, request, options)
+      },
+    ],
   },
 })
 
@@ -221,8 +311,7 @@ export const apiClient = createSessionClient({
  */
 export async function apiRequest<T>(
   requestFn: () => Promise<T>,
-  errorMessage?: string,
-  errorHandling: 'global' | 'caller' = 'global'
+  errorMessage?: string
 ): Promise<IResponse<T extends IResponse<infer U> ? U : T>> {
   try {
     const response = await requestFn()
@@ -231,7 +320,7 @@ export async function apiRequest<T>(
     // 如果是 HTTPError，尝试返回后端响应内容
     if (error instanceof HTTPError) {
       try {
-        const errorResponse = (await error.response.clone().json()) as IErrorResponse
+        const errorResponse = await error.response.json<IErrorResponse>()
         const enhancedError = error as EnhancedHTTPError
 
         // Mount the parsed error response data to the error object
@@ -241,11 +330,6 @@ export async function apiRequest<T>(
           data: errorResponse,
           httpStatus: error.response.status,
         })
-
-        // Authentication forms own every failure, including field errors and network failures.
-        if (errorHandling === 'caller') {
-          throw enhancedError
-        }
 
         const matchedPolicy = resolveErrorPolicy(errorResponse.code, enhancedError)
         if (matchedPolicy) {
@@ -265,7 +349,7 @@ export async function apiRequest<T>(
         }
         // 如果是上面的 JSON 解析动作本身报错，或者 switch 里的逻辑报错
         // 这里的处理可以保持原样，或者稍微优化
-        if (errorHandling === 'global') {
+        if (error instanceof HTTPError) {
           toast.error(errorMessage, {
             description: error.message || '请求失败，请稍后重试',
           })
@@ -292,7 +376,7 @@ export const getErrorCode = async (error: unknown): Promise<[ErrorCode, string]>
     }
 
     try {
-      const errorResponse = (await error.response.clone().json()) as IErrorResponse
+      const errorResponse = await error.response.json<IErrorResponse>()
       return [errorResponse.code ?? FALLBACK_ERROR_CODE, errorResponse.msg ?? error.message]
     } catch {
       return [FALLBACK_ERROR_CODE, error.message]

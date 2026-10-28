@@ -141,37 +141,13 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "账号凭证错误或账号未激活",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "403": {
-                        "description": "登录方式禁用、平台账号受限或缺少项目关联",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "409": {
-                        "description": "账号创建冲突",
+                        "description": "用户名或密码错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "目录服务、身份映射或数据库异常",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "502": {
-                        "description": "外部 UID 服务不可用或响应不完整",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "504": {
-                        "description": "LDAP 认证超时",
+                        "description": "数据库交互错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -12781,9 +12757,6 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute"
-                },
-                "version": {
-                    "$ref": "#/definitions/internal_handler.VersionInfo"
                 }
             }
         },
