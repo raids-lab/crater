@@ -6,6 +6,9 @@ This document is the starting point for contributing to the Crater monorepo. It 
 
 If you are new to Crater, read this file in order once. During day-to-day work, use it as a checklist and jump into the relevant module `CONTRIBUTING` before editing code.
 
+> [!IMPORTANT]
+> **AI-assisted development requires the Crater developer Skills.** Before using an AI tool to contribute, install the repository's `crater-devel-*` Skills and ensure the agent loads `crater-devel-shared` and the relevant task Skills. See [Agent Skills](#agent-skills) for installation instructions. Skills guide the workflow; they do not replace this document or the contributor's responsibility to review and verify the changes.
+
 ## How The Docs Fit Together
 
 - **README** files are for users. They explain what Crater is, how to use it, and how to deploy it.
@@ -183,7 +186,7 @@ git pull origin main
 
 ### Branch prefixes and commit types
 
-Before creating a task branch, choose the **type** for your change from the table below and use the matching prefix in the branch name (such as `feature/` or `fix/`). Commit subjects use the same types.
+Before creating a task branch, choose the **type** for your change from the table below and use the matching prefix in the branch name (such as `feature/` or `fix/`). The prefix identifies the change type, not its author or development tool: do not use personal, account, or AI-tool prefixes such as `zhangsan/` or `codex/`, or prepend them to a type prefix. This applies equally to human-created and Agent-created branches. Commit subjects use the same types.
 
 | type | Branch prefix | Meaning |
 |------|---------------|---------|
@@ -327,7 +330,7 @@ The PR description must be **bilingual Markdown** and cover:
 - **Intent**: one-sentence summary and motivation if any.
 - **Core changes**: grouped by what changed, not merely by file.
 - **Test verification**: only checks actually performed, clearly separating automation/AI checks from developer manual checks.
-- **Screenshots**: required for frontend / UI changes, showing the affected interface state(s).
+- **Screenshots**: frontend / UI changes should provide actual interface screenshots in the PR description or a PR comment; explain when there is no meaningful visible change or a screenshot cannot be captured. For other changes, actual-execution screenshots are recommended when they materially help review, for example CLI output. Verification screenshots must come from an actual browser or real execution: an Agent may operate the real environment and capture them, but AI-generated or simulated images are not acceptable evidence, and Agent-captured results belong under AI checks rather than developer manual checks. Missing or incomplete screenshots warrant a brief reminder in the review overview, not a code finding, inline comment, or a merge-blocking recommendation solely on that basis. Screenshots used only by the PR should be uploaded as PR attachments instead of committed to the repository; unrelated committed files remain a separate change-scope issue.
 - **Other notes**: optional special risks, migration notes, rollout notes, or compatibility notes.
 - **Related issues**: GitHub-recognizable references such as `Resolve #208`, one per line when applicable.
 
@@ -346,6 +349,17 @@ Publishing is split into two tracks. Later workflow changes must keep this split
 - **`main` updates** (with the path filters each workflow already uses): frontend, backend, and storage push development images to GHCR. Helm publishes the chart to GHCR OCI when `charts/**` changes. CLI does not publish.
 - **Exact `vX.Y.Z` tags**: the same image and chart workflows publish version-tagged artifacts. Helm also requires `charts/crater/Chart.yaml` `version` and `appVersion` to equal the tag version. CLI stages npm packages through trusted publishing; a maintainer approves them on npm before they become public.
 - **GitHub Release** is optional human-written notes. It must not trigger workflows and must not carry published binaries, images, or charts.
+
+### Release Preparation And Verification
+
+- Merge release preparation, including the reviewed What's New text, into `main` before tagging. Record the exact reviewed commit SHA on `main`; a feature-branch SHA may change during squash merge. Recheck the release scope if `main` advances, and do not tag an unrelated local `HEAD`.
+- Before pushing the tag, verify the target version, What's New version, Chart `version` / `appVersion`, relevant CI results, and developer manual checks. Chart version decisions follow [charts/CONTRIBUTING.md](charts/CONTRIBUTING.md); application build versions and API compatibility counters remain separate.
+- Track tag creation, artifact builds, npm staging, npm approval, and public availability separately. Verify the expected image and Chart tags and the CLI's [npm approval and installation checks](cli/CONTRIBUTING.md#staged-npm-publication); a green staging workflow alone does not mean the CLI is published. Publishing artifacts does not deploy them to a cluster.
+- Rerunning a tag workflow still uses that tag's source commit, not a later fix on `main`. Inspect the failed job and actual publication state before retrying; do not move the tag to repair a release.
+
+### Release Notes
+
+Use the target commit's reviewed [What's New](frontend/CONTRIBUTING.md#whats-new) as the basis for GitHub Release notes: keep the same short introduction and user-facing highlights, rather than maintaining two independent summaries. Replace UI version placeholders with the actual release version, remove feedback invitations and other in-app-only wording, and adjust availability or tense only to match verified publication status. Add essential upgrade, breaking-change, or migration guidance when needed. Do not claim that staged packages are publicly available or that published artifacts have been deployed. The bilingual PR-description requirement does not by itself require bilingual Release notes; agree the publication language with the maintainer.
 
 ## Application Build Versions
 

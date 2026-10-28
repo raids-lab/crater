@@ -3680,26 +3680,26 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/admin/system-config/prequeue": {
+        "/v1/admin/system-config/scheduler-extender": {
             "get": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "获取当前回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数",
+                "description": "获取当前 extender 调度插件开关、队内资源配额开关和普通作业等待忍耐时间",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "SystemConfig"
                 ],
-                "summary": "获取新版排队配置",
+                "summary": "获取调度插件配置",
                 "responses": {
                     "200": {
                         "description": "配置",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_SchedulerExtenderConfigResp"
                         }
                     },
                     "500": {
@@ -3716,7 +3716,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "更新回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数",
+                "description": "更新 extender 调度插件开关、队内资源配额开关和普通作业等待忍耐时间",
                 "consumes": [
                     "application/json"
                 ],
@@ -3726,7 +3726,7 @@ const docTemplate = `{
                 "tags": [
                     "SystemConfig"
                 ],
-                "summary": "更新新版排队配置",
+                "summary": "更新调度插件配置",
                 "parameters": [
                     {
                         "description": "配置",
@@ -3734,7 +3734,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_handler.UpdatePrequeueConfigReq"
+                            "$ref": "#/definitions/internal_handler.UpdateSchedulerExtenderConfigReq"
                         }
                     }
                 ],
@@ -5061,37 +5061,6 @@ const docTemplate = `{
                         "description": "请求参数错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "服务器错误",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/context/prequeue": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "返回当前是否允许提交 backfill 作业",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Context"
-                ],
-                "summary": "获取回填提交开关状态",
-                "responses": {
-                    "200": {
-                        "description": "当前状态",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp"
                         }
                     },
                     "500": {
@@ -6841,7 +6810,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "创建一个新的模型下载任务",
+                "description": "按 name + category 复用已有有效公共资源，响应可能返回不同的 source/revision 且不创建 Job；否则创建下载 Job 并异步处理源站错误。",
                 "consumes": [
                     "application/json"
                 ],
@@ -6851,7 +6820,7 @@ const docTemplate = `{
                 "tags": [
                     "ModelDownload"
                 ],
-                "summary": "创建模型下载任务",
+                "summary": "创建或复用模型/数据集下载任务",
                 "parameters": [
                     {
                         "description": "下载请求",
@@ -9289,16 +9258,6 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
-                            "type": "integer"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Schedule types",
-                        "name": "schedule_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
                             "type": "string"
                         },
                         "collectionFormat": "multi",
@@ -9398,16 +9357,6 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
-                            "type": "integer"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Schedule types",
-                        "name": "schedule_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
                             "type": "string"
                         },
                         "collectionFormat": "multi",
@@ -9484,16 +9433,6 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
-                            "type": "integer"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Schedule types",
-                        "name": "schedule_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
                             "type": "string"
                         },
                         "collectionFormat": "multi",
@@ -9553,16 +9492,6 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job types",
                         "name": "job_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Schedule types",
-                        "name": "schedule_type",
                         "in": "query"
                     },
                     {
@@ -9811,16 +9740,6 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
-                            "type": "integer"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Schedule types",
-                        "name": "schedule_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
                             "type": "string"
                         },
                         "collectionFormat": "multi",
@@ -9911,16 +9830,6 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job types",
                         "name": "job_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Schedule types",
-                        "name": "schedule_type",
                         "in": "query"
                     },
                     {
@@ -10871,17 +10780,6 @@ const docTemplate = `{
                 "RoleAdmin"
             ]
         },
-        "github_com_raids-lab_crater_dao_model.ScheduleType": {
-            "type": "integer",
-            "enum": [
-                0,
-                1
-            ],
-            "x-enum-varnames": [
-                "ScheduleTypeBackfill",
-                "ScheduleTypeNormal"
-            ]
-        },
         "github_com_raids-lab_crater_dao_model.Status": {
             "type": "integer",
             "format": "int32",
@@ -11616,36 +11514,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/internal_handler.PrequeueConfigResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/internal_handler.PrequeueFeatureStatusResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp": {
             "type": "object",
             "properties": {
@@ -11700,6 +11568,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.QueueQuotaResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_SchedulerExtenderConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.SchedulerExtenderConfigResp"
                 },
                 "msg": {
                     "type": "string"
@@ -13145,37 +13028,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handler.PrequeueConfigResp": {
-            "type": "object",
-            "properties": {
-                "activateTickerIntervalSeconds": {
-                    "type": "integer"
-                },
-                "backfillEnabled": {
-                    "type": "boolean"
-                },
-                "maxTotalActivationsPerRound": {
-                    "type": "integer"
-                },
-                "normalJobWaitingToleranceSeconds": {
-                    "type": "integer"
-                },
-                "prequeueCandidateSize": {
-                    "type": "integer"
-                },
-                "queueQuotaEnabled": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "internal_handler.PrequeueFeatureStatusResp": {
-            "type": "object",
-            "properties": {
-                "backfillEnabled": {
-                    "type": "boolean"
-                }
-            }
-        },
         "internal_handler.ProjectCreateResp": {
             "type": "object",
             "properties": {
@@ -13283,6 +13135,20 @@ const docTemplate = `{
                 },
                 "status": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderStatus"
+                }
+            }
+        },
+        "internal_handler.SchedulerExtenderConfigResp": {
+            "type": "object",
+            "properties": {
+                "jobWaitingToleranceSeconds": {
+                    "type": "integer"
+                },
+                "queueQuotaEnabled": {
+                    "type": "boolean"
+                },
+                "schedulerExtenderEnabled": {
+                    "type": "boolean"
                 }
             }
         },
@@ -13653,37 +13519,6 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_handler.UpdatePrequeueConfigReq": {
-            "type": "object",
-            "required": [
-                "activateTickerIntervalSeconds",
-                "backfillEnabled",
-                "maxTotalActivationsPerRound",
-                "normalJobWaitingToleranceSeconds",
-                "prequeueCandidateSize",
-                "queueQuotaEnabled"
-            ],
-            "properties": {
-                "activateTickerIntervalSeconds": {
-                    "type": "integer"
-                },
-                "backfillEnabled": {
-                    "type": "boolean"
-                },
-                "maxTotalActivationsPerRound": {
-                    "type": "integer"
-                },
-                "normalJobWaitingToleranceSeconds": {
-                    "type": "integer"
-                },
-                "prequeueCandidateSize": {
-                    "type": "integer"
-                },
-                "queueQuotaEnabled": {
-                    "type": "boolean"
-                }
-            }
-        },
         "internal_handler.UpdateResourceReq": {
             "type": "object",
             "properties": {
@@ -13719,6 +13554,25 @@ const docTemplate = `{
             "properties": {
                 "role": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.Role"
+                }
+            }
+        },
+        "internal_handler.UpdateSchedulerExtenderConfigReq": {
+            "type": "object",
+            "required": [
+                "jobWaitingToleranceSeconds",
+                "queueQuotaEnabled",
+                "schedulerExtenderEnabled"
+            ],
+            "properties": {
+                "jobWaitingToleranceSeconds": {
+                    "type": "integer"
+                },
+                "queueQuotaEnabled": {
+                    "type": "boolean"
+                },
+                "schedulerExtenderEnabled": {
+                    "type": "boolean"
                 }
             }
         },
@@ -14372,9 +14226,6 @@ const docTemplate = `{
                 "resource": {
                     "$ref": "#/definitions/v1.ResourceList"
                 },
-                "scheduleType": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType"
-                },
                 "selectors": {
                     "type": "array",
                     "items": {
@@ -14470,14 +14321,14 @@ const docTemplate = `{
                 "permanentLocked": {
                     "type": "boolean"
                 },
+                "podGroupPhase": {
+                    "type": "string"
+                },
                 "queue": {
                     "type": "string"
                 },
                 "resources": {
                     "$ref": "#/definitions/v1.ResourceList"
-                },
-                "scheduleType": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType"
                 },
                 "startedAt": {
                     "type": "string"

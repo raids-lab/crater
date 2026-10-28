@@ -17,13 +17,10 @@ export interface IGpuAnalysisStatus {
   enabled: boolean
 }
 
-export interface IPrequeueConfig {
-  backfillEnabled: boolean
+export interface ISchedulerExtenderConfig {
+  schedulerExtenderEnabled: boolean
   queueQuotaEnabled: boolean
-  normalJobWaitingToleranceSeconds: number
-  activateTickerIntervalSeconds: number
-  maxTotalActivationsPerRound: number
-  prequeueCandidateSize: number
+  jobWaitingToleranceSeconds: number
 }
 
 export interface IModelDownloadLimitConfig {
@@ -121,13 +118,13 @@ export const apiAdminGetGpuAnalysisStatus = () =>
 export const apiAdminSetGpuAnalysisStatus = (enable: boolean) =>
   apiV1Put<IResponse<string>>('admin/system-config/gpu-analysis', { enable })
 
-/** 获取预排队配置 */
-export const apiAdminGetPrequeueConfig = () =>
-  apiV1Get<IResponse<IPrequeueConfig>>('admin/system-config/prequeue')
+/** 获取调度插件配置 */
+export const apiAdminGetSchedulerExtenderConfig = () =>
+  apiV1Get<IResponse<ISchedulerExtenderConfig>>('admin/system-config/scheduler-extender')
 
-/** 更新预排队配置 */
-export const apiAdminUpdatePrequeueConfig = (data: IPrequeueConfig) =>
-  apiV1Put<IResponse<string>>('admin/system-config/prequeue', data)
+/** 更新调度插件配置 */
+export const apiAdminUpdateSchedulerExtenderConfig = (data: ISchedulerExtenderConfig) =>
+  apiV1Put<IResponse<string>>('admin/system-config/scheduler-extender', data)
 
 /** 获取当前账号的模型与数据集下载额度及白名单豁免状态 */
 export const apiGetModelDownloadLimitConfig = () =>

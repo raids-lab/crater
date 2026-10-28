@@ -61,10 +61,24 @@ function packageMetadata(name, version, description) {
 
 async function copyCommonFiles(destination) {
   await Promise.all([
-    copyFile(path.join(npmRoot, "README.md"), path.join(destination, "README.md")),
     copyFile(path.join(cliRoot, "LICENSE"), path.join(destination, "LICENSE")),
     copyFile(path.join(repoRoot, "NOTICE"), path.join(destination, "NOTICE")),
   ]);
+}
+
+function platformReadme(packageName, target) {
+  return `# ${packageName}
+
+This package contains the Crater CLI native binary for **${target.os}/${target.cpu}**. It is installed automatically by [\`@raids-lab/crater-cli\`](https://www.npmjs.com/package/@raids-lab/crater-cli) when it matches your operating system and CPU architecture.
+
+To use Crater CLI, install the main package:
+
+\`\`\`bash
+npm install --global @raids-lab/crater-cli
+\`\`\`
+
+See the [main package README](https://www.npmjs.com/package/@raids-lab/crater-cli) for full installation instructions and the strongly recommended Crater CLI Skills.
+${target.goos === "windows" ? "\nWindows support is currently experimental. Please report problems through the [Crater issue tracker](https://github.com/raids-lab/crater/issues).\n" : ""}`;
 }
 
 async function writePackageJSON(directory, value) {
@@ -108,6 +122,7 @@ export async function buildPackages({ version, artifactsDir, outputDir }) {
     await copyFile(sourceBinary, destinationBinary);
     await chmod(destinationBinary, 0o755);
     await copyCommonFiles(directory);
+    await writeFile(path.join(directory, "README.md"), platformReadme(packageName, target), "utf8");
     await writePackageJSON(directory, {
       ...packageMetadata(
         packageName,
@@ -127,6 +142,7 @@ export async function buildPackages({ version, artifactsDir, outputDir }) {
   await mkdir(path.join(rootDirectory, "bin"), { recursive: true });
   await mkdir(path.join(rootDirectory, "lib"), { recursive: true });
   await Promise.all([
+    copyFile(path.join(npmRoot, "README.md"), path.join(rootDirectory, "README.md")),
     copyFile(path.join(npmRoot, "bin", "crater.js"), path.join(rootDirectory, "bin", "crater.js")),
     copyFile(path.join(npmRoot, "lib", "platform.cjs"), path.join(rootDirectory, "lib", "platform.cjs")),
   ]);

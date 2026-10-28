@@ -57,6 +57,7 @@ export const ERROR_RESOURCE_ALREADY_EXISTS: ErrorCode = 40901
 export const ERROR_RESOURCE_STATUS_ERROR: ErrorCode = 40902
 export const ERROR_DUPLICATE_OPERATION: ErrorCode = 40903
 export const ERROR_DEPENDENCY_CONFLICT: ErrorCode = 40904
+export const ERROR_JOB_ADMISSION_FAILED: ErrorCode = 40905
 
 // 413xx - Payload Too Large
 export const ERROR_PAYLOAD_TOO_LARGE: ErrorCode = 41301

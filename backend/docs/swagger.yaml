@@ -258,14 +258,6 @@ definitions:
     - RoleGuest
     - RoleUser
     - RoleAdmin
-  github_com_raids-lab_crater_dao_model.ScheduleType:
-    enum:
-    - 0
-    - 1
-    type: integer
-    x-enum-varnames:
-    - ScheduleTypeBackfill
-    - ScheduleTypeNormal
   github_com_raids-lab_crater_dao_model.Status:
     enum:
     - 0
@@ -766,26 +758,6 @@ definitions:
       msg:
         type: string
     type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp:
-    properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        $ref: '#/definitions/internal_handler.PrequeueConfigResp'
-      msg:
-        type: string
-    type: object
-  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp:
-    properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        $ref: '#/definitions/internal_handler.PrequeueFeatureStatusResp'
-      msg:
-        type: string
-    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ProjectCreateResp:
     properties:
       code:
@@ -823,6 +795,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.QueueQuotaResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_SchedulerExtenderConfigResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.SchedulerExtenderConfigResp'
       msg:
         type: string
     type: object
@@ -1785,26 +1767,6 @@ definitions:
       modelDownloadBandwidth:
         type: string
     type: object
-  internal_handler.PrequeueConfigResp:
-    properties:
-      activateTickerIntervalSeconds:
-        type: integer
-      backfillEnabled:
-        type: boolean
-      maxTotalActivationsPerRound:
-        type: integer
-      normalJobWaitingToleranceSeconds:
-        type: integer
-      prequeueCandidateSize:
-        type: integer
-      queueQuotaEnabled:
-        type: boolean
-    type: object
-  internal_handler.PrequeueFeatureStatusResp:
-    properties:
-      backfillEnabled:
-        type: boolean
-    type: object
   internal_handler.ProjectCreateResp:
     properties:
       id:
@@ -1875,6 +1837,15 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderStatus'
     required:
     - status
+    type: object
+  internal_handler.SchedulerExtenderConfigResp:
+    properties:
+      jobWaitingToleranceSeconds:
+        type: integer
+      queueQuotaEnabled:
+        type: boolean
+      schedulerExtenderEnabled:
+        type: boolean
     type: object
   internal_handler.SetGpuAnalysisStatusReq:
     properties:
@@ -2122,28 +2093,6 @@ definitions:
     - jobIngressBandwidth
     - modelDownloadBandwidth
     type: object
-  internal_handler.UpdatePrequeueConfigReq:
-    properties:
-      activateTickerIntervalSeconds:
-        type: integer
-      backfillEnabled:
-        type: boolean
-      maxTotalActivationsPerRound:
-        type: integer
-      normalJobWaitingToleranceSeconds:
-        type: integer
-      prequeueCandidateSize:
-        type: integer
-      queueQuotaEnabled:
-        type: boolean
-    required:
-    - activateTickerIntervalSeconds
-    - backfillEnabled
-    - maxTotalActivationsPerRound
-    - normalJobWaitingToleranceSeconds
-    - prequeueCandidateSize
-    - queueQuotaEnabled
-    type: object
   internal_handler.UpdateResourceReq:
     properties:
       label:
@@ -2166,6 +2115,19 @@ definitions:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Role'
     required:
     - role
+    type: object
+  internal_handler.UpdateSchedulerExtenderConfigReq:
+    properties:
+      jobWaitingToleranceSeconds:
+        type: integer
+      queueQuotaEnabled:
+        type: boolean
+      schedulerExtenderEnabled:
+        type: boolean
+    required:
+    - jobWaitingToleranceSeconds
+    - queueQuotaEnabled
+    - schedulerExtenderEnabled
     type: object
   internal_handler.UpdateUserBanReq:
     properties:
@@ -2599,8 +2561,6 @@ definitions:
         type: string
       resource:
         $ref: '#/definitions/v1.ResourceList'
-      scheduleType:
-        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType'
       selectors:
         items:
           $ref: '#/definitions/v1.NodeSelectorRequirement'
@@ -2666,12 +2626,12 @@ definitions:
         type: string
       permanentLocked:
         type: boolean
+      podGroupPhase:
+        type: string
       queue:
         type: string
       resources:
         $ref: '#/definitions/v1.ResourceList'
-      scheduleType:
-        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ScheduleType'
       startedAt:
         type: string
       status:
@@ -5324,36 +5284,36 @@ paths:
       summary: 更新 Pod 带宽限制配置
       tags:
       - SystemConfig
-  /v1/admin/system-config/prequeue:
+  /v1/admin/system-config/scheduler-extender:
     get:
-      description: 获取当前回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数
+      description: 获取当前 extender 调度插件开关、队内资源配额开关和普通作业等待忍耐时间
       produces:
       - application/json
       responses:
         "200":
           description: 配置
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueConfigResp'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_SchedulerExtenderConfigResp'
         "500":
           description: 服务器错误
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取新版排队配置
+      summary: 获取调度插件配置
       tags:
       - SystemConfig
     put:
       consumes:
       - application/json
-      description: 更新回填提交开关、Crater 队内资源配额开关、普通作业等待忍耐时间和 watcher 运行参数
+      description: 更新 extender 调度插件开关、队内资源配额开关和普通作业等待忍耐时间
       parameters:
       - description: 配置
         in: body
         name: data
         required: true
         schema:
-          $ref: '#/definitions/internal_handler.UpdatePrequeueConfigReq'
+          $ref: '#/definitions/internal_handler.UpdateSchedulerExtenderConfigReq'
       produces:
       - application/json
       responses:
@@ -5371,7 +5331,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 更新新版排队配置
+      summary: 更新调度插件配置
       tags:
       - SystemConfig
   /v1/admin/users:
@@ -6200,25 +6160,6 @@ paths:
       security:
       - Bearer: []
       summary: 获取当前资源占用汇总
-      tags:
-      - Context
-  /v1/context/prequeue:
-    get:
-      description: 返回当前是否允许提交 backfill 作业
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: 当前状态
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_PrequeueFeatureStatusResp'
-        "500":
-          description: 服务器错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-      security:
-      - Bearer: []
-      summary: 获取回填提交开关状态
       tags:
       - Context
   /v1/context/queue:
@@ -7314,7 +7255,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: 创建一个新的模型下载任务
+      description: 按 name + category 复用已有有效公共资源，响应可能返回不同的 source/revision 且不创建 Job；否则创建下载
+        Job 并异步处理源站错误。
       parameters:
       - description: 下载请求
         in: body
@@ -7331,7 +7273,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadResp'
       security:
       - Bearer: []
-      summary: 创建模型下载任务
+      summary: 创建或复用模型/数据集下载任务
       tags:
       - ModelDownload
   /v1/models/downloads:
@@ -8870,13 +8812,6 @@ paths:
         name: job_type
         type: array
       - collectionFormat: multi
-        description: Schedule types
-        in: query
-        items:
-          type: integer
-        name: schedule_type
-        type: array
-      - collectionFormat: multi
         description: Job statuses
         in: query
         items:
@@ -9277,13 +9212,6 @@ paths:
         name: job_type
         type: array
       - collectionFormat: multi
-        description: Schedule types
-        in: query
-        items:
-          type: integer
-        name: schedule_type
-        type: array
-      - collectionFormat: multi
         description: Job statuses
         in: query
         items:
@@ -9333,13 +9261,6 @@ paths:
         name: job_type
         type: array
       - collectionFormat: multi
-        description: Schedule types
-        in: query
-        items:
-          type: integer
-        name: schedule_type
-        type: array
-      - collectionFormat: multi
         description: Job statuses
         in: query
         items:
@@ -9379,13 +9300,6 @@ paths:
         items:
           type: string
         name: job_type
-        type: array
-      - collectionFormat: multi
-        description: Schedule types
-        in: query
-        items:
-          type: integer
-        name: schedule_type
         type: array
       - collectionFormat: multi
         description: Job statuses
@@ -9545,13 +9459,6 @@ paths:
         name: job_type
         type: array
       - collectionFormat: multi
-        description: Schedule types
-        in: query
-        items:
-          type: integer
-        name: schedule_type
-        type: array
-      - collectionFormat: multi
         description: Job statuses
         in: query
         items:
@@ -9612,13 +9519,6 @@ paths:
         items:
           type: string
         name: job_type
-        type: array
-      - collectionFormat: multi
-        description: Schedule types
-        in: query
-        items:
-          type: integer
-        name: schedule_type
         type: array
       - collectionFormat: multi
         description: Job statuses

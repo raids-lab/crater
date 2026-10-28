@@ -80,6 +80,7 @@ crater download create --no-interactive --name qwen/Qwen2.5-Coder-7B-Instruct --
 -- en/09-http-sim-timeout-nojson/exit --
 4
 -- en/09-http-sim-timeout-nojson/stdout --
+One public resource is shared per name and category; requesting another source or revision does not create a separate copy and may reuse an existing resource.
 -- en/09-http-sim-timeout-nojson/stderr --
 Error:
   could not reach server: Post "https://example.invalid/api/v1/model-download/models/download": context deadline exceeded
@@ -102,6 +103,7 @@ crater download create --no-interactive --name AI-ModelScope/alpaca-gpt4-data-zh
 -- en/11-http-sim-404-nojson/exit --
 4
 -- en/11-http-sim-404-nojson/stdout --
+One public resource is shared per name and category; requesting another source or revision does not create a separate copy and may reuse an existing resource.
 -- en/11-http-sim-404-nojson/stderr --
 Error:
   HTTP 404: simulated
@@ -204,6 +206,7 @@ crater download model qwen/Qwen2.5-Coder-7B-Instruct --no-interactive --source h
 -- en/19-shortcut-model-timeout-nojson/exit --
 4
 -- en/19-shortcut-model-timeout-nojson/stdout --
+One public resource is shared per name and category; requesting another source or revision does not create a separate copy and may reuse an existing resource.
 -- en/19-shortcut-model-timeout-nojson/stderr --
 Error:
   could not reach server: Post "https://example.invalid/api/v1/model-download/models/download": context deadline exceeded

@@ -19,7 +19,7 @@ import {
   apiAdminGetLLMConfig,
   apiAdminGetModelDownloadLimitConfig,
   apiAdminGetPodBandwidthConfig,
-  apiAdminGetPrequeueConfig,
+  apiAdminGetSchedulerExtenderConfig,
   apiAdminGrantAllUsersExtraBalance,
   apiAdminResetAllBillingBalances,
   apiAdminResetLLMConfig,
@@ -28,7 +28,7 @@ import {
   apiAdminUpdateLLMConfig,
   apiAdminUpdateModelDownloadLimitConfig,
   apiAdminUpdatePodBandwidthConfig,
-  apiAdminUpdatePrequeueConfig,
+  apiAdminUpdateSchedulerExtenderConfig,
 } from '@/services/api/system-config'
 import { markApiErrorHandled } from '@/services/client'
 import { ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
@@ -42,7 +42,7 @@ import { GpuAnalysis } from './-components/gpu-analysis'
 import { LlmFormSchema, LlmSettings, createLlmSettingsSchema } from './-components/llm-settings'
 import { ModelDownloadLimitSettings } from './-components/model-download-limit-settings'
 import { PodBandwidthSettings } from './-components/pod-bandwidth-settings'
-import { PrequeueSettings } from './-components/prequeue-settings'
+import { SchedulerExtenderSettings } from './-components/scheduler-extender-settings'
 
 export const Route = createFileRoute('/admin/more/')({
   component: RouteComponent,
@@ -98,9 +98,9 @@ function RouteComponent() {
     queryFn: () => apiAdminGetGpuAnalysisStatus().then((res) => res.data),
   })
 
-  const { data: prequeueConfigData } = useQuery({
-    queryKey: ['admin', 'system-config', 'prequeue'],
-    queryFn: () => apiAdminGetPrequeueConfig().then((res) => res.data),
+  const { data: schedulerExtenderConfigData } = useQuery({
+    queryKey: ['admin', 'system-config', 'scheduler-extender'],
+    queryFn: () => apiAdminGetSchedulerExtenderConfig().then((res) => res.data),
   })
 
   const {
@@ -123,12 +123,9 @@ function RouteComponent() {
     queryFn: () => apiAdminGetPodBandwidthConfig().then((res) => res.data),
   })
 
-  const [backfillEnabled, setBackfillEnabled] = useState(false)
   const [queueQuotaEnabled, setQueueQuotaEnabled] = useState(false)
-  const [prequeueWaitingToleranceSeconds, setPrequeueWaitingToleranceSeconds] = useState('')
-  const [activateTickerIntervalSeconds, setActivateTickerIntervalSeconds] = useState('')
-  const [maxTotalActivationsPerRound, setMaxTotalActivationsPerRound] = useState('')
-  const [prequeueCandidateSize, setPrequeueCandidateSize] = useState('')
+  const [schedulerExtenderEnabled, setSchedulerExtenderEnabled] = useState(false)
+  const [waitingToleranceSeconds, setWaitingToleranceSeconds] = useState('')
 
   const { data: billingStatusData } = useQuery({
     queryKey: ['admin', 'system-config', 'billing-status'],
@@ -146,19 +143,14 @@ function RouteComponent() {
   }, [llmConfigData, llmForm])
 
   useEffect(() => {
-    if (prequeueConfigData) {
-      setBackfillEnabled(prequeueConfigData.backfillEnabled)
-      setQueueQuotaEnabled(prequeueConfigData.queueQuotaEnabled)
-      setPrequeueWaitingToleranceSeconds(
-        String(prequeueConfigData.normalJobWaitingToleranceSeconds ?? '')
+    if (schedulerExtenderConfigData) {
+      setQueueQuotaEnabled(schedulerExtenderConfigData.queueQuotaEnabled)
+      setSchedulerExtenderEnabled(schedulerExtenderConfigData.schedulerExtenderEnabled)
+      setWaitingToleranceSeconds(
+        String(schedulerExtenderConfigData.jobWaitingToleranceSeconds ?? '')
       )
-      setActivateTickerIntervalSeconds(
-        String(prequeueConfigData.activateTickerIntervalSeconds ?? '')
-      )
-      setMaxTotalActivationsPerRound(String(prequeueConfigData.maxTotalActivationsPerRound ?? ''))
-      setPrequeueCandidateSize(String(prequeueConfigData.prequeueCandidateSize ?? ''))
     }
-  }, [prequeueConfigData])
+  }, [schedulerExtenderConfigData])
 
   const handleError = (error: unknown) => {
     if (typeof error === 'object' && error !== null && 'data' in error) {
@@ -289,43 +281,31 @@ function RouteComponent() {
     }
   }
 
-  const buildPrequeuePayload = () => ({
-    backfillEnabled,
+  const buildSchedulerExtenderPayload = () => ({
     queueQuotaEnabled,
-    normalJobWaitingToleranceSeconds: Number(prequeueWaitingToleranceSeconds),
-    activateTickerIntervalSeconds: Number(activateTickerIntervalSeconds),
-    maxTotalActivationsPerRound: Number(maxTotalActivationsPerRound),
-    prequeueCandidateSize: Number(prequeueCandidateSize),
+    schedulerExtenderEnabled,
+    jobWaitingToleranceSeconds: Number(waitingToleranceSeconds),
   })
 
-  const validatePrequeuePositiveIntegers = () => {
-    const positiveIntegerValues = [
-      prequeueWaitingToleranceSeconds,
-      activateTickerIntervalSeconds,
-      maxTotalActivationsPerRound,
-      prequeueCandidateSize,
-    ]
-    for (const item of positiveIntegerValues) {
-      const value = Number(item)
-      if (!Number.isInteger(value) || value <= 0) {
-        toast.error(t('systemConfig.prequeue.invalidPositiveInteger'))
-        return false
-      }
+  const validateWaitingTolerance = () => {
+    const value = Number(waitingToleranceSeconds)
+    if (!Number.isInteger(value) || value <= 0) {
+      toast.error(t('systemConfig.schedulerExtender.invalidPositiveInteger'))
+      return false
     }
     return true
   }
 
-  const invalidatePrequeueConfig = () => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'prequeue'] })
-    queryClient.invalidateQueries({ queryKey: ['context', 'prequeue'] })
+  const invalidateSchedulerExtenderConfig = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin', 'system-config', 'scheduler-extender'] })
     queryClient.invalidateQueries({ queryKey: ['context', 'job-resource-summary'] })
   }
 
-  const updatePrequeueMutation = useMutation({
-    mutationFn: () => apiAdminUpdatePrequeueConfig(buildPrequeuePayload()),
+  const updateSchedulerExtenderMutation = useMutation({
+    mutationFn: () => apiAdminUpdateSchedulerExtenderConfig(buildSchedulerExtenderPayload()),
     onSuccess: () => {
-      invalidatePrequeueConfig()
-      toast.success(t('systemConfig.prequeue.saveSuccess'))
+      invalidateSchedulerExtenderConfig()
+      toast.success(t('systemConfig.schedulerExtender.saveSuccess'))
     },
     onError: handleError,
   })
@@ -351,14 +331,14 @@ function RouteComponent() {
     onError: showErrorToast,
   })
 
-  const handlePrequeueSubmit = () => {
-    if (!validatePrequeuePositiveIntegers()) {
+  const handleSchedulerExtenderSubmit = () => {
+    if (!validateWaitingTolerance()) {
       return
     }
-    updatePrequeueMutation.mutate()
+    updateSchedulerExtenderMutation.mutate()
   }
 
-  const isPrequeueConfigPending = updatePrequeueMutation.isPending
+  const isSchedulerExtenderConfigPending = updateSchedulerExtenderMutation.isPending
 
   return (
     <Tabs
@@ -418,21 +398,15 @@ function RouteComponent() {
         className="mt-0 space-y-4 data-[state=inactive]:hidden"
       >
         <Card>
-          <PrequeueSettings
-            backfillEnabled={backfillEnabled}
+          <SchedulerExtenderSettings
             queueQuotaEnabled={queueQuotaEnabled}
-            isPending={isPrequeueConfigPending}
-            waitingToleranceSeconds={prequeueWaitingToleranceSeconds}
-            activateTickerIntervalSeconds={activateTickerIntervalSeconds}
-            maxTotalActivationsPerRound={maxTotalActivationsPerRound}
-            prequeueCandidateSize={prequeueCandidateSize}
-            onBackfillEnabledChange={setBackfillEnabled}
+            schedulerExtenderEnabled={schedulerExtenderEnabled}
+            isPending={isSchedulerExtenderConfigPending}
+            waitingToleranceSeconds={waitingToleranceSeconds}
             onQueueQuotaEnabledChange={setQueueQuotaEnabled}
-            onWaitingToleranceSecondsChange={setPrequeueWaitingToleranceSeconds}
-            onActivateTickerIntervalSecondsChange={setActivateTickerIntervalSeconds}
-            onMaxTotalActivationsPerRoundChange={setMaxTotalActivationsPerRound}
-            onPrequeueCandidateSizeChange={setPrequeueCandidateSize}
-            onSubmit={handlePrequeueSubmit}
+            onSchedulerExtenderEnabledChange={setSchedulerExtenderEnabled}
+            onWaitingToleranceSecondsChange={setWaitingToleranceSeconds}
+            onSubmit={handleSchedulerExtenderSubmit}
           />
         </Card>
 

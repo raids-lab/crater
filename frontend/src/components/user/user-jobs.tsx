@@ -17,10 +17,9 @@ import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
-import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
-import { getHeader, getRemoteJobToolbarConfig } from '@/components/job/statuses'
+import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { RemoteDataTable } from '@/components/query-table/remote'
@@ -28,7 +27,6 @@ import { buildFacetQueryKey, buildRemoteQueryKey } from '@/components/query-tabl
 
 import {
   IJobInfo,
-  ScheduleType,
   apiAdminGetUserJobFacets,
   apiAdminGetUserJobList,
   apiGetUserJobFacets,
@@ -110,17 +108,6 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.original.jobType} />,
       },
-      {
-        accessorFn: (row) => String(row.scheduleType ?? ScheduleType.Normal),
-        id: 'scheduleType',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('scheduleType')} />
-        ),
-        cell: ({ row }) => <ScheduleTypeLabel scheduleType={row.original.scheduleType} />,
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id))
-        },
-      },
       ...(isAdmin
         ? ([
             {
@@ -167,7 +154,12 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('jobs.headers.status')} />
         ),
-        cell: ({ row }) => <JobPhaseLabel jobPhase={row.original.status} />,
+        cell: ({ row }) => (
+          <JobPhaseLabel
+            jobPhase={row.original.status}
+            podGroupPhase={row.original.podGroupPhase}
+          />
+        ),
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id))
         },

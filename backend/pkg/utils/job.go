@@ -9,6 +9,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
+	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/dao/model"
 )
@@ -168,10 +169,45 @@ func getPodSpecExplicitNodeNames(spec *v1.PodSpec) sets.Set[string] {
 	return affinityNodes
 }
 
+// NodeConstraintsOverlap treats an empty set as "any node", so a wildcard job overlaps everything.
+func NodeConstraintsOverlap(left, right sets.Set[string]) bool {
+	if left.Len() == 0 || right.Len() == 0 {
+		return true
+	}
+	return left.Intersection(right).Len() > 0
+}
+
 // CanResourceDomainBlock determines if a job with candidateDomain can be blocked by a timed out job with timedOutDomain
 func CanResourceDomainBlock(timedOutDomain, candidateDomain string) bool {
 	if timedOutDomain == ResourceDomainCPUOnly {
 		return candidateDomain == ResourceDomainCPUOnly
 	}
 	return timedOutDomain == candidateDomain || candidateDomain == ResourceDomainCPUOnly
+}
+
+// IsPodGroupAdmitted reports whether volcano let the pod group into a queue. The empty phase covers a
+// job whose pod group does not exist yet, which is indistinguishable from one still pending.
+func IsPodGroupAdmitted(phase scheduling.PodGroupPhase) bool {
+	return phase != "" && phase != scheduling.PodGroupPending
+}
+
+// IsJobInqueue reports the window volcano keeps a vcjob Pending after admitting its pod group.
+func IsJobInqueue(jobPhase batch.JobPhase, podGroupPhase scheduling.PodGroupPhase) bool {
+	return (jobPhase == "" || jobPhase == batch.Pending) && IsPodGroupAdmitted(podGroupPhase)
+}
+
+// IsPodGroupWaitingForNodes reports whether volcano admitted the pod group but has not yet bound
+// its minimum members, so the job still competes for nodes and can starve.
+func IsPodGroupWaitingForNodes(phase scheduling.PodGroupPhase) bool {
+	return phase == scheduling.PodGroupInqueue || phase == scheduling.PodGroupUnknown
+}
+
+// IsJobPhaseTerminal reports whether the vcjob reached a phase it never leaves.
+func IsJobPhaseTerminal(phase batch.JobPhase) bool {
+	switch phase {
+	case batch.Completed, batch.Failed, batch.Aborted, batch.Terminated:
+		return true
+	default:
+		return false
+	}
 }

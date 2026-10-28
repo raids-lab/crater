@@ -99,7 +99,13 @@ npm 分发包含入口包 `@raids-lab/crater-cli` 和以下可选原生平台包
 
 七个包都已在 npm 存在。推送下一次正式发布 tag 前，应分别为每个包配置 GitHub Actions Trusted Publisher：组织 `raids-lab`、仓库 `crater`、workflow 文件名 `cli-release.yml`、环境名留空，并且只允许 `npm stage publish`。维护者 npm 账号需要发布权限和 2FA。workflow 使用 Node 24、npm 11.19.1 和 GitHub OIDC，不再使用首发时的 `NPM_TOKEN`。
 
-workflow 会先打包七个 tarball，并用入口包和 Linux x64 包完成安装验证。六个平台包由独立 job 暂存；全部成功后，入口包 job 才会暂存。workflow 成功表示所有包**已暂存**，此时用户还不能安装新版本。维护者应在 npm 查看暂存内容，先通过 2FA 逐一批准六个平台包，最后批准 `@raids-lab/crater-cli`。npm 对每个包分别审批，这不是原子发布。
+workflow 会先打包七个 tarball，并用入口包和 Linux x64 包完成安装验证。六个平台包由独立 job 暂存；全部成功后，入口包 job 才会暂存。workflow 成功表示所有包**已暂存**，此时用户还不能安装新版本。
+
+维护者检查与审批：
+
+1. 使用有权限的 npm 账号登录并打开 [raids-lab 暂存包页面](https://www.npmjs.com/settings/raids-lab/staged-packages)（组织设置 → **Staged Packages**）。核对预期的七个包均为目标版本，检查包内文件和平台对应关系，并将可用的源码 / provenance 信息与预期发布 tag、workflow run 对照。
+2. 通过 2FA 先批准六个平台包，再批准 `@raids-lab/crater-cli`。npm 对每个包分别审批，这不是原子发布。页面操作参考 npm 的 [暂存发布说明](https://docs.npmjs.com/staged-publishing/)。
+3. 审批后确认公开 registry 中七个包的准确版本都可见。在隔离安装中安装 `@raids-lab/crater-cli@<version>`，检查 `crater --version`、`crater version --json` 和 `crater --help`，核对版本与提交对应预期 tag。记录实际验证的操作系统 / 架构，不要把一次安装写成所有平台均已验证。
 
 不要用 `npm view` 判断暂存版本是否存在：暂存包尚未公开。GitHub 的 OIDC 凭据也不能调用 `npm stage list`。如果某个暂存 job 失败且 npm 可能已经接收该包，重跑前先查看 npm 的 Staged Packages 页面；重复提交相同 package/version 会冲突。完整验证一次经审批的暂存发布后，再删除 GitHub secret `NPM_TOKEN`、吊销首发 token，并将每个包设为要求 2FA 且禁止传统 token 发布。
 

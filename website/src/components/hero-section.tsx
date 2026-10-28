@@ -20,11 +20,23 @@ import { ArrowRight, BookOpenIcon } from "lucide-react";
 import Image from "next/image";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from '@/i18n/navigation';
+import { useEffect, useState } from 'react';
+import { checkInternalNetwork } from '@/lib/utils';
+
+const portalUrl = 'https://gpu.act.buaa.edu.cn/portal';
 
 export function HeroSection() {
   const t = useTranslations("HeroSection");
   const lang = useLocale();
+  const [portalAvailable, setPortalAvailable] = useState(false);
 
+  useEffect(() => {
+    let active = true;
+    void checkInternalNetwork(new URL(portalUrl).origin).then((available) => {
+      if (active) setPortalAvailable(available);
+    });
+    return () => { active = false; };
+  }, []);
 
   return (
     <section className="py-20 px-4">
@@ -40,7 +52,7 @@ export function HeroSection() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <a
-              href={`/crater/${lang}/docs/admin/|||https://gpu.act.buaa.edu.cn/portal`}
+              href={portalAvailable ? portalUrl : `/${lang}/docs/admin/`}
               className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
             >
               {t("buttons.getStarted")}
