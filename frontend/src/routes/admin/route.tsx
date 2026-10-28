@@ -192,6 +192,11 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
           url: '/admin/agent',
           icon: BotIcon,
         },
+        {
+          title: t('navigation.agentConfiguration'),
+          url: '/admin/agent/configuration',
+          icon: SettingsIcon,
+        },
       ],
     },
     {

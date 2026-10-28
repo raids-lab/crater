@@ -39,6 +39,11 @@ export interface AgentActionContext {
   resource?: AgentResourceContext
 }
 
+export interface AgentEntryRequest {
+  id: string
+  initialMessage: string
+}
+
 export interface AgentResourceContext {
   kind: 'job'
   route: string

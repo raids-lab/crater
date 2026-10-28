@@ -895,6 +895,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/agent/runtime-config": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Get Agent runtime configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentRuntimeConfig"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Update Agent runtime configuration",
+                "parameters": [
+                    {
+                        "description": "Agent runtime configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeConfig"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/agent/subjects": {
             "get": {
                 "security": [
@@ -11900,6 +11960,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentRuntimeConfig": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeConfig"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_ResourceLimitCheckResult": {
             "type": "object",
             "properties": {
@@ -12708,6 +12783,38 @@ const docTemplate = `{
                 "AgentIdentityAdmin"
             ]
         },
+        "github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig": {
+            "type": "object",
+            "properties": {
+                "basePrompt": {
+                    "type": "string"
+                },
+                "formAssistantPrompt": {
+                    "type": "string"
+                },
+                "jobDiagnosisPrompt": {
+                    "type": "string"
+                },
+                "jobDiagnosisUnavailablePrompt": {
+                    "type": "string"
+                },
+                "platformGuidePrompt": {
+                    "type": "string"
+                },
+                "platformKnowledge": {
+                    "type": "string"
+                },
+                "promptOverrideRegex": {
+                    "type": "string"
+                },
+                "scopeRefusalMessage": {
+                    "type": "string"
+                },
+                "titlePrompt": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_service.AgentPageContext": {
             "type": "object",
             "properties": {
@@ -12745,6 +12852,28 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentRuntimeConfig": {
+            "type": "object",
+            "properties": {
+                "locales": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeLocales"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentRuntimeLocales": {
+            "type": "object",
+            "properties": {
+                "enUS": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig"
+                },
+                "zhCN": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig"
                 }
             }
         },

@@ -94,6 +94,26 @@ export interface AdminAgentConversationQuery {
   userId?: number
 }
 
+export interface AgentLocaleRuntimeConfig {
+  basePrompt: string
+  platformGuidePrompt: string
+  platformKnowledge: string
+  formAssistantPrompt: string
+  jobDiagnosisPrompt: string
+  jobDiagnosisUnavailablePrompt: string
+  titlePrompt: string
+  scopeRefusalMessage: string
+  promptOverrideRegex: string
+}
+
+export interface AgentRuntimeConfig {
+  version: 1
+  locales: {
+    zhCN: AgentLocaleRuntimeConfig
+    enUS: AgentLocaleRuntimeConfig
+  }
+}
+
 export const apiGetPersonalLLMConfig = () =>
   agentRequest<PersonalLLMConfigStatus>('get', 'agent/llm-config', 'user')
 
@@ -164,3 +184,11 @@ export const apiAdminGetAgentSubjects = (params: AdminAgentSubjectQuery) => {
 
 export const apiAdminGetAgentConversationMessages = (conversationID: string) =>
   apiV1Get<IResponse<UIMessage[]>>(`admin/agent/conversations/${conversationID}/messages`)
+
+export const apiAdminGetAgentRuntimeConfig = () =>
+  apiV1Get<IResponse<AgentRuntimeConfig>>('admin/agent/runtime-config')
+
+export const apiAdminUpdateAgentRuntimeConfig = (data: AgentRuntimeConfig) =>
+  apiRequest(() =>
+    apiClient.put('v1/admin/agent/runtime-config', { json: data }).json<IResponse<string>>()
+  )

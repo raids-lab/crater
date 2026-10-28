@@ -18,6 +18,7 @@ import { atomWithStorage, useResetAtom } from 'jotai/utils'
 
 import type {
   AgentActionContext,
+  AgentEntryRequest,
   AgentFormRuntime,
   AgentResourceContext,
 } from '@/components/agent/agent-context'
@@ -68,6 +69,7 @@ export const atomBackendVersion = atom<IBackendVersionInfo>()
  */
 export const atomAgentPanelOpen = atom(false)
 export const atomAgentActionContext = atom<AgentActionContext>()
+export const atomAgentEntryRequest = atom<AgentEntryRequest>()
 export const atomAgentFormRuntime = atom<AgentFormRuntime>()
 export const atomAgentPageResourceContext = atom<AgentResourceContext>()
 const atomAgentFloatingButtonPreferences = atomWithStorage<Record<string, boolean>>(

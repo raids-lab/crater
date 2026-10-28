@@ -5,18 +5,36 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 
-import type { AgentActionContext } from '@/components/agent/agent-context'
+import type { AgentActionContext, AgentActionKind } from '@/components/agent/agent-context'
 
-import { atomAgentActionContext, atomAgentPanelOpen } from '@/utils/store'
+import { atomAgentActionContext, atomAgentEntryRequest, atomAgentPanelOpen } from '@/utils/store'
 
 interface AgentActionButtonProps extends Omit<ComponentProps<typeof Button>, 'onClick'> {
   context: AgentActionContext
+  initialMessage?: string
   label?: string
+  labelOverride?: string
 }
 
-export function AgentActionButton({ context, label, ...props }: AgentActionButtonProps) {
+const defaultInitialMessageKeys: Record<AgentActionKind, string> = {
+  'choose-job-type': 'craterAgent.action.choose-job-type.initialMessage',
+  'choose-template': 'craterAgent.action.choose-template.initialMessage',
+  'assist-form': 'craterAgent.action.assist-form.initialMessage',
+  'find-platform-resource': 'craterAgent.action.find-platform-resource.initialMessage',
+  'recreate-job': 'craterAgent.action.recreate-job.initialMessage',
+  'diagnose-job': 'craterAgent.action.diagnose-job.initialMessage',
+}
+
+export function AgentActionButton({
+  context,
+  initialMessage,
+  label,
+  labelOverride,
+  ...props
+}: AgentActionButtonProps) {
   const { t } = useTranslation()
   const setContext = useSetAtom(atomAgentActionContext)
+  const setEntryRequest = useSetAtom(atomAgentEntryRequest)
   const setOpen = useSetAtom(atomAgentPanelOpen)
 
   return (
@@ -25,20 +43,26 @@ export function AgentActionButton({ context, label, ...props }: AgentActionButto
       variant="outline"
       {...props}
       onClick={() => {
-        setContext({
+        const translatedContext = {
           ...context,
           title: t(`craterAgent.action.${context.action}.title`, { defaultValue: context.title }),
           prompt: t(`craterAgent.action.${context.action}.prompt`, {
             defaultValue: context.prompt,
           }),
+        }
+        setContext(translatedContext)
+        setEntryRequest({
+          id: crypto.randomUUID(),
+          initialMessage: initialMessage ?? t(defaultInitialMessageKeys[context.action]),
         })
         setOpen(true)
       }}
     >
       <BotIcon />
-      {t(`craterAgent.action.${context.action}.label`, {
-        defaultValue: label ?? t('craterAgent.assist'),
-      })}
+      {labelOverride ??
+        t(`craterAgent.action.${context.action}.label`, {
+          defaultValue: label ?? t('craterAgent.assist'),
+        })}
     </Button>
   )
 }

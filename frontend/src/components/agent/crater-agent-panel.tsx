@@ -16,6 +16,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -70,6 +71,7 @@ import {
 import {
   ACCESS_TOKEN_KEY,
   atomAgentActionContext,
+  atomAgentEntryRequest,
   atomAgentFormRuntime,
   atomAgentPageResourceContext,
   atomAgentPanelOpen,
@@ -514,7 +516,8 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const [input, setInput] = useState('')
   const [open, setOpen] = useAtom(atomAgentPanelOpen)
   const actionContext = useAtomValue(atomAgentActionContext)
-  const clearActionContext = useSetAtom(atomAgentActionContext)
+  const entryRequest = useAtomValue(atomAgentEntryRequest)
+  const clearEntryRequest = useSetAtom(atomAgentEntryRequest)
   const formRuntime = useAtomValue(atomAgentFormRuntime)
   const resourceContext = useAtomValue(atomAgentPageResourceContext)
   const navigate = useNavigate()
@@ -527,6 +530,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const [panelWidth, setPanelWidth] = useState(initialPanelWidth)
   const [historyOpen, setHistoryOpen] = useState(true)
   const [conversations, setConversations] = useState<AgentConversation[]>([])
+  const [loadedIdentityCacheKey, setLoadedIdentityCacheKey] = useState<string>()
   const [activeConversationID, setActiveConversationID] = useState<string>(createConversationID)
   const [requestLocked, setRequestLocked] = useState(false)
   const [synchronizing, setSynchronizing] = useState(false)
@@ -538,6 +542,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const interactionLockedRef = useRef(false)
   const navigationSequenceRef = useRef(0)
   const synchronizationSequenceRef = useRef(0)
+  const processedEntryRequestIDRef = useRef<string | undefined>(undefined)
   const synchronizeConversationRef = useRef<SynchronizeConversation>(async () => {})
   const activeConversationIDRef = useRef(activeConversationID)
   activeConversationIDRef.current = activeConversationID
@@ -735,6 +740,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
 
   useEffect(() => {
     if (userID === undefined) return
+    setLoadedIdentityCacheKey(undefined)
     let disposed = false
     const navigationSequence = navigationSequenceRef.current + 1
     navigationSequenceRef.current = navigationSequence
@@ -759,8 +765,13 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
         setCancelled(false)
         setEditingMessageID(undefined)
         setEditingText('')
+        setLoadedIdentityCacheKey(identityCacheKey)
       })
-      .catch((loadError: Error) => toast.error(loadError.message))
+      .catch((loadError: Error) => {
+        if (disposed || navigationSequenceRef.current !== navigationSequence) return
+        setLoadedIdentityCacheKey(identityCacheKey)
+        toast.error(loadError.message)
+      })
     return () => {
       disposed = true
     }
@@ -813,24 +824,80 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     setConversations(updater)
   }
 
-  const resetConversationView = (conversationID: string, nextMessages: UIMessage[]) => {
-    if (userID !== undefined) activeConversationCache.set(identityCacheKey, conversationID)
-    synchronizationSequenceRef.current += 1
-    sendModeRef.current = 'append'
-    activeRequestRef.current = undefined
-    interactionLockedRef.current = false
-    setRequestLocked(false)
-    pendingTitleRef.current = undefined
-    setSynchronizing(false)
-    setActiveConversationID(conversationID)
-    setMessages(nextMessages)
-    setInput('')
-    setCancelled(false)
-    setEditingMessageID(undefined)
-    setEditingText('')
-    clearError()
-    stickToBottomRef.current = true
-  }
+  const resetConversationView = useCallback(
+    (conversationID: string, nextMessages: UIMessage[]) => {
+      if (userID !== undefined) activeConversationCache.set(identityCacheKey, conversationID)
+      activeConversationIDRef.current = conversationID
+      synchronizationSequenceRef.current += 1
+      sendModeRef.current = 'append'
+      activeRequestRef.current = undefined
+      interactionLockedRef.current = false
+      setRequestLocked(false)
+      pendingTitleRef.current = undefined
+      setSynchronizing(false)
+      setActiveConversationID(conversationID)
+      setMessages(nextMessages)
+      setInput('')
+      setCancelled(false)
+      setEditingMessageID(undefined)
+      setEditingText('')
+      clearError()
+      stickToBottomRef.current = true
+    },
+    [clearError, identityCacheKey, setMessages, userID]
+  )
+
+  const startNewConversationWithMessage = useCallback(
+    (initialMessage: string) => {
+      const text = initialMessage.trim()
+      if (!text || busy || interactionLockedRef.current) return false
+
+      const conversationID = createConversationID()
+      const now = Date.now()
+      navigationSequenceRef.current += 1
+      resetConversationView(conversationID, [])
+      setConversations((current) => [
+        {
+          id: conversationID,
+          title: t('craterAgent.newConversation'),
+          createdAt: now,
+          updatedAt: now,
+          customTitle: false,
+        },
+        ...current,
+      ])
+      interactionLockedRef.current = true
+      setRequestLocked(true)
+      pendingTitleRef.current = { conversationID, firstMessage: text }
+      stickToBottomRef.current = true
+      sendModeRef.current = 'append'
+      void sendMessage({ text })
+      return true
+    },
+    [busy, resetConversationView, sendMessage, t]
+  )
+
+  useEffect(() => {
+    if (
+      !open ||
+      !entryRequest ||
+      loadedIdentityCacheKey !== identityCacheKey ||
+      processedEntryRequestIDRef.current === entryRequest.id
+    ) {
+      return
+    }
+    if (!startNewConversationWithMessage(entryRequest.initialMessage)) return
+
+    processedEntryRequestIDRef.current = entryRequest.id
+    clearEntryRequest(undefined)
+  }, [
+    clearEntryRequest,
+    entryRequest,
+    identityCacheKey,
+    loadedIdentityCacheKey,
+    open,
+    startNewConversationWithMessage,
+  ])
 
   const createNewConversation = () => {
     if (busy) return
@@ -1021,6 +1088,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) stickToBottomRef.current = true
+    else clearEntryRequest(undefined)
     setOpen(nextOpen)
   }
 
@@ -1082,24 +1150,6 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
             />
           </div>
           <section className="flex min-w-0 flex-1 flex-col">
-            {actionContext && (
-              <div className="bg-muted/50 flex items-start justify-between gap-3 border-b px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold">{actionContext.title}</p>
-                  <p className="text-muted-foreground mt-0.5 text-xs">{actionContext.prompt}</p>
-                </div>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="size-7 shrink-0"
-                  aria-label={t('craterAgent.clearTask')}
-                  onClick={() => clearActionContext(undefined)}
-                >
-                  <XIcon />
-                </Button>
-              </div>
-            )}
             <ScrollArea
               viewportRef={viewportRef}
               className="min-h-0 flex-1 px-4 py-4 [&_[data-slot=scroll-area-viewport]]:!overflow-x-hidden [&_[data-slot=scroll-area-viewport]>div]:!block [&_[data-slot=scroll-area-viewport]>div]:!w-full [&_[data-slot=scroll-area-viewport]>div]:!min-w-0"

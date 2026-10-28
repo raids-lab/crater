@@ -602,6 +602,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentRuntimeConfig:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeConfig'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_ResourceLimitCheckResult:
     properties:
       code:
@@ -1139,6 +1149,27 @@ definitions:
     x-enum-varnames:
     - AgentIdentityUser
     - AgentIdentityAdmin
+  github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig:
+    properties:
+      basePrompt:
+        type: string
+      formAssistantPrompt:
+        type: string
+      jobDiagnosisPrompt:
+        type: string
+      jobDiagnosisUnavailablePrompt:
+        type: string
+      platformGuidePrompt:
+        type: string
+      platformKnowledge:
+        type: string
+      promptOverrideRegex:
+        type: string
+      scopeRefusalMessage:
+        type: string
+      titlePrompt:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_service.AgentPageContext:
     properties:
       action:
@@ -1164,6 +1195,20 @@ definitions:
         type: string
       status:
         type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentRuntimeConfig:
+    properties:
+      locales:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeLocales'
+      version:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentRuntimeLocales:
+    properties:
+      enUS:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig'
+      zhCN:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig'
     type: object
   github_com_raids-lab_crater_internal_service.AgentUIMessage:
     properties:
@@ -3845,6 +3890,42 @@ paths:
       summary: Get Agent conversation messages as an administrator
       tags:
       - Agent Admin
+  /v1/admin/agent/runtime-config:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentRuntimeConfig'
+      security:
+      - Bearer: []
+      summary: Get Agent runtime configuration
+      tags:
+      - Agent
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Agent runtime configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: Update Agent runtime configuration
+      tags:
+      - Agent
   /v1/admin/agent/subjects:
     get:
       parameters:

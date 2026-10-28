@@ -234,6 +234,10 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
     return <></>
   }
 
+  const waitingForStart =
+    data.status === JobPhase.Prequeue ||
+    data.status === JobPhase.Pending ||
+    data.status === JobPhase.Init
   const fromTime = data.startedAt ? new Date(data.startedAt).toISOString() : 'now-3h'
   const toTime = data.completedAt ? new Date(data.completedAt).toISOString() : 'now'
   return (
@@ -248,22 +252,25 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
         >
           {
             <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
-              <AgentActionButton
-                context={{
-                  action: 'diagnose-job',
-                  title: 'Crater-Agent',
-                  prompt: '分析当前作业的状态、异常或终止原因，也可继续询问重建建议。',
-                  route: window.location.pathname,
-                  resource: {
-                    kind: 'job',
+              {waitingForStart && (
+                <AgentActionButton
+                  context={{
+                    action: 'diagnose-job',
+                    title: t('craterAgent.action.diagnose-job.title'),
+                    prompt: t('craterAgent.action.diagnose-job.prompt'),
                     route: window.location.pathname,
-                    jobName: data.jobName,
-                    status: data.status,
-                    jobType: data.jobType,
-                  },
-                }}
-                label={t('craterAgent.assist')}
-              />
+                    resource: {
+                      kind: 'job',
+                      route: window.location.pathname,
+                      jobName: data.jobName,
+                      status: data.status,
+                      jobType: data.jobType,
+                    },
+                  }}
+                  initialMessage={t('craterAgent.action.diagnose-job.waitingInitialMessage')}
+                  labelOverride={t('craterAgent.action.diagnose-job.waitingLabel')}
+                />
+              )}
               {data.status === JobPhase.Running && (
                 <>
                   {isSingleJob(data.jobType) && (
@@ -411,7 +418,31 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
         {
           title: '状态',
           icon: ActivityIcon,
-          value: <JobPhaseLabel jobPhase={data.status} podGroupPhase={data.podGroupPhase} />,
+          value: (
+            <div className="flex flex-wrap items-center gap-2">
+              <JobPhaseLabel jobPhase={data.status} podGroupPhase={data.podGroupPhase} />
+              {data.status === JobPhase.Failed && (
+                <AgentActionButton
+                  size="sm"
+                  context={{
+                    action: 'diagnose-job',
+                    title: t('craterAgent.action.diagnose-job.title'),
+                    prompt: t('craterAgent.action.diagnose-job.prompt'),
+                    route: window.location.pathname,
+                    resource: {
+                      kind: 'job',
+                      route: window.location.pathname,
+                      jobName: data.jobName,
+                      status: data.status,
+                      jobType: data.jobType,
+                    },
+                  }}
+                  initialMessage={t('craterAgent.action.diagnose-job.failureInitialMessage')}
+                  labelOverride={t('craterAgent.action.diagnose-job.failureLabel')}
+                />
+              )}
+            </div>
+          ),
         },
         {
           title: '累计消耗',

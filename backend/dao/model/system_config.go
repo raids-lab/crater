@@ -13,6 +13,7 @@ const (
 	ConfigKeyLLMBaseURL   = "LLM_API_BASE_URL" // 例如: https://api.openai.com/v1
 	ConfigKeyLLMAPIKey    = "LLM_API_KEY"      // #nosec G101
 	ConfigKeyLLMModelName = "LLM_MODEL_NAME"
+	ConfigKeyAgentRuntime = "AGENT_RUNTIME_CONFIG"
 
 	// 功能开关配置键
 	ConfigKeyEnableGpuAnalysis = "ENABLE_GPU_ANALYSIS" // 值: "true" or "false"

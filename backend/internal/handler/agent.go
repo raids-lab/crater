@@ -39,6 +39,7 @@ func init() {
 type AgentMgr struct {
 	name          string
 	service       *service.AgentConfigService
+	runtimeConfig *service.AgentRuntimeConfigService
 	conversations *service.AgentConversationService
 	diagnostics   *service.AgentJobDiagnosticService
 	platformRead  *service.AgentPlatformReadService
@@ -48,6 +49,7 @@ func NewAgentMgr(conf *RegisterConfig) Manager {
 	return &AgentMgr{
 		name:          "agent",
 		service:       conf.AgentConfigService,
+		runtimeConfig: conf.AgentRuntimeConfigService,
 		conversations: conf.AgentConversationService,
 		diagnostics:   service.NewAgentJobDiagnosticService(query.GetDB(), conf.KubeClient),
 		platformRead:  service.NewAgentPlatformReadService(query.GetDB(), conf.KubeClient),
@@ -65,6 +67,7 @@ func (mgr *AgentMgr) RegisterPublic(g *gin.RouterGroup) {
 	g.GET("/nodes", mgr.ListAgentNodes)
 	g.GET("/nodes/:name/capacity", mgr.GetAgentNodeCapacity)
 	g.GET("/capacity", mgr.GetAgentClusterCapacity)
+	g.GET("/runtime-config", mgr.GetAgentRuntimeConfig)
 }
 
 func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
@@ -90,6 +93,8 @@ func (mgr *AgentMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/subjects", mgr.AdminListAgentSubjects)
 	g.GET("/conversations", mgr.AdminListAgentConversations)
 	g.GET("/conversations/:id/messages", mgr.AdminGetAgentConversationMessages)
+	g.GET("/runtime-config", mgr.AdminGetAgentRuntimeConfig)
+	g.PUT("/runtime-config", mgr.AdminUpdateAgentRuntimeConfig)
 }
 
 func resolveAgentIdentity(c *gin.Context) (service.AgentIdentity, error) {

@@ -1,10 +1,11 @@
-import { platformUserGuideKnowledge } from "../knowledge/platform-user-guide.js";
-import { baseInstructions } from "../prompts/base.js";
-import { platformGuideInstructions } from "../prompts/platform-guide.js";
 import type { AgentIdentity } from "../page-context.js";
+import type { AgentLocaleConfig } from "../runtime-config.js";
 import { platformReadTools, type AgentSkill } from "./types.js";
 
-export function createPlatformGuideSkill(identity: AgentIdentity): AgentSkill {
+export function createPlatformGuideSkill(
+  identity: AgentIdentity,
+  localeConfig: AgentLocaleConfig,
+): AgentSkill {
   const identityInstructions =
     identity === "admin"
       ? "当前是管理端会话。可读取全平台作业和节点的授权信息；只能推荐 /admin 页面，绝不得推荐 /portal 页面或冒充作业所属用户。"
@@ -12,10 +13,10 @@ export function createPlatformGuideSkill(identity: AgentIdentity): AgentSkill {
   return {
     id: "platform-guide",
     instructions: [
-      baseInstructions,
+      localeConfig.basePrompt,
       identityInstructions,
-      platformGuideInstructions,
-      platformUserGuideKnowledge,
+      localeConfig.platformGuidePrompt,
+      localeConfig.platformKnowledge,
     ].join("\n\n"),
     capabilities: [
       "解释 Crater 平台的稳定使用流程。",
