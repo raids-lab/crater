@@ -5,7 +5,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -82,6 +84,7 @@ type (
 		RefreshToken string              `json:"refreshToken"`
 		Context      AccountContext      `json:"context"`
 		User         model.UserAttribute `json:"user"`
+		Version      VersionInfo         `json:"version"`
 	}
 
 	CheckResp struct {
@@ -194,86 +197,34 @@ func (mgr *AuthMgr) GetAuthMode(c *gin.Context) {
 //	@Failure		500	{object}	resputil.Response[any]			"服务器内部错误"
 //	@Router			/auth/check [get]
 func (mgr *AuthMgr) Check(c *gin.Context) {
-	// 从Authorization header中提取token
-	authHeader := c.Request.Header.Get("Authorization")
-	parts := strings.Split(authHeader, " ")
-	if len(parts) < 2 || parts[0] != "Bearer" {
+	header := c.GetHeader("Authorization")
+	if header == "" {
 		resputil.Success(c, nil)
 		return
 	}
-
-	token := parts[1]
-
-	// 验证token
-	jwtMessage, err := mgr.tokenMgr.CheckToken(token)
+	parts := strings.Fields(header)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("Provide a valid bearer token or sign in again."))
+		return
+	}
+	claims, err := mgr.tokenMgr.CheckToken(parts[1])
 	if err != nil {
-		resputil.HTTPError(c, http.StatusUnauthorized, err.Error(), resputil.TokenExpired)
+		resputil.HandleError(c, util.TokenValidationError(err))
 		return
 	}
-
-	// 从数据库获取用户信息
-	u := query.User
-	q := query.Account
-	uq := query.UserAccount
-
-	user, err := u.WithContext(c).Where(u.ID.Eq(jwtMessage.UserID)).First()
+	user, err := mgr.loadSessionUser(c, claims.UserID)
 	if err != nil {
-		resputil.Success(c, nil)
+		resputil.HandleError(c, err)
 		return
 	}
-
-	// 检查用户状态
-	if user.Status != model.StatusActive {
-		resputil.Success(c, nil)
-		return
-	}
-	if mgr.userBanService != nil {
-		if err := mgr.userBanService.RequireCapability(
-			c.Request.Context(),
-			user.ID,
-			service.UserBanCapabilityPlatformAccess,
-		); err != nil {
-			resputil.HandleError(c, err)
-			return
-		}
-	}
-
-	// 获取当前队列信息
-	currentQueue, err := q.WithContext(c).Where(q.ID.Eq(jwtMessage.AccountID)).First()
+	accountContext, _, err := loadLoginContext(c, user, claims.AccountID)
 	if err != nil {
-		resputil.Success(c, nil)
+		resputil.HandleError(c, err)
 		return
 	}
-
-	// 获取用户队列信息
-	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(jwtMessage.AccountID)).First()
-	if err != nil {
-		resputil.Success(c, nil)
-		return
-	}
-
-	// 获取公共访问权限
-	publicAccessMode := model.AccessModeNA
-	defaultUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(model.DefaultAccountID)).First()
-	if err == nil {
-		publicAccessMode = defaultUserQueue.AccessMode
-	}
-
-	// 构造响应
-	checkResponse := CheckResp{
-		Context: AccountContext{
-			Queue:        currentQueue.Name,
-			RoleQueue:    userQueue.Role,
-			RolePlatform: user.Role,
-			AccessQueue:  userQueue.AccessMode,
-			AccessPublic: publicAccessMode,
-			Space:        user.Space,
-		},
-		User:    user.Attributes.Data(),
-		Version: GetVersionInfo(),
-	}
-
-	resputil.Success(c, checkResponse)
+	attributes := user.Attributes.Data()
+	attributes.ID, attributes.Name = user.ID, user.Name
+	resputil.Success(c, CheckResp{Context: accountContext, User: attributes, Version: GetVersionInfo()})
 }
 
 func (mgr *AuthMgr) performAuthentication(
@@ -286,69 +237,123 @@ func (mgr *AuthMgr) performAuthentication(
 	switch method {
 	case AuthMethodLDAP:
 		if !conf.LDAP.Enable {
-			resputil.HTTPError(c, http.StatusForbidden, "LDAP authentication is disabled", resputil.InvalidRequest)
-			return false, errors.New("ldap disabled")
+			return false, bizerr.Forbidden.LoginMethodDisabled.New("LDAP login is disabled. Use an enabled login method or contact the " +
+				"platform " +
+				"administrator.")
 		}
 		if err := mgr.actLDAPAuth(c, username, password, attr); err != nil {
-			if errors.Is(err, ErrorInvalidCredentials) {
-				resputil.HTTPError(c, http.StatusUnauthorized, "Invalid username or password", resputil.InvalidCredentials)
-				return false, err
-			}
-			if errors.Is(err, ErrorLdapUserNotFound) {
-				resputil.HTTPError(c, http.StatusUnauthorized, "User not found or too many entries returned", resputil.LdapUserNotFound)
-				return false, err
-			}
-			klog.Errorf("LDAP auth failed for user %s: %v", username, err)
-			resputil.HTTPError(c, http.StatusUnauthorized, fmt.Sprintf("LDAP authentication failed: %v", err), resputil.LdapError)
 			return false, err
 		}
 		return true, nil
 	case AuthMethodNormal:
-		if conf.LDAP.Enable && !conf.Normal.AllowLogin {
-			resputil.HTTPError(c, http.StatusForbidden, "Normal login is disabled by administrator", resputil.UserNotAllowed)
-			return false, errors.New("normal login disabled")
+		if !conf.Normal.AllowLogin {
+			return false, bizerr.Forbidden.LoginMethodDisabled.New("Local login is disabled. Use LDAP login or contact the platform " +
+				"administrator.")
 		}
-		if err := mgr.normalAuth(c, username, password); err != nil {
-			resputil.HTTPError(c, http.StatusUnauthorized, "Invalid credentials", resputil.InvalidCredentials)
-			return false, err
-		}
-		return false, nil
+		return false, mgr.normalAuth(c, username, password)
 	default:
-		resputil.BadRequestError(c, "Invalid authentication method")
-		return false, errors.New("invalid auth method")
+		return false, bizerr.BadRequest.ParameterError.New("Authentication method must be normal or ldap.")
 	}
 }
 
 func (mgr *AuthMgr) handleLoginError(c *gin.Context, err error) {
-	if errors.Is(err, ErrorMustRegister) {
-		resputil.HTTPError(c, http.StatusUnauthorized, "User must register before login", resputil.MustRegister)
-	} else if errors.Is(err, ErrorUIDServerConnect) {
-		resputil.HTTPError(c, http.StatusBadGateway, "Can't connect to UID server", resputil.UidServiceError)
-	} else if errors.Is(err, ErrorUIDServerNotFound) {
-		resputil.HTTPError(c, http.StatusNotFound, "UID not found", resputil.UidNotFound)
-	} else {
-		klog.Errorf("getOrCreateUser failed: %v", err)
-		resputil.HTTPError(c, http.StatusInternalServerError, "Create or update user failed", resputil.NotSpecified)
+	if _, ok := bizerr.FromError(err); !ok {
+		err = bizerr.Internal.AccountInitializationFailed.Wrap(err, "Platform account initialization could not be completed. Retry or "+
+			"contact the "+
+			"platform administrator.")
 	}
+	resputil.HandleError(c, err)
 }
 
-func (mgr *AuthMgr) validateLoginUser(c *gin.Context, user *model.User) bool {
-	if user.Status != model.StatusActive {
-		resputil.HandleError(c, bizerr.Auth.AccountLocked.New("User is not active"))
-		return false
+func (mgr *AuthMgr) requireLoginUser(c context.Context, user *model.User) error {
+	if err := util.ValidatePlatformUser(user); err != nil {
+		return err
 	}
-	if mgr.userBanService == nil {
-		return true
+	if mgr.userBanService != nil {
+		return mgr.userBanService.RequireCapability(c, user.ID, service.UserBanCapabilityPlatformAccess)
 	}
-	if err := mgr.userBanService.RequireCapability(
-		c.Request.Context(),
-		user.ID,
-		service.UserBanCapabilityPlatformAccess,
-	); err != nil {
+	return nil
+}
+
+func (mgr *AuthMgr) loadSessionUser(c context.Context, userID uint) (*model.User, error) {
+	u := query.User
+	user, err := u.WithContext(c).Where(u.ID.Eq(userID)).First()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, bizerr.Auth.TokenInvalid.Wrap(err, "This account no longer exists. Sign in again or contact the platform administrator.")
+	}
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "Account lookup is unavailable. Retry or contact the platform administrator.")
+	}
+	if err := mgr.requireLoginUser(c, user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// A zero project ID selects the latest association for a fresh login. Session
+// checks, refreshes, and switches always supply their explicit project ID.
+func loadLoginContext(c context.Context, user *model.User, projectID uint) (AccountContext, util.JWTMessage, error) {
+	var accountContext AccountContext
+	var claims util.JWTMessage
+	uq, q := query.UserAccount, query.Account
+	associations := uq.WithContext(c).Where(uq.UserID.Eq(user.ID))
+	if projectID != 0 {
+		associations = associations.Where(uq.AccountID.Eq(projectID))
+	} else {
+		associations = associations.Where(uq.AccessMode.Neq(uint8(model.AccessModeNA)))
+	}
+	association, err := associations.Last()
+	if err != nil {
+		return accountContext, claims, loginQueueError(err)
+	}
+	if association.AccessMode == model.AccessModeNA {
+		return accountContext, claims, bizerr.Forbidden.NoProjectAccess.New("This account cannot access the selected project. Contact " +
+			"the platform " +
+			"administrator.")
+	}
+	project, err := q.WithContext(c).Where(q.ID.Eq(association.AccountID)).First()
+	if err != nil {
+		return accountContext, claims, loginQueueError(err)
+	}
+	publicAccess := model.AccessModeNA
+	if association.AccountID == model.DefaultAccountID {
+		publicAccess = association.AccessMode
+	} else {
+		publicAssociation, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(model.DefaultAccountID)).First()
+		if err == nil {
+			publicAccess = publicAssociation.AccessMode
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return accountContext, claims, bizerr.Internal.DatabaseError.Wrap(err, "Public project permissions could not be loaded. "+
+				"Retry or contact the platform "+
+				"administrator.")
+		}
+	}
+	accountContext = AccountContext{Queue: project.Name, RoleQueue: association.Role, RolePlatform: user.Role,
+		AccessQueue: association.AccessMode, AccessPublic: publicAccess, Space: user.Space}
+	claims = util.JWTMessage{UserID: user.ID, Username: user.Name, AccountID: project.ID, AccountName: project.Name,
+		RoleAccount: association.Role, RolePlatform: user.Role, AccountAccessMode: association.AccessMode, PublicAccessMode: publicAccess}
+	return accountContext, claims, nil
+}
+
+func (mgr *AuthMgr) respondLogin(c *gin.Context, user *model.User, projectID uint) {
+	accountContext, claims, err := loadLoginContext(c, user, projectID)
+	if err != nil {
 		resputil.HandleError(c, err)
-		return false
+		return
 	}
-	return true
+	access, refresh, err := mgr.tokenMgr.CreateTokens(&claims)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(err, "Session creation could not be completed. Retry or contact the "+
+			"platform "+
+			"administrator."))
+		return
+	}
+	attributes := user.Attributes.Data()
+	attributes.ID, attributes.Name = user.ID, user.Name
+	resputil.Success(c, LoginResp{
+		AccessToken: access, RefreshToken: refresh, Context: accountContext,
+		User: attributes, Version: GetVersionInfo(),
+	})
 }
 
 // Login godoc
@@ -361,39 +366,43 @@ func (mgr *AuthMgr) validateLoginUser(c *gin.Context, user *model.User) bool {
 //	@Param			data	body		LoginReq						false	"查询参数"
 //	@Success		200		{object}	resputil.Response[LoginResp]	"登录成功，返回 JWT Token 和默认个人项目"
 //	@Failure		400		{object}	resputil.Response[any]			"请求参数错误"
-//	@Failure		401		{object}	resputil.Response[any]			"用户名或密码错误"
-//	@Failure		500		{object}	resputil.Response[any]			"数据库交互错误"
+//	@Failure		401		{object}	resputil.Response[any]			"账号凭证错误或账号未激活"
+//	@Failure		403		{object}	resputil.Response[any]			"登录方式禁用、平台账号受限或缺少项目关联"
+//	@Failure		409		{object}	resputil.Response[any]			"账号创建冲突"
+//	@Failure		500		{object}	resputil.Response[any]			"目录服务、身份映射或数据库异常"
+//	@Failure		502		{object}	resputil.Response[any]			"外部 UID 服务不可用或响应不完整"
+//	@Failure		504		{object}	resputil.Response[any]			"LDAP 认证超时"
 //	@Router			/auth/login [post]
 func (mgr *AuthMgr) Login(c *gin.Context) {
 	var req LoginReq
 	if err := c.ShouldBind(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "Provide a valid authentication request with all required "+
+			"fields."))
 		return
 	}
 
 	if req.Token != nil && *req.Token != "" {
 		msg := "Legacy token login is no longer supported, just use your LDAP account"
-		resputil.HTTPError(c, http.StatusForbidden, msg, resputil.LegacyTokenNotSupported)
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New(msg))
 		return
 	}
 
 	if req.Username == nil || req.Password == nil {
-		resputil.BadRequestError(c, "Username or password not provided")
+		resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("Provide both username and password."))
 		return
 	}
 	username := *req.Username
 	password := *req.Password
 
-	// Username validation - allow common LDAP characters (letters, numbers, dots, underscores, dashes)
-	if username == "" {
-		resputil.BadRequestError(c, "Username cannot be empty")
+	if strings.TrimSpace(username) == "" || password == "" {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("Username and password must not be empty."))
 		return
 	}
 
 	var attributes model.UserAttribute
 	allowRegister, err := mgr.performAuthentication(c, req.AuthMethod, username, password, &attributes)
 	if err != nil {
-		// Error already handled in performAuthentication
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -404,81 +413,26 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 		return
 	}
 
+	if err := mgr.requireLoginUser(c, user); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
 	if err = mgr.updateUserIfNeeded(c, user, &attributes); err != nil {
-		klog.Errorf("updateUserIfNeeded failed: %v", err)
-		resputil.Error(c, "Update user attributes failed", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "User profile synchronization could not be completed. Retry "+
+			"or contact the "+
+			"platform administrator."))
 		return
 	}
-
-	if !mgr.validateLoginUser(c, user) {
-		return
-	}
-
-	q := query.Account
-	uq := query.UserAccount
-
-	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
-	if err != nil {
-		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
-		return
-	}
-
-	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.AccountID)).First()
-	if err != nil {
-		resputil.Error(c, "User must has at least one queue", resputil.UserNotAllowed)
-		return
-	}
-
-	publicAccessMode := model.AccessModeNA
-	defaultUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(model.DefaultAccountID)).First()
-	if err == nil {
-		publicAccessMode = defaultUserQueue.AccessMode
-	}
-
-	// Generate JWT tokens
-	jwtMessage := util.JWTMessage{
-		UserID:            user.ID,
-		Username:          user.Name,
-		AccountID:         lastQueue.ID,
-		AccountName:       lastQueue.Name,
-		RoleAccount:       lastUserQueue.Role,
-		AccountAccessMode: lastUserQueue.AccessMode,
-		PublicAccessMode:  publicAccessMode,
-		RolePlatform:      user.Role,
-	}
-	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
-	if err != nil {
-		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
-		return
-	}
-	// Ensure ID and Name are populated in the response attributes
-	respAttr := user.Attributes.Data()
-	respAttr.ID = user.ID
-	respAttr.Name = user.Name
-
-	loginResponse := LoginResp{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		Context: AccountContext{
-			Queue:        lastQueue.Name,
-			RoleQueue:    lastUserQueue.Role,
-			RolePlatform: user.Role,
-			AccessQueue:  lastUserQueue.AccessMode,
-			AccessPublic: publicAccessMode,
-			Space:        user.Space,
-		},
-		User: respAttr,
-	}
-	resputil.Success(c, loginResponse)
+	mgr.respondLogin(c, user, 0)
 }
 
-var (
-	ErrorMustRegister       = errors.New("user must be registered before login")
-	ErrorUIDServerConnect   = errors.New("can't connect to UID server")
-	ErrorUIDServerNotFound  = errors.New("UID not found")
-	ErrorInvalidCredentials = errors.New("invalid username or password")
-	ErrorLdapUserNotFound   = errors.New("user not found or too many entries returned")
-)
+func loginQueueError(err error) error {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Forbidden.NoProjectAccess.Wrap(err, "No accessible project is associated with this account. Contact the platform "+
+			"administrator.")
+	}
+	return bizerr.Internal.DatabaseError.Wrap(err, "Project lookup is unavailable. Retry or contact the platform administrator.")
+}
 
 func (mgr *AuthMgr) getOrCreateUser(
 	c context.Context,
@@ -490,7 +444,7 @@ func (mgr *AuthMgr) getOrCreateUser(
 	if attr.Name == "" && req.Username != nil {
 		attr.Name = *req.Username
 	}
-	if attr.Nickname == "" && req.Username != nil {
+	if allowCreate && attr.Nickname == "" && req.Username != nil {
 		attr.Nickname = *req.Username
 	}
 
@@ -501,7 +455,7 @@ func (mgr *AuthMgr) getOrCreateUser(
 	}
 
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "Account lookup is unavailable. Retry or contact the platform administrator.")
 	}
 
 	// User not found in the database
@@ -510,7 +464,7 @@ func (mgr *AuthMgr) getOrCreateUser(
 		return mgr.createUser(c, attr.Name, nil, attr)
 	}
 
-	return nil, ErrorMustRegister
+	return nil, bizerr.Auth.MustRegister.New("Register a local account before signing in.")
 }
 
 func syncField[T comparable](current *T, incoming T, changed *bool) {
@@ -562,11 +516,8 @@ func (mgr *AuthMgr) syncUserAttributes(
 	syncPtrField(&currentAttr.Phone, newAttr.Phone, &changed)
 	syncPtrField(&currentAttr.ExpiredAt, newAttr.ExpiredAt, &changed)
 
-	if newAttr.UID != nil && (currentAttr.UID == nil || *currentAttr.UID != *newAttr.UID) {
-		currentAttr.UID = newAttr.UID
-		currentAttr.GID = newAttr.GID
-		changed = true
-	}
+	syncPtrField(&currentAttr.UID, newAttr.UID, &changed)
+	syncPtrField(&currentAttr.GID, newAttr.GID, &changed)
 
 	return changed
 }
@@ -609,8 +560,9 @@ type (
 	}
 )
 
-// createUser is called when the user is not found in the database
-func (mgr *AuthMgr) createUser(c context.Context, name string, password *string, attrFromLDAP *model.UserAttribute) (*model.User, error) {
+func (mgr *AuthMgr) initialUserAttributes(
+	c context.Context, name string, attrFromLDAP *model.UserAttribute,
+) (model.UserAttribute, error) {
 	userAttribute := model.UserAttribute{
 		UID: ptr.To("1001"),
 		GID: ptr.To("1001"),
@@ -634,15 +586,9 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string,
 			// Keeping this for backward compatibility as per request.
 			klog.Warningf("using deprecated UID source 'external' for user %s; "+
 				"please consider switching to 'rid' for direct LDAP SID calculation", name)
-			uidServerURL := uidConf.ExternalService.URL
-			var result ActUIDServerSuccessResp
-			var errorResult ActUIDServerErrorResp
-			if _, err := mgr.req.R().SetQueryParam("username", name).SetSuccessResult(&result).
-				SetErrorResult(&errorResult).Get(uidServerURL); err != nil {
-				return nil, ErrorUIDServerConnect
-			}
-			if errorResult.Error != "" {
-				return nil, ErrorUIDServerNotFound
+			result, err := mgr.fetchExternalUID(c, name, uidConf.ExternalService.URL)
+			if err != nil {
+				return model.UserAttribute{}, err
 			}
 			userAttribute.UID = ptr.To(result.UID)
 			userAttribute.GID = ptr.To(result.GID)
@@ -652,6 +598,21 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string,
 			userAttribute.UID = ptr.To("1001")
 			userAttribute.GID = ptr.To("1001")
 		}
+	}
+
+	return userAttribute, nil
+}
+
+// createUser is called when the user is not found in the database
+func (mgr *AuthMgr) createUser(c context.Context, name string, password *string, attrFromLDAP *model.UserAttribute) (*model.User, error) {
+	if invalidPlatformSpaceName(name) {
+		return nil, bizerr.Internal.IdentityMappingFailed.New("The account name cannot be mapped to a platform space. Contact the " +
+			"platform " +
+			"administrator.")
+	}
+	userAttribute, err := mgr.initialUserAttributes(c, name, attrFromLDAP)
+	if err != nil {
+		return nil, err
 	}
 
 	var hashedPassword *string
@@ -678,7 +639,12 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string,
 	}
 
 	billingEnabled := mgr.billingService != nil && mgr.billingService.IsFeatureEnabled(c)
-	err := query.Q.Transaction(func(tx *query.Query) error {
+	err = query.Q.Transaction(func(tx *query.Query) error {
+		if _, err := tx.Account.WithContext(c).Where(tx.Account.ID.Eq(model.DefaultAccountID)).First(); err != nil {
+			return bizerr.Internal.AccountInitializationFailed.Wrap(err, "The default project is unavailable for account creation. "+
+				"Contact the platform "+
+				"administrator.")
+		}
 		if err := tx.User.WithContext(c).Create(&user); err != nil {
 			return err
 		}
@@ -705,104 +671,185 @@ func (mgr *AuthMgr) createUser(c context.Context, name string, password *string,
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, accountCreationError(err)
 	}
 
 	return &user, nil
 }
 
+func accountCreationError(err error) error {
+	var sqlStateError interface{ SQLState() string }
+	if errors.Is(err, gorm.ErrDuplicatedKey) ||
+		(errors.As(err, &sqlStateError) && sqlStateError.SQLState() == "23505") {
+		return bizerr.Conflict.ResourceAlreadyExists.Wrap(err, "This username is already registered. Sign in or retry login.")
+	}
+	if _, ok := bizerr.FromError(err); ok {
+		return err
+	}
+	return bizerr.Internal.AccountInitializationFailed.Wrap(err, "Platform account initialization could not be completed. Retry or "+
+		"contact the "+
+		"platform administrator.")
+}
+
 func (mgr *AuthMgr) normalAuth(c *gin.Context, username, password string) error {
+	// Local registration uses bcrypt, which supports at most 72 password bytes.
+	// Reject longer input rather than accepting credentials with a truncated suffix.
+	if len(password) > maxLocalPasswordBytes {
+		return bizerr.BadRequest.ParameterError.New("Local passwords must not exceed 72 bytes.")
+	}
 	u := query.User
 	user, err := u.WithContext(c).Where(u.Name.Eq(username)).First()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return bizerr.Auth.RegisterNotFound.New("No matching local account was found. Check the username or register an account.")
+	}
 	if err != nil {
-		return fmt.Errorf("user not found")
+		return bizerr.Internal.DatabaseError.Wrap(err, "Account lookup is unavailable. Retry or contact the platform administrator.")
 	}
-
-	p := user.Password
-	if p == nil {
-		return fmt.Errorf("user does not have a password")
+	if user.Password == nil {
+		return bizerr.Auth.PasswordLoginUnavailable.New("This account has no local password. Use its original login method or contact " +
+			"the platform administrator.")
 	}
-
-	if bcrypt.CompareHashAndPassword([]byte(*p), []byte(password)) != nil {
-		return fmt.Errorf("wrong username or password")
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(password)); err != nil {
+		if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+			return bizerr.Auth.InvalidCredentials.Wrap(err, "Username or password is incorrect.")
+		}
+		return bizerr.Internal.ServiceError.Wrap(err, "The stored account credentials cannot be verified. Contact the platform "+
+			"administrator.")
 	}
 	return nil
 }
 
-func (mgr *AuthMgr) actLDAPAuth(_ context.Context, username, password string, attr *model.UserAttribute) error {
-	conf := config.GetConfig().Auth.LDAP
-	// LDAP connection
-	l, err := ldap.DialURL(conf.Server.Address)
+const maxLocalPasswordBytes = 72
+
+const authenticationTimeout = 8 * time.Second
+
+// ldapAuthenticator keeps password verification and identity mapping testable without a live directory.
+type ldapAuthenticator interface {
+	Bind(username, password string) error
+	Search(request *ldap.SearchRequest) (*ldap.SearchResult, error)
+}
+
+func (mgr *AuthMgr) actLDAPAuth(ctx context.Context, username, password string, attr *model.UserAttribute) error {
+	conf := config.GetConfig()
+	ctx, cancel := context.WithTimeout(ctx, authenticationTimeout)
+	defer cancel()
+	l, err := ldap.DialURL(conf.Auth.LDAP.Server.Address,
+		ldap.DialWithDialer(&net.Dialer{Timeout: authenticationTimeout}))
 	if err != nil {
-		return fmt.Errorf("failed to connect to LDAP server: %w", err)
+		return ldapServiceError(err, "The LDAP server cannot be reached. Retry or contact the platform administrator.")
 	}
 	defer l.Close()
-
-	// Admin bind
-	err = l.Bind(conf.Server.BindDN, conf.Server.BindPassword)
-	if err != nil {
-		return fmt.Errorf("LDAP admin bind failed: %w", err)
+	l.SetTimeout(authenticationTimeout)
+	stop := context.AfterFunc(ctx, func() { _ = l.Close() })
+	defer stop()
+	err = mgr.authenticateLDAP(l, conf, username, password, attr)
+	if err != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return bizerr.GatewayTimeout.GatewayTimeout.Wrap(err, "LDAP login timed out. Retry or contact the platform administrator.")
 	}
+	return err
+}
 
-	attributes := mgr.prepareLDAPAttributes()
+func ldapServiceError(err error, message string) error {
+	var networkError net.Error
+	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &networkError) && networkError.Timeout()) {
+		return bizerr.GatewayTimeout.GatewayTimeout.Wrap(err, "LDAP login timed out. Retry or contact the platform administrator.")
+	}
+	return bizerr.Internal.ThirdPartyApiError.Wrap(err, message)
+}
 
-	// Search for user
-	mapping := conf.AttributeMapping
-	filter := fmt.Sprintf("(%s=%s)", mapping.Username, username)
-	searchRequest := ldap.NewSearchRequest(
-		conf.Server.BaseDN,
+func (mgr *AuthMgr) authenticateLDAP(l ldapAuthenticator, cfg *config.Config, username, password string, attr *model.UserAttribute) error {
+	conf := cfg.Auth.LDAP
+	if err := l.Bind(conf.Server.BindDN, conf.Server.BindPassword); err != nil {
+		return ldapServiceError(err, "The LDAP service account could not authenticate. Contact the platform "+
+			"administrator to check the directory configuration.")
+	}
+	filter := fmt.Sprintf("(%s=%s)", conf.AttributeMapping.Username, ldap.EscapeFilter(username))
+	searchRequest := ldap.NewSearchRequest(conf.Server.BaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		filter,
-		attributes,
-		nil,
-	)
-
+		filter, mgr.prepareLDAPAttributes(cfg), nil)
 	searchResult, err := l.Search(searchRequest)
 	if err != nil {
-		return fmt.Errorf("LDAP search failed: %w", err)
+		return ldapServiceError(err, "The LDAP directory could not be searched. Retry or contact the platform administrator.")
 	}
-
+	if len(searchResult.Entries) == 0 {
+		return bizerr.Auth.RegisterNotFound.New("No matching LDAP account was found. Check the username or contact the directory " +
+			"administrator.")
+	}
 	if len(searchResult.Entries) != 1 {
-		return ErrorLdapUserNotFound
+		return bizerr.Internal.ThirdPartyApiError.New("The LDAP username matched multiple directory entries. Contact the platform " +
+			"administrator to check the directory configuration.")
 	}
-
 	entry := searchResult.Entries[0]
-	userDN := entry.DN
-
-	// User bind for password verification
-	err = l.Bind(userDN, password)
-	if err != nil {
+	if err := l.Bind(entry.DN, password); err != nil {
 		if ldap.IsErrorWithCode(err, ldap.LDAPResultInvalidCredentials) {
-			return ErrorInvalidCredentials
+			return bizerr.Auth.InvalidCredentials.Wrap(err, "LDAP username or password is incorrect, or the directory rejected the account. "+
+				"Check your credentials or contact the directory administrator.")
 		}
-		return fmt.Errorf("LDAP user bind failed: %w", err)
+		return ldapServiceError(err, "The LDAP server could not verify this account. Retry or contact the directory administrator.")
 	}
-
-	// Populate attributes
-	mgr.populateUserAttributes(username, entry, attr)
-
-	uidConf := config.GetConfig().Auth.LDAP.UID
+	mgr.populateUserAttributes(cfg, username, entry, attr)
+	uidConf := conf.UID
 	switch UIDSource(uidConf.Source) {
 	case UIDSourceLDAP:
-		attr.UID = ptr.To(entry.GetAttributeValue(uidConf.LDAPAttribute.UID))
-		attr.GID = ptr.To(entry.GetAttributeValue(uidConf.LDAPAttribute.GID))
+		uid := entry.GetAttributeValue(uidConf.LDAPAttribute.UID)
+		gid := entry.GetAttributeValue(uidConf.LDAPAttribute.GID)
+		if !validUnixID(uid) || !validUnixID(gid) {
+			return bizerr.Internal.IdentityMappingFailed.New("LDAP authentication succeeded, but UID or GID attributes are missing or " +
+				"invalid. Contact the platform administrator.")
+		}
+		attr.UID, attr.GID = ptr.To(uid), ptr.To(gid)
 	case UIDSourceRID:
-		sidAttr := uidConf.RID.SIDAttribute
-		uid, err := calculateUIDFromRID(entry, sidAttr, uidConf.RID.Offset, username)
+		uid, err := calculateUIDFromRID(entry, uidConf.RID.SIDAttribute, uidConf.RID.Offset, username)
 		if err != nil {
-			return err
+			return bizerr.Internal.IdentityMappingFailed.Wrap(err, "LDAP authentication succeeded, but the user SID could not be mapped "+
+				"to a UID. "+
+				"Contact the platform administrator.")
 		}
-		attr.UID = ptr.To(fmt.Sprintf("%d", uid))
-
-		pgidAttr := uidConf.RID.PGIDAttribute
-		gid, err := calculateGIDFromPrimaryGroup(entry, pgidAttr, uidConf.RID.Offset, username)
+		gid, err := calculateGIDFromPrimaryGroup(entry, uidConf.RID.PGIDAttribute, uidConf.RID.Offset, username)
 		if err != nil {
-			return err
+			return bizerr.Internal.IdentityMappingFailed.Wrap(err, "LDAP authentication succeeded, but the primary group could not be "+
+				"mapped to a "+
+				"GID. Contact the platform administrator.")
 		}
-		attr.GID = ptr.To(fmt.Sprintf("%d", gid))
+		attr.UID, attr.GID = ptr.To(strconv.Itoa(uid)), ptr.To(strconv.Itoa(gid))
+	case UIDSourceDefault, UIDSourceNone, UIDSourceExternal, "":
+	default:
+		return bizerr.Internal.IdentityMappingFailed.New("The configured identity source is unsupported. Contact the platform " +
+			"administrator.")
 	}
-
 	return nil
+}
+
+func (mgr *AuthMgr) fetchExternalUID(ctx context.Context, username, url string) (*ActUIDServerSuccessResp, error) {
+	ctx, cancel := context.WithTimeout(ctx, authenticationTimeout)
+	defer cancel()
+	var result ActUIDServerSuccessResp
+	var errorResult ActUIDServerErrorResp
+	response, err := mgr.req.R().SetContext(ctx).
+		SetQueryParam("username", username).SetSuccessResult(&result).
+		SetErrorResult(&errorResult).Get(url)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, bizerr.GatewayTimeout.GatewayTimeout.Wrap(err, "The UID service timed out during account creation. Retry or "+
+				"contact the "+
+				"platform administrator.")
+		}
+		return nil, bizerr.BadGateway.BadGateway.Wrap(err, "LDAP authentication succeeded, but the UID service could not provide an "+
+			"identity for account creation. Retry or contact the platform administrator.")
+	}
+	if !response.IsSuccessState() || errorResult.Error != "" || !validUnixID(result.UID) || !validUnixID(result.GID) {
+		return nil, bizerr.BadGateway.BadGateway.New("LDAP authentication succeeded, but the UID service did not return a usable UID " +
+			"and GID for account creation. Contact the platform administrator.")
+	}
+	return &result, nil
+}
+
+func validUnixID(value string) bool {
+	if value == "" {
+		return false
+	}
+	_, err := strconv.ParseUint(value, 10, 32)
+	return err == nil
 }
 
 const minSIDLengthBytes = 12
@@ -823,7 +870,7 @@ func calculateUIDFromRID(entry *ldap.Entry, sidAttr string, offset int, username
 		return 0, fmt.Errorf("failed to parse RID from SID for user %s: %w", username, err)
 	}
 
-	return int(rid) + offset, nil
+	return mappedUnixID(uint64(rid), offset)
 }
 
 // calculateGIDFromPrimaryGroup computes GID from primaryGroupID using RID + offset.
@@ -837,12 +884,23 @@ func calculateGIDFromPrimaryGroup(entry *ldap.Entry, pgidAttr string, offset int
 		return 0, fmt.Errorf("primary group attribute %s not found for user %s in RID mode", pgidAttr, username)
 	}
 
-	pgid, err := strconv.Atoi(pgidStr)
+	pgid, err := strconv.ParseUint(pgidStr, 10, 32)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse primaryGroupID %s for user %s: %w", pgidStr, username, err)
 	}
 
-	return pgid + offset, nil
+	return mappedUnixID(pgid, offset)
+}
+
+func mappedUnixID(rid uint64, offset int) (int, error) {
+	if rid > uint64(^uint32(0)) {
+		return 0, bizerr.Internal.IdentityMappingFailed.New("RID is outside the Unix identity range")
+	}
+	value := int64(rid) + int64(offset)
+	if value < 0 || value > int64(^uint32(0)) {
+		return 0, bizerr.Internal.IdentityMappingFailed.New("RID plus offset is outside the Unix identity range")
+	}
+	return int(value), nil
 }
 
 // parseRIDFromSID extracts the RID (Relative Identifier) from a binary Windows SID.
@@ -855,6 +913,11 @@ func calculateGIDFromPrimaryGroup(entry *ldap.Entry, pgidAttr string, offset int
 func parseRIDFromSID(sidBytes []byte) (uint32, error) {
 	if len(sidBytes) < minSIDLengthBytes {
 		return 0, fmt.Errorf("invalid SID length (must be at least %d bytes): %d", minSIDLengthBytes, len(sidBytes))
+	}
+
+	if sidBytes[0] != 1 {
+		return 0, bizerr.Internal.IdentityMappingFailed.New("The directory returned an unsupported SID revision. Contact the platform " +
+			"administrator.")
 	}
 
 	// Verify the length matches the SubAuthorityCount
@@ -874,8 +937,8 @@ func parseRIDFromSID(sidBytes []byte) (uint32, error) {
 	return binary.LittleEndian.Uint32(sidBytes[pos:]), nil
 }
 
-func (mgr *AuthMgr) prepareLDAPAttributes() []string {
-	conf := config.GetConfig().Auth.LDAP
+func (mgr *AuthMgr) prepareLDAPAttributes(cfg *config.Config) []string {
+	conf := cfg.Auth.LDAP
 	attributes := []string{"dn"}
 	mapping := conf.AttributeMapping
 	if mapping.Username != "" {
@@ -901,7 +964,7 @@ func (mgr *AuthMgr) prepareLDAPAttributes() []string {
 	}
 
 	// Fetch UID/GID if from LDAP
-	uidConf := config.GetConfig().Auth.LDAP.UID
+	uidConf := conf.UID
 	switch UIDSource(uidConf.Source) {
 	case UIDSourceLDAP:
 		if uidConf.LDAPAttribute.UID != "" {
@@ -924,8 +987,8 @@ func (mgr *AuthMgr) prepareLDAPAttributes() []string {
 	return attributes
 }
 
-func (mgr *AuthMgr) populateUserAttributes(username string, entry *ldap.Entry, attr *model.UserAttribute) {
-	conf := config.GetConfig().Auth.LDAP
+func (mgr *AuthMgr) populateUserAttributes(cfg *config.Config, username string, entry *ldap.Entry, attr *model.UserAttribute) {
+	conf := cfg.Auth.LDAP
 	mapping := conf.AttributeMapping
 
 	attr.Name = username
@@ -981,104 +1044,51 @@ type (
 func (mgr *AuthMgr) Signup(c *gin.Context) {
 	var req SignupReq
 	if err := c.ShouldBind(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "Provide a valid authentication request with all required "+
+			"fields."))
+		return
+	}
+
+	if ok, _ := regexp.MatchString(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$`, req.Username); !ok {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("Local usernames must contain 1 to 64 ASCII letters, digits, "+
+			"dots, underscores "+
+			"or hyphens, starting with a letter or digit."))
+		return
+	}
+	if len(req.Password) > maxLocalPasswordBytes {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("Local passwords must not exceed 72 bytes."))
 		return
 	}
 
 	conf := config.GetConfig().Auth
 	if !conf.Normal.AllowRegister {
-		resputil.HTTPError(c, http.StatusForbidden, "Direct registration is disabled by administrator", resputil.InvalidRequest)
+		resputil.HandleError(c, bizerr.Forbidden.RegistrationDisabled.New("Local registration is disabled. Use LDAP login or contact "+
+			"the platform "+
+			"administrator."))
 		return
 	}
 
 	u := query.User
 	_, err := u.WithContext(c).Where(u.Name.Eq(req.Username)).First()
 	if err == nil {
-		resputil.HTTPError(c, http.StatusConflict, "User already exists", resputil.InvalidRequest)
+		resputil.HandleError(c, bizerr.Conflict.ResourceAlreadyExists.New("This username is already registered. Sign in or choose another "+
+			"username."))
 		return
 	}
 
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "Account lookup is unavailable. Retry or contact the platform "+
+			"administrator."))
 		return
 	}
 
 	user, err := mgr.createUser(c, req.Username, &req.Password, nil)
 	if err != nil {
-		mgr.handleCreateUserError(c, err)
+		mgr.handleLoginError(c, err)
 		return
 	}
 
-	// Login logic after signup
-	q := query.Account
-	uq := query.UserAccount
-
-	lastUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID)).Last()
-	if err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "User must has at least one queue", resputil.UserNotAllowed)
-		return
-	}
-
-	lastQueue, err := q.WithContext(c).Where(q.ID.Eq(lastUserQueue.AccountID)).First()
-	if err != nil {
-		resputil.HTTPError(c, http.StatusForbidden, "User must has at least one queue", resputil.UserNotAllowed)
-		return
-	}
-
-	publicAccessMode := model.AccessModeNA
-	defaultUserQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(user.ID), uq.AccountID.Eq(model.DefaultAccountID)).First()
-	if err == nil {
-		publicAccessMode = defaultUserQueue.AccessMode
-	}
-
-	// Generate JWT tokens
-	jwtMessage := util.JWTMessage{
-		UserID:            user.ID,
-		Username:          user.Name,
-		AccountID:         lastQueue.ID,
-		AccountName:       lastQueue.Name,
-		RoleAccount:       lastUserQueue.Role,
-		AccountAccessMode: lastUserQueue.AccessMode,
-		PublicAccessMode:  publicAccessMode,
-		RolePlatform:      user.Role,
-	}
-	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
-	if err != nil {
-		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
-		return
-	}
-	// Ensure ID and Name are populated in the response attributes
-	respAttr := user.Attributes.Data()
-	respAttr.ID = user.ID
-	respAttr.Name = user.Name
-
-	loginResponse := LoginResp{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		Context: AccountContext{
-			Queue:        lastQueue.Name,
-			RoleQueue:    lastUserQueue.Role,
-			RolePlatform: user.Role,
-			AccessQueue:  lastUserQueue.AccessMode,
-			AccessPublic: publicAccessMode,
-			Space:        user.Space,
-		},
-		User: respAttr,
-	}
-	resputil.Success(c, loginResponse)
-}
-
-func (mgr *AuthMgr) handleCreateUserError(c *gin.Context, err error) {
-	if errors.Is(err, ErrorUIDServerConnect) {
-		klog.Error("can't connect to UID server")
-		resputil.HTTPError(c, http.StatusBadGateway, "Can't connect to UID server", resputil.UidServiceError)
-	} else if errors.Is(err, ErrorUIDServerNotFound) {
-		klog.Error("UID not found")
-		resputil.HTTPError(c, http.StatusNotFound, "UID not found", resputil.UidNotFound)
-	} else {
-		klog.Error("create new user", err)
-		resputil.HTTPError(c, http.StatusInternalServerError, "Create user failed", resputil.NotSpecified)
-	}
+	mgr.respondLogin(c, user, 0)
 }
 
 type (
@@ -1094,40 +1104,31 @@ type (
 
 func (mgr *AuthMgr) RefreshToken(c *gin.Context) {
 	var request RefreshReq
-
 	if err := c.ShouldBind(&request); err != nil {
-		resputil.BadRequestError(c, err.Error())
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "Provide a refresh token in a valid authentication request."))
 		return
 	}
-
-	chaims, err := mgr.tokenMgr.CheckToken(request.RefreshToken)
+	claims, err := mgr.tokenMgr.CheckRefreshToken(request.RefreshToken)
 	if err != nil {
-		resputil.HTTPError(c, http.StatusUnauthorized, "User not found", resputil.NotSpecified)
+		resputil.HandleError(c, util.TokenValidationError(err))
 		return
 	}
-	if mgr.userBanService != nil {
-		if err := mgr.userBanService.RequireCapability(
-			c.Request.Context(),
-			chaims.UserID,
-			service.UserBanCapabilityPlatformAccess,
-		); err != nil {
-			resputil.HandleError(c, err)
-			return
-		}
-	}
-
-	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&chaims)
+	user, err := mgr.loadSessionUser(c, claims.UserID)
 	if err != nil {
-		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
-
-	refreshTokenResponse := RefreshResp{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+	_, current, err := loadLoginContext(c, user, claims.AccountID)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
-
-	resputil.Success(c, refreshTokenResponse)
+	access, refresh, err := mgr.tokenMgr.CreateTokens(&current)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(err, "Session renewal could not be completed. Retry or sign in again."))
+		return
+	}
+	resputil.Success(c, RefreshResp{AccessToken: access, RefreshToken: refresh})
 }
 
 type SwitchQueueReq struct {
@@ -1148,75 +1149,27 @@ type SwitchQueueReq struct {
 //	@Failure		500			{object}	resputil.Response[any]			"其他错误"
 //	@Router			/v1/auth/switch [post]
 func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
-	var req SwitchQueueReq
-	if err := c.ShouldBind(&req); err != nil {
-		resputil.BadRequestError(c, err.Error())
+	var request SwitchQueueReq
+	if err := c.ShouldBind(&request); err != nil || strings.TrimSpace(request.Queue) == "" {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("Provide the name of a project to switch to."))
 		return
 	}
-	if req.Queue == util.QueueNameNull {
-		resputil.Error(c, "Queue not specified", resputil.NotSpecified)
+	user, err := mgr.loadSessionUser(c, util.GetToken(c).UserID)
+	if err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
-
-	token := util.GetToken(c)
-
-	// Check queue
 	q := query.Account
-	uq := query.UserAccount
-
-	queue, err := q.WithContext(c).Where(q.Name.Eq(req.Queue)).First()
+	project, err := q.WithContext(c).Where(q.Name.Eq(request.Queue)).First()
 	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.NotSpecified)
+		resputil.HandleError(c, loginQueueError(err))
 		return
 	}
+	mgr.respondLogin(c, user, project.ID)
+}
 
-	userQueue, err := uq.WithContext(c).Where(uq.UserID.Eq(token.UserID), uq.AccountID.Eq(queue.ID)).First()
-	if err != nil {
-		resputil.Error(c, "Queue not found", resputil.NotSpecified)
-		return
-	}
-
-	// Generate new JWT tokens
-	jwtMessage := util.JWTMessage{
-		UserID:            token.UserID,
-		Username:          token.Username,
-		AccountID:         userQueue.AccountID,
-		AccountName:       req.Queue,
-		RoleAccount:       userQueue.Role,
-		RolePlatform:      token.RolePlatform,
-		AccountAccessMode: userQueue.AccessMode,
-		PublicAccessMode:  token.PublicAccessMode,
-	}
-	accessToken, refreshToken, err := mgr.tokenMgr.CreateTokens(&jwtMessage)
-	if err != nil {
-		resputil.HTTPError(c, http.StatusInternalServerError, err.Error(), resputil.NotSpecified)
-		return
-	}
-	// Fetch user to populate User and Space
-	u := query.User
-	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
-	if err != nil {
-		resputil.Error(c, "User not found", resputil.NotSpecified)
-		return
-	}
-
-	// Ensure ID and Name are populated in the response attributes
-	respAttr := user.Attributes.Data()
-	respAttr.ID = user.ID
-	respAttr.Name = user.Name
-
-	loginResponse := LoginResp{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		Context: AccountContext{
-			Queue:        req.Queue,
-			RoleQueue:    userQueue.Role,
-			AccessQueue:  userQueue.AccessMode,
-			RolePlatform: token.RolePlatform,
-			AccessPublic: token.PublicAccessMode,
-			Space:        user.Space,
-		},
-		User: respAttr,
-	}
-	resputil.Success(c, loginResponse)
+func invalidPlatformSpaceName(name string) bool {
+	const parentDirectory = ".."
+	return name == "" || len(name) > 64 || name == "." ||
+		name == parentDirectory || strings.ContainsAny(name, "/\\\x00\r\n")
 }
