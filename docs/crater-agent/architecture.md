@@ -67,8 +67,9 @@ runtime.
 
 The Helm chart deploys Crater-Agent as an internal `ClusterIP` service. It has no
 Ingress and cannot be called directly from outside the cluster. The backend and
-Agent receive the same internal token from a Kubernetes Secret; the backend uses
-it to authenticate requests and to sign short-lived user context tokens.
+Agent receive the same internal token from a Kubernetes Secret for service
+request authentication. Only the backend receives the separate context-signing
+key, which it uses to sign short-lived user context tokens.
 
 The existing backend migration init container creates and upgrades the Agent
 tables before the backend starts. The same migration binary is used by local

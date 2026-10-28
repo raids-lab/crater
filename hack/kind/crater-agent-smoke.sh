@@ -12,10 +12,14 @@ export PATH="${HOME}/.local/bin:${PATH}"
 readonly CLUSTER_NAME="crater-agent-dev"
 readonly CONTEXT="kind-${CLUSTER_NAME}"
 readonly NAMESPACE="crater-system"
+readonly CREDENTIALS_SECRET="crater-agent-kind-credentials"
 
 if [[ -z "${CRATER_AGENT_SMOKE_ADMIN_PASSWORD:-}" ]]; then
-  printf 'CRATER_AGENT_SMOKE_ADMIN_PASSWORD is required\n' >&2
-  exit 1
+  CRATER_AGENT_SMOKE_ADMIN_PASSWORD="$(
+    kubectl --context "$CONTEXT" get secret "$CREDENTIALS_SECRET" \
+      --namespace "$NAMESPACE" \
+      --output=jsonpath='{.data.admin-password}' | openssl base64 -d -A
+  )"
 fi
 
 kubectl --context "$CONTEXT" rollout status deployment/crater-agent \

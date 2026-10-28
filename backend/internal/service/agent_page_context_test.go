@@ -36,3 +36,28 @@ func TestValidateAgentPageContextIdentityRoute(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateAgentPageContextArrayFieldTypes(t *testing.T) {
+	t.Parallel()
+
+	context := &AgentPageContext{
+		Route:  "/portal/jobs/new/jupyter-job",
+		Action: "assist-form",
+		Title:  "Agent",
+		Prompt: "help",
+		Form: &AgentFormContext{
+			CapabilityID:  "jupyter-job",
+			SchemaVersion: 1,
+			Title:         "Jupyter job",
+			Fields: []AgentFormFieldDescriptor{
+				{Path: "tags", Label: "Tags", ValueType: "option-array"},
+				{Path: "volumeMounts", Label: "Volume mounts", ValueType: "volume-mount-array"},
+				{Path: "forwards", Label: "Port forwards", ValueType: "forward-array"},
+			},
+		},
+	}
+
+	if err := ValidateAgentPageContext(context, AgentIdentityUser); err != nil {
+		t.Fatalf("ValidateAgentPageContext() error = %v", err)
+	}
+}

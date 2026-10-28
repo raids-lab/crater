@@ -56,7 +56,7 @@ jobs:
         run: docker build --tag crater-agent:pr-check crater-agent
       - name: Validate deployment scripts
         working-directory: .
-        run: bash -n hack/local/*.sh hack/kind/*.sh
+        run: for script in hack/local/*.sh hack/kind/*.sh; do bash -n "$script"; done
       - name: Validate local Compose configuration
         working-directory: .
         env:

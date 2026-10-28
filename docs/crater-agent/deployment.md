@@ -9,9 +9,9 @@ the backend and are never injected into the Agent container.
 ## Helm deployment
 
 The Crater chart deploys the Agent by default. The backend and Agent receive the
-same internal token from a Kubernetes Secret. Production installations should
-prefer an externally managed Secret so that token generation and rotation are
-owned by the deployment environment:
+same internal token from a Kubernetes Secret. The chart requires an externally
+managed, persistent Secret so that Helm, GitOps, or offline template rendering
+cannot replace encryption material during an upgrade:
 
 ```yaml
 agent:
@@ -21,8 +21,8 @@ agent:
 
 The referenced Secret must contain `internal-token` and `context-signing-key`,
 each with at least 32 characters, plus an `encryption-key` containing exactly
-32 bytes. Without `existingSecretName`, Helm generates and retains all three
-values for the release.
+32 bytes. Create and back up this Secret outside the Chart before installation.
+Do not let a GitOps renderer generate these values on each synchronization.
 
 Every Helm install or upgrade runs the backend image's `./migrate` binary in an
 init container before starting the backend. This automatically creates or

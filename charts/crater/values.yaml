@@ -91,10 +91,8 @@ agent:
   enabled: true
   # -- Number of stateless Agent runtime replicas
   replicas: 1
-  # -- Use an existing Secret containing `internal-token`, `context-signing-key`, and `encryption-key`
-  existingSecretName: ""
-  # -- Optional explicit token. Leave empty to let Helm generate and retain one
-  internalToken: ""
+  # -- Existing externally managed Secret containing `internal-token`, `context-signing-key`, and `encryption-key`
+  existingSecretName: "crater-agent-secret"
   # -- Change this value after rotating an external Secret to roll both backend and Agent pods
   secretRevision: ""
   # -- Pod-level security settings for the Agent runtime

@@ -24,11 +24,14 @@ var validAgentActions = map[string]struct{}{
 }
 
 var validAgentFieldTypes = map[string]struct{}{
-	"string":       {},
-	"number":       {},
-	"boolean":      {},
-	"string-array": {},
-	"json":         {},
+	"string":             {},
+	"number":             {},
+	"boolean":            {},
+	"string-array":       {},
+	"option-array":       {},
+	"volume-mount-array": {},
+	"forward-array":      {},
+	"json":               {},
 }
 
 type AgentPageContext struct {

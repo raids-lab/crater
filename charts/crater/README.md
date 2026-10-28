@@ -1,6 +1,6 @@
 # crater
 
-![Version: 1.5.0](https://img.shields.io/badge/Version-1.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.5.0](https://img.shields.io/badge/AppVersion-1.5.0-informational?style=flat-square)
+![Version: 1.6.0](https://img.shields.io/badge/Version-1.6.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.6.0](https://img.shields.io/badge/AppVersion-1.6.0-informational?style=flat-square)
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
@@ -21,10 +21,9 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"NotIn","values":["true"]}]},"weight":100}]}}` | Pod affinity configuration |
-| agent | object | `{"enabled":true,"existingSecretName":"","internalToken":"","podSecurityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"replicas":1,"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"128Mi"}},"secretRevision":"","securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}}` | Crater-Agent runtime configuration |
+| agent | object | `{"enabled":true,"existingSecretName":"crater-agent-secret","podSecurityContext":{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}},"replicas":1,"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"128Mi"}},"secretRevision":"","securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}}` | Crater-Agent runtime configuration |
 | agent.enabled | bool | `true` | Deploy the internal Crater-Agent service with this chart |
-| agent.existingSecretName | string | `""` | Use an existing Secret containing `internal-token`, `context-signing-key`, and `encryption-key` |
-| agent.internalToken | string | `""` | Optional explicit token. Leave empty to let Helm generate and retain one |
+| agent.existingSecretName | string | `"crater-agent-secret"` | Existing externally managed Secret containing `internal-token`, `context-signing-key`, and `encryption-key` |
 | agent.podSecurityContext | object | `{"runAsNonRoot":true,"seccompProfile":{"type":"RuntimeDefault"}}` | Pod-level security settings for the Agent runtime |
 | agent.replicas | int | `1` | Number of stateless Agent runtime replicas |
 | agent.resources | object | `{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"128Mi"}}` | Resource requests and limits for the Agent runtime |

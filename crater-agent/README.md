@@ -29,8 +29,9 @@ service. The browser communicates with the Go backend, and the backend forwards
 authenticated requests to Crater-Agent. Model credentials remain encrypted in
 the Crater database and are never mounted into this container.
 
-For production, prefer `agent.existingSecretName`. The referenced Secret must
-contain `internal-token`, `context-signing-key`, and a 32-byte `encryption-key`.
+The chart requires `agent.existingSecretName` to reference an externally managed,
+persistent Secret containing `internal-token`, `context-signing-key`, and a
+32-byte `encryption-key`.
 When rotating the encryption key, retain the old key in the optional
 `previous-encryption-keys` entry as a comma-separated value, update the Secret,
 and change `agent.secretRevision` in the same Helm release. This rolls both
