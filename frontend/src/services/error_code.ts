@@ -31,17 +31,11 @@ export const ERROR_REGISTER_NOT_FOUND: ErrorCode = 40105
 export const ERROR_INVALID_CREDENTIALS: ErrorCode = 40106
 export const ERROR_ACCOUNT_LOCKED: ErrorCode = 40107
 export const ERROR_MFA_REQUIRED: ErrorCode = 40108
-export const ERROR_ACCOUNT_NOT_ACTIVATED: ErrorCode = 40109
-export const ERROR_PASSWORD_LOGIN_UNAVAILABLE: ErrorCode = 40110
 
 // 403xx - Forbidden
 export const ERROR_PERMISSION_DENIED: ErrorCode = 40301
 export const ERROR_USER_EMAIL_NOT_VERIFIED: ErrorCode = 40302
 export const ERROR_USER_BANNED: ErrorCode = 40303
-export const ERROR_ACCOUNT_DISABLED: ErrorCode = 40304
-export const ERROR_LOGIN_METHOD_DISABLED: ErrorCode = 40305
-export const ERROR_REGISTRATION_DISABLED: ErrorCode = 40306
-export const ERROR_NO_PROJECT_ACCESS: ErrorCode = 40307
 
 // 404xx - Not Found
 export const ERROR_DATA_BASE_NOT_FOUND: ErrorCode = 40401
@@ -74,8 +68,6 @@ export const ERROR_FILE_SYSTEM_ERROR: ErrorCode = 50005
 export const ERROR_K8S_SERVICE_ERROR: ErrorCode = 50006
 export const ERROR_INTERNAL_PANIC: ErrorCode = 50007
 export const ERROR_VOLCANO_SERVICE_ERROR: ErrorCode = 50008
-export const ERROR_ACCOUNT_INITIALIZATION_FAILED: ErrorCode = 50009
-export const ERROR_IDENTITY_MAPPING_FAILED: ErrorCode = 50010
 
 // 502xx - Bad Gateway
 export const ERROR_BAD_GATEWAY: ErrorCode = 50201

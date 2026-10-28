@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { apiClient, apiRequest, apiV1Post } from '@/services/client'
+import { apiGet, apiPost, apiV1Post } from '@/services/client'
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
 
@@ -101,34 +101,15 @@ export type IBackendVersionInfo = {
 }
 
 export const apiSignup = async (user: ISignup) => {
-  const response = await apiRequest(
-    () => apiClient.post('auth/signup', { json: user }).json<IResponse<IAuthResponse>>(),
-    undefined,
-    'caller'
-  )
+  const response = await apiPost<IAuthResponse>('auth/signup', user)
   return response.data
 }
 
-export const apiGetAuthMode = () =>
-  apiRequest(
-    () => apiClient.get('auth/mode').json<IResponse<IAuthModeResponse>>(),
-    undefined,
-    'caller'
-  )
+export const apiGetAuthMode = () => apiGet<IResponse<IAuthModeResponse>>('auth/mode')
 
-export const apiLogin = (user: ILogin) =>
-  apiRequest(
-    () => apiClient.post('auth/login', { json: user }).json<IResponse<IAuthResponse>>(),
-    undefined,
-    'caller'
-  )
+export const apiLogin = (user: ILogin) => apiPost<IResponse<IAuthResponse>>('auth/login', user)
 
-export const apiCheckToken = () =>
-  apiRequest(
-    () => apiClient.get('auth/check').json<IResponse<ICheckResponse | undefined>>(),
-    undefined,
-    'caller'
-  )
+export const apiCheckToken = () => apiGet<IResponse<ICheckResponse | undefined>>('auth/check')
 
 export const apiQueueSwitch = async (queue: string) => {
   const response = await apiV1Post<IResponse<IAuthResponse>>('auth/switch', {

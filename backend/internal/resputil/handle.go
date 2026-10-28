@@ -1,6 +1,7 @@
 package resputil
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -44,34 +45,30 @@ func logServerError(err error, bErr *bizerr.BizError) {
 }
 
 func httpStatusFromError(err error) int {
-	bErr, ok := bizerr.FromError(err)
-	if !ok {
-		return http.StatusInternalServerError
-	}
-	switch bErr.Code.Group() {
-	case http.StatusBadRequest:
+	switch {
+	case errors.Is(err, bizerr.BadRequest.Base):
 		return http.StatusBadRequest
-	case http.StatusUnauthorized:
+	case errors.Is(err, bizerr.Auth.Base):
 		return http.StatusUnauthorized
-	case http.StatusForbidden:
+	case errors.Is(err, bizerr.Forbidden.Base):
 		return http.StatusForbidden
-	case http.StatusMethodNotAllowed:
+	case errors.Is(err, bizerr.MethodNotAllowed.Base):
 		return http.StatusMethodNotAllowed
-	case http.StatusNotFound:
+	case errors.Is(err, bizerr.NotFound.Base):
 		return http.StatusNotFound
-	case http.StatusConflict:
+	case errors.Is(err, bizerr.Conflict.Base):
 		return http.StatusConflict
-	case http.StatusRequestEntityTooLarge:
+	case errors.Is(err, bizerr.PayloadTooLarge.Base):
 		return http.StatusRequestEntityTooLarge
-	case http.StatusTooManyRequests:
+	case errors.Is(err, bizerr.RateLimit.Base):
 		return http.StatusTooManyRequests
-	case http.StatusInternalServerError:
+	case errors.Is(err, bizerr.Internal.Base):
 		return http.StatusInternalServerError
-	case http.StatusBadGateway:
+	case errors.Is(err, bizerr.BadGateway.Base):
 		return http.StatusBadGateway
-	case http.StatusServiceUnavailable:
+	case errors.Is(err, bizerr.ServiceError.Base):
 		return http.StatusServiceUnavailable
-	case http.StatusGatewayTimeout:
+	case errors.Is(err, bizerr.GatewayTimeout.Base):
 		return http.StatusGatewayTimeout
 	default:
 		return http.StatusInternalServerError
