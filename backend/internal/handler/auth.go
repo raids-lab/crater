@@ -1169,5 +1169,7 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 }
 
 func invalidPlatformSpaceName(name string) bool {
-	return name == "" || len(name) > 64 || name == "." || name == ".." || strings.ContainsAny(name, "/\\\x00\r\n")
+	const parentDirectory = ".."
+	return name == "" || len(name) > 64 || name == "." ||
+		name == parentDirectory || strings.ContainsAny(name, "/\\\x00\r\n")
 }
