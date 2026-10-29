@@ -83,6 +83,39 @@ func TestAgentConversationLifecycleAndEditHistory(t *testing.T) {
 	mustAgentTestNoError(t, service.DeleteConversation(ctx, 1, AgentIdentityUser, conversationID))
 	_, err = service.GetMessages(ctx, 1, AgentIdentityUser, conversationID)
 	mustAgentTestError(t, err)
+	for _, value := range []any{&model.AgentRun{}, &model.AgentMessage{}} {
+		var count int64
+		mustAgentTestNoError(t, db.Unscoped().Model(value).
+			Where("conversation_id = ?", conversationID).
+			Count(&count).Error)
+		if count != 0 {
+			t.Fatalf("deleted conversation data remains for %T", value)
+		}
+	}
+	var conversationCount int64
+	mustAgentTestNoError(t, db.Unscoped().Model(&model.AgentConversation{}).
+		Where("id = ?", conversationID).Count(&conversationCount).Error)
+	if conversationCount != 0 {
+		t.Fatal("deleted conversation record remains")
+	}
+}
+
+func TestTrimAgentContextBoundsMessageCountAndPayload(t *testing.T) {
+	t.Parallel()
+	records := make([]model.AgentMessage, agentMaximumContextMessages+2)
+	for index := range records {
+		records[index] = model.AgentMessage{ID: uuid.NewString(), Role: "user", Parts: []byte(`[{"type":"text"}]`)}
+	}
+	trimmed := trimAgentContext(records)
+	mustAgentTestLength(t, len(trimmed), agentMaximumContextMessages)
+
+	large := []model.AgentMessage{
+		{ID: "old", Role: "user", Parts: make([]byte, agentMaximumContextBytes)},
+		{ID: "latest", Role: "user", Parts: []byte(`[{"type":"text","text":"latest"}]`)},
+	}
+	trimmed = trimAgentContext(large)
+	mustAgentTestLength(t, len(trimmed), 1)
+	mustAgentTestEqual(t, trimmed[0].ID, "latest")
 }
 
 func TestAgentConversationTitleAndRunCompletionAreIdempotent(t *testing.T) {

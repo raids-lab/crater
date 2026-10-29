@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -41,8 +42,11 @@ type PersonalLLMConfigStatus struct {
 }
 
 type AgentConfigService struct {
-	db             *gorm.DB
-	platformConfig *ConfigService
+	db                     *gorm.DB
+	platformConfig         *ConfigService
+	encryptionKey          string
+	previousEncryptionKeys []string
+	reservedEncryptionKeys []string
 }
 
 const (
@@ -50,14 +54,29 @@ const (
 	personalLLMCheckTimeout       = 10 * time.Second
 )
 
+var blockedPersonalLLMCIDRs = []*net.IPNet{
+	{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)},   //nolint:mnd // Standard shared address space.
+	{IP: net.IPv4(198, 18, 0, 0), Mask: net.CIDRMask(15, 32)},   //nolint:mnd // Standard benchmark network.
+	{IP: net.IPv4(240, 0, 0, 0), Mask: net.CIDRMask(4, 32)},     //nolint:mnd // Reserved IPv4 network.
+	{IP: net.ParseIP("64:ff9b::"), Mask: net.CIDRMask(96, 128)}, //nolint:mnd // Standard NAT64 prefix.
+}
+
 func NewAgentConfigService(db *gorm.DB, platformConfig *ConfigService) *AgentConfigService {
-	return &AgentConfigService{db: db, platformConfig: platformConfig}
+	return &AgentConfigService{
+		db:                     db,
+		platformConfig:         platformConfig,
+		encryptionKey:          strings.TrimSpace(os.Getenv(AgentEncryptionKeyEnv)),
+		previousEncryptionKeys: strings.Split(os.Getenv(AgentPreviousEncryptionKeysEnv), ","),
+		reservedEncryptionKeys: []string{
+			strings.TrimSpace(os.Getenv(AgentInternalTokenEnv)),
+			strings.TrimSpace(os.Getenv(AgentContextSigningKeyEnv)),
+		},
+	}
 }
 
 func (s *AgentConfigService) GetStatus(
 	ctx context.Context,
 	userID uint,
-	_ AgentIdentity,
 ) (*PersonalLLMConfigStatus, error) {
 	personal, found, err := s.getPersonalConfig(ctx, userID)
 	if err != nil {
@@ -88,20 +107,19 @@ func (s *AgentConfigService) GetStatus(
 func (s *AgentConfigService) ResolveEffectiveConfig(
 	ctx context.Context,
 	userID uint,
-	identity AgentIdentity,
 ) (*EffectiveLLMConfig, error) {
-	status, err := s.GetStatus(ctx, userID, identity)
+	personal, found, err := s.getPersonalConfig(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	if status.PersonalConfigured {
-		return &EffectiveLLMConfig{LLMConfig: *status.Personal, Source: LLMConfigSourcePersonal}, nil
+	if found && isCompleteLLMConfig(personal) {
+		return &EffectiveLLMConfig{LLMConfig: *personal, Source: LLMConfigSourcePersonal}, nil
 	}
-	if status.PlatformConfigured {
-		platform, err := s.platformConfig.GetLLMConfig(ctx)
-		if err != nil {
-			return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to load platform LLM configuration")
-		}
+	platform, err := s.platformConfig.GetLLMConfig(ctx)
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to load platform LLM configuration")
+	}
+	if isCompleteLLMConfig(platform) {
 		return &EffectiveLLMConfig{LLMConfig: *platform, Source: LLMConfigSourcePlatform}, nil
 	}
 	return nil, bizerr.ServiceError.ServiceUnavailable.New(
@@ -112,11 +130,11 @@ func (s *AgentConfigService) ResolveEffectiveConfig(
 func (s *AgentConfigService) SavePersonalConfig(
 	ctx context.Context,
 	userID uint,
-	_ AgentIdentity,
 	cfg *LLMConfig,
 	validate bool,
 ) error {
-	if err := crypto.ValidateKeyConfiguration(); err != nil {
+	encryptionKey, err := s.validateAgentEncryptionKey(s.encryptionKey)
+	if err != nil {
 		return bizerr.ServiceError.ServiceUnavailable.Wrap(err, "Agent credential encryption is not configured")
 	}
 	resolved, err := s.resolveSubmittedConfig(ctx, userID, cfg)
@@ -132,7 +150,7 @@ func (s *AgentConfigService) SavePersonalConfig(
 		}
 	}
 
-	encryptedKey, err := crypto.Encrypt(resolved.APIKey)
+	encryptedKey, err := crypto.EncryptWithKey(resolved.APIKey, encryptionKey)
 	if err != nil {
 		return bizerr.Internal.ServiceError.Wrap(err, "failed to encrypt personal API key")
 	}
@@ -155,7 +173,6 @@ func (s *AgentConfigService) SavePersonalConfig(
 func (s *AgentConfigService) CheckPersonalConfig(
 	ctx context.Context,
 	userID uint,
-	_ AgentIdentity,
 	cfg *LLMConfig,
 ) error {
 	resolved, err := s.resolveSubmittedConfig(ctx, userID, cfg)
@@ -174,7 +191,6 @@ func (s *AgentConfigService) CheckPersonalConfig(
 func (s *AgentConfigService) DeletePersonalConfig(
 	ctx context.Context,
 	userID uint,
-	_ AgentIdentity,
 ) error {
 	result := s.db.WithContext(ctx).
 		Where("user_id = ?", userID).
@@ -223,21 +239,16 @@ func (s *AgentConfigService) getPersonalConfig(
 		}
 		return nil, false, bizerr.Internal.DatabaseError.Wrap(err, "failed to load personal LLM configuration")
 	}
-	apiKey, needsRotation, err := crypto.DecryptWithRotation(record.EncryptedAPIKey)
+	keys, err := s.agentDecryptionKeys()
+	if err != nil {
+		return nil, false, bizerr.ServiceError.ServiceUnavailable.Wrap(
+			err,
+			"Agent credential encryption is not configured",
+		)
+	}
+	apiKey, err := crypto.DecryptWithKeys(record.EncryptedAPIKey, keys...)
 	if err != nil {
 		return nil, false, bizerr.Internal.ServiceError.Wrap(err, "failed to decrypt personal API key")
-	}
-	if needsRotation {
-		rotated, encryptErr := crypto.Encrypt(apiKey)
-		if encryptErr != nil {
-			return nil, false, bizerr.Internal.ServiceError.Wrap(encryptErr, "failed to rotate personal API key")
-		}
-		if updateErr := s.db.WithContext(ctx).
-			Model(&model.UserLLMConfig{}).
-			Where("user_id = ?", userID).
-			Update("encrypted_api_key", rotated).Error; updateErr != nil {
-			return nil, false, bizerr.Internal.DatabaseError.Wrap(updateErr, "failed to rotate personal API key")
-		}
 	}
 	return &LLMConfig{BaseURL: record.BaseURL, APIKey: apiKey, ModelName: record.ModelName}, true, nil
 }
@@ -262,8 +273,16 @@ func isCompleteLLMConfig(cfg *LLMConfig) bool {
 }
 
 func isPublicIP(ip net.IP) bool {
-	return !ip.IsPrivate() && !ip.IsLoopback() && !ip.IsLinkLocalMulticast() &&
-		!ip.IsLinkLocalUnicast() && !ip.IsUnspecified()
+	if ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalMulticast() ||
+		ip.IsLinkLocalUnicast() || ip.IsUnspecified() || ip.IsMulticast() {
+		return false
+	}
+	for _, network := range blockedPersonalLLMCIDRs {
+		if network.Contains(ip) {
+			return false
+		}
+	}
+	return true
 }
 
 func NewLLMHTTPClient(source LLMConfigSource, timeout time.Duration) *http.Client {
@@ -302,75 +321,42 @@ func NewLLMHTTPClient(source LLMConfigSource, timeout time.Duration) *http.Clien
 	return client
 }
 
-// RotateStoredLLMCredentials re-encrypts all model credentials with the active
-// deployment key before the backend starts accepting Agent requests.
-func RotateStoredLLMCredentials(ctx context.Context, db *gorm.DB) error {
-	if err := crypto.ValidateKeyConfiguration(); err != nil {
-		return bizerr.ServiceError.ServiceUnavailable.Wrap(err, "Agent credential encryption is not configured")
+func (s *AgentConfigService) validateAgentEncryptionKey(raw string) (string, error) {
+	key := strings.TrimSpace(raw)
+	if err := crypto.ValidateAES256Key(key); err != nil {
+		return "", err
 	}
-	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := rotatePlatformLLMCredential(tx); err != nil {
-			return err
+	if key == legacyPublicPlatformEncryptionKey {
+		return "", errors.New( //nolint:forbidigo // Package-level validation error.
+			"public default encryption key is not allowed",
+		)
+	}
+	for _, reserved := range s.reservedEncryptionKeys {
+		if reserved != "" && key == reserved {
+			return "", errors.New("agent security keys must be distinct") //nolint:forbidigo // Package-level validation error.
 		}
-		var personalConfigs []model.UserLLMConfig
-		if err := tx.Find(&personalConfigs).Error; err != nil {
-			return bizerr.Internal.DatabaseError.Wrap(err, "failed to load personal LLM credentials for rotation")
-		}
-		for _, config := range personalConfigs {
-			rotated, changed, err := rotateEncryptedCredential(config.EncryptedAPIKey)
-			if err != nil {
-				return bizerr.Internal.ServiceError.Wrap(err, "failed to rotate personal LLM credential")
-			}
-			if !changed {
-				continue
-			}
-			if err := tx.Model(&model.UserLLMConfig{}).
-				Where("user_id = ?", config.UserID).
-				Update("encrypted_api_key", rotated).Error; err != nil {
-				return bizerr.Internal.DatabaseError.Wrap(err, "failed to save rotated personal LLM credential")
-			}
-		}
-		return nil
-	})
+	}
+	return key, nil
 }
 
-func rotatePlatformLLMCredential(tx *gorm.DB) error {
-	var config model.SystemConfig
-	err := tx.Where("key = ?", model.ConfigKeyLLMAPIKey).First(&config).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil
-	}
+func (s *AgentConfigService) agentDecryptionKeys() ([]string, error) {
+	current, err := s.validateAgentEncryptionKey(s.encryptionKey)
 	if err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "failed to load platform LLM credential for rotation")
+		return nil, err
 	}
-	if config.Value == "" {
-		return nil
+	keys := []string{current}
+	for _, previous := range s.previousEncryptionKeys {
+		previous = strings.TrimSpace(previous)
+		if previous == "" || previous == current {
+			continue
+		}
+		validated, err := s.validateAgentEncryptionKey(previous)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, validated)
 	}
-	rotated, changed, err := rotateEncryptedCredential(config.Value)
-	if err != nil {
-		return bizerr.Internal.ServiceError.Wrap(err, "failed to rotate platform LLM credential")
-	}
-	if !changed {
-		return nil
-	}
-	if err := tx.Model(&model.SystemConfig{}).
-		Where("key = ?", model.ConfigKeyLLMAPIKey).
-		Update("value", rotated).Error; err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "failed to save rotated platform LLM credential")
-	}
-	return nil
-}
-
-func rotateEncryptedCredential(encrypted string) (rotated string, changed bool, err error) {
-	plainText, needsRotation, err := crypto.DecryptWithRotation(encrypted)
-	if err != nil || !needsRotation {
-		return encrypted, false, err
-	}
-	rotated, err = crypto.Encrypt(plainText)
-	if err != nil {
-		return "", false, err
-	}
-	return rotated, true, nil
+	return keys, nil
 }
 
 func checkPersonalLLMConnection(ctx context.Context, cfg *LLMConfig) error {

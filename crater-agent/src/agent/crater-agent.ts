@@ -13,6 +13,9 @@ export function createCraterModel(config: AgentConfig, contextToken: string) {
     name: "crater",
     baseURL: `${config.backendInternalURL}/api/agent/llm`,
     apiKey: contextToken,
+    headers: {
+      "X-Crater-Agent-Internal-Token": config.internalToken,
+    },
     includeUsage: true,
   });
 
@@ -30,5 +33,7 @@ export function createCraterAgent(
       "\n\n",
     ),
     tools: selectSkillTools(skill.activeTools),
+    experimental_download: () =>
+      Promise.reject(new Error("URL downloads are disabled")),
   });
 }

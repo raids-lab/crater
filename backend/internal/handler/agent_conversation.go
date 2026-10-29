@@ -4,8 +4,6 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -109,7 +107,7 @@ func (mgr *AgentMgr) UserRenameAgentConversation(c *gin.Context) {
 	resputil.Success(c, "Agent conversation renamed successfully")
 }
 
-// UserDeleteAgentConversation soft-deletes an owned conversation.
+// UserDeleteAgentConversation permanently deletes an owned conversation.
 //
 //	@Summary		Delete an Agent conversation
 //	@Tags			Agent
@@ -135,13 +133,11 @@ func (mgr *AgentMgr) UserDeleteAgentConversation(c *gin.Context) {
 }
 
 func (mgr *AgentMgr) CompleteAgentRun(c *gin.Context) {
-	serviceToken := strings.TrimSpace(os.Getenv(service.AgentInternalTokenEnv))
-	if !constantTimeTokenEqual(bearerToken(c.GetHeader("Authorization")), serviceToken) {
+	if !constantTimeTokenEqual(bearerToken(c.GetHeader("Authorization")), mgr.internalToken) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid Agent service token"})
 		return
 	}
-	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
-	claims, err := service.ParseAgentContext(c.GetHeader("X-Crater-Agent-Context"), contextSigningKey)
+	claims, err := service.ParseAgentContext(c.GetHeader("X-Crater-Agent-Context"), mgr.contextSigningKey)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid Agent context"})
 		return
