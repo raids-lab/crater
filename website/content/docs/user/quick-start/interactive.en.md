@@ -23,6 +23,8 @@ On the **"New Jupyter Lab"** page, you can **set various configurations for inte
   - Enable CPU pinning
   - Target node control (whitelist / blacklist modes)
 
+If your job does not require shared storage, you can remove all file-directory and dataset mounts before submitting it. Jobs without storage mounts skip the storage quota check and continue with other creation checks even if the personal directory is full or the quota query fails. For jobs with mounts, a quota or usage query failure prevents creation and suggests retrying later or removing all mounts; it does not necessarily mean that the Ceph cluster has failed. Before removing mounts, ensure that the image, startup command, and working directory do not depend on those files, and arrange another way to save outputs. Temporary container files are not automatically saved to shared storage.
+
 ![](./images/inter/settings.webp)
 
 Various settings for interactive jobs can be done by **importing a configuration file**. Jobs that have already been set up can also be **exported as a configuration file**, as shown in the following example:

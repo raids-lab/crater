@@ -140,7 +140,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username
 
-	if err := interutil.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.kubeConfig); err != nil {
+	if err := interutil.CheckStorageQuota(token.Username, vcReq.VolumeMounts, mgr.kubeClient, mgr.kubeConfig); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -212,7 +212,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username
 
-	if err := interutil.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.kubeConfig); err != nil {
+	if err := interutil.CheckStorageQuota(token.Username, vcReq.VolumeMounts, mgr.kubeClient, mgr.kubeConfig); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
