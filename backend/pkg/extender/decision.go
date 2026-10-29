@@ -3,6 +3,9 @@ package extender
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
+	"sort"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -14,6 +17,14 @@ import (
 
 // maxQueueHierarchyDepth guards the parent walk against a mis-configured queue cycle.
 const maxQueueHierarchyDepth = 8
+
+// Event reasons recorded on the vcjob, the only object crater's job detail page lists events for
+// before the job has pods. They mirror the log causes below.
+const (
+	reasonQueueQuotaExceeded     = "QueueQuotaExceeded"
+	reasonBlockedByTimedOutJob   = "BlockedByTimedOutJob"
+	reasonExceedsQueueCapability = "ExceedsQueueCapability"
+)
 
 // vote carries the answer plus the structured log fields that are the only diagnosis channel volcano
 // leaves available for extender decisions. err marks an abstention forced by a failure rather than
@@ -54,16 +65,21 @@ func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
 	}
 
 	if result := snap.quotaVerdict(candidate, s.accumulator); result != nil && result.Exceeded {
+		quota := formatQuotaDetails(result.Details)
+		s.recorder.Eventf(candidate.reference(), v1.EventTypeWarning, reasonQueueQuotaExceeded,
+			"per-user quota of queue %s would be exceeded with this job: %s", candidate.queue, quota)
 		return vote{status: voteReject, fields: []any{
 			"job", jobName,
 			"cause", "queue quota exceeded",
 			"queue", candidate.queue,
 			"userID", candidate.userID,
-			"quota", formatQuotaDetails(result.Details),
+			"quota", quota,
 		}}
 	}
 
 	if blocker := snap.blockerFor(candidate, s.accumulator); blocker != nil {
+		s.recorder.Eventf(candidate.reference(), v1.EventTypeWarning, reasonBlockedByTimedOutJob,
+			"waiting behind timed-out job %s in queue %s", blocker.name, candidate.queue)
 		return vote{status: voteReject, fields: []any{
 			"job", jobName,
 			"cause", "blocked by timed out job",
@@ -75,9 +91,12 @@ func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
 	}
 
 	// Capacity rejects it every round: the minimum demand exceeds the queue's or an ancestor's
-	// capability. Abstain without reserving, so capacity still records the reason on the pod group
-	// and no standing reservation shrinks the owner's headroom for as long as the job exists.
-	if !snap.fitsQueueCapability(candidate) {
+	// capability. Abstain without reserving, so no standing reservation shrinks the owner's headroom
+	// for as long as the job exists. Capacity records the reason only on the pod group, which crater
+	// does not show, so the event repeats it on the vcjob.
+	if exceeded := snap.exceededCapability(candidate); exceeded != "" {
+		s.recorder.Eventf(candidate.reference(), v1.EventTypeWarning, reasonExceedsQueueCapability,
+			"minimum demand exceeds the capability of queue %s", exceeded)
 		return vote{status: voteAbstain, fields: []any{"job", jobName, "skip", "exceeds queue capability"}}
 	}
 
@@ -144,37 +163,40 @@ func (snap *snapshot) hasBlockingPower(blocker *jobView, acc *sessionAccumulator
 	if result != nil && result.Exceeded {
 		return false
 	}
-	return snap.fitsQueueCapability(blocker)
+	return snap.exceededCapability(blocker) == ""
 }
 
-// fitsQueueCapability mirrors capacity's hierarchical check: the minimum demand must fit the leaf
-// queue and every ancestor.
-func (snap *snapshot) fitsQueueCapability(view *jobView) bool {
+// exceededCapability mirrors capacity's hierarchical check: the minimum demand must fit the leaf
+// queue and every ancestor. It describes the first queue that does not fit, or returns "".
+func (snap *snapshot) exceededCapability(view *jobView) string {
 	name := view.queue
 	for depth := 0; name != "" && depth < maxQueueHierarchyDepth; depth++ {
 		queue, ok := snap.queues[name]
 		if !ok {
-			return true
+			return ""
 		}
-		if !fitsCapability(view.minimum, queue.Spec.Capability) {
-			return false
+		if resource := exceededResource(view.minimum, queue.Spec.Capability); resource != "" {
+			requested, limit := view.minimum[resource], queue.Spec.Capability[resource]
+			return fmt.Sprintf("%s: %s requested %s capability %s", name, resource, requested.String(), limit.String())
 		}
 		name = queue.Spec.Parent
 	}
-	return true
+	return ""
 }
 
-// fitsCapability matches volcano's capacity plugin: absent resources and zero cpu or memory limits are unlimited.
-func fitsCapability(required, capability v1.ResourceList) bool {
-	for name, limit := range capability {
+// exceededResource matches volcano's capacity plugin: absent resources and zero cpu or memory limits
+// are unlimited. It returns the first resource over its limit, or "".
+func exceededResource(required, capability v1.ResourceList) v1.ResourceName {
+	for _, name := range slices.Sorted(maps.Keys(capability)) {
+		limit := capability[name]
 		if (name == v1.ResourceCPU || name == v1.ResourceMemory) && limit.Sign() <= 0 {
 			continue
 		}
 		if requested, ok := required[name]; ok && requested.Cmp(limit) > 0 {
-			return false
+			return name
 		}
 	}
-	return true
+	return ""
 }
 
 func formatQuotaDetails(details []service.ResourceLimitDetail) string {
@@ -186,5 +208,6 @@ func formatQuotaDetails(details []service.ResourceLimitDetail) string {
 		}
 		parts = append(parts, fmt.Sprintf("%s used %s limit %s", detail.Resource, detail.Used, detail.Limit))
 	}
+	sort.Strings(parts)
 	return strings.Join(parts, "; ")
 }
