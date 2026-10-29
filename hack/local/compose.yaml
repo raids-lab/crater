@@ -1,0 +1,74 @@
+name: crater-agent-local
+
+services:
+  agent:
+    image: crater-agent:local
+    restart: unless-stopped
+    environment:
+      PORT: "8000"
+      CRATER_BACKEND_INTERNAL_URL: http://backend:8098
+      CRATER_AGENT_INTERNAL_TOKEN: ${CRATER_AGENT_INTERNAL_TOKEN:?required}
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:8000/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    image: crater-backend:local
+    restart: unless-stopped
+    entrypoint: /controller
+    command:
+      - --config-file=/etc/config/config.yaml
+    environment:
+      CRATER_BE_PORT: :8098
+      CRATER_AGENT_URL: http://agent:8000
+      CRATER_AGENT_INTERNAL_TOKEN: ${CRATER_AGENT_INTERNAL_TOKEN:?required}
+      CRATER_AGENT_CONTEXT_SIGNING_KEY: ${CRATER_AGENT_CONTEXT_SIGNING_KEY:?required}
+      CRATER_AGENT_ENCRYPTION_KEY: ${CRATER_AGENT_ENCRYPTION_KEY:?required}
+      CRATER_AGENT_PREVIOUS_ENCRYPTION_KEYS: ${CRATER_AGENT_PREVIOUS_ENCRYPTION_KEYS:-}
+      KUBECONFIG: /etc/crater/kubeconfig
+    volumes:
+      - ${CRATER_LOCAL_BACKEND_CONFIG:?required}:/etc/config/config.yaml:ro
+      - ${CRATER_LOCAL_KUBECONFIG:?required}:/etc/crater/kubeconfig:ro
+    ports:
+      - "127.0.0.1:${CRATER_LOCAL_BACKEND_PORT:-8098}:8098"
+    depends_on:
+      agent:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --output-document=-
+        - http://127.0.0.1:8098/healthz
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  frontend:
+    image: crater-frontend:local
+    restart: unless-stopped
+
+  gateway:
+    image: nginx:1.27.3-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${CRATER_LOCAL_HTTP_PORT:-5180}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started

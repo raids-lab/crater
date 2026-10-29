@@ -142,6 +142,38 @@ func modelDownloadSubmissionMigration() *gormigrate.Migration {
 	}
 }
 
+func agentFoundationMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202610291500",
+		Migrate: func(tx *gorm.DB) error {
+			for _, value := range []any{
+				&model.UserLLMConfig{},
+				&model.AgentConversation{},
+				&model.AgentRun{},
+				&model.AgentMessage{},
+			} {
+				if err := createTableIfMissing(tx, value); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			for _, value := range []any{
+				&model.AgentMessage{},
+				&model.AgentRun{},
+				&model.AgentConversation{},
+				&model.UserLLMConfig{},
+			} {
+				if err := dropTableIfPresent(tx, value); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+}
+
 func createTableIfMissing(db *gorm.DB, value any) error {
 	if db.Migrator().HasTable(value) {
 		return nil
@@ -1688,6 +1720,7 @@ func main() {
 				return dropColumnIfPresent(tx, "jobs", &Job{}, "PodGroupPhase")
 			},
 		},
+		agentFoundationMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1724,6 +1757,10 @@ func main() {
 			&model.QueueQuotaLimit{},
 			&model.UserBanRecord{},
 			&model.UserSpaceSize{},
+			&model.UserLLMConfig{},
+			&model.AgentConversation{},
+			&model.AgentRun{},
+			&model.AgentMessage{},
 		)
 		if err != nil {
 			return err

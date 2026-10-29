@@ -306,6 +306,30 @@ export const apiClient = ky.create({
   },
 })
 
+export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const request = input instanceof Request ? input : undefined
+  const rawURL = request?.url ?? input.toString()
+  const parsedURL = new URL(rawURL, window.location.origin)
+  if (!parsedURL.pathname.startsWith('/api/')) {
+    throw new TypeError('apiFetch only supports Crater API URLs')
+  }
+
+  const relativeURL = `${parsedURL.pathname.slice('/api/'.length)}${parsedURL.search}`
+  const requestInit: RequestInit = request
+    ? {
+        method: request.method,
+        headers: request.headers,
+        body:
+          request.method === 'GET' || request.method === 'HEAD'
+            ? undefined
+            : await request.clone().arrayBuffer(),
+        signal: request.signal,
+        ...init,
+      }
+    : { ...init }
+  return apiClient(relativeURL, { ...requestInit, timeout: false })
+}
+
 /**
  * 通用 API 请求方法，处理错误并返回统一的响应格式
  */
