@@ -6,21 +6,23 @@ context token and streams AI SDK UI messages back through the backend.
 
 ## Local development
 
-Use the same random service token for the backend and this process. The context
-signing and encryption keys belong only to the backend:
+Use the same random service token for the backend and this process. Start the
+Agent with only that token and the backend URL:
 
 ```bash
 export CRATER_AGENT_INTERNAL_TOKEN="$(openssl rand -hex 32)"
-export CRATER_AGENT_CONTEXT_SIGNING_KEY="$(openssl rand -hex 32)"
-export SYSTEM_SECRET_KEY="$(openssl rand -hex 16)"
 export CRATER_BACKEND_INTERNAL_URL="http://localhost:8088"
 pnpm install
 pnpm dev
 ```
 
-Set `CRATER_AGENT_URL=http://localhost:8000` and all three security variables in
-`backend/.debug.env` before starting the Go backend. Only
-`CRATER_AGENT_INTERNAL_TOKEN` is provided to the Agent process.
+Set `CRATER_AGENT_URL=http://localhost:8000`, the same
+`CRATER_AGENT_INTERNAL_TOKEN`, a separate
+`CRATER_AGENT_CONTEXT_SIGNING_KEY` generated with `openssl rand -hex 32`, and an
+exact 32-character `CRATER_AGENT_ENCRYPTION_KEY` generated with
+`openssl rand -hex 16` in `backend/.debug.env` before starting the Go backend.
+Write the generated values into the file rather than the shell commands. The
+context-signing and encryption keys belong only to the backend.
 
 ## Kubernetes deployment
 
@@ -34,9 +36,10 @@ contain `internal-token`, `context-signing-key`, and a 32-byte `encryption-key`.
 When rotating the encryption key, retain the old key in the optional
 `previous-encryption-keys` entry as a comma-separated value, update the Secret,
 and change `agent.secretRevision` in the same Helm release. This rolls both
-Deployments and lets the backend re-encrypt stored model credentials at startup.
-After the rollout succeeds, remove the previous key and change
-`agent.secretRevision` again.
+Deployments and lets the backend read existing credentials with the previous
+key. Users must save affected personal model configurations again to encrypt
+them with the new key. Remove the previous key only after those configurations
+have been saved, then change `agent.secretRevision` again.
 
 For a local end-to-end deployment with Docker Desktop, Kind, and Helm, run from
 the repository root:

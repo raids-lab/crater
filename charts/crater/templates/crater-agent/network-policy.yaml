@@ -29,7 +29,12 @@ spec:
       ports:
         - protocol: TCP
           port: 8088
-    - ports:
+    - to:
+        - namespaceSelector:
+            {{- toYaml .Values.agent.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.agent.networkPolicy.dnsPodSelector | nindent 12 }}
+      ports:
         - protocol: UDP
           port: 53
         - protocol: TCP

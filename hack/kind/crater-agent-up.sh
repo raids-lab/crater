@@ -14,6 +14,7 @@ readonly CLUSTER_NAME="crater-agent-dev"
 readonly CONTEXT="kind-${CLUSTER_NAME}"
 readonly NAMESPACE="crater-system"
 readonly CREDENTIALS_SECRET="crater-agent-kind-credentials"
+readonly AGENT_SECRET="crater-agent-internal"
 
 ADMIN_PASSWORD=""
 POSTGRES_PASSWORD=""
@@ -69,6 +70,19 @@ load_or_create_credentials() {
   )"
 }
 
+ensure_agent_secret() {
+  if kubectl --context "$CONTEXT" get secret "$AGENT_SECRET" \
+    --namespace "$NAMESPACE" >/dev/null 2>&1; then
+    return
+  fi
+
+  kubectl --context "$CONTEXT" create secret generic "$AGENT_SECRET" \
+    --namespace "$NAMESPACE" \
+    --from-literal="internal-token=$(openssl rand -hex 32)" \
+    --from-literal="context-signing-key=$(openssl rand -hex 32)" \
+    --from-literal="encryption-key=$(openssl rand -hex 16)"
+}
+
 install_ingress() {
   kubectl --context "$CONTEXT" apply \
     -f https://kind.sigs.k8s.io/examples/ingress/deploy-ingress-nginx.yaml
@@ -83,6 +97,7 @@ install_dependencies() {
   kubectl --context "$CONTEXT" create namespace "$NAMESPACE" \
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
   load_or_create_credentials
+  ensure_agent_secret
   kubectl --context "$CONTEXT" create namespace crater \
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
   kubectl --context "$CONTEXT" create namespace crater-workspace \
@@ -178,6 +193,7 @@ install_crater() {
     --kube-context "$CONTEXT" \
     --namespace "$NAMESPACE" \
     --values "$ROOT_DIR/hack/kind/crater-agent-values.yaml" \
+    --set-string "agent.existingSecretName=$AGENT_SECRET" \
     --set-string "firstUser.password=$ADMIN_PASSWORD" \
     --set-string "backendConfig.postgres.password=$POSTGRES_PASSWORD" \
     --wait --timeout 15m
