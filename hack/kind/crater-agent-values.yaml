@@ -20,6 +20,7 @@ images:
 
 agent:
   enabled: true
+  existingSecretName: crater-agent-internal
 
 modelMetadataRefresh:
   enabled: false
