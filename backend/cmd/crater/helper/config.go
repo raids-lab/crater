@@ -1,10 +1,8 @@
 package helper
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -87,14 +85,6 @@ func (ci *ConfigInitializer) InitializeRegisterConfig() (*handler.RegisterConfig
 
 	// init db
 	query.SetDefault(query.GetDB())
-	if strings.TrimSpace(os.Getenv("CRATER_AGENT_URL")) != "" {
-		if err := service.ValidateAgentRuntimeSecurity(); err != nil {
-			return nil, err
-		}
-		if err := service.RotateStoredLLMCredentials(context.Background(), query.GetDB()); err != nil {
-			return nil, err
-		}
-	}
 
 	// init prometheus client
 	prometheusClient := monitor.NewPrometheusClient(ci.backendConfig.PrometheusAPI)

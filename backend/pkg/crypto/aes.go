@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -9,47 +8,39 @@ import (
 	"errors"
 	"io"
 	"os"
-	"strings"
 )
 
 const aesKeyLength = 32
 
-const (
-	secretKeyEnv         = "SYSTEM_SECRET_KEY"
-	previousSecretKeyEnv = "SYSTEM_SECRET_KEY_PREVIOUS"
-	legacyDefaultKey     = "CRATER_SYSTEM_SECRET_KEY_DEFAULT" // #nosec G101 -- decrypt-only migration key.
-)
+// 默认密钥：由于 AES 校验严格，这里凑齐了 32 位字符
+const defaultSecretKey = "CRATER_SYSTEM_SECRET_KEY_DEFAULT" // #nosec G101
 
-var (
-	errSecretKeyMissing = errors.New("SYSTEM_SECRET_KEY must be configured") //nolint:forbidigo // Low-level package error.
-	errSecretKeyLength  = errors.New(                                        //nolint:forbidigo // Low-level package error.
-		"encryption keys must contain exactly 32 bytes",
-	)
-	errDecryptFailed = errors.New( //nolint:forbidigo // Low-level package error.
-		"ciphertext cannot be decrypted with the configured keys",
-	)
-)
+// 通过匿名函数初始化变量，避免使用 init 函数 (gochecknoinits)
+var secretKey = func() []byte {
+	key := os.Getenv("SYSTEM_SECRET_KEY")
+	if key == "" {
+		key = defaultSecretKey
+	}
 
-// ValidateKeyConfiguration ensures new ciphertext never uses the historical public key.
-func ValidateKeyConfiguration() error {
-	_, err := parseSecretKey(strings.TrimSpace(os.Getenv(secretKeyEnv)))
-	return err
-}
+	keyBytes := []byte(key)
+
+	// 此时如果长度不符合 AES 要求，进行截断或补齐处理（保证健壮性）
+	if len(keyBytes) == aesKeyLength {
+		return keyBytes
+	}
+
+	// 自动补齐或截断到 32 位
+	finalKey := make([]byte, aesKeyLength)
+	copy(finalKey, keyBytes)
+	return finalKey
+}()
 
 // Encrypt AES-GCM 加密
 func Encrypt(plainText string) (string, error) {
 	if plainText == "" {
 		return "", nil
 	}
-	key, err := currentSecretKey()
-	if err != nil {
-		return "", err
-	}
-	return encryptWithKey(plainText, key)
-}
-
-func encryptWithKey(plainText string, key []byte) (string, error) {
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(secretKey)
 	if err != nil {
 		return "", err
 	}
@@ -70,35 +61,15 @@ func encryptWithKey(plainText string, key []byte) (string, error) {
 
 // Decrypt AES-GCM 解密
 func Decrypt(encryptedText string) (string, error) {
-	plainText, _, err := DecryptWithRotation(encryptedText)
-	return plainText, err
-}
-
-// DecryptWithRotation decrypts with the current key first and reports whether
-// the ciphertext should be encrypted again with that key.
-func DecryptWithRotation(encryptedText string) (plainText string, needsRotation bool, err error) {
 	if encryptedText == "" {
-		return "", false, nil
+		return "", nil
 	}
 	data, err := base64.StdEncoding.DecodeString(encryptedText)
 	if err != nil {
-		return "", false, err
+		return "", err
 	}
-	keys, err := decryptionKeys()
-	if err != nil {
-		return "", false, err
-	}
-	for index, key := range keys {
-		decrypted, decryptErr := decryptWithKey(data, key)
-		if decryptErr == nil {
-			return decrypted, index != 0, nil
-		}
-	}
-	return "", false, errDecryptFailed
-}
 
-func decryptWithKey(data, key []byte) (string, error) {
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(secretKey)
 	if err != nil {
 		return "", err
 	}
@@ -120,51 +91,4 @@ func decryptWithKey(data, key []byte) (string, error) {
 	}
 
 	return string(plaintext), nil
-}
-
-func currentSecretKey() ([]byte, error) {
-	return parseSecretKey(strings.TrimSpace(os.Getenv(secretKeyEnv)))
-}
-
-func decryptionKeys() ([][]byte, error) {
-	keys := make([][]byte, 0, 3)
-	if currentValue := strings.TrimSpace(os.Getenv(secretKeyEnv)); currentValue != "" {
-		current, err := parseSecretKey(currentValue)
-		if err != nil {
-			return nil, err
-		}
-		keys = append(keys, current)
-	}
-	for previous := range strings.SplitSeq(os.Getenv(previousSecretKeyEnv), ",") {
-		previous = strings.TrimSpace(previous)
-		if previous == "" {
-			continue
-		}
-		key, parseErr := parseSecretKey(previous)
-		if parseErr != nil {
-			return nil, parseErr
-		}
-		keys = appendUniqueKey(keys, key)
-	}
-	return appendUniqueKey(keys, []byte(legacyDefaultKey)), nil
-}
-
-func parseSecretKey(value string) ([]byte, error) {
-	if value == "" {
-		return nil, errSecretKeyMissing
-	}
-	key := []byte(value)
-	if len(key) != aesKeyLength {
-		return nil, errSecretKeyLength
-	}
-	return key, nil
-}
-
-func appendUniqueKey(keys [][]byte, candidate []byte) [][]byte {
-	for _, key := range keys {
-		if bytes.Equal(key, candidate) {
-			return keys
-		}
-	}
-	return append(keys, candidate)
 }

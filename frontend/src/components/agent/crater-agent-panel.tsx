@@ -1,4 +1,5 @@
 import { useChat } from '@ai-sdk/react'
+import { useQuery } from '@tanstack/react-query'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useAtom, useAtomValue } from 'jotai'
 import {
@@ -45,17 +46,14 @@ import {
   type AgentIdentity,
   agentIdentityHeader,
   apiDeleteAgentConversation,
+  apiGetAgentAvailability,
   apiGetAgentConversationMessages,
   apiGetAgentConversations,
   apiRenameAgentConversation,
 } from '@/services/api/agent'
+import { apiFetch } from '@/services/client'
 
-import {
-  ACCESS_TOKEN_KEY,
-  atomAgentPanelOpen,
-  atomAgentUserFloatingButtonEnabled,
-  atomUserInfo,
-} from '@/utils/store'
+import { atomAgentPanelOpen, atomAgentUserFloatingButtonEnabled, atomUserInfo } from '@/utils/store'
 
 import { cn } from '@/lib/utils'
 
@@ -344,6 +342,12 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const [input, setInput] = useState('')
   const [open, setOpen] = useAtom(atomAgentPanelOpen)
   const floatingButtonEnabled = useAtomValue(atomAgentUserFloatingButtonEnabled)
+  const availabilityQuery = useQuery({
+    queryKey: ['agent', 'availability'],
+    queryFn: apiGetAgentAvailability,
+    staleTime: 5 * 60 * 1_000,
+  })
+  const available = availabilityQuery.data?.data.enabled === true
   const identityCacheKey = `${userID ?? 0}:${identity}`
   const [cancelled, setCancelled] = useState(false)
   const [editingMessageID, setEditingMessageID] = useState<string>()
@@ -370,7 +374,6 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
       new DefaultChatTransport({
         api: chatEndpoint,
         headers: () => ({
-          Authorization: `Bearer ${localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''}`,
           [agentIdentityHeader]: identity,
         }),
         fetch: agentFetch,
@@ -514,7 +517,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   }, [])
 
   useEffect(() => {
-    if (userID === undefined) return
+    if (!available || !open || userID === undefined) return
     let disposed = false
     const navigationSequence = navigationSequenceRef.current + 1
     navigationSequenceRef.current = navigationSequence
@@ -544,7 +547,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     return () => {
       disposed = true
     }
-  }, [identity, identityCacheKey, setMessages, userID])
+  }, [available, identity, identityCacheKey, open, setMessages, userID])
 
   useEffect(() => {
     if (!open) return
@@ -568,12 +571,11 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
 
   useEffect(() => {
     if (!open || !busy) return
-    stickToBottomRef.current = true
     let frame: number
     const followStreamingOutput = () => {
       const viewport = viewportRef.current
       if (!viewport) return
-      viewport.scrollTop = viewport.scrollHeight
+      if (stickToBottomRef.current) viewport.scrollTop = viewport.scrollHeight
       frame = requestAnimationFrame(followStreamingOutput)
     }
     frame = requestAnimationFrame(followStreamingOutput)
@@ -745,8 +747,8 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   }
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      {floatingButtonEnabled && (
+    <Sheet open={available && open} onOpenChange={handleOpenChange}>
+      {available && floatingButtonEnabled && (
         <SheetTrigger asChild>
           <Button
             aria-label={t('craterAgent.open')}
@@ -892,7 +894,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
 }
 
 async function agentFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const response = await fetch(input, init)
+  const response = await apiFetch(input, init)
   if (response.ok) return response
 
   const payload = (await response
@@ -920,27 +922,14 @@ async function requestConversationTitle(
   conversationID: string,
   firstMessage: string
 ) {
-  const maximumAttempts = 2
-  let lastError: unknown
-  for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
-    try {
-      const response = await agentFetch('/api/v1/agent/title', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem(ACCESS_TOKEN_KEY) ?? ''}`,
-          'Content-Type': 'application/json',
-          [agentIdentityHeader]: identity,
-        },
-        body: JSON.stringify({ conversationId: conversationID, firstMessage }),
-      })
-      const payload = (await response.json()) as { data?: { title?: string } }
-      return payload.data?.title?.trim() ?? ''
-    } catch (error) {
-      lastError = error
-      if (attempt + 1 < maximumAttempts) {
-        await new Promise((resolve) => window.setTimeout(resolve, 500))
-      }
-    }
-  }
-  throw lastError
+  const response = await agentFetch('/api/v1/agent/title', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      [agentIdentityHeader]: identity,
+    },
+    body: JSON.stringify({ conversationId: conversationID, firstMessage }),
+  })
+  const payload = (await response.json()) as { data?: { title?: string } }
+  return payload.data?.title?.trim() ?? ''
 }

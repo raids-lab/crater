@@ -248,6 +248,7 @@
   "agentSettings.floatingButton": "Show Crater-Agent floating button",
   "agentSettings.floatingButtonDescription": "Hiding the floating button does not prevent Crater-Agent from opening through other feature entry points.",
   "agentSettings.modelName": "Model name",
+  "agentSettings.privacyNotice": "Agent conversations are stored by the platform and may be reviewed by platform administrators for operations, auditing, and troubleshooting.",
   "agentSettings.save": "Validate and save",
   "agentSettings.saveDescription": "After saving, AI features in both portal and admin views will prefer this configuration for the current user.",
   "agentSettings.saveSuccess": "Personal LLM configuration saved",

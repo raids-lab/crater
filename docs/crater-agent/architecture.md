@@ -27,16 +27,18 @@ PostgreSQL is the single source of truth for conversation history. The browser
 only keeps display preferences and the active conversation for the lifetime of
 the current page; it does not persist messages in local storage.
 
-- `agent_conversations` stores owner-scoped titles and soft deletion state.
+- `agent_conversations` stores owner-scoped titles. User deletion permanently
+  removes the conversation, its messages, and its run records.
 - `agent_runs` stores one execution boundary per user turn, including terminal
   status and errors.
 - `agent_messages` stores ordered, versioned AI SDK UI message parts as JSONB.
 
-Structured parts are preserved instead of being flattened to text. Future tool
-calls, confirmations, tables, files, and artifacts can therefore be added as
-new part types without replacing the conversation schema. Editing an earlier
-user message marks the later branch as superseded rather than destroying its
-audit history.
+Structured assistant parts are preserved instead of being flattened to text.
+User input currently accepts text parts only; URL-backed file parts are rejected
+at both the backend and Agent runtime boundaries. Future trusted part types can
+be added explicitly without replacing the conversation schema. Editing an
+earlier user message marks the later branch as superseded rather than destroying
+its audit history.
 
 ## Configuration precedence
 
@@ -51,30 +53,32 @@ and unresolved destinations are rejected to prevent server-side network access.
 
 ## Extension boundary
 
-The runtime selects an explicit Skill from the user conversation. Every Skill
-declares its capabilities, limitations, and active tools; that contract is added
-to model instructions for every request. The current `platform-guide` Skill
-combines invariant safety instructions with curated, version-controlled user
-documentation and does not query live platform state. Clearly unrelated and
-prompt-override requests receive a deterministic scope response without calling
-the model. Business capabilities are added through the typed tool registry in
-`crater-agent/src/tools/registry.ts`, and only tools explicitly selected by the
-active Skill are exposed. Authorization and data ownership remain enforced by
-the Go backend.
+The current runtime always selects the `platform-guide` Skill. It combines
+invariant safety instructions with curated, version-controlled user
+documentation and asks the model to answer in the user's language. Scope and
+prompt-injection handling are instruction based rather than keyword based, so
+valid multilingual platform questions are not rejected by a brittle regular
+expression. Business capabilities are added through the typed tool registry in
+`crater-agent/src/tools/registry.ts`. Authorization and data ownership remain
+enforced by the Go backend.
 
 ## Deployment
 
 The Helm chart deploys Crater-Agent as an internal `ClusterIP` service. It has no
-Ingress and cannot be called directly from outside the cluster. The backend and
-Agent receive the same internal token from a Kubernetes Secret; the backend uses
-it to authenticate requests and to sign short-lived user context tokens.
+Ingress. The backend and Agent share an internal service token, while only the
+backend receives the separate context-signing key and credential-encryption key.
+Agent callbacks exposed through the backend require both the internal token and
+a short-lived signed user context. The backend also applies per-user model proxy
+rate and concurrency limits. An Agent NetworkPolicy limits ingress to the
+backend and egress to the backend and cluster DNS.
 
 The existing backend migration init container creates and upgrades the Agent
 tables before the backend starts. The same migration binary is used by local
 production-style deployment and Helm deployment, so no manual SQL step is
 required.
 
-Pull requests validate TypeScript, the container image, and Helm templates.
+Pull requests validate TypeScript and the container image; chart changes are
+validated by the repository's Helm chart workflow.
 After a change is merged, GitHub Actions publishes the multi-architecture Agent
 image and the Crater Helm chart to GHCR. The repository deliberately does not
 hold production cluster credentials. Production environments should consume the

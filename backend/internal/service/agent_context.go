@@ -1,14 +1,12 @@
 package service
 
 import (
-	"os"
 	"strings"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/raids-lab/crater/internal/bizerr"
-	"github.com/raids-lab/crater/pkg/crypto"
 )
 
 // The token must remain valid for the four-minute Agent run plus its terminal
@@ -16,9 +14,12 @@ import (
 const agentContextLifetime = 6 * time.Minute
 
 const (
-	AgentInternalTokenEnv     = "CRATER_AGENT_INTERNAL_TOKEN" // #nosec G101 -- environment variable name only.
-	AgentContextSigningKeyEnv = "CRATER_AGENT_CONTEXT_SIGNING_KEY"
-	minimumAgentSecretLength  = 32
+	AgentInternalTokenEnv             = "CRATER_AGENT_INTERNAL_TOKEN" // #nosec G101 -- environment variable name only.
+	AgentContextSigningKeyEnv         = "CRATER_AGENT_CONTEXT_SIGNING_KEY"
+	AgentEncryptionKeyEnv             = "CRATER_AGENT_ENCRYPTION_KEY"
+	AgentPreviousEncryptionKeysEnv    = "CRATER_AGENT_PREVIOUS_ENCRYPTION_KEYS"
+	minimumAgentSecretLength          = 32
+	legacyPublicPlatformEncryptionKey = "CRATER_SYSTEM_SECRET_KEY_DEFAULT" // #nosec G101 -- rejected public legacy key.
 )
 
 type AgentContextClaims struct {
@@ -80,23 +81,6 @@ func ParseAgentContext(tokenString, secret string) (*AgentContextClaims, error) 
 		return nil, bizerr.Auth.TokenInvalid.Wrap(err, "invalid Agent identity")
 	}
 	return claims, nil
-}
-
-// ValidateAgentRuntimeSecurity rejects Agent startup with missing or weak
-// service authentication, context signing, or credential encryption keys.
-func ValidateAgentRuntimeSecurity() error {
-	if err := validateAgentSecret(strings.TrimSpace(os.Getenv(AgentInternalTokenEnv)), AgentInternalTokenEnv); err != nil {
-		return err
-	}
-	if err := validateAgentSecret(
-		strings.TrimSpace(os.Getenv(AgentContextSigningKeyEnv)), AgentContextSigningKeyEnv,
-	); err != nil {
-		return err
-	}
-	if err := crypto.ValidateKeyConfiguration(); err != nil {
-		return bizerr.ServiceError.ServiceUnavailable.Wrap(err, "Agent credential encryption key is invalid")
-	}
-	return nil
 }
 
 func validateAgentSecret(secret, name string) error {

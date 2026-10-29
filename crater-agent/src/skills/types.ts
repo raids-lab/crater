@@ -4,5 +4,4 @@ export interface AgentSkill {
   readonly capabilities: readonly string[];
   readonly limitations: readonly string[];
   readonly activeTools: readonly string[];
-  readonly staticResponse?: string;
 }

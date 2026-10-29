@@ -104,28 +104,6 @@ prepare: ## Prepare development environment with updated configs
 	else \
 		echo "$(GREEN)✅ .debug.env already exists$(RESET)"; \
 	fi
-	@if ! grep -q '^CRATER_AGENT_URL=' .debug.env; then \
-		echo 'CRATER_AGENT_URL=http://localhost:8000' >> .debug.env; \
-	fi
-	@for variable in CRATER_AGENT_INTERNAL_TOKEN CRATER_AGENT_CONTEXT_SIGNING_KEY SYSTEM_SECRET_KEY; do \
-		value="$$(awk -F= -v key="$$variable" '$$1 == key {sub(/^[^=]*=/, ""); print; exit}' .debug.env)"; \
-		if [ "$${#value}" -ge 32 ]; then \
-			continue; \
-		fi; \
-		if ! command -v openssl >/dev/null 2>&1; then \
-			echo "$(RED)❌ openssl is required to generate Crater-Agent security keys$(RESET)"; \
-			exit 1; \
-		fi; \
-		generated_value="$$(openssl rand -hex 16)"; \
-		temp_file="$$(mktemp)"; \
-		awk -v key="$$variable" -v value="$$generated_value" 'BEGIN { updated = 0 } \
-			$$0 ~ "^" key "=" { print key "=" value; updated = 1; next } \
-			{ print } \
-			END { if (!updated) print key "=" value }' \
-			.debug.env > "$$temp_file"; \
-		mv "$$temp_file" .debug.env; \
-		echo "$(GREEN)✅ Generated $$variable$(RESET)"; \
-	done
 
 ##@ Development
 

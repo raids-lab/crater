@@ -88,13 +88,11 @@ images:
 # -- Crater-Agent runtime configuration
 agent:
   # -- Deploy the internal Crater-Agent service with this chart
-  enabled: true
+  enabled: false
   # -- Number of stateless Agent runtime replicas
   replicas: 1
-  # -- Use an existing Secret containing `internal-token`, `context-signing-key`, and `encryption-key`
+  # -- Existing Secret containing `internal-token`, `context-signing-key`, and `encryption-key`; required when enabled
   existingSecretName: ""
-  # -- Optional explicit token. Leave empty to let Helm generate and retain one
-  internalToken: ""
   # -- Change this value after rotating an external Secret to roll both backend and Agent pods
   secretRevision: ""
   # -- Pod-level security settings for the Agent runtime

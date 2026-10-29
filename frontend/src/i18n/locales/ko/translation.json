@@ -247,6 +247,7 @@
   "agentSettings.floatingButton": "Crater-Agent 플로팅 버튼 표시",
   "agentSettings.floatingButtonDescription": "버튼을 숨겨도 다른 기능에서 Crater-Agent 패널을 열 수 있습니다.",
   "agentSettings.modelName": "모델 이름",
+  "agentSettings.privacyNotice": "Agent 대화는 플랫폼에 저장되며 운영, 감사 및 문제 해결을 위해 플랫폼 관리자가 확인할 수 있습니다.",
   "agentSettings.save": "검증 후 저장",
   "agentSettings.saveDescription": "저장하면 현재 사용자의 사용자 화면과 관리자 화면 AI 기능에서 이 설정을 우선 사용합니다.",
   "agentSettings.saveSuccess": "개인 LLM 설정을 저장했습니다",

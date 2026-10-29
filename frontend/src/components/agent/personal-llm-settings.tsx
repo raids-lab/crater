@@ -119,6 +119,7 @@ export function PersonalLLMSettings() {
               {t('agentSettings.title')}
             </CardTitle>
             <CardDescription>{t('agentSettings.description')}</CardDescription>
+            <CardDescription>{t('agentSettings.privacyNotice')}</CardDescription>
           </div>
           <Badge variant={data?.effectiveSource ? 'secondary' : 'destructive'}>{sourceText}</Badge>
         </div>

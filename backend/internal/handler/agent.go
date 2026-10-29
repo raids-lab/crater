@@ -2,13 +2,13 @@ package handler
 
 import (
 	"bytes"
-	"crypto/subtle"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +28,16 @@ const (
 	agentRuntimeRequestTimeout = 5 * time.Minute
 	llmRequestTimeout          = 5 * time.Minute
 	agentIdentityHeader        = "X-Crater-Agent-Identity"
+	agentInternalTokenHeader   = "X-Crater-Agent-Internal-Token" // #nosec G101 -- header name only.
+	maxLLMRequestsPerMinute    = 60
+	maxConcurrentLLMRequests   = 2
 )
+
+type agentLLMRateState struct {
+	windowStarted time.Time
+	requests      int
+	active        int
+}
 
 //nolint:gochecknoinits // Managers register through the repository's standard init mechanism.
 func init() {
@@ -36,16 +45,32 @@ func init() {
 }
 
 type AgentMgr struct {
-	name          string
-	service       *service.AgentConfigService
-	conversations *service.AgentConversationService
+	name              string
+	service           *service.AgentConfigService
+	conversations     *service.AgentConversationService
+	runtimeURL        string
+	internalToken     string
+	contextSigningKey string
+	available         bool
+	llmRateMu         sync.Mutex
+	llmRateByUser     map[uint]*agentLLMRateState
 }
 
 func NewAgentMgr(conf *RegisterConfig) Manager {
+	runtimeURL := strings.TrimSpace(os.Getenv("CRATER_AGENT_URL"))
+	internalToken := strings.TrimSpace(os.Getenv(service.AgentInternalTokenEnv))
+	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
+	_, runtimeErr := buildAgentRuntimeURL(runtimeURL, "/healthz")
 	return &AgentMgr{
-		name:          "agent",
-		service:       conf.AgentConfigService,
-		conversations: conf.AgentConversationService,
+		name:              "agent",
+		service:           conf.AgentConfigService,
+		conversations:     conf.AgentConversationService,
+		runtimeURL:        runtimeURL,
+		internalToken:     internalToken,
+		contextSigningKey: contextSigningKey,
+		available: runtimeErr == nil && len(internalToken) >= 32 && len(contextSigningKey) >= 32 &&
+			internalToken != contextSigningKey,
+		llmRateByUser: make(map[uint]*agentLLMRateState),
 	}
 }
 
@@ -57,16 +82,30 @@ func (mgr *AgentMgr) RegisterPublic(g *gin.RouterGroup) {
 }
 
 func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
+	mgr.registerAgentConfigRoutes(g)
+	mgr.registerAgentConversationRoutes(g)
+}
+
+func (mgr *AgentMgr) registerAgentConfigRoutes(g *gin.RouterGroup) {
+	g.GET("/availability", mgr.UserGetAgentAvailability)
 	g.GET("/llm-config", mgr.UserGetPersonalLLMConfig)
 	g.PUT("/llm-config", mgr.UserUpdatePersonalLLMConfig)
 	g.DELETE("/llm-config", mgr.UserDeletePersonalLLMConfig)
 	g.POST("/llm-config/test", mgr.UserTestPersonalLLMConfig)
+}
+
+func (mgr *AgentMgr) registerAgentConversationRoutes(g *gin.RouterGroup) {
 	g.POST("/chat", mgr.UserChat)
 	g.POST("/title", mgr.UserGenerateTitle)
 	g.GET("/conversations", mgr.UserListAgentConversations)
 	g.GET("/conversations/:id/messages", mgr.UserGetAgentConversationMessages)
 	g.PUT("/conversations/:id", mgr.UserRenameAgentConversation)
 	g.DELETE("/conversations/:id", mgr.UserDeleteAgentConversation)
+}
+
+// UserGetAgentAvailability reports whether the optional Agent runtime is configured.
+func (mgr *AgentMgr) UserGetAgentAvailability(c *gin.Context) {
+	resputil.Success(c, gin.H{"enabled": mgr.available})
 }
 
 func (mgr *AgentMgr) RegisterAdmin(g *gin.RouterGroup) {
@@ -116,7 +155,7 @@ type updatePersonalLLMConfigReq struct {
 //	@Router			/v1/agent/llm-config [get]
 func (mgr *AgentMgr) UserGetPersonalLLMConfig(c *gin.Context) {
 	status, err := mgr.service.GetStatus(
-		c.Request.Context(), util.GetToken(c).UserID, service.AgentIdentityUser,
+		c.Request.Context(), util.GetToken(c).UserID,
 	)
 	if err != nil {
 		resputil.HandleError(c, err)
@@ -153,7 +192,6 @@ func (mgr *AgentMgr) UserUpdatePersonalLLMConfig(c *gin.Context) {
 	err := mgr.service.SavePersonalConfig(
 		c.Request.Context(),
 		util.GetToken(c).UserID,
-		service.AgentIdentityUser,
 		toServiceLLMConfig(req),
 		req.Validate,
 	)
@@ -174,7 +212,7 @@ func (mgr *AgentMgr) UserUpdatePersonalLLMConfig(c *gin.Context) {
 //	@Router			/v1/agent/llm-config [delete]
 func (mgr *AgentMgr) UserDeletePersonalLLMConfig(c *gin.Context) {
 	if err := mgr.service.DeletePersonalConfig(
-		c.Request.Context(), util.GetToken(c).UserID, service.AgentIdentityUser,
+		c.Request.Context(), util.GetToken(c).UserID,
 	); err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -198,7 +236,7 @@ func (mgr *AgentMgr) UserTestPersonalLLMConfig(c *gin.Context) {
 		return
 	}
 	if err := mgr.service.CheckPersonalConfig(
-		c.Request.Context(), util.GetToken(c).UserID, service.AgentIdentityUser, toServiceLLMConfig(req),
+		c.Request.Context(), util.GetToken(c).UserID, toServiceLLMConfig(req),
 	); err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -324,7 +362,7 @@ func (mgr *AgentMgr) UserGenerateTitle(c *gin.Context) {
 		return
 	}
 	userID := util.GetToken(c).UserID
-	if _, err := mgr.conversations.GetMessages(
+	if err := mgr.conversations.EnsureConversationOwned(
 		c.Request.Context(), userID, identity, req.ConversationID,
 	); err != nil {
 		resputil.HandleError(c, err)
@@ -370,13 +408,11 @@ func (mgr *AgentMgr) requestAgentRuntime(
 	body []byte,
 	endpoint string,
 ) (*http.Response, error) {
-	serviceToken := strings.TrimSpace(os.Getenv(service.AgentInternalTokenEnv))
-	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
-	contextToken, err := service.SignAgentContext(util.GetToken(c).UserID, identity, contextSigningKey)
+	contextToken, err := service.SignAgentContext(util.GetToken(c).UserID, identity, mgr.contextSigningKey)
 	if err != nil {
 		return nil, err
 	}
-	runtimeURL, err := buildAgentRuntimeURL(os.Getenv("CRATER_AGENT_URL"), endpoint)
+	runtimeURL, err := buildAgentRuntimeURL(mgr.runtimeURL, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +420,7 @@ func (mgr *AgentMgr) requestAgentRuntime(
 	if err != nil {
 		return nil, bizerr.Internal.ServiceError.Wrap(err, "failed to build Crater-Agent request")
 	}
-	req.Header.Set("Authorization", "Bearer "+serviceToken)
+	req.Header.Set("Authorization", "Bearer "+mgr.internalToken)
 	req.Header.Set("X-Crater-Agent-Context", contextToken)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := (&http.Client{Timeout: agentRuntimeRequestTimeout}).Do(req)
@@ -403,20 +439,28 @@ func validateAgentRuntimeResponse(resp *http.Response) error {
 }
 
 func (mgr *AgentMgr) ProxyLLMChatCompletion(c *gin.Context) {
+	if !constantTimeTokenEqual(c.GetHeader(agentInternalTokenHeader), mgr.internalToken) {
+		writeOpenAIError(c, http.StatusUnauthorized, "invalid Agent service token", "authentication_error")
+		return
+	}
 	contextToken := bearerToken(c.GetHeader("Authorization"))
-	contextSigningKey := strings.TrimSpace(os.Getenv(service.AgentContextSigningKeyEnv))
-	claims, err := service.ParseAgentContext(contextToken, contextSigningKey)
+	claims, err := service.ParseAgentContext(contextToken, mgr.contextSigningKey)
 	if err != nil {
 		writeOpenAIError(c, http.StatusUnauthorized, "invalid Agent context", "authentication_error")
 		return
 	}
+	if !mgr.acquireLLMRequest(claims.UserID) {
+		writeOpenAIError(c, http.StatusTooManyRequests, "Agent model request limit exceeded", "rate_limit_error")
+		return
+	}
+	defer mgr.releaseLLMRequest(claims.UserID)
 	body, err := readLimitedBody(c.Request.Body, agentChatBodyLimit)
 	if err != nil {
 		writeOpenAIError(c, http.StatusRequestEntityTooLarge, "model request is too large", "invalid_request_error")
 		return
 	}
 	cfg, err := mgr.service.ResolveEffectiveConfig(
-		c.Request.Context(), claims.UserID, claims.IdentityScope,
+		c.Request.Context(), claims.UserID,
 	)
 	if err != nil {
 		writeOpenAIError(c, http.StatusServiceUnavailable, err.Error(), "configuration_error")
@@ -504,11 +548,37 @@ func writeOpenAIError(c *gin.Context, status int, message, errorType string) {
 }
 
 func bearerToken(header string) string {
-	prefix := "Bearer "
-	if len(header) <= len(prefix) || subtle.ConstantTimeCompare([]byte(header[:len(prefix)]), []byte(prefix)) != 1 {
+	const prefix = "Bearer "
+	if !strings.HasPrefix(header, prefix) || len(header) <= len(prefix) {
 		return ""
 	}
 	return strings.TrimSpace(header[len(prefix):])
+}
+
+func (mgr *AgentMgr) acquireLLMRequest(userID uint) bool {
+	mgr.llmRateMu.Lock()
+	defer mgr.llmRateMu.Unlock()
+
+	now := time.Now()
+	state := mgr.llmRateByUser[userID]
+	if state == nil || now.Sub(state.windowStarted) >= time.Minute {
+		state = &agentLLMRateState{windowStarted: now}
+		mgr.llmRateByUser[userID] = state
+	}
+	if state.requests >= maxLLMRequestsPerMinute || state.active >= maxConcurrentLLMRequests {
+		return false
+	}
+	state.requests++
+	state.active++
+	return true
+}
+
+func (mgr *AgentMgr) releaseLLMRequest(userID uint) {
+	mgr.llmRateMu.Lock()
+	defer mgr.llmRateMu.Unlock()
+	if state := mgr.llmRateByUser[userID]; state != nil && state.active > 0 {
+		state.active--
+	}
 }
 
 func sanitizeUpstreamError(message []byte) string {
