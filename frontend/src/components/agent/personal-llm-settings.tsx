@@ -36,6 +36,7 @@ import { Switch } from '@/components/ui/switch'
 
 import {
   apiDeletePersonalLLMConfig,
+  apiGetAgentAvailability,
   apiGetPersonalLLMConfig,
   apiTestPersonalLLMConfig,
   apiUpdatePersonalLLMConfig,
@@ -60,6 +61,12 @@ export function PersonalLLMSettings() {
     atomAgentUserFloatingButtonEnabled
   )
   const queryKey = ['agent', 'personal-llm-config']
+  const availabilityQuery = useQuery({
+    queryKey: ['agent', 'availability'],
+    queryFn: apiGetAgentAvailability,
+    staleTime: 5 * 60 * 1_000,
+  })
+  const available = availabilityQuery.data?.data.enabled === true
   const initializedFromServer = useRef(false)
   const [pendingConfig, setPendingConfig] = useState<FormValues>()
   const form = useForm<FormValues>({
@@ -70,6 +77,7 @@ export function PersonalLLMSettings() {
     queryKey,
     queryFn: apiGetPersonalLLMConfig,
     select: (response) => response.data,
+    enabled: available,
   })
 
   useEffect(() => {
@@ -108,6 +116,8 @@ export function PersonalLLMSettings() {
     : data?.platformConfigured
       ? t('agentSettings.sourcePlatform')
       : t('agentSettings.sourceMissing')
+
+  if (!available) return null
 
   return (
     <Card>

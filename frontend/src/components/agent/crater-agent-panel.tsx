@@ -358,6 +358,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const [activeConversationID, setActiveConversationID] = useState<string>(createConversationID)
   const [requestLocked, setRequestLocked] = useState(false)
   const [synchronizing, setSynchronizing] = useState(false)
+  const [historyLoadedIdentity, setHistoryLoadedIdentity] = useState<string>()
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const stickToBottomRef = useRef(true)
   const pendingTitleRef = useRef<PendingConversationTitle | undefined>(undefined)
@@ -508,7 +509,8 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   }
   synchronizeConversationRef.current = synchronizeConversation
   const generating = status === 'submitted' || status === 'streaming'
-  const busy = generating || synchronizing || requestLocked
+  const historyLoading = open && historyLoadedIdentity !== identityCacheKey
+  const busy = generating || synchronizing || requestLocked || historyLoading
 
   useEffect(() => {
     const resizePanel = () => setPanelWidth((width) => clampPanelWidth(width))
@@ -521,6 +523,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     let disposed = false
     const navigationSequence = navigationSequenceRef.current + 1
     navigationSequenceRef.current = navigationSequence
+    setHistoryLoadedIdentity(undefined)
     void apiGetAgentConversations(identity)
       .then(async (response) => {
         if (disposed || navigationSequenceRef.current !== navigationSequence) return
@@ -542,8 +545,13 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
         setCancelled(false)
         setEditingMessageID(undefined)
         setEditingText('')
+        setHistoryLoadedIdentity(identityCacheKey)
       })
-      .catch((loadError: Error) => toast.error(loadError.message))
+      .catch((loadError: Error) => {
+        if (disposed || navigationSequenceRef.current !== navigationSequence) return
+        setHistoryLoadedIdentity(identityCacheKey)
+        toast.error(loadError.message)
+      })
     return () => {
       disposed = true
     }
@@ -655,6 +663,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     if (!text || busy || interactionLockedRef.current) return
     interactionLockedRef.current = true
     setRequestLocked(true)
+    navigationSequenceRef.current += 1
     const isFirstMessage = !messages.some((message) => message.role === 'user')
     ensureActiveConversation()
     if (isFirstMessage) {
@@ -742,7 +751,10 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) stickToBottomRef.current = true
+    if (nextOpen) {
+      stickToBottomRef.current = true
+      setHistoryLoadedIdentity(undefined)
+    }
     setOpen(nextOpen)
   }
 

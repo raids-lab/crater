@@ -95,6 +95,16 @@ agent:
   existingSecretName: ""
   # -- Change this value after rotating an external Secret to roll both backend and Agent pods
   secretRevision: ""
+  # -- NetworkPolicy selectors for the cluster DNS pods that Agent may query
+  networkPolicy:
+    # -- Namespace selector for cluster DNS pods
+    dnsNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: kube-system
+    # -- Pod selector for cluster DNS pods
+    dnsPodSelector:
+      matchLabels:
+        k8s-app: kube-dns
   # -- Pod-level security settings for the Agent runtime
   podSecurityContext:
     runAsNonRoot: true

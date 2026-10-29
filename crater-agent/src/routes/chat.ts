@@ -25,6 +25,7 @@ const titleBodySchema = z.object({
 
 const totalTimeoutMs = 4 * 60 * 1_000;
 const stepTimeoutMs = 90 * 1_000;
+const runCompletionAttemptTimeoutMs = 5_000;
 const titleSystemPrompt = `你是 Crater 平台的会话标题生成器。
 根据用户首条消息概括其核心意图，生成一个可在历史列表中快速识别的标题。
 中文标题建议 6至16个字；英文标题建议 3至10个单词。
@@ -182,6 +183,7 @@ async function persistRunCompletion(
           "X-Crater-Agent-Context": contextToken,
         },
         body: JSON.stringify(completion),
+        signal: AbortSignal.timeout(runCompletionAttemptTimeoutMs),
       });
       if (!response.ok) {
         throw new Error(
