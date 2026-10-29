@@ -66,11 +66,19 @@ prepare_runtime_config() {
   local encryption_key
   internal_token="$(openssl rand -hex 32)"
   context_signing_key="$(openssl rand -hex 32)"
-  encryption_key="$(openssl rand -hex 16)"
+  encryption_key="${CRATER_AGENT_ENCRYPTION_KEY:-}"
+  if [[ "${#encryption_key}" -ne 32 ]]; then
+    printf '%s\n' \
+      'Set CRATER_AGENT_ENCRYPTION_KEY to the 32-character key used by the target database.' \
+      'The local deployment refuses to generate a temporary database encryption key.' >&2
+    exit 1
+  fi
   {
     printf 'CRATER_AGENT_INTERNAL_TOKEN=%s\n' "$internal_token"
     printf 'CRATER_AGENT_CONTEXT_SIGNING_KEY=%s\n' "$context_signing_key"
-    printf 'SYSTEM_SECRET_KEY=%s\n' "$encryption_key"
+    printf 'CRATER_AGENT_ENCRYPTION_KEY=%s\n' "$encryption_key"
+    printf 'CRATER_AGENT_PREVIOUS_ENCRYPTION_KEYS=%s\n' \
+      "${CRATER_AGENT_PREVIOUS_ENCRYPTION_KEYS:-}"
     printf 'CRATER_LOCAL_BACKEND_CONFIG=%s\n' "$backend_config"
     printf 'CRATER_LOCAL_KUBECONFIG=%s\n' "$FLAT_KUBECONFIG"
     printf 'CRATER_LOCAL_HTTP_PORT=%s\n' "${CRATER_LOCAL_HTTP_PORT:-5180}"

@@ -15,7 +15,6 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/pkg/monitor"
 )
 
@@ -145,21 +144,10 @@ func modelDownloadSubmissionMigration() *gormigrate.Migration {
 
 func agentFoundationMigration() *gormigrate.Migration {
 	return &gormigrate.Migration{
-		ID: "202609091800",
-		Migrate: func(tx *gorm.DB) error {
-			return createTableIfMissing(tx, &model.UserLLMConfig{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			return dropTableIfPresent(tx, &model.UserLLMConfig{})
-		},
-	}
-}
-
-func agentConversationMigration() *gormigrate.Migration {
-	return &gormigrate.Migration{
-		ID: "202609161800",
+		ID: "202610291500",
 		Migrate: func(tx *gorm.DB) error {
 			for _, value := range []any{
+				&model.UserLLMConfig{},
 				&model.AgentConversation{},
 				&model.AgentRun{},
 				&model.AgentMessage{},
@@ -175,144 +163,13 @@ func agentConversationMigration() *gormigrate.Migration {
 				&model.AgentMessage{},
 				&model.AgentRun{},
 				&model.AgentConversation{},
+				&model.UserLLMConfig{},
 			} {
 				if err := dropTableIfPresent(tx, value); err != nil {
 					return err
 				}
 			}
 			return nil
-		},
-	}
-}
-
-func agentConversationLegacyRepairMigration() *gormigrate.Migration {
-	const legacyAgentMessagesTable = "agent_messages_legacy"
-
-	return &gormigrate.Migration{
-		ID: "202609161900",
-		Migrate: func(tx *gorm.DB) error {
-			migrator := tx.Migrator()
-			if migrator.HasTable(&model.AgentMessage{}) &&
-				!migrator.HasColumn(&model.AgentMessage{}, "ConversationID") {
-				if migrator.HasTable(legacyAgentMessagesTable) {
-					return bizerr.Conflict.ResourceAlreadyExists.New(
-						"cannot preserve legacy agent_messages: agent_messages_legacy already exists",
-					)
-				}
-				if err := migrator.RenameTable("agent_messages", legacyAgentMessagesTable); err != nil {
-					return err
-				}
-				if err := tx.Exec(`
-					ALTER TABLE agent_messages_legacy
-					RENAME CONSTRAINT agent_messages_pkey TO agent_messages_legacy_pkey
-				`).Error; err != nil {
-					return err
-				}
-			}
-			return createTableIfMissing(tx, &model.AgentMessage{})
-		},
-		Rollback: func(tx *gorm.DB) error {
-			migrator := tx.Migrator()
-			if !migrator.HasTable(legacyAgentMessagesTable) {
-				return nil
-			}
-			if err := dropTableIfPresent(tx, &model.AgentMessage{}); err != nil {
-				return err
-			}
-			if err := migrator.RenameTable(legacyAgentMessagesTable, "agent_messages"); err != nil {
-				return err
-			}
-			return tx.Exec(`
-				ALTER TABLE agent_messages
-				RENAME CONSTRAINT agent_messages_legacy_pkey TO agent_messages_pkey
-			`).Error
-		},
-	}
-}
-
-func agentIdentityScopeMigration() *gormigrate.Migration {
-	return &gormigrate.Migration{
-		ID: "202609162100",
-		Migrate: func(tx *gorm.DB) error {
-			if err := tx.Exec(`
-				ALTER TABLE agent_conversations
-				ADD COLUMN IF NOT EXISTS identity_scope varchar(16) NOT NULL DEFAULT 'user';
-				ALTER TABLE agent_runs
-				ADD COLUMN IF NOT EXISTS identity_scope varchar(16) NOT NULL DEFAULT 'user'
-			`).Error; err != nil {
-				return err
-			}
-			return tx.Exec(`
-				DROP INDEX IF EXISTS idx_agent_conversations_user_updated;
-				CREATE INDEX IF NOT EXISTS idx_agent_conversations_identity_updated
-				ON agent_conversations (user_id, identity_scope, updated_at DESC)
-			`).Error
-		},
-		Rollback: func(tx *gorm.DB) error {
-			if err := tx.Exec(`
-				UPDATE agent_conversations SET identity_scope = 'user';
-				UPDATE agent_runs SET identity_scope = 'user';
-			`).Error; err != nil {
-				return err
-			}
-			if err := tx.Exec(`
-				DROP INDEX IF EXISTS idx_agent_conversations_identity_updated;
-				CREATE INDEX IF NOT EXISTS idx_agent_conversations_user_updated
-				ON agent_conversations (user_id, updated_at DESC)
-			`).Error; err != nil {
-				return err
-			}
-			return tx.Exec(`
-				ALTER TABLE agent_runs DROP COLUMN IF EXISTS identity_scope;
-				ALTER TABLE agent_conversations DROP COLUMN IF EXISTS identity_scope
-			`).Error
-		},
-	}
-}
-
-func agentConsistencyMigration() *gormigrate.Migration {
-	return &gormigrate.Migration{
-		ID: "202609171000",
-		Migrate: func(tx *gorm.DB) error {
-			migrator := tx.Migrator()
-			if migrator.HasColumn("user_llm_configs", "identity_scope") {
-				if err := tx.Exec(`
-					DELETE FROM user_llm_configs AS config
-					USING user_llm_configs AS preferred
-					WHERE config.user_id = preferred.user_id
-						AND config.identity_scope <> 'user'
-						AND preferred.identity_scope = 'user'
-				`).Error; err != nil {
-					return err
-				}
-				if err := tx.Exec(`
-					ALTER TABLE user_llm_configs DROP CONSTRAINT IF EXISTS user_llm_configs_pkey;
-					ALTER TABLE user_llm_configs DROP COLUMN identity_scope;
-					ALTER TABLE user_llm_configs ADD CONSTRAINT user_llm_configs_pkey PRIMARY KEY (user_id)
-				`).Error; err != nil {
-					return err
-				}
-			}
-			return tx.Exec(`
-				CREATE UNIQUE INDEX IF NOT EXISTS idx_ag_msg_seq
-					ON agent_messages (conversation_id, sequence)
-			`).Error
-		},
-		Rollback: func(tx *gorm.DB) error {
-			if err := tx.Exec(`
-				DROP INDEX IF EXISTS idx_ag_msg_seq
-			`).Error; err != nil {
-				return err
-			}
-			if tx.Migrator().HasColumn("user_llm_configs", "identity_scope") {
-				return nil
-			}
-			return tx.Exec(`
-				ALTER TABLE user_llm_configs ADD COLUMN identity_scope varchar(16) NOT NULL DEFAULT 'user';
-				ALTER TABLE user_llm_configs DROP CONSTRAINT IF EXISTS user_llm_configs_pkey;
-				ALTER TABLE user_llm_configs
-				ADD CONSTRAINT user_llm_configs_pkey PRIMARY KEY (user_id, identity_scope)
-			`).Error
 		},
 	}
 }
@@ -1864,10 +1721,6 @@ func main() {
 			},
 		},
 		agentFoundationMigration(),
-		agentConversationMigration(),
-		agentConversationLegacyRepairMigration(),
-		agentIdentityScopeMigration(),
-		agentConsistencyMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {

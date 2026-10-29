@@ -1,12 +1,10 @@
 import {
   convertToModelMessages,
-  createUIMessageStream,
   createUIMessageStreamResponse,
   generateId,
   generateText,
   safeValidateUIMessages,
   type UIMessage,
-  type UIMessageStreamOnEndCallback,
   toUIMessageStream,
 } from "ai";
 import { Hono } from "hono";
@@ -27,10 +25,10 @@ const titleBodySchema = z.object({
 
 const totalTimeoutMs = 4 * 60 * 1_000;
 const stepTimeoutMs = 90 * 1_000;
-const titleGenerationAttempts = 2;
 const titleSystemPrompt = `你是 Crater 平台的会话标题生成器。
 根据用户首条消息概括其核心意图，生成一个可在历史列表中快速识别的标题。
 中文标题建议 6至16个字；英文标题建议 3至10个单词。
+标题必须使用用户首条消息的主要语言。
 优先保留作业、镜像、数据集、模型、配置等关键对象，并表达“查询、排查、创建、配置、介绍”等具体意图。
 不得直接复制整句原文，不得回答问题，不得使用“AI”“OK”“问题”“对话”“标题”等空泛词作为完整标题。
 只输出标题本身，不使用引号、Markdown、序号或句末标点。
@@ -77,20 +75,16 @@ export function createChatRoutes(config: AgentConfig) {
       return context.json({ error: "invalid chat messages" }, 400);
     }
     const messages = validated.data;
-    const skill = selectSkill(userConversationTexts(messages));
-    if (skill.staticResponse) {
-      return createStaticResponse(
-        messages,
-        skill.staticResponse,
-        async (event) =>
-          persistRunCompletion(
-            config,
-            contextToken,
-            parsed.data.runId,
-            completionFromStreamEvent(event),
-          ),
-      );
+    if (
+      messages.some(
+        (message) =>
+          message.role === "user" &&
+          message.parts.some((part) => part.type !== "text"),
+      )
+    ) {
+      return context.json({ error: "user messages only support text" }, 400);
     }
+    const skill = selectSkill();
     const agent = createCraterAgent(config, contextToken, skill);
     const result = await agent.stream({
       messages: await convertToModelMessages(messages),
@@ -144,24 +138,6 @@ export function createChatRoutes(config: AgentConfig) {
   });
 
   return routes;
-}
-
-function createStaticResponse(
-  messages: UIMessage[],
-  responseText: string,
-  onEnd: UIMessageStreamOnEndCallback<UIMessage>,
-) {
-  const textPartID = "scope-refusal";
-  const stream = createUIMessageStream({
-    originalMessages: messages,
-    execute: ({ writer }) => {
-      writer.write({ type: "text-start", id: textPartID });
-      writer.write({ type: "text-delta", id: textPartID, delta: responseText });
-      writer.write({ type: "text-end", id: textPartID });
-    },
-    onEnd,
-  });
-  return createUIMessageStreamResponse({ stream });
 }
 
 interface RunCompletion {
@@ -227,48 +203,29 @@ async function persistRunCompletion(
     : new Error("failed to persist Agent run");
 }
 
-function userConversationTexts(messages: UIMessage[]): string[] {
-  return messages
-    .filter((message) => message.role === "user")
-    .map((message) =>
-      message.parts
-        .map((part) => (part.type === "text" ? part.text : ""))
-        .filter(Boolean)
-        .join("\n"),
-    )
-    .filter(Boolean);
-}
-
 async function generateConversationTitle(
   config: AgentConfig,
   contextToken: string,
   firstMessage: string,
   abortSignal: AbortSignal,
 ): Promise<string> {
-  let rejectedTitle = "";
-  for (let attempt = 0; attempt < titleGenerationAttempts; attempt += 1) {
-    const correction = rejectedTitle
-      ? `\n上次生成的“${rejectedTitle}”过短、空泛或不符合语言要求，请重新概括。`
-      : "";
-    try {
-      const result = await generateText({
-        model: createCraterModel(config, contextToken),
-        system: titleSystemPrompt,
-        prompt: `为下面的首条用户消息生成会话标题：\n<message>\n${firstMessage}\n</message>${correction}`,
-        maxOutputTokens: 48,
-        maxRetries: 0,
-        temperature: 0.2,
-        abortSignal,
-      });
-      const title = normalizeTitle(result.text);
-      if (isMeaningfulTitle(title, firstMessage)) {
-        return title;
-      }
-      rejectedTitle = title;
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        throw error;
-      }
+  try {
+    const result = await generateText({
+      model: createCraterModel(config, contextToken),
+      system: titleSystemPrompt,
+      prompt: `为下面的首条用户消息生成会话标题：\n<message>\n${firstMessage}\n</message>`,
+      maxOutputTokens: 48,
+      maxRetries: 0,
+      temperature: 0.2,
+      abortSignal,
+    });
+    const title = normalizeTitle(result.text);
+    if (isMeaningfulTitle(title, firstMessage)) {
+      return title;
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
     }
   }
   return fallbackConversationTitle(firstMessage);
@@ -313,25 +270,8 @@ function normalizeComparableText(value: string): string {
 }
 
 function fallbackConversationTitle(firstMessage: string): string {
-  const normalized = firstMessage.toLocaleLowerCase();
-  if (/pending|failedscheduling|调度|等待/u.test(normalized)) {
-    return "作业 Pending 原因排查";
-  }
-  if (/镜像|dockerfile|buildkit|kaniko|image build/u.test(normalized)) {
-    return "镜像构建与使用咨询";
-  }
-  if (/数据集|模型|挂载|dataset|model|mount/u.test(normalized)) {
-    return "模型与数据集使用咨询";
-  }
-  if (/作业|jupyter|webide|job|pod/u.test(normalized)) {
-    return "作业使用与故障排查";
-  }
-  if (/api\s*key|大模型|llm|模型配置/u.test(normalized)) {
-    return "大模型配置咨询";
-  }
-  return /\p{Script=Han}/u.test(firstMessage)
-    ? "Crater 平台使用咨询"
-    : "Crater Platform Assistance";
+  const normalized = normalizeTitle(firstMessage);
+  return normalized || "Crater";
 }
 
 function publicErrorMessage(error: unknown): string {

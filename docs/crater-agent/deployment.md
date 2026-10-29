@@ -8,9 +8,8 @@ the backend and are never injected into the Agent container.
 
 ## Helm deployment
 
-The Crater chart deploys the Agent by default. The backend and Agent receive the
-same internal token from a Kubernetes Secret. Production installations should
-prefer an externally managed Secret so that token generation and rotation are
+The Crater chart keeps the Agent disabled by default. Enabling it requires an
+externally managed Secret so credential generation, backup, and rotation remain
 owned by the deployment environment:
 
 ```yaml
@@ -19,9 +18,21 @@ agent:
   existingSecretName: crater-agent-internal
 ```
 
-The referenced Secret must contain an `internal-token` key with at least 32
-characters. Without `existingSecretName`, Helm creates and retains a random
-token for the release.
+The referenced Secret must contain:
+
+- `internal-token`: at least 32 characters, shared by backend and Agent for
+  service authentication.
+- `context-signing-key`: at least 32 characters, injected only into the backend.
+- `encryption-key`: exactly 32 characters, injected only into the backend for
+  personal model API keys.
+- `previous-encryption-keys`: optional comma-separated previous encryption keys.
+
+All three active keys must be distinct. The chart never generates these values.
+Create and back up the Secret before enabling the Agent. After changing Secret
+contents, also change `agent.secretRevision` so both Deployments roll together.
+When rotating `encryption-key`, keep the old value in
+`previous-encryption-keys` until every affected personal model configuration has
+been saved again with the new key.
 
 Every Helm install or upgrade runs the backend image's `./migrate` binary in an
 init container before starting the backend. This automatically creates or
@@ -45,6 +56,7 @@ into an image or committed to the repository.
 
 ```bash
 KUBECONFIG=/path/to/kubeconfig \
+CRATER_AGENT_ENCRYPTION_KEY=<the-32-character-key-used-by-the-target-database> \
 CRATER_LOCAL_ALLOW_EXTERNAL_CLUSTER=true \
 CRATER_LOCAL_RUN_MIGRATIONS=true \
 make agent-local-up
@@ -56,6 +68,7 @@ PostgreSQL, Prometheus, registry, storage, and Kubernetes endpoints from
 
 ```bash
 KUBECONFIG=/path/to/kubeconfig \
+CRATER_AGENT_ENCRYPTION_KEY=<the-32-character-key-used-by-the-target-database> \
 CRATER_LOCAL_BACKEND_CONFIG=/path/to/debug-config.yaml \
 CRATER_LOCAL_ALLOW_EXTERNAL_CLUSTER=true \
 make agent-local-up
@@ -78,6 +91,7 @@ host ports without changing the container topology:
 
 ```bash
 KUBECONFIG=/path/to/kubeconfig \
+CRATER_AGENT_ENCRYPTION_KEY=<the-32-character-key-used-by-the-target-database> \
 CRATER_LOCAL_HTTP_PORT=5181 \
 CRATER_LOCAL_BACKEND_PORT=8099 \
 CRATER_LOCAL_ALLOW_EXTERNAL_CLUSTER=true \

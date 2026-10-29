@@ -20,9 +20,6 @@ var (
 	AITask                  *aITask
 	Account                 *account
 	AccountDataset          *accountDataset
-	AgentConversation       *agentConversation
-	AgentMessage            *agentMessage
-	AgentRun                *agentRun
 	Alert                   *alert
 	ApprovalOrder           *approvalOrder
 	CronJobConfig           *cronJobConfig
@@ -49,7 +46,6 @@ var (
 	UserAccount             *userAccount
 	UserBanRecord           *userBanRecord
 	UserDataset             *userDataset
-	UserLLMConfig           *userLLMConfig
 	UserModelDownload       *userModelDownload
 )
 
@@ -58,9 +54,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	AITask = &Q.AITask
 	Account = &Q.Account
 	AccountDataset = &Q.AccountDataset
-	AgentConversation = &Q.AgentConversation
-	AgentMessage = &Q.AgentMessage
-	AgentRun = &Q.AgentRun
 	Alert = &Q.Alert
 	ApprovalOrder = &Q.ApprovalOrder
 	CronJobConfig = &Q.CronJobConfig
@@ -87,7 +80,6 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	UserAccount = &Q.UserAccount
 	UserBanRecord = &Q.UserBanRecord
 	UserDataset = &Q.UserDataset
-	UserLLMConfig = &Q.UserLLMConfig
 	UserModelDownload = &Q.UserModelDownload
 }
 
@@ -97,9 +89,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		AITask:                  newAITask(db, opts...),
 		Account:                 newAccount(db, opts...),
 		AccountDataset:          newAccountDataset(db, opts...),
-		AgentConversation:       newAgentConversation(db, opts...),
-		AgentMessage:            newAgentMessage(db, opts...),
-		AgentRun:                newAgentRun(db, opts...),
 		Alert:                   newAlert(db, opts...),
 		ApprovalOrder:           newApprovalOrder(db, opts...),
 		CronJobConfig:           newCronJobConfig(db, opts...),
@@ -126,7 +115,6 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		UserAccount:             newUserAccount(db, opts...),
 		UserBanRecord:           newUserBanRecord(db, opts...),
 		UserDataset:             newUserDataset(db, opts...),
-		UserLLMConfig:           newUserLLMConfig(db, opts...),
 		UserModelDownload:       newUserModelDownload(db, opts...),
 	}
 }
@@ -137,9 +125,6 @@ type Query struct {
 	AITask                  aITask
 	Account                 account
 	AccountDataset          accountDataset
-	AgentConversation       agentConversation
-	AgentMessage            agentMessage
-	AgentRun                agentRun
 	Alert                   alert
 	ApprovalOrder           approvalOrder
 	CronJobConfig           cronJobConfig
@@ -166,7 +151,6 @@ type Query struct {
 	UserAccount             userAccount
 	UserBanRecord           userBanRecord
 	UserDataset             userDataset
-	UserLLMConfig           userLLMConfig
 	UserModelDownload       userModelDownload
 }
 
@@ -178,9 +162,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		AITask:                  q.AITask.clone(db),
 		Account:                 q.Account.clone(db),
 		AccountDataset:          q.AccountDataset.clone(db),
-		AgentConversation:       q.AgentConversation.clone(db),
-		AgentMessage:            q.AgentMessage.clone(db),
-		AgentRun:                q.AgentRun.clone(db),
 		Alert:                   q.Alert.clone(db),
 		ApprovalOrder:           q.ApprovalOrder.clone(db),
 		CronJobConfig:           q.CronJobConfig.clone(db),
@@ -207,7 +188,6 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		UserAccount:             q.UserAccount.clone(db),
 		UserBanRecord:           q.UserBanRecord.clone(db),
 		UserDataset:             q.UserDataset.clone(db),
-		UserLLMConfig:           q.UserLLMConfig.clone(db),
 		UserModelDownload:       q.UserModelDownload.clone(db),
 	}
 }
@@ -226,9 +206,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		AITask:                  q.AITask.replaceDB(db),
 		Account:                 q.Account.replaceDB(db),
 		AccountDataset:          q.AccountDataset.replaceDB(db),
-		AgentConversation:       q.AgentConversation.replaceDB(db),
-		AgentMessage:            q.AgentMessage.replaceDB(db),
-		AgentRun:                q.AgentRun.replaceDB(db),
 		Alert:                   q.Alert.replaceDB(db),
 		ApprovalOrder:           q.ApprovalOrder.replaceDB(db),
 		CronJobConfig:           q.CronJobConfig.replaceDB(db),
@@ -255,7 +232,6 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		UserAccount:             q.UserAccount.replaceDB(db),
 		UserBanRecord:           q.UserBanRecord.replaceDB(db),
 		UserDataset:             q.UserDataset.replaceDB(db),
-		UserLLMConfig:           q.UserLLMConfig.replaceDB(db),
 		UserModelDownload:       q.UserModelDownload.replaceDB(db),
 	}
 }
@@ -264,9 +240,6 @@ type queryCtx struct {
 	AITask                  IAITaskDo
 	Account                 IAccountDo
 	AccountDataset          IAccountDatasetDo
-	AgentConversation       IAgentConversationDo
-	AgentMessage            IAgentMessageDo
-	AgentRun                IAgentRunDo
 	Alert                   IAlertDo
 	ApprovalOrder           IApprovalOrderDo
 	CronJobConfig           ICronJobConfigDo
@@ -293,7 +266,6 @@ type queryCtx struct {
 	UserAccount             IUserAccountDo
 	UserBanRecord           IUserBanRecordDo
 	UserDataset             IUserDatasetDo
-	UserLLMConfig           IUserLLMConfigDo
 	UserModelDownload       IUserModelDownloadDo
 }
 
@@ -302,9 +274,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		AITask:                  q.AITask.WithContext(ctx),
 		Account:                 q.Account.WithContext(ctx),
 		AccountDataset:          q.AccountDataset.WithContext(ctx),
-		AgentConversation:       q.AgentConversation.WithContext(ctx),
-		AgentMessage:            q.AgentMessage.WithContext(ctx),
-		AgentRun:                q.AgentRun.WithContext(ctx),
 		Alert:                   q.Alert.WithContext(ctx),
 		ApprovalOrder:           q.ApprovalOrder.WithContext(ctx),
 		CronJobConfig:           q.CronJobConfig.WithContext(ctx),
@@ -331,7 +300,6 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		UserAccount:             q.UserAccount.WithContext(ctx),
 		UserBanRecord:           q.UserBanRecord.WithContext(ctx),
 		UserDataset:             q.UserDataset.WithContext(ctx),
-		UserLLMConfig:           q.UserLLMConfig.WithContext(ctx),
 		UserModelDownload:       q.UserModelDownload.WithContext(ctx),
 	}
 }

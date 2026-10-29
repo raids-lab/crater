@@ -32,6 +32,10 @@ export interface PersonalLLMConfigStatus {
   effectiveSource: LLMConfigSource
 }
 
+export interface AgentAvailability {
+  enabled: boolean
+}
+
 export interface PersonalLLMConfigInput {
   baseUrl: string
   modelName: string
@@ -71,6 +75,9 @@ export interface AdminAgentConversationQuery {
 
 export const apiGetPersonalLLMConfig = () =>
   agentRequest<PersonalLLMConfigStatus>('get', 'agent/llm-config', 'user')
+
+export const apiGetAgentAvailability = () =>
+  agentRequest<AgentAvailability>('get', 'agent/availability', 'user')
 
 export const apiUpdatePersonalLLMConfig = (data: PersonalLLMConfigInput) =>
   agentRequest<string>('put', 'agent/llm-config', 'user', data)

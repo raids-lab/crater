@@ -23,6 +23,7 @@ const (
 	agentMessageSchemaVersion     = 1
 	agentMaximumTitleRunes        = 80
 	agentMaximumMessageIDLength   = 128
+	agentMaximumMessagePartsBytes = 256 << 10
 	agentMaximumErrorLength       = 2048
 
 	AgentRunStatusRunning   = "running"
@@ -309,24 +310,21 @@ func (s *AgentConversationService) DeleteConversation(
 		return err
 	}
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		result := tx.Where(
+		if err := s.ensureOwnedConversation(ctx, tx, userID, identity, conversationID); err != nil {
+			return err
+		}
+		if err := tx.Unscoped().Where("conversation_id = ?", conversationID).
+			Delete(&model.AgentMessage{}).Error; err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to delete Agent conversation messages")
+		}
+		if err := tx.Unscoped().Where("conversation_id = ?", conversationID).
+			Delete(&model.AgentRun{}).Error; err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to delete Agent conversation runs")
+		}
+		if err := tx.Unscoped().Where(
 			"id = ? AND user_id = ? AND identity_scope = ?", conversationID, userID, identity,
-		).
-			Delete(&model.AgentConversation{})
-		if result.Error != nil {
-			return bizerr.Internal.DatabaseError.Wrap(result.Error, "failed to delete Agent conversation")
-		}
-		if result.RowsAffected == 0 {
-			return agentConversationNotFound()
-		}
-		now := time.Now()
-		if err := tx.Model(&model.AgentRun{}).
-			Where(
-				"conversation_id = ? AND user_id = ? AND identity_scope = ? AND status = ?",
-				conversationID, userID, identity, AgentRunStatusRunning,
-			).
-			Updates(map[string]any{"status": AgentRunStatusCanceled, "finished_at": now}).Error; err != nil {
-			return bizerr.Internal.DatabaseError.Wrap(err, "failed to cancel deleted Agent conversation runs")
+		).Delete(&model.AgentConversation{}).Error; err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to delete Agent conversation")
 		}
 		return nil
 	})
@@ -440,7 +438,10 @@ func (s *AgentConversationService) FailRun(
 	})
 }
 
-const agentMaximumContextMessages = 100
+const (
+	agentMaximumContextMessages = 100
+	agentMaximumContextBytes    = 256 << 10
+)
 
 func prepareAgentRunTransaction(
 	ctx context.Context,
@@ -518,12 +519,25 @@ func prepareAgentRunTransaction(
 	}
 
 	contextRecords := append(append([]model.AgentMessage{}, active[:prefixLength]...), userMessage)
-	if len(contextRecords) > agentMaximumContextMessages {
-		contextRecords = contextRecords[len(contextRecords)-agentMaximumContextMessages:]
-	}
+	contextRecords = trimAgentContext(contextRecords)
 	prepared.RunID = runID
 	prepared.Messages = messageRecordsToDTO(contextRecords)
 	return nil
+}
+
+func trimAgentContext(records []model.AgentMessage) []model.AgentMessage {
+	start := len(records)
+	contextBytes := 0
+	for start > 0 && len(records)-start < agentMaximumContextMessages {
+		candidate := records[start-1]
+		candidateBytes := len(candidate.Parts) + len(candidate.Metadata) + len(candidate.ID) + len(candidate.Role)
+		if start < len(records) && contextBytes+candidateBytes > agentMaximumContextBytes {
+			break
+		}
+		contextBytes += candidateBytes
+		start--
+	}
+	return records[start:]
 }
 
 func findOrCreateAgentConversation(
@@ -614,6 +628,15 @@ func (s *AgentConversationService) ensureOwnedConversation(
 		return bizerr.Internal.DatabaseError.Wrap(err, "failed to load Agent conversation")
 	}
 	return nil
+}
+
+func (s *AgentConversationService) EnsureConversationOwned(
+	ctx context.Context,
+	userID uint,
+	identity AgentIdentity,
+	conversationID string,
+) error {
+	return s.ensureOwnedConversation(ctx, s.db, userID, identity, conversationID)
 }
 
 func activeAgentMessages(ctx context.Context, db *gorm.DB, conversationID string) ([]model.AgentMessage, error) {
@@ -758,19 +781,38 @@ func validateAgentUIMessage(message *AgentUIMessage, expectedRole string) error 
 	if message.Role != expectedRole {
 		return bizerr.BadRequest.ParameterError.New("message role is invalid")
 	}
-	var parts []struct {
-		Type string `json:"type"`
+	if len(message.Parts) > agentMaximumMessagePartsBytes {
+		return bizerr.PayloadTooLarge.PayloadTooLarge.New("message parts are too large")
 	}
+	var parts []agentMessagePart
 	if err := json.Unmarshal(message.Parts, &parts); err != nil || len(parts) == 0 {
 		return bizerr.BadRequest.ParameterError.New("message parts are invalid")
 	}
+	if err := validateAgentMessageParts(parts, expectedRole); err != nil {
+		return err
+	}
+	if len(message.Metadata) > 0 && !json.Valid(message.Metadata) {
+		return bizerr.BadRequest.ParameterError.New("message metadata is invalid")
+	}
+	return nil
+}
+
+type agentMessagePart struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+func validateAgentMessageParts(parts []agentMessagePart, expectedRole string) error {
 	for _, part := range parts {
 		if strings.TrimSpace(part.Type) == "" {
 			return bizerr.BadRequest.ParameterError.New("message part type is required")
 		}
-	}
-	if len(message.Metadata) > 0 && !json.Valid(message.Metadata) {
-		return bizerr.BadRequest.ParameterError.New("message metadata is invalid")
+		if expectedRole == "user" && part.Type != "text" {
+			return bizerr.BadRequest.ParameterError.New("user messages only support text parts")
+		}
+		if expectedRole == "user" && strings.TrimSpace(part.Text) == "" {
+			return bizerr.BadRequest.ParameterError.New("user message text is required")
+		}
 	}
 	return nil
 }

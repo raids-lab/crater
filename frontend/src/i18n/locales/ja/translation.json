@@ -248,6 +248,7 @@
   "agentSettings.floatingButton": "Crater-Agent フローティングボタンを表示",
   "agentSettings.floatingButtonDescription": "非表示にしても、他の機能から Crater-Agent パネルを開くことができます。",
   "agentSettings.modelName": "モデル名",
+  "agentSettings.privacyNotice": "Agent の会話はプラットフォームに保存され、運用、監査、トラブルシューティングのために管理者が確認する場合があります。",
   "agentSettings.save": "検証して保存",
   "agentSettings.saveDescription": "保存すると、現在のユーザーのユーザー画面と管理画面の AI 機能でこの設定が優先されます。",
   "agentSettings.saveSuccess": "個人 LLM 設定を保存しました",

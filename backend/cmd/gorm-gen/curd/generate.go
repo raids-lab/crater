@@ -53,10 +53,6 @@ func main() {
 		model.SystemConfig{},
 		model.QueueQuotaLimit{},
 		model.UserBanRecord{},
-		model.UserLLMConfig{},
-		model.AgentConversation{},
-		model.AgentRun{},
-		model.AgentMessage{},
 	)
 
 	// 执行并生成代码

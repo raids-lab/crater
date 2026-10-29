@@ -62,7 +62,7 @@ jobs:
         env:
           CRATER_AGENT_INTERNAL_TOKEN: ci-agent-internal-token-at-least-32-characters
           CRATER_AGENT_CONTEXT_SIGNING_KEY: ci-agent-context-signing-key-at-least-32-characters
-          SYSTEM_SECRET_KEY: ci-system-key-32-characters-long
+          CRATER_AGENT_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
           CRATER_LOCAL_BACKEND_CONFIG: /tmp/config.yaml
           CRATER_LOCAL_KUBECONFIG: /tmp/kubeconfig
         run: docker compose --file hack/local/compose.yaml config --quiet

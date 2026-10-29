@@ -248,6 +248,7 @@
   "agentSettings.floatingButton": "显示 Crater-Agent 悬浮入口",
   "agentSettings.floatingButtonDescription": "关闭后将隐藏页面右下角的悬浮按钮，不影响从其他功能入口打开 Crater-Agent。",
   "agentSettings.modelName": "模型名称",
+  "agentSettings.privacyNotice": "Agent 对话会保存在平台中，平台管理员可为运维、审计与故障排查查看对话内容。",
   "agentSettings.save": "验证并保存",
   "agentSettings.saveDescription": "保存后，当前用户在用户端和管理端的 AI 功能都将优先使用此配置。",
   "agentSettings.saveSuccess": "个人 LLM 配置已保存",
