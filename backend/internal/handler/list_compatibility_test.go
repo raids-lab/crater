@@ -15,6 +15,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -28,8 +29,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
-	clienttesting "k8s.io/client-go/testing"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -37,6 +36,9 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/indexer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const emptyJSONArray = "[]"
@@ -70,54 +72,81 @@ func TestLegacyTemplateListAndExplicitPageShareRoute(t *testing.T) {
 	}
 }
 
-func TestLegacyNodePodsRemainCompleteAndRejectPartialResults(t *testing.T) {
-	for _, test := range []struct {
+func listCompatibilityContext(t *testing.T, path string, token util.JWTMessage) (*gin.Context, *httptest.ResponseRecorder) {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, path, http.NoBody)
+	util.SetJWTContext(ctx, token)
+	return ctx, recorder
+}
+
+type completeNodePodTestClient struct {
+	client.Client
+	failed   bool
+	requests int
+}
+
+func (c *completeNodePodTestClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	c.requests++
+	options := &client.ListOptions{}
+	options.ApplyOptions(opts)
+	if options.Limit != 0 || options.Continue != "" || options.FieldSelector.String() != "spec.nodeName=node-a" {
+		return bizerr.Internal.ServiceError.New(fmt.Sprintf("unexpected complete-list options: %+v", options))
+	}
+	if c.failed {
+		return bizerr.Internal.K8sServiceError.New("test list failure")
+	}
+	return c.Client.List(ctx, list, opts...)
+}
+
+func TestNodePodsRemainComplete(t *testing.T) {
+	for _, scenario := range []struct {
 		name   string
 		count  int
-		next   string
 		failed bool
 	}{
-		{name: "more than one snapshot page", count: 55},
-		{name: "empty", count: 0},
-		{name: "unexpected continuation", count: 5, next: "not-complete"},
-		{name: "Kubernetes failure", failed: true},
+		{name: "more than the former first batch", count: 55},
+		{name: "empty"}, {name: "read failure", failed: true},
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			kubeClient := fake.NewSimpleClientset()
-			requests := 0
-			kubeClient.PrependReactor("list", "pods", func(action clienttesting.Action) (bool, runtime.Object, error) {
-				requests++
-				options := action.(clienttesting.ListActionImpl).GetListOptions()
-				if options.Limit != 0 || options.Continue != "" || options.FieldSelector != "spec.nodeName=node-a" {
-					t.Fatalf("legacy query changed scope or added truncation: %+v", options)
+		for _, admin := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/admin=%t", scenario.name, admin), func(t *testing.T) {
+				scheme := runtime.NewScheme()
+				if err := corev1.AddToScheme(scheme); err != nil {
+					t.Fatal(err)
 				}
-				if test.failed {
-					return true, nil, bizerr.Internal.K8sServiceError.New("test list failure")
+				pods := &corev1.PodList{}
+				for i := 0; i < scenario.count; i++ {
+					pods.Items = append(pods.Items, corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("pod-%03d", i), Namespace: "test"}, Spec: corev1.PodSpec{NodeName: "node-a"}})
 				}
-				items := make([]corev1.Pod, test.count)
-				for i := range items {
-					items[i].ObjectMeta = metav1.ObjectMeta{Name: fmt.Sprintf("pod-%d", i), Namespace: "test"}
+				base := clientfake.NewClientBuilder().WithScheme(scheme).WithLists(pods).WithIndex(&corev1.Pod{}, indexer.PodNodeNameIndex, func(obj client.Object) []string { return []string{obj.(*corev1.Pod).Spec.NodeName} }).Build()
+				cache := &completeNodePodTestClient{Client: base, failed: scenario.failed}
+				handler := &NodeMgr{nodeClient: &crclient.NodeClient{Client: cache}}
+				ctx, recorder := listCompatibilityContext(t, "/v1/nodes/node-a/pods", util.JWTMessage{})
+				ctx.Params = gin.Params{{Key: "name", Value: "node-a"}}
+				if admin {
+					handler.AdminGetPodsForNode(ctx)
+				} else {
+					handler.GetPodsForNode(ctx)
 				}
-				return true, &corev1.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "100", Continue: test.next}, Items: items}, nil
+				if cache.requests != 1 {
+					t.Fatalf("expected one complete read, got %d", cache.requests)
+				}
+				var response resputil.Response[[]crclient.Pod]
+				if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+					t.Fatal(err)
+				}
+				if scenario.failed {
+					if response.Code == 0 || response.Data != nil {
+						t.Fatalf("read failure returned success: %s", recorder.Body.String())
+					}
+					return
+				}
+				if response.Code != 0 || len(response.Data) != scenario.count || response.Data == nil {
+					t.Fatalf("incomplete Pod array: %s", recorder.Body.String())
+				}
 			})
-			handler := &NodeMgr{nodeClient: &crclient.NodeClient{KubeClient: kubeClient}}
-			ctx, recorder := snapshotContext(t, "/v1/nodes/node-a/pods", snapshotTestToken())
-			ctx.Params = gin.Params{{Key: "name", Value: "node-a"}}
-			handler.GetPodsForNode(ctx)
-			if requests != 1 {
-				t.Fatalf("legacy read duplicated Kubernetes queries: %d", requests)
-			}
-			if test.failed || test.next != "" {
-				if recorder.Code != http.StatusInternalServerError {
-					t.Fatalf("partial or failed read must fail: %s", recorder.Body.String())
-				}
-				return
-			}
-			var response resputil.Response[[]crclient.Pod]
-			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil || len(response.Data) != test.count || response.Data == nil {
-				t.Fatalf("legacy Pod array changed: %s; %v", recorder.Body.String(), err)
-			}
-		})
+		}
 	}
 }
 
@@ -169,7 +198,7 @@ func newLegacyDatabaseListsRouter(t *testing.T) *gin.Engine {
 	router.GET("/compat/users", (&UserMgr{}).AdminListUsers)
 	router.GET("/compat/members/:aid", account.UserListAccountMembers)
 	router.GET("/compat/admin-members/:aid", account.AdminListAccountMembers)
-	router.GET("/compat/resources", func(c *gin.Context) { (&ResourceMgr{}).listResourcePageWithDB(c, db) })
+	router.GET("/compat/resources", (&ResourceMgr{}).ListResource)
 	router.GET("/compat/orders", (&ApprovalOrderMgr{}).GetMyApprovalOrders)
 	router.GET("/compat/admin-orders", (&ApprovalOrderMgr{}).ListAllApprovalOrders)
 	router.GET("/compat/analyses", (&GpuAnalysisMgr{}).ListAnalyses)
@@ -184,12 +213,35 @@ func TestLegacyDatabaseListsSharePermissionScopedPages(t *testing.T) {
 	}{
 		{"/compat/accounts", 14}, {"/compat/users", 14},
 		{"/compat/members/1", 14}, {"/compat/admin-members/1", 14},
-		{"/compat/resources", 14}, {"/compat/orders", 14},
+		{"/compat/orders", 14},
 		{"/compat/admin-orders", 15}, {"/compat/analyses", 14},
 		{"/v1/dataset/mydataset", 15}, {"/v1/admin/dataset/alldataset", 21},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			assertLegacyAndExplicitListPage(t, router, tc.path, tc.total)
+		})
+	}
+}
+
+func TestResourcesRetainCompleteArrayAndOriginalFilter(t *testing.T) {
+	router := newLegacyDatabaseListsRouter(t)
+	for _, scenario := range []struct {
+		query string
+		count int
+	}{
+		{"", 14},
+		{"?withVendorDomain=true", 0},
+	} {
+		t.Run(scenario.query, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/compat/resources"+scenario.query, http.NoBody))
+			var response resputil.Response[[]ResourceResp]
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if recorder.Code != http.StatusOK || response.Code != 0 || response.Data == nil || len(response.Data) != scenario.count {
+				t.Fatalf("complete resource array changed: %s", recorder.Body.String())
+			}
 		})
 	}
 }
@@ -205,7 +257,7 @@ func TestLegacyDatabaseListsRespectScopes(t *testing.T) {
 	}
 	// This user has no visible datasets; neither mode may expose user 1's rows.
 	for _, suffix := range []string{"", "?page=1&page_size=3"} {
-		ctx, recorder := snapshotContext(t, "/v1/dataset/mydataset"+suffix, util.JWTMessage{UserID: 14, AccountID: 14, RolePlatform: model.RoleUser})
+		ctx, recorder := listCompatibilityContext(t, "/v1/dataset/mydataset"+suffix, util.JWTMessage{UserID: 14, AccountID: 14, RolePlatform: model.RoleUser})
 		(&DatasetMgr{}).GetDatasets(ctx)
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("empty dataset read failed: %s", recorder.Body.String())

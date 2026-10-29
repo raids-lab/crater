@@ -41,11 +41,11 @@ Account-member tables load one page at a time and support username search, sorti
 
 Template, dataset, and shared-file lists preserve the requested page when a read fails and provide a Retry control. Select Retry to try again; missing data or an unavailable total after a failure does not mean a successful query found zero records. If deletion leaves the current page beyond the latest results, a successful reload moves to the last valid page.
 
-### Loading ordinary job Pods in batches
+### Viewing node and Pod lists
 
-The Basic Information tab for an ordinary Volcano job loads a Pod snapshot in batches. Load More appends the next batch; after a successful read, no Load More button means the current snapshot is complete. Search, filters, and sorting apply only to loaded Pods. Pod state can change; Refresh Snapshot starts a new read. This list has no numbered pages or database-style total. EMIAS jobs continue using their existing detail and Pod read APIs; this pagination change does not add an EMIAS snapshot endpoint.
+Node lists, node-detail Pods, and ordinary job-detail Pods retain complete-list reads. After a successful load, search, filters, and sorting apply to the complete list without selecting Load More first. Tables retain their existing local page controls and refresh behavior. Search respects the selected type and status filters; adjust or clear them to find other Pods. Refreshing reapplies the existing default filters.
 
-The administrator's node-management page also loads snapshots in batches. File directories, account members, and dataset-sharing relation tables do not use this snapshot pagination.
+Each scheduler continues using its existing Pod read APIs. Administrator node-Pod views retain job, user, account, and lock information; regular user views retain their existing visibility scope.
 
 ## Table of Contents
 

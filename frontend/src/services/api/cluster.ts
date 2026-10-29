@@ -16,12 +16,9 @@
 import { V1OwnerReference } from '@kubernetes/client-node'
 
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
-import type { IResponse } from '@/services/types'
+import { IResponse } from '@/services/types'
 
 import { V1ResourceList } from '@/utils/resource'
-
-import { snapshotParams } from './snapshot'
-import type { SnapshotPage, SnapshotQuery } from './snapshot'
 
 export enum NodeRole {
   ControlPlane = 'control-plane',
@@ -161,16 +158,11 @@ export const apiGetNodes = () => apiV1Get<IResponse<INodeBriefInfo[]>>('nodes')
 export const apiGetNodeDetail = (name: string) =>
   apiV1Get<IResponse<IClusterNodeDetail>>(`nodes/${name}`)
 
-export const apiGetNodePodsSnapshot = (
-  name: string,
-  params: SnapshotQuery = {},
-  admin = false,
-  signal?: AbortSignal
-) =>
-  apiV1Get<IResponse<SnapshotPage<IClusterPodInfo>>>(`${admin ? 'admin/' : ''}nodes/${name}/pods`, {
-    searchParams: snapshotParams(params),
-    signal,
-  })
+export const apiGetNodePods = (name: string) =>
+  apiV1Get<IResponse<IClusterPodInfo[]>>(`nodes/${name}/pods`)
+
+export const apiAdminGetNodePods = (name: string) =>
+  apiV1Get<IResponse<IClusterPodInfo[]>>(`admin/nodes/${name}/pods`)
 
 // 获取节点的 GPU 详情
 export const apiGetNodeGPU = (name: string) =>

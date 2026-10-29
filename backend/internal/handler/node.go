@@ -1,19 +1,14 @@
 package handler
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"context"
 	"fmt"
-	"net/url"
 	"sort"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
-	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/constants"
@@ -221,110 +216,56 @@ func (mgr *NodeMgr) UpdateNodeunschedule(c *gin.Context) {
 	resputil.Success(c, fmt.Sprintf("update %s unschedulable ", urlReq.Name))
 }
 
-func nodePodSnapshotRequested(values url.Values) bool {
-	return values.Has("limit") || values.Has("cursor") || values.Has("resource_version")
-}
+// handleGetPods 通用的 Pod 获取处理函数
+func (mgr *NodeMgr) handleGetPods(c *gin.Context, fetcher func(context.Context, string) ([]crclient.Pod, error), actionLog string) {
+	var req NodePodRequest
+	if err := c.ShouldBindUri(&req); err != nil {
+		klog.Infof("Bind URI failed, err: %v", err)
+		resputil.Error(c, "Invalid request parameter", resputil.NotSpecified)
+		return
+	}
 
-// listPodsSnapshot serves explicit snapshot pages and legacy complete arrays.
-func (mgr *NodeMgr) listPodsSnapshot(c *gin.Context, admin bool) {
-	var uri NodePodRequest
-	if err := c.ShouldBindUri(&uri); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid node name"))
-		return
-	}
-	var request PodSnapshotQuery
-	if err := c.ShouldBindQuery(&request); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid node Pod snapshot query"))
-		return
-	}
-	values := c.Request.URL.Query()
-	snapshot := nodePodSnapshotRequested(values)
-	if snapshot {
-		if request.Limit == 0 {
-			request.Limit = 50
-		}
-		if request.Limit < 1 || request.Limit > 200 {
-			resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("limit must be between 1 and 200"))
-			return
-		}
-	}
-	items, next, resourceVersion, err := mgr.nodeClient.ListPodsForNodeSnapshot(c, uri.Name, &metav1.ListOptions{
-		Limit: request.Limit, Continue: request.Cursor, ResourceVersion: request.ResourceVersion,
-	}, admin)
+	klog.Infof("%s, name: %s", actionLog, req.Name)
+	pods, err := fetcher(c, req.Name)
 	if err != nil {
-		if apierrors.IsResourceExpired(err) || apierrors.IsGone(err) {
-			resputil.HandleError(c, bizerr.Conflict.CursorExpired.New("snapshot cursor expired; refresh and retry"))
-			return
-		}
-		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "list node Pod snapshot failed"))
+		resputil.Error(c, fmt.Sprintf("List nodes pods failed, err %v", err), resputil.NotSpecified)
 		return
 	}
-	for i := range items {
-		items[i].Type = nodePodType(&items[i])
-	}
-	if !snapshot {
-		if next != "" {
-			resputil.HandleError(c, bizerr.Internal.K8sServiceError.New("incomplete node Pod list; retry with pagination"))
-			return
-		}
-		resputil.Success(c, items)
-		return
-	}
-	var nextCursor *string
-	if next != "" {
-		nextCursor = &next
-	}
-	hash := sha256.Sum256([]byte(uri.Name + "\x00" + resourceVersion))
-	resputil.Success(c, PodSnapshotPage{
-		Items: items, NextCursor: nextCursor, HasMore: next != "", SnapshotID: hex.EncodeToString(hash[:8]),
-		ResourceVersion: resourceVersion, ObservedAt: time.Now().UTC().Format(time.RFC3339Nano),
-	})
+	resputil.Success(c, pods)
 }
 
-func nodePodType(pod *crclient.Pod) string {
-	if len(pod.OwnerReference) == 0 {
-		return ""
-	}
-	owner := pod.OwnerReference[0]
-	return owner.APIVersion + "/" + owner.Kind
-}
-
-// GetPodsForNode returns node Pods through a cursor-based snapshot.
+// GetPodsForNode godoc
 //
-//	@Summary	分页获取节点Pod信息
-//	@Description	Supplying limit, cursor or resource_version returns a snapshot page.
-//	@Description	Omitting all three preserves the complete legacy Pod array.
-//	@Tags		Node
-//	@Produce	json
-//	@Security	Bearer
-//	@Param		name		path	string	true	"Node name"
-//	@Param		limit	query	int	false	"Page size, 1-200"
-//	@Param		cursor	query	string	false	"Opaque Kubernetes continue token"
-//	@Param		resource_version	query	string	false	"Kubernetes resource version"
-//	@Success	200	{object}	resputil.Response[PodSnapshotPage]
-//	@Failure	409	{object}	resputil.Response[any]	"Snapshot cursor expired"
-//	@Router		/v1/nodes/{name}/pods [get]
+//	@Summary		获取节点Pod信息
+//	@Description	kubectl + prometheus获取节点Pod信息
+//	@Tags			Node
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"节点名称"
+//	@Success		200		{object}	resputil.Response[[]crclient.Pod]	"完整 Pod 列表"
+//	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/nodes/{name}/pods [get]
 func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
-	mgr.listPodsSnapshot(c, false)
+	mgr.handleGetPods(c, mgr.nodeClient.GetPodsForNode, "Node List Pod")
 }
 
-// AdminGetPodsForNode returns node Pods with administrator metadata.
+// AdminGetPodsForNode godoc
 //
-//	@Summary	管理员分页获取节点Pod信息
-//	@Description	Supplying limit, cursor or resource_version returns a snapshot page.
-//	@Description	Omitting all three preserves the complete legacy Pod array.
-//	@Tags		Node
-//	@Produce	json
-//	@Security	Bearer
-//	@Param		name		path	string	true	"Node name"
-//	@Param		limit	query	int	false	"Page size, 1-200"
-//	@Param		cursor	query	string	false	"Opaque Kubernetes continue token"
-//	@Param		resource_version	query	string	false	"Kubernetes resource version"
-//	@Success	200	{object}	resputil.Response[PodSnapshotPage]
-//	@Failure	409	{object}	resputil.Response[any]	"Snapshot cursor expired"
-//	@Router		/v1/admin/nodes/{name}/pods [get]
+//	@Summary		获取节点Pod信息（管理员）
+//	@Description	获取节点Pod信息，包含作业和用户信息
+//	@Tags			Node
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"节点名称"
+//	@Success		200		{object}	resputil.Response[[]crclient.Pod]	"成功返回值描述"
+//	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
+//	@Failure		500		{object}	resputil.Response[any]	"其他错误"
+//	@Router			/v1/admin/nodes/{name}/pods [get]
 func (mgr *NodeMgr) AdminGetPodsForNode(c *gin.Context) {
-	mgr.listPodsSnapshot(c, true)
+	mgr.handleGetPods(c, mgr.nodeClient.AdminGetPodsForNode, "Admin Node List Pod")
 }
 
 // ListNodeGPUUtil godoc

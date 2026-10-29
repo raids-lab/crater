@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	// v5 consolidates paginated lists, including cursor-based node Pod snapshots.
+	// v5 consolidates optionally paginated database lists with legacy complete reads.
 	APIVersion = 5
 	// v5 requires the backend pagination contract and has no fallback to legacy list responses.
 	MinSupportedBackendAPIVersion    = 5

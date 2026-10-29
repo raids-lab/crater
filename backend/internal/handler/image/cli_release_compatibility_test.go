@@ -18,6 +18,7 @@ package image
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
@@ -25,7 +26,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -35,15 +35,13 @@ import (
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
-	clienttesting "k8s.io/client-go/testing"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type releasedCompatibilityCLI struct{ name, path string }
@@ -115,7 +113,7 @@ func TestReleasedCLICompatibility(t *testing.T) {
 		{"builds", []string{"image", "build", "ls", "--all-pages"}, "builds", [2]int{1, 2}},
 		{"images", []string{"image", "ls", "--all-pages"}, "images", [2]int{1, 2}},
 		{"downloads", []string{"model-download", "ls", "--all-pages", "--page-size", "100"}, "downloads", [2]int{3, 3}},
-		{"pods", []string{"node", "pods", "node-a", "--all-namespaces", "--all-pages"}, "pods", [2]int{1, 2}},
+		{"pods", []string{"node", "pods", "node-a", "--all-namespaces", "--all-pages"}, "pods", [2]int{1, 1}},
 	}
 	for _, scenario := range []int32{0, 3, 1, 2} {
 		fixture.mode.Store(scenario)
@@ -200,7 +198,7 @@ func newReleasedCLIFixture(t *testing.T) *releasedCLIFixture {
 		fixture.trace = append(fixture.trace, c.Request.URL.String())
 		fixture.traceMu.Unlock()
 		util.SetJWTContext(c, util.JWTMessage{UserID: 1, AccountID: 1, Username: "alice", RolePlatform: model.RoleUser, RoleAccount: model.RoleUser})
-		if fixture.mode.Load() == 2 || (fixture.mode.Load() == 3 && (c.Query("page") == "2" || c.Query("cursor") != "")) {
+		if fixture.mode.Load() == 2 || (fixture.mode.Load() == 3 && c.Query("page") == "2") {
 			resputil.HandleError(c, bizerr.Internal.DatabaseError.New("fixture list failed"))
 			c.Abort()
 			return
@@ -215,38 +213,34 @@ func newReleasedCLIFixture(t *testing.T) *releasedCLIFixture {
 	router.GET("/api/v1/images/image", (&ImagePackMgr{}).UserListImage)
 	router.GET("/api/v1/model-download/models/downloads", (&handler.ModelDownloadMgr{}).ListDownloads)
 	router.GET("/api/cli/compatibility", (&handler.CLICompatibilityMgr{}).GetCompatibility)
-	handler.NewNodeMgr(&handler.RegisterConfig{KubeClient: kubeClient}).RegisterProtected(router.Group("/api/v1/nodes"))
+	handler.NewNodeMgr(&handler.RegisterConfig{Client: kubeClient}).RegisterProtected(router.Group("/api/v1/nodes"))
 	fixture.server = httptest.NewServer(router)
 	return fixture
 }
 
-func releasedCLICompatibilityKube(mode *atomic.Int32) *fake.Clientset {
-	kubeClient := fake.NewSimpleClientset()
-	kubeClient.PrependReactor("list", "pods", func(action clienttesting.Action) (bool, runtime.Object, error) {
-		options := action.(clienttesting.ListActionImpl).GetListOptions()
-		start := 0
-		if options.Continue != "" {
-			var err error
-			start, err = strconv.Atoi(options.Continue)
-			if err != nil {
-				return true, nil, err
-			}
+type releasedCompletePodClient struct {
+	client.Client
+	mode *atomic.Int32
+}
+
+func releasedCLICompatibilityKube(mode *atomic.Int32) client.Client {
+	return &releasedCompletePodClient{mode: mode}
+}
+
+func (c *releasedCompletePodClient) List(_ context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	options := &client.ListOptions{}
+	options.ApplyOptions(opts)
+	if options.Limit != 0 || options.Continue != "" || options.FieldSelector.String() != "spec.nodeName=node-a" {
+		return bizerr.Internal.ServiceError.New(fmt.Sprintf("unexpected complete Pod query: %+v", options))
+	}
+	pods := list.(*corev1.PodList)
+	pods.Items = []corev1.Pod{}
+	if c.mode.Load() != 1 {
+		for i := 1; i <= 201; i++ {
+			pods.Items = append(pods.Items, corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("compat-pod-%03d", i), Namespace: "test"}})
 		}
-		end, next := 201, ""
-		if mode.Load() == 1 {
-			end = 0
-		}
-		if options.Limit > 0 && start+int(options.Limit) < end {
-			end = start + int(options.Limit)
-			next = strconv.Itoa(end)
-		}
-		pods := make([]corev1.Pod, 0, end-start)
-		for i := start; i < end; i++ {
-			pods = append(pods, corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("compat-pod-%03d", i+1), Namespace: "test"}})
-		}
-		return true, &corev1.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "100", Continue: next}, Items: pods}, nil
-	})
-	return kubeClient
+	}
+	return nil
 }
 
 func (fixture *releasedCLIFixture) checkRead(t *testing.T, binary releasedCompatibilityCLI, binaryIndex int, tc releasedCompatibilityCase, scenario int32) {

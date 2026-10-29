@@ -103,10 +103,10 @@ CLI 与 Crater 平台之间的请求、响应解析与传输层异常，集中�
 
 列表分页由 `internal/api` 的传输模型与 `cmd` 的公共展示 helper 两层协作：
 
-- `internal/api/pagination.go` 定义 typed `ListOptions`、`Page[T]`、默认页大小 `15` 与 `FetchAllPages`。域客户端统一发送 `page` / `page_size`；需要完整列表的调用方通过 `fetchAllListPages` 或 `FetchAllPages` 聚合，命令层不手写分页 URL。
+- `internal/api/pagination.go` 定义 typed `ListOptions`、`Page[T]`、默认页大小 `15` 与 `FetchAllPages`。支持数据库分页的域客户端统一发送 `page` / `page_size`；需要完整列表的调用方通过 `fetchAllListPages` 或 `FetchAllPages` 聚合，命令层不手写分页 URL。
 - `cmd/list_options.go` 统一挂载 `--page` / `--page-size` / `--all-pages`、收集分页用法问题、本地切页、构造 `data.pagination` 与打印表格页摘要。服务端分页命令使用 `--all-pages` 且用户未显式指定 `--page-size` 时，公共解析器采用对应端点最大批量；显式值保持不变。领域命令先把分页问题和自己的筛选问题合并，再一次返回 `errUsageFromIssues`。
 - Job 与 download 列表使用服务端分页。Job 还支持 owner / 时间范围等本地筛选：存在这些筛选时，命令先以服务端允许的批次顺序拉取全部候选页，再筛选并按用户请求的页大小重新切页；无本地筛选时保留后端返回的页码和总数。
-- Node Pod 将筛选、排序和页码传给原 Pod 列表端点。Job Pod 和计费作业保留既有本地分页；审批工单、管理员用户、镜像/构建记录先聚合服务端分页，再按命令约定完成本地筛选与分页。`--all-pages` 绕过本地截断；JSON 完整结果省略 `pagination`。
+- 资源规格单次读取原完整数组。Node Pod 从原 Pod 列表端点单次读取完整数组，在 CLI 中筛选、稳定排序后本地分页，不发送页码或游标。Job Pod 和计费作业保留既有本地分页；审批工单、管理员用户、镜像/构建记录先聚合服务端分页，再按命令约定完成本地筛选与分页。`--all-pages` 绕过本地截断；JSON 完整结果省略 `pagination`。
 
 这样，服务端和本地列表向用户暴露相同的 JSON / 表格契约，但 `total` 始终描述最终筛选结果，而不是某个中间候选页。
 

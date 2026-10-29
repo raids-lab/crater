@@ -16,7 +16,7 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	// v5 consolidates paginated lists, including cursor-based node Pod snapshots.
+	// v5 consolidates optionally paginated database lists with legacy complete reads.
 	APIVersion = 5
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.

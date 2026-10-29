@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 // i18n-processed-v1.1.0
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
@@ -56,9 +56,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
+import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
-import { RemoteDataTable } from '@/components/query-table/remote'
-import { buildRemoteQueryKey } from '@/components/query-table/remote-state'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
@@ -71,12 +70,10 @@ import {
   apiAdminResourceDelete,
   apiAdminResourceSync,
   apiAdminResourceVGPUList,
-  apiResourceListPaged,
+  apiResourceList,
   apiResourceNetworks,
 } from '@/services/api/resource'
 import { apiAdminGetBillingStatus } from '@/services/api/system-config'
-
-import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { formatBillingPoints } from '@/utils/billing'
 import { formatBytes } from '@/utils/formatter'
@@ -248,11 +245,9 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
   const { mutate: deleteResource } = useMutation({
     mutationFn: () => apiAdminResourceDelete(resource.ID),
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-resources'] }),
-        queryClient.invalidateQueries({ queryKey: ['resource'] }),
-        queryClient.invalidateQueries({ queryKey: ['resources'] }),
-      ])
+      await queryClient.invalidateQueries({
+        queryKey: ['resource', 'list'],
+      })
       toast.success(t('resources.delete.success'))
     },
   })
@@ -348,53 +343,29 @@ const ActionsCell: FC<{ resource: Resource }> = ({ resource }) => {
 function Resources() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const tableState = useRemoteTableState('admin_resource_list', {
-    sorting: [{ id: 'name', desc: false }],
-  })
-  const query = useQuery({
-    queryKey: buildRemoteQueryKey('admin-resources', tableState.params),
-    queryFn: ({ signal }) => apiResourceListPaged(tableState.params, false, signal),
-    select: (res) => res.data,
-    placeholderData: keepPreviousData,
-  })
-  const currentResourceIds = useMemo(
-    () => (query.data?.items ?? []).map((resource) => resource.ID),
-    [query.data?.items]
-  )
   const { data: billingStatus } = useQuery({
     queryKey: ['admin', 'system-config', 'billing-status'],
     queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
   })
   const billingEnabled = billingStatus?.featureEnabled ?? false
   const billingPricesQuery = useQuery({
-    queryKey: ['resources', 'billing-prices', currentResourceIds],
-    queryFn: () => apiBillingPriceList(currentResourceIds),
+    queryKey: ['resources', 'billing-prices'],
+    queryFn: () => apiBillingPriceList(),
     select: (res) =>
       res.data.reduce<Record<number, BillingPriceResource>>((acc, item) => {
         acc[item.id] = item
         return acc
       }, {}),
-    enabled: billingEnabled && currentResourceIds.length > 0,
+    enabled: billingEnabled,
   })
 
   const toolbarConfig: DataTableToolbarConfig = useMemo(() => {
     return {
-      globalSearch: {
-        enabled: true,
+      filterInput: {
         placeholder: t('resources.filter.placeholder'),
+        key: 'name',
       },
-      filterOptions: [
-        {
-          key: 'type',
-          title: t('resources.columns.type'),
-          remoteFacets: true,
-          option: [
-            { value: 'gpu', label: t('resources.type.gpu') },
-            { value: 'rdma', label: t('resources.type.rdma') },
-            { value: 'vgpu', label: t('resources.type.vgpu') },
-          ],
-        },
-      ],
+      filterOptions: [],
       getHeader: (x) => x,
     }
   }, [t])
@@ -442,7 +413,6 @@ function Resources() {
       },
       {
         id: 'networks',
-        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('resources.columns.networks')} />
         ),
@@ -452,7 +422,6 @@ function Resources() {
       },
       {
         id: 'vgpu',
-        enableSorting: false,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={t('resources.columns.vgpu')} />
         ),
@@ -523,7 +492,6 @@ function Resources() {
         ? [
             {
               accessorKey: 'unitPrice',
-              enableSorting: false,
               header: ({ column }) => (
                 <DataTableColumnHeader
                   column={column}
@@ -549,29 +517,32 @@ function Resources() {
     ]
   }, [billingEnabled, billingPricesQuery.data, t])
 
+  const query = useQuery({
+    queryKey: ['resource', 'list'],
+    queryFn: () => apiResourceList(false),
+    select: (res) => {
+      return res.data.sort((a, b) => a.name.localeCompare(b.name))
+    },
+  })
+
   const { mutate: syncNvidiaLabel } = useMutation({
     mutationFn: apiAdminResourceSync,
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-resources'] }),
-        queryClient.invalidateQueries({ queryKey: ['resource'] }),
-        queryClient.invalidateQueries({ queryKey: ['resources'] }),
-      ])
+      await queryClient.invalidateQueries({ queryKey: ['resource', 'list'] })
       toast.success(t('resources.sync.success'))
     },
   })
 
   return (
-    <RemoteDataTable
+    <DataTable
       query={query}
-      state={tableState}
-      getRowId={(row) => String(row.ID)}
       columns={columns}
       toolbarConfig={toolbarConfig}
       info={{
         title: t('resources.info.title'),
         description: t('resources.info.description'),
       }}
+      storageKey="admin_resource_list"
     >
       <AlertDialog>
         <AlertDialogTrigger asChild>
@@ -593,7 +564,7 @@ function Resources() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </RemoteDataTable>
+    </DataTable>
   )
 }
 

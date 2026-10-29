@@ -40,8 +40,6 @@ interface DataTableShellProps<TData> {
   refetch: () => void
   dataUpdatedAt: number
   totalItems?: number
-  showPagination?: boolean
-  footer?: ReactNode
 }
 
 export function DataTableShell<TData>({
@@ -59,8 +57,6 @@ export function DataTableShell<TData>({
   refetch,
   dataUpdatedAt,
   totalItems,
-  showPagination = true,
-  footer,
 }: DataTableShellProps<TData>) {
   const { t } = useTranslation()
   const updatedAt = dataUpdatedAt
@@ -149,17 +145,13 @@ export function DataTableShell<TData>({
           </Table>
         </CardContent>
       </Card>
-      {showPagination ? (
-        <DataTablePagination
-          table={table}
-          refetch={refetch}
-          updatedAt={updatedAt}
-          multipleHandlers={multipleHandlers}
-          totalItems={totalItems}
-        />
-      ) : (
-        footer
-      )}
+      <DataTablePagination
+        table={table}
+        refetch={refetch}
+        updatedAt={updatedAt}
+        multipleHandlers={multipleHandlers}
+        totalItems={totalItems}
+      />
     </div>
   )
 }

@@ -102,11 +102,9 @@ export function UpdateResourceForm({ open, onOpenChange, current }: UpdateTaskFo
   const { mutate: updateLabelPack } = useMutation({
     mutationFn: (values: FormSchema) => apiAdminResourceUpdate(values.id, values.label),
     onSuccess: async (_, { label }) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-resources'] }),
-        queryClient.invalidateQueries({ queryKey: ['resource'] }),
-        queryClient.invalidateQueries({ queryKey: ['resources'] }),
-      ])
+      await queryClient.invalidateQueries({
+        queryKey: ['resource', 'list'],
+      })
       toast.success(`Label ${label} ${t('updateResourceForm.successMessage')}`)
       onOpenChange(false)
     },
@@ -188,12 +186,10 @@ export const UpdateResourceTypeForm: FC<UpdateResourceTypeFormProps> = ({
       return apiAdminResourceUpdate(current.ID, current.label, type)
     },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-resources'] }),
-        queryClient.invalidateQueries({ queryKey: ['resource'] }),
-        queryClient.invalidateQueries({ queryKey: ['resources'] }),
-        queryClient.invalidateQueries({ queryKey: ['resource', 'networks', current.ID] }),
-      ])
+      await queryClient.invalidateQueries({ queryKey: ['resource', 'list'] })
+      await queryClient.invalidateQueries({
+        queryKey: ['resource', 'networks', current.ID],
+      })
       toast.success(t('updateResourceTypeForm.successMessage'))
       onOpenChange(false)
     },

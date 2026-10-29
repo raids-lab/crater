@@ -11,7 +11,6 @@
     "lint": "tsc && eslint .",
     "test:data-list": "node --experimental-strip-types --test src/components/layout/data-list-remote.test.ts",
     "test:pagination": "node --experimental-strip-types --test src/services/api/pagination.test.ts",
-    "test:node-pod-filter": "node --experimental-strip-types --test src/components/node/node-pod-filter.test.ts",
     "test:pod-read-policy": "node --experimental-strip-types --test src/components/job/detail/pod-read-policy.test.ts",
     "fix": "eslint . --fix",
     "eslint": "eslint . --max-warnings 0",

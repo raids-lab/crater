@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { useAtomValue } from 'jotai'
-import { EthernetPort, GaugeIcon, LogsIcon, TerminalIcon } from 'lucide-react'
+import { EthernetPort, GaugeIcon, LogsIcon, SquareTerminalIcon, TerminalIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -25,25 +25,22 @@ import NodeBadges from '@/components/badge/node-badges'
 import PodPhaseLabel, { podPhases } from '@/components/badge/pod-phase-badge'
 import ResourceBadges from '@/components/badge/resource-badges'
 import TooltipButton from '@/components/button/tooltip-button'
+import DetailPageLog from '@/components/codeblock/detail-page-log'
 import LogDialog from '@/components/codeblock/log-dialog'
 import { NamespacedName } from '@/components/codeblock/pod-container-dialog'
 import TerminalDialog from '@/components/codeblock/terminal-dialog'
 import TooltipCopy from '@/components/label/tooltop-copy'
 import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
+import Nothing from '@/components/placeholder/nothing'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
-import { SnapshotControls } from '@/components/query-table/cursor-list'
-import { SnapshotStatus } from '@/components/query-table/snapshot-list'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
-import { type SnapshotPod, apiGetJobPodSnapshot } from '@/services/api/snapshot'
 import { PodDetail, apiJobGetPods } from '@/services/api/vcjob'
 
-import { globalSettings } from '@/utils/store'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 
 import PodIngressDialog from './ingress'
-import { getJobPodReadPolicy } from './pod-read-policy'
 
 interface PodTableProps {
   jobName: string
@@ -91,52 +88,83 @@ const getPodMonitorUrl = (baseURL: string, pod: PodDetail) => {
   return `${baseURL}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`
 }
 
+const PodInfo = ({
+  pod,
+  setShowTerminal,
+  setShowIngress,
+}: {
+  pod: PodDetail
+  setShowTerminal: (namespacedName: NamespacedName) => void
+  setShowIngress: (namespacedName: NamespacedName) => void
+}) => {
+  return (
+    <DetailPageLog
+      namespacedName={{
+        name: pod.name,
+        namespace: pod.namespace,
+      }}
+      appendInfos={[
+        {
+          title: '内网 IP',
+          content: <TooltipCopy name={pod.ip} className="font-mono" />,
+        },
+        {
+          title: '节点',
+          content: <NodeBadges nodes={[pod.nodename]} />,
+        },
+      ]}
+      children={
+        <div className="grid h-8 grid-cols-2 gap-2">
+          <TooltipButton
+            variant="outline"
+            className="cursor-pointer"
+            disabled={pod.phase !== 'Running'}
+            onClick={() => {
+              setShowTerminal({
+                namespace: pod.namespace,
+                name: pod.name,
+              })
+            }}
+            tooltipContent="网页终端"
+          >
+            <SquareTerminalIcon className="text-primary size-4" />
+            网页终端
+          </TooltipButton>
+          <TooltipButton
+            variant="outline"
+            className="cursor-pointer"
+            disabled={pod.phase !== 'Running'}
+            onClick={() => {
+              setShowIngress({
+                namespace: pod.namespace,
+                name: pod.name,
+              })
+            }}
+            tooltipContent="外部访问"
+          >
+            <EthernetPort className="text-primary size-4" />
+            外部访问
+          </TooltipButton>
+        </div>
+      }
+    />
+  )
+}
+
 export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
-  const queryClient = useQueryClient()
   const [showLog, setShowLog] = useState<NamespacedName>()
   const [showTerminal, setShowTerminal] = useState<NamespacedName>()
   const [showIngress, setShowIngress] = useState<NamespacedName>()
   const [showMonitor, setShowMonitor] = useState(false)
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const [grafanaUrl, setGrafanaUrl] = useState<string>('')
-  const scheduler = useAtomValue(globalSettings).scheduler
-  const readPolicy = getJobPodReadPolicy(jobName, scheduler)
 
-  const legacyPodsQuery = useQuery({
+  const query = useQuery({
     queryKey: ['job', 'detail', jobName, 'pods'],
     queryFn: () => apiJobGetPods(jobName),
-    select: (res) => [...(res.data ?? [])].sort((a, b) => a.name.localeCompare(b.name)),
-    enabled: readPolicy.legacy,
+    select: (res) => res.data.sort((a, b) => a.name.localeCompare(b.name)),
+    enabled: !!jobName,
   })
-
-  const podSnapshotQuery = useInfiniteQuery({
-    queryKey: ['job', 'detail', 'vcjobs', jobName, 'pods', 'snapshot'],
-    initialPageParam: '',
-    queryFn: ({ pageParam }) => {
-      const params = { limit: 50, cursor: pageParam || undefined }
-      return apiGetJobPodSnapshot(jobName, params)
-    },
-    getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,
-    enabled: readPolicy.snapshot,
-  })
-  const pods = useMemo(
-    () =>
-      (podSnapshotQuery.data?.pages.flatMap((page) => page.data.items) ?? [])
-        .map(toPodDetail)
-        .sort((left, right) => left.name.localeCompare(right.name)),
-    [podSnapshotQuery.data]
-  )
-  const query = readPolicy.snapshot
-    ? {
-        data: pods,
-        error: podSnapshotQuery.error,
-        isError: podSnapshotQuery.isError,
-        isLoading: podSnapshotQuery.isLoading,
-        dataUpdatedAt: podSnapshotQuery.dataUpdatedAt,
-        refetch: podSnapshotQuery.refetch,
-      }
-    : legacyPodsQuery
-  const observedAt = podSnapshotQuery.data?.pages[0]?.data.observed_at
 
   const columns: ColumnDef<PodDetail>[] = useMemo(
     () => [
@@ -272,37 +300,30 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
     [grafanaJob.pod]
   )
 
+  if (query.isLoading) {
+    return <></>
+  }
+
+  if (!query.data || query.data.length === 0) {
+    return <Nothing title="暂无作业信息，可查看作业事件" />
+  }
+
   return (
     <>
-      <DataTable
-        storageKey="job_pods"
-        toolbarConfig={toolbarConfig}
-        query={query}
-        columns={columns}
-        briefChildren={
-          readPolicy.snapshot && (
-            <SnapshotStatus observedAt={observedAt} hasMore={podSnapshotQuery.hasNextPage} />
-          )
-        }
-        paginate={!readPolicy.snapshot}
-        withI18n
-        footer={
-          readPolicy.snapshot && (
-            <SnapshotControls
-              hasMore={podSnapshotQuery.hasNextPage}
-              isLoading={podSnapshotQuery.isFetchingNextPage}
-              isRefreshing={podSnapshotQuery.isFetching && !podSnapshotQuery.isFetchingNextPage}
-              onLoadMore={() => void podSnapshotQuery.fetchNextPage()}
-              onRefresh={() =>
-                void queryClient.resetQueries({
-                  queryKey: ['job', 'detail', 'vcjobs', jobName, 'pods', 'snapshot'],
-                  exact: true,
-                })
-              }
-            />
-          )
-        }
-      />
+      {query.data.length === 1 ? (
+        <PodInfo
+          pod={query.data[0]}
+          setShowTerminal={setShowTerminal}
+          setShowIngress={setShowIngress}
+        />
+      ) : (
+        <DataTable
+          storageKey="job_pods"
+          toolbarConfig={toolbarConfig}
+          query={query}
+          columns={columns}
+        />
+      )}
       <LogDialog namespacedName={showLog} setNamespacedName={setShowLog} />
       <TerminalDialog namespacedName={showTerminal} setNamespacedName={setShowTerminal} />
       <PodIngressDialog
@@ -323,16 +344,4 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
       </Sheet>
     </>
   )
-}
-
-function toPodDetail(pod: SnapshotPod): PodDetail {
-  return {
-    name: pod.name,
-    namespace: pod.namespace,
-    nodename: pod.nodeName ?? '',
-    ip: pod.ip,
-    port: '',
-    resource: pod.requestResources ?? pod.resources,
-    phase: pod.status,
-  }
 }

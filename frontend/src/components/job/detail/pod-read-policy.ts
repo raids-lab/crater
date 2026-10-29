@@ -25,11 +25,3 @@ export function shouldReadJobAccessPods({
 }): boolean {
   return !!jobName && isRunning && isSingleJob
 }
-
-// Only Volcano jobs have the metadata and route required by the Pod snapshot API.
-export function getJobPodReadPolicy(jobName: string, scheduler: string) {
-  return {
-    snapshot: !!jobName && scheduler === 'volcano',
-    legacy: !!jobName && scheduler !== 'volcano',
-  }
-}

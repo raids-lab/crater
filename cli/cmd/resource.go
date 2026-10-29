@@ -30,7 +30,6 @@ var adminResourceVGPUCmd = &cobra.Command{Use: "vgpu <id>", Short: "List vGPU re
 
 func runResourceLs(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{
-		AllPages:   true,
 		PayloadKey: "resources",
 		Path:       api.ResourcesPrefix,
 		Params: func(cmd *cobra.Command) map[string]string {

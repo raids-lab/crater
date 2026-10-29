@@ -35,7 +35,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 共同语义：
 
 - `--page` 必须大于等于 `1`；`--page-size` 必须在对应命令允许范围内。分页参数与状态、类型等领域筛选参数会在发请求前一起校验；存在多个问题时按「用法错误聚合」返回一次 `usage_error`。
-- 服务端分页命令把分页和服务端支持的筛选参数传给 API；本地分页命令先逐页聚合端点的完整列表，再筛选、稳定排序（若命令另有排序约定）并分页。混合分页命令需要本地筛选时，会先顺序读取全部服务端候选页，再本地筛选并重新分页。
+- 服务端分页命令把分页和服务端支持的筛选参数传给 API；本地分页命令先完整读取端点列表（数据库分页端点由 CLI 自动聚合，节点和 Pod 等完整数组端点单次读取），再筛选、稳定排序（若命令另有排序约定）并分页。混合分页命令需要本地筛选时，会先顺序读取全部服务端候选页，再本地筛选并重新分页。
 - 默认 JSON 成功体在 `data` 中同时包含资源数组与 `pagination: {"page": N, "page_size": N, "total": N}`；`total` 是筛选后的总数。`--all-pages` 返回完整数组并省略 `pagination`。
 - 默认表格只展示当前页，并在末尾显示当前页码和筛选后的总数；`--all-pages` 不显示分页摘要。
 
@@ -443,10 +443,9 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--page` (int, default `1`) / `--page-size` (int, default `15`, max `200`): 对过滤后的列表分页。
   - `--all-pages` (bool): 不截断，返回全部过滤结果。
 - **处理逻辑**:
-  - 调用 `/api/v1/nodes/{name}/pods`，按 Kubernetes 游标快照逐批读取；继续请求复用首次响应给出的不透明游标。
-  - 各批次必须保持同一个非空 `snapshot_id`，`has_more` 必须与继续游标一致；重复游标、快照不一致、游标过期或超过 10000 次请求时返回错误，不输出部分 Pod 列表。
+  - 调用 `/api/v1/nodes/{name}/pods`，单次读取原有完整 Pod 数组，不发送服务端分页或游标参数；读取失败时返回错误。
   - 平台当前没有向普通用户暴露作业命名空间配置，因此 CLI 不猜测固定默认值；必须显式选择 `--namespace` 或 `--all-namespaces`。
-  - CLI 逐批读取节点 Pod 游标快照，再在完整快照上执行命名空间、状态、类型和名称筛选，按名称与命名空间稳定排序，并应用 `--page` / `--page-size`。`--all-pages` 返回完整筛选结果。
+  - CLI 在完整列表上执行命名空间、状态、类型和名称筛选，按名称与命名空间稳定排序，再应用原有本地 `--page` / `--page-size`。`--all-pages` 返回完整筛选结果，不需要用户逐页请求后端。
   - 默认模式以表格展示 Pod 名称、命名空间、IP、状态、类型和资源。
 - **`--json` 的 `data`**：`pods`（当前页数组）和 `pagination`（`page`、`page_size`、过滤后的 `total`）；`--all-pages` 时省略 `pagination`。
 - **状态**: [x] Completed
@@ -762,7 +761,7 @@ This section records the read-only API surface covered by the CLI after the broa
 - `crater resource vgpu <id>`: `/api/v1/resources/{id}/vgpu`.
 - `crater resource prices`: `/api/v1/resources/billing/prices`.
 - `crater admin resource networks|vgpu <id>`: `/api/v1/admin/resources/{id}/...`.
-- `resource ls` 逐页聚合完整资源列表。JSON payload keys: `resources`, `networks`, `vgpu`, `prices`.
+- `resource ls` 单次读取原有完整资源数组，不发送分页参数。JSON payload keys: `resources`, `networks`, `vgpu`, `prices`.
 
 ### Dataset And Template Reads
 - `crater dataset ls`: `/api/v1/dataset/mydataset`，逐页聚合所有可见资源类型，保留完整 `datasets` 数组。
@@ -772,7 +771,7 @@ This section records the read-only API surface covered by the CLI after the broa
 - `crater admin dataset ls`: `/api/v1/admin/dataset/alldataset`，逐页聚合完整数组。
 - `crater template ls`: `/api/v1/jobtemplate/list`，按创建时间、ID 升序自动读取全部分页，保持完整列表输出。`--json` 的 `data.templates` 为数组，空结果为 `[]`；任何一页读取失败时返回 API 错误，不输出不完整的成功列表。
 - `crater template get <id>`: `/api/v1/jobtemplate/{id}`.
-- API 契约 5 引入本次整合的 CLI 分页列表契约，覆盖模板、管理员用户/账户、数据集、资源、镜像及镜像构建、审批工单、模型下载、GPU 分析和节点 Pod 列表。CLI 会逐页聚合以保持完整列表命令的输出；它不回退到旧数组响应，因此最低后端版本为 5。新后端复用同一路由和权限查询，未显式请求分页的旧调用保留完整数组或 imageList、kanikoList 包装；模型下载与操作日志保留已有分页参数别名和响应。因此后端最低 CLI 版本保持原有的 3，兼容目标包括 API V4 CLI。API 版本头仅用于诊断，不改变响应格式或拦截业务请求。
+- API 契约 5 引入本次整合的 CLI 数据库分页列表契约，覆盖模板、管理员用户/账户、数据集、镜像及镜像构建、审批工单、模型下载和 GPU 分析。对应完整列表命令会自动逐页聚合；依赖新数据库分页契约的读取不回退到旧数组响应，因此新 CLI 最低后端版本为 5。节点、节点 Pod 和资源规格继续使用原有完整列表接口。新后端复用同一路由和权限查询，未显式请求数据库分页的旧调用保留完整数组或 imageList、kanikoList 包装；模型下载与操作日志保留已有分页参数别名和响应。因此后端最低 CLI 版本保持原有的 3，兼容目标包括 API V4 CLI。API 版本头仅用于诊断，不改变响应格式或拦截业务请求。
 - JSON payload keys: `datasets`, `dataset`, `users`, `queues`, `templates`, `template`.
 
 ### Model Download Reads

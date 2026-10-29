@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Column, ColumnDef, Row } from '@tanstack/react-table'
 import { format } from 'date-fns'
@@ -57,15 +57,14 @@ import { TimeDistance } from '@/components/custom/time-distance'
 import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
-import { SnapshotControls } from '@/components/query-table/cursor-list'
-import { SnapshotStatus } from '@/components/query-table/snapshot-list'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import {
   IClusterPodInfo,
+  apiAdminGetNodePods,
   apiGetNodeDetail,
   apiGetNodeGPU,
-  apiGetNodePodsSnapshot,
+  apiGetNodePods,
 } from '@/services/api/cluster'
 
 import useIsAdmin from '@/hooks/use-admin'
@@ -84,7 +83,6 @@ import DetailPage, { DetailPageCoreProps } from '../layout/detail-page'
 import PageTitle from '../layout/page-title'
 import NodeInfoTab from './node-info-tab'
 import { NodeAnnotations, NodeLabels, NodeTaints } from './node-mark'
-import { getNodePodTypeFilter } from './node-pod-filter'
 
 const formatLockDate = (timestamp?: string) => {
   const date = new Date(timestamp ?? Date.now())
@@ -437,7 +435,6 @@ const getColumns = (
         />
       )
     },
-    enableSorting: false,
   },
   {
     accessorKey: 'createTime',
@@ -525,33 +522,21 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
   })
 
   const isAdminView = useIsAdmin()
-  const scheduler = useAtomValue(globalSettings).scheduler
-  const queryClient = useQueryClient()
-  const podsSnapshotQuery = useInfiniteQuery({
-    queryKey: ['nodes', nodeName, 'pods', 'snapshot', isAdminView],
-    initialPageParam: '',
-    queryFn: ({ pageParam, signal }) =>
-      apiGetNodePodsSnapshot(
-        nodeName,
-        { limit: 50, cursor: pageParam || undefined },
-        isAdminView,
-        signal
-      ),
-    getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,
+  const podsQuery = useQuery({
+    queryKey: ['nodes', nodeName, 'pods', isAdminView],
+    queryFn: () =>
+      isAdminView ? apiAdminGetNodePods(`${nodeName}`) : apiGetNodePods(`${nodeName}`),
+    select: (res) =>
+      res.data
+        ?.sort((a, b) => a.name.localeCompare(b.name))
+        .map((p) => {
+          if (p.ownerReference && p.ownerReference.length > 0) {
+            p.type = `${p.ownerReference[0].apiVersion}/${p.ownerReference[0].kind}`
+          }
+          return p
+        }),
     enabled: !!nodeName,
   })
-  const pods = useMemo(
-    () => podsSnapshotQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
-    [podsSnapshotQuery.data]
-  )
-  const podsTableQuery = {
-    data: pods,
-    error: podsSnapshotQuery.error,
-    isError: podsSnapshotQuery.isError,
-    isLoading: podsSnapshotQuery.isLoading,
-    dataUpdatedAt: podsSnapshotQuery.dataUpdatedAt,
-    refetch: podsSnapshotQuery.refetch,
-  }
   const columns = useMemo(
     () =>
       getColumns(
@@ -570,26 +555,36 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
     [nodeName, grafanaJob, isAdminView, t, navigate]
   )
 
-  const namespaces = useMemo(
-    () =>
-      [...new Set(pods.map((pod) => pod.namespace))].sort().map((namespace) => ({
-        value: namespace,
-        label: namespace,
-      })),
-    [pods]
-  )
+  const scheduler = useAtomValue(globalSettings).scheduler
+
+  const namespaces = useMemo(() => {
+    return (
+      podsQuery.data
+        ?.reduce((acc, pod) => {
+          if (pod.namespace && !acc.includes(pod.namespace)) {
+            acc.push(pod.namespace)
+          }
+          return acc
+        }, [] as string[])
+        .map((namespace) => ({
+          value: namespace,
+          label: namespace,
+        })) || []
+    )
+  }, [podsQuery.data])
 
   const toolbarConfig: DataTableToolbarConfig = useMemo(() => {
     return {
-      globalSearch: {
-        enabled: true,
+      filterInput: {
         placeholder: t('nodeDetail.table.filter.searchPodName'),
+        key: 'name',
       },
       filterOptions: [
         {
           key: 'namespace',
           title: 'Namespace',
           option: namespaces,
+          defaultValues: [],
         },
         {
           key: 'status',
@@ -600,7 +595,21 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
         {
           key: 'type',
           title: t('nodeDetail.table.filter.type'),
-          ...getNodePodTypeFilter(scheduler),
+          option: [
+            {
+              value: 'batch.volcano.sh/v1alpha1/Job',
+              label: 'BASE',
+            },
+            {
+              value: 'aisystem.github.com/v1alpha1/AIJob',
+              label: 'EMIAS',
+            },
+          ],
+          defaultValues: [
+            scheduler === 'volcano'
+              ? 'batch.volcano.sh/v1alpha1/Job'
+              : 'aisystem.github.com/v1alpha1/AIJob',
+          ],
         },
       ],
       getHeader: (key: string) => getHeader(key, t),
@@ -660,33 +669,10 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
           children: (
             <>
               <DataTable
-                storageKey={`node-pods-${nodeName}`}
-                query={podsTableQuery}
+                storageKey="node_pods"
+                query={podsQuery}
                 columns={columns}
                 toolbarConfig={toolbarConfig}
-                paginate={false}
-                briefChildren={
-                  <SnapshotStatus
-                    observedAt={podsSnapshotQuery.data?.pages[0]?.data.observed_at}
-                    hasMore={podsSnapshotQuery.hasNextPage}
-                  />
-                }
-                footer={
-                  <SnapshotControls
-                    hasMore={podsSnapshotQuery.hasNextPage}
-                    isLoading={podsSnapshotQuery.isFetchingNextPage}
-                    isRefreshing={
-                      podsSnapshotQuery.isFetching && !podsSnapshotQuery.isFetchingNextPage
-                    }
-                    onLoadMore={() => void podsSnapshotQuery.fetchNextPage()}
-                    onRefresh={() =>
-                      void queryClient.resetQueries({
-                        queryKey: ['nodes', nodeName, 'pods', 'snapshot', isAdminView],
-                        exact: true,
-                      })
-                    }
-                  />
-                }
               />
               <LogDialog namespacedName={showLogPod} setNamespacedName={setShowLogPod} />
               <Sheet open={showMonitor} onOpenChange={setShowMonitor}>
