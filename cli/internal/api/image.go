@@ -245,11 +245,11 @@ func (c *Client) ListKaniko(admin bool) (*ListKanikoResponse, error) {
 	if admin {
 		path = AdminImagesPrefix + "/kaniko"
 	}
-	var result Response[ListKanikoResponse]
-	if err := c.get(path, nil, &result); err != nil {
+	items, err := fetchAllListPages[KanikoInfo](c, path, "-createdAt")
+	if err != nil {
 		return nil, err
 	}
-	return &result.Data, nil
+	return &ListKanikoResponse{KanikoList: items}, nil
 }
 
 func (c *Client) GetKanikoByName(name string) (*KanikoDetailResponse, error) {
@@ -301,11 +301,11 @@ func (c *Client) ListImageRecords(admin bool) (*ListImageResponse, error) {
 	if admin {
 		path = AdminImagesPrefix + "/image"
 	}
-	var result Response[ListImageResponse]
-	if err := c.get(path, nil, &result); err != nil {
+	items, err := fetchAllListPages[ImageInfo](c, path, "-createdAt")
+	if err != nil {
 		return nil, err
 	}
-	return &result.Data, nil
+	return &ListImageResponse{ImageList: items}, nil
 }
 
 func (c *Client) ListAvailableImages() ([]ImageInfo, error) {

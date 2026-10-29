@@ -2,10 +2,13 @@ package handler
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/klog/v2"
@@ -13,6 +16,8 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/pagination"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
@@ -50,7 +55,7 @@ func (mgr *UserMgr) RegisterProtected(g *gin.RouterGroup) {
 }
 
 func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.GET("", mgr.ListUser)
+	g.GET("", mgr.AdminListUsers)
 	g.GET("/billing/summary", mgr.ListUserBillingSummary)
 	g.GET("/baseinfo", mgr.ListUserBaseInfo)
 	g.DELETE("/:name", mgr.DeleteUser)
@@ -169,53 +174,171 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 	resputil.Success(c, "")
 }
 
-// ListUser godoc
+const (
+	adminUserDefaultSort    = "-createdAt"
+	adminUserMaxFilterValue = 3
+)
+
+type adminUserPageQuery struct {
+	Page     int    `form:"page,default=1" binding:"min=1"`
+	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
+}
+
+var adminUserSortFields = map[string]string{
+	"id":        "id",
+	"name":      "name",
+	"role":      "role",
+	"status":    "status",
+	"createdAt": "created_at",
+	"updatedAt": "updated_at",
+}
+
+func adminUserSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, adminUserSortFields, "id DESC")
+}
+
+func bindAdminUserPageQuery(c *gin.Context) (adminUserPageQuery, error) {
+	var request adminUserPageQuery
+	if err := pagination.PrepareBoundPageQuery(
+		c.ShouldBindQuery(&request), "invalid user list query", &request.Search,
+		request.Page, request.PageSize, &request.Sort, adminUserDefaultSort, adminUserSortFields,
+	); err != nil {
+		return adminUserPageQuery{}, err
+	}
+	return request, nil
+}
+
+func parseAdminUserIntFilters(c *gin.Context, key string) ([]uint8, error) {
+	values := c.QueryArray(key)
+	result := make([]uint8, 0, len(values))
+	for _, value := range values {
+		parsed, err := strconv.ParseUint(value, 10, 8)
+		if err != nil || parsed < 1 || parsed > adminUserMaxFilterValue {
+			return nil, bizerr.BadRequest.ParameterError.New(fmt.Sprintf("invalid %s filter %q", key, value))
+		}
+		result = append(result, uint8(parsed))
+	}
+	return result, nil
+}
+
+func parseAdminUserBannedFilters(c *gin.Context) ([]bool, error) {
+	values := c.QueryArray("banned")
+	result := make([]bool, 0, len(values))
+	for _, value := range values {
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return nil, bizerr.BadRequest.ParameterError.New(fmt.Sprintf("invalid banned filter %q", value))
+		}
+		result = append(result, parsed)
+	}
+	return result, nil
+}
+
+// AdminListUsers returns administrator-visible users using the shared page protocol.
 //
-//	@Summary		列出用户信息
-//	@Description	列出用户信息（包含私人配额）
-//	@Tags			User
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[any]	"成功获取用户信息"
-//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
-//	@Failure		500	{object}	resputil.Response[any]	"其他错误"
-//	@Router			/v1/admin/users [get]
-func (mgr *UserMgr) ListUser(c *gin.Context) {
-	u := query.User
-	users, err := u.WithContext(c).
-		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.BannedTimestamp, u.BanRestrictions).
-		Order(u.ID.Desc()).
-		Find()
+//	@Summary	管理员获取用户分页
+//	@Description	按统一分页协议获取用户列表，搜索、筛选、排序和分页在数据库中执行
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
+//	@Tags		User
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page	query	int	false	"Page number"
+//	@Param		page_size	query	int	false	"Page size, 1-200"
+//	@Param		search	query	string	false	"Search username or nickname"
+//	@Param		role	query	int	false	"Filter by role; repeatable"
+//	@Param		status	query	int	false	"Filter by status; repeatable"
+//	@Param		banned	query	bool	false	"Filter by current ban status; repeatable"
+//	@Param		sort	query	string	false	"Sort fields"
+//	@Success	200	{object}	resputil.Response[resputil.Page[UserResp]]
+//	@Router		/v1/admin/users [get]
+func (mgr *UserMgr) AdminListUsers(c *gin.Context) {
+	request, err := bindAdminUserPageQuery(c)
 	if err != nil {
-		resputil.Error(c, fmt.Sprintf("list users failed, detail: %v", err), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
-	resp := make([]UserResp, 0, len(users))
-	for i := range users {
-		extraBalance := 0.0
-		if mgr.isBillingFeatureEnabled(c) {
-			extraBalance = service.ToDisplayPoints(users[i].ExtraBalance)
-		}
-		banned := service.IsUserBanned(users[i].BannedTimestamp)
-		resp = append(resp, UserResp{
-			ID:              users[i].ID,
-			Name:            users[i].Name,
-			Role:            users[i].Role,
-			Status:          users[i].Status,
-			ExtraBalance:    extraBalance,
-			Attributes:      users[i].Attributes,
-			Banned:          banned,
-			PermanentBanned: service.IsUserPermanentlyBanned(users[i].BannedTimestamp),
-			BannedTimestamp: users[i].BannedTimestamp,
-			BanRestrictions: service.EffectiveUserBanRestrictions(
-				banned,
-				users[i].BanRestrictions.Data(),
-			),
-		})
+	roles, err := parseAdminUserIntFilters(c, "role")
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
-	klog.Infof("list users success, count: %d", len(resp))
-	resputil.Success(c, resp)
+	statuses, err := parseAdminUserIntFilters(c, "status")
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	bannedFilters, err := parseAdminUserBannedFilters(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+
+	u := query.User
+	db := u.WithContext(c).Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.BannedTimestamp, u.BanRestrictions)
+	if request.Search != "" {
+		pattern := util.ContainsPattern(request.Search)
+		db = db.Where(field.Or(u.Name.Lower().Like(pattern), u.Nickname.Lower().Like(pattern)))
+	}
+	if len(roles) > 0 {
+		db = db.Where(u.Role.In(roles...))
+	}
+	if len(statuses) > 0 {
+		db = db.Where(u.Status.In(statuses...))
+	}
+	if len(bannedFilters) == 1 {
+		now := utils.GetLocalTime()
+		if bannedFilters[0] {
+			db = db.Where(u.BannedTimestamp.Gt(now))
+		} else {
+			db = db.Where(field.Or(u.BannedTimestamp.IsNull(), u.BannedTimestamp.Lte(now)))
+		}
+	}
+	for _, clause := range adminUserSortClauses(request.Sort) {
+		parts := strings.Fields(clause)
+		column, _ := u.GetFieldByName(parts[0])
+		if parts[1] == "DESC" {
+			db = db.Order(column.Desc())
+		} else {
+			db = db.Order(column)
+		}
+	}
+	users, total, err := db.FindByPage(pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize))
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list users failed"))
+		return
+	}
+
+	items := make([]UserResp, 0, len(users))
+	for _, user := range users {
+		items = append(items, mgr.buildUserResponse(user, c))
+	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, items)
+		return
+	}
+	resputil.Success(c, resputil.NewPage(items, total, request.Page, request.PageSize))
+}
+
+func (mgr *UserMgr) buildUserResponse(user *model.User, c *gin.Context) UserResp {
+	banned := service.IsUserBanned(user.BannedTimestamp)
+	extraBalance := 0.0
+	if mgr.isBillingFeatureEnabled(c) {
+		extraBalance = service.ToDisplayPoints(user.ExtraBalance)
+	}
+	return UserResp{
+		ID:              user.ID,
+		Name:            user.Name,
+		Role:            user.Role,
+		Status:          user.Status,
+		ExtraBalance:    extraBalance,
+		Attributes:      user.Attributes,
+		Banned:          banned,
+		PermanentBanned: service.IsUserPermanentlyBanned(user.BannedTimestamp),
+		BannedTimestamp: user.BannedTimestamp,
+		BanRestrictions: service.EffectiveUserBanRestrictions(banned, user.BanRestrictions.Data()),
+	}
 }
 
 func (mgr *UserMgr) ListUserBillingSummary(c *gin.Context) {

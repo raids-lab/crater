@@ -120,53 +120,19 @@ func (c *Client) CreateDownload(req CreateModelDownloadReq) (*ModelDownloadResp,
 	return &result.Data, result.Message, nil
 }
 
-// ListDownloads lists model or dataset download tasks for the active user.
 func (c *Client) ListDownloads(category string) ([]ModelDownloadResp, error) {
-	var result Response[[]ModelDownloadResp]
-	req := c.httpClient.R().
-		SetSuccessResult(&result).
-		SetErrorResult(&result)
-	if category != "" {
-		req.SetQueryParam("category", category)
-	}
-	resp, err := req.Get(ModelDownloadListPath)
-	if err != nil {
-		return nil, &NetworkError{Cause: err}
-	}
-	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
+	return fetchAllListPagesWithParams[ModelDownloadResp](c, ModelDownloadListPath, map[string]string{"category": category, "sort": "-updatedAt"})
 }
 
-// ListAdminDownloads lists every model or dataset download visible to a platform administrator.
 func (c *Client) ListAdminDownloads() ([]ModelDownloadResp, error) {
-	var result Response[[]ModelDownloadResp]
-	resp, err := c.httpClient.R().
-		SetSuccessResult(&result).
-		SetErrorResult(&result).
-		Get(AdminModelDLPfx + "/models/downloads")
-	if err != nil {
-		return nil, &NetworkError{Cause: err}
-	}
-	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return nil, err
-	}
-	if result.Data == nil {
-		result.Data = []ModelDownloadResp{}
-	}
-	return result.Data, nil
+	return fetchAllListPages[ModelDownloadResp](c, AdminModelDLPfx+"/models/downloads", "-updatedAt")
 }
 
 // ListDownloadPage lists one server-side page of model or dataset download
 // tasks for the active user.
 func (c *Client) ListDownloadPage(opts ModelDownloadListOptions) (ModelDownloadPage, error) {
 	opts.ListOptions = opts.ListOptions.Normalize()
-	var result Response[struct {
-		Items   []ModelDownloadResp `json:"items"`
-		Total   int64               `json:"total"`
-		Summary map[string]int64    `json:"summary"`
-	}]
+	var result Response[ModelDownloadPage]
 	resp, err := c.httpClient.R().
 		SetSuccessResult(&result).
 		SetErrorResult(&result).
@@ -184,21 +150,13 @@ func (c *Client) ListDownloadPage(opts ModelDownloadListOptions) (ModelDownloadP
 	if result.Data.Summary == nil {
 		result.Data.Summary = map[string]int64{}
 	}
-	return ModelDownloadPage{
-		Page: Page[ModelDownloadResp]{
-			Items:    result.Data.Items,
-			Total:    result.Data.Total,
-			Page:     opts.Page,
-			PageSize: opts.PageSize,
-		},
-		Summary: result.Data.Summary,
-	}, nil
+	return result.Data, nil
 }
 
 func modelDownloadListValues(opts ModelDownloadListOptions) url.Values {
 	values := url.Values{
-		"page":     {strconv.Itoa(opts.Page)},
-		"pageSize": {strconv.Itoa(opts.PageSize)},
+		"page":      {strconv.Itoa(opts.Page)},
+		"page_size": {strconv.Itoa(opts.PageSize)},
 	}
 	if opts.Category != "" {
 		values.Set("category", opts.Category)

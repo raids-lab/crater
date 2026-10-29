@@ -16,9 +16,9 @@ package version
 
 import "testing"
 
-func TestModelDownloadReuseContractVersion(t *testing.T) {
-	if APIVersion != 4 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("download reuse contract = %d, minimum CLI = %d, want 4/3",
+func TestUnifiedListContractVersion(t *testing.T) {
+	if APIVersion != 5 || MinSupportedCLIAPIVersion != 3 {
+		t.Fatalf("paginated list contract = %d, minimum CLI = %d, want 5/3",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}
 }

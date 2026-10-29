@@ -31,7 +31,7 @@ var adminQueueQuotasCmd = &cobra.Command{Use: "queue-quotas", Short: "List queue
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "queue_quotas", Path: api.AdminQueueQuotasPfx, Params: noParams, Table: printRawObject})
 }}
 var adminGpuAnalysesCmd = &cobra.Command{Use: "gpu-analyses", Short: "List GPU analysis records", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "gpu_analyses", Path: api.AdminGPUAnalysisPfx, Params: noParams, Table: printSimpleTableWrapper("ID", "JobName", "UserName", "PodName", "ReviewStatus")})
+	return runRawRead(cmd, rawReadSpec{AllPages: true, PayloadKey: "gpu_analyses", Path: api.AdminGPUAnalysisPfx, Params: noParams, Table: printSimpleTableWrapper("ID", "JobName", "UserName", "PodName", "ReviewStatus")})
 }}
 var adminOperationLogsCmd = &cobra.Command{Use: "operation-logs", Short: "List operation logs", Args: noArgs, RunE: runAdminOperationLogs}
 var adminCronjobsCmd = &cobra.Command{Use: "cronjobs", Short: "List cronjob configs", Args: noArgs, RunE: func(cmd *cobra.Command, _ []string) error {
@@ -44,7 +44,7 @@ var adminWhitelistCmd = &cobra.Command{Use: "whitelist", Short: "List operation 
 func runAdminOperationLogs(cmd *cobra.Command, _ []string) error {
 	params := map[string]string{
 		"page":           getIntParam(cmd, "page"),
-		"limit":          getIntParam(cmd, "limit"),
+		"page_size":      getIntParam(cmd, "limit"),
 		"operator":       getStringParam(cmd, "operator"),
 		"operation_type": getStringParam(cmd, "operation-type"),
 		"target":         getStringParam(cmd, "target"),

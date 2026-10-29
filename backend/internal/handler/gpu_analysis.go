@@ -9,22 +9,22 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/pagination"
+	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config" // 需要引入 config 获取 namespace
 	"gorm.io/datatypes"
+	"gorm.io/gen/field"
 	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/klog/v2"
-	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
-
-	// 需要引入 controller-runtime client
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/bizerr"
-	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/internal/service"
-	"github.com/raids-lab/crater/pkg/config" // 需要引入 config 获取 namespace
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
 //nolint:gochecknoinits // init is used to register handler routes
@@ -112,35 +112,6 @@ type GpuAnalysisWithJobInfo struct {
 	Status          batch.JobPhase `json:"status"`
 	LockedTimestamp time.Time      `json:"lockedTimestamp"`
 	UserNickname    string         `json:"UserNickname"`
-}
-
-// ListAnalyses godoc
-// @Summary		列出所有 GPU 分析记录（包含作业信息）
-// @Description	按创建时间降序列出所有 GPU 分析记录，并附带关联作业的类型、资源和节点信息
-// @Tags			GpuAnalysis
-// @Produce		json
-// @Security		Bearer
-// @Success		200	{object}	resputil.Response[[]GpuAnalysisWithJobInfo] "成功"
-// @Failure		500	{object}	resputil.Response[any] "服务器错误"
-// @Router			/v1/admin/gpu-analysis [get]
-func (mgr *GpuAnalysisMgr) ListAnalyses(c *gin.Context) {
-	var results []GpuAnalysisWithJobInfo
-	ga := query.GpuAnalysis
-	j := query.Job
-	u := query.User
-
-	err := ga.WithContext(c.Request.Context()).
-		LeftJoin(j, ga.JobName.EqCol(j.JobName)).
-		LeftJoin(u, ga.UserID.EqCol(u.ID)).
-		Order(ga.Phase2Score.Desc(), ga.CreatedAt.Desc()).
-		Select(ga.ALL, j.Name, j.JobType, j.Resources, j.Nodes, j.Status, j.LockedTimestamp, u.Nickname.As("user_nickname")).
-		Scan(&results)
-
-	if err != nil {
-		resputil.Error(c, fmt.Sprintf("list gpu analyses failed: %v", err), resputil.NotSpecified)
-		return
-	}
-	resputil.Success(c, results)
 }
 
 type UpdateReviewStatusReq struct {
@@ -361,4 +332,146 @@ func (mgr *GpuAnalysisMgr) stopJobByName(ctx context.Context, jobName string) er
 	}
 
 	return nil
+}
+
+const (
+	lowRiskThreshold  = 3
+	highRiskThreshold = 7
+)
+
+type gpuAnalysisListPageQuery struct {
+	Page     int    `form:"page,default=1" binding:"min=1"`
+	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
+}
+
+var gpuAnalysisSortFields = map[string]string{
+	"JobName":      "gpu_analyses.job_name",
+	"UserName":     "gpu_analyses.user_name",
+	"JobType":      "jobs.job_type",
+	"ReviewStatus": "gpu_analyses.review_status",
+	"Phase2Score":  "gpu_analyses.phase2_score",
+	"CreatedAt":    "gpu_analyses.created_at",
+}
+
+func bindGpuAnalysisListPageQuery(
+	c *gin.Context,
+) (request gpuAnalysisListPageQuery, statuses []uint8, riskLevels []string, err error) {
+	if err := c.ShouldBindQuery(&request); err != nil {
+		return gpuAnalysisListPageQuery{}, nil, nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid gpu analysis list query")
+	}
+	request.Search, err = pagination.NormalizePageQuery(request.Search, request.Page, request.PageSize)
+	if err != nil {
+		return gpuAnalysisListPageQuery{}, nil, nil, err
+	}
+
+	statuses = make([]uint8, 0)
+	seenStatuses := make(map[uint64]struct{})
+	for _, raw := range c.QueryArray("ReviewStatus") {
+		status, err := strconv.ParseUint(raw, 10, 8)
+		if err != nil || status < uint64(model.ReviewStatusPending) || status > uint64(model.ReviewStatusIgnored) {
+			return gpuAnalysisListPageQuery{}, nil, nil, bizerr.BadRequest.ParameterError.New(fmt.Sprintf("unsupported review status %q", raw))
+		}
+		if _, seen := seenStatuses[status]; seen {
+			continue
+		}
+		seenStatuses[status] = struct{}{}
+		statuses = append(statuses, uint8(status))
+	}
+
+	riskLevels = make([]string, 0)
+	seenRisks := make(map[string]struct{})
+	for _, risk := range c.QueryArray("Phase2Score") {
+		if risk != "high" && risk != "medium" && risk != "low" {
+			return gpuAnalysisListPageQuery{}, nil, nil, bizerr.BadRequest.ParameterError.New(fmt.Sprintf("unsupported risk level %q", risk))
+		}
+		if _, seen := seenRisks[risk]; seen {
+			continue
+		}
+		seenRisks[risk] = struct{}{}
+		riskLevels = append(riskLevels, risk)
+	}
+
+	request.Sort, err = pagination.DefaultAndValidateSort(
+		request.Sort,
+		"-Phase2Score,-CreatedAt",
+		gpuAnalysisSortFields,
+	)
+	if err != nil {
+		return gpuAnalysisListPageQuery{}, nil, nil, err
+	}
+	return request, statuses, riskLevels, nil
+}
+
+func gpuAnalysisSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, gpuAnalysisSortFields, "gpu_analyses.id DESC")
+}
+
+// ListAnalyses returns GPU analysis records with joined job information in the shared page shape.
+//
+//	@Summary	管理员分页获取 GPU 分析记录
+//	@Description	按搜索、审核状态和风险等级过滤后排序分页返回 GPU 分析记录
+//	@Description	Supplying page or page_size returns a page; omitting both preserves the complete legacy array on the same route.
+//	@Tags		GpuAnalysis
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page		query	int		false	"Page number"
+//	@Param		page_size	query	int		false	"Page size, 1-200"
+//	@Param		search		query	string	false	"Search job or user name"
+//	@Param		ReviewStatus	query	int		false	"Filter by review status; repeatable"
+//	@Param		Phase2Score	query	string	false	"Filter by risk level; repeatable"
+//	@Param		sort		query	string	false	"Sort fields"
+//	@Success	200	{object}	resputil.Response[resputil.Page[GpuAnalysisWithJobInfo]]
+//	@Failure	400	{object}	resputil.Response[any]
+//	@Failure	500	{object}	resputil.Response[any]
+//	@Router		/v1/admin/gpu-analysis [get]
+func (mgr *GpuAnalysisMgr) ListAnalyses(c *gin.Context) {
+	request, statuses, riskLevels, err := bindGpuAnalysisListPageQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	ga, j, u := query.GpuAnalysis, query.Job, query.User
+	db := ga.WithContext(c).LeftJoin(j, ga.JobName.EqCol(j.JobName)).LeftJoin(u, ga.UserID.EqCol(u.ID))
+	if len(statuses) > 0 {
+		db = db.Where(ga.ReviewStatus.In(statuses...))
+	}
+	if len(riskLevels) > 0 {
+		conditions := make([]field.Expr, 0, len(riskLevels))
+		for _, risk := range riskLevels {
+			switch risk {
+			case "high":
+				conditions = append(conditions, ga.Phase2Score.Gte(highRiskThreshold))
+			case "medium":
+				conditions = append(conditions, field.And(ga.Phase2Score.Gt(lowRiskThreshold), ga.Phase2Score.Lt(highRiskThreshold)))
+			case "low":
+				conditions = append(conditions, ga.Phase2Score.Lte(lowRiskThreshold))
+			}
+		}
+		db = db.Where(field.Or(conditions...))
+	}
+	if request.Search != "" {
+		pattern := util.ContainsPattern(request.Search)
+		db = db.Where(field.Or(ga.JobName.Lower().Like(pattern), ga.UserName.Lower().Like(pattern), j.Name.Lower().Like(pattern)))
+	}
+	total, err := db.Distinct(ga.ID).Count()
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "count gpu analyses failed"))
+		return
+	}
+	results := make([]GpuAnalysisWithJobInfo, 0, request.PageSize)
+	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
+	err = db.Select(ga.ALL, j.Name, j.JobType, j.Resources, j.Nodes, j.Status, j.LockedTimestamp, u.Nickname.As("user_nickname")).
+		Order(pagination.SortFields(request.Sort, gpuAnalysisSortFields, "gpu_analyses.id DESC")...).
+		Offset(offset).Limit(limit).Scan(&results)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list gpu analyses failed"))
+		return
+	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, results)
+		return
+	}
+	resputil.Success(c, resputil.NewPage(results, total, request.Page, request.PageSize))
 }

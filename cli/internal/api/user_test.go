@@ -28,11 +28,12 @@ func TestListAdminUsersUsesTypedEndpoints(t *testing.T) {
 						}
 						recorder := httptest.NewRecorder()
 						recorder.Header().Set("Content-Type", "application/json")
-						_ = json.NewEncoder(recorder).Encode(Response[[]AdminUser]{
-							Data: []AdminUser{{
-								ID: 7, Name: "alice", Attributes: &UserAttribute{Nickname: "Alice"},
-							}},
-						})
+						users := []AdminUser{{ID: 7, Name: "alice", Attributes: &UserAttribute{Nickname: "Alice"}}}
+						var data interface{} = users
+						if !test.base {
+							data = Page[AdminUser]{Items: users, Total: 1, Page: 1, PageSize: 200}
+						}
+						_ = json.NewEncoder(recorder).Encode(Response[interface{}]{Data: data})
 						return recorder.Result(), nil
 					}
 				},

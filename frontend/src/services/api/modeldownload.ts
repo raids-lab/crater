@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
 import { apiV1Delete, apiV1Get, apiV1Post } from '@/services/client'
-import { IResponse } from '@/services/types'
+import { IPage, IResponse } from '@/services/types'
 
 import { IUserInfo } from './vcjob'
 
@@ -69,41 +74,23 @@ export interface ModelDownload {
   sourceCreatedAt?: string
 }
 
-export interface ModelDownloadListParams {
-  page: number
-  pageSize: number
-  category?: 'model' | 'dataset'
-  status?: ModelDownloadStatus
-  search?: string
-}
-
-export interface ModelDownloadListResp {
-  total: number
-  items: ModelDownload[]
-  summary: Partial<Record<ModelDownloadStatus, number>>
-}
-
 export const apiCreateModelDownload = (data: CreateModelDownloadReq) =>
   apiV1Post<IResponse<ModelDownload>>('model-download/models/download', data)
 
-export const apiListModelDownloads = (category?: 'model' | 'dataset') =>
-  apiV1Get<IResponse<ModelDownload[]>>(
-    'model-download/models/downloads',
-    category ? { searchParams: { category } } : undefined
-  )
-
-export const apiListModelDownloadsPaged = (params: ModelDownloadListParams) => {
-  const searchParams: Record<string, string | number> = {
-    page: params.page,
-    pageSize: params.pageSize,
-  }
-  if (params.category) searchParams.category = params.category
-  if (params.status) searchParams.status = params.status
-  if (params.search) searchParams.search = params.search
-  return apiV1Get<IResponse<ModelDownloadListResp>>('model-download/models/downloads', {
-    searchParams,
+export const apiListModelDownloadsPage = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<ModelDownload>>>('model-download/models/downloads', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
   })
-}
+
+export const apiGetModelDownloadSummary = (category?: 'model' | 'dataset', signal?: AbortSignal) =>
+  apiV1Get<IResponse<Partial<Record<ModelDownloadStatus, number>>>>(
+    'model-download/models/downloads/summary',
+    {
+      searchParams: category ? { category } : undefined,
+      signal,
+    }
+  )
 
 export const apiGetModelDownload = (id: number) =>
   apiV1Get<IResponse<ModelDownload>>(`model-download/models/downloads/${id}`)
@@ -127,8 +114,6 @@ export const apiGetModelDownloadLogs = (id: number) =>
   apiV1Get<IResponse<string>>(`model-download/models/downloads/${id}/logs`)
 
 // Admin APIs
-export const apiAdminListModelDownloads = () =>
-  apiV1Get<IResponse<ModelDownload[]>>('admin/model-download/models/downloads')
 
 export const apiAdminDeleteModelDownload = (id: number) =>
   apiV1Delete<IResponse<string>>(`admin/model-download/models/downloads/${id}`)

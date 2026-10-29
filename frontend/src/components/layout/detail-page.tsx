@@ -61,11 +61,14 @@ export interface DetailPageCoreProps {
 
 export type DetailPageSearch = {
   tab?: string
+  id?: number
 }
 
 export const detailValidateSearch = (search: Record<string, unknown>): DetailPageSearch => {
+  const id = Number(search.id)
   return {
     tab: (search.tab as string) || undefined,
+    id: Number.isSafeInteger(id) && id > 0 ? id : undefined,
   }
 }
 

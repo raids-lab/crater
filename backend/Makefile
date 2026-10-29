@@ -178,6 +178,11 @@ run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host
 .PHONY: pre-commit-check
 pre-commit-check: lint docs ## Run pre-commit checks (lint and generate docs).
 
+.PHONY: compatibility-test
+compatibility-test: ## Verify published and current CLI binaries with isolated handler fixtures.
+	@test -n "$(OLD_CLI_BIN)" -a -n "$(NEW_CLI_BIN)" || (echo "OLD_CLI_BIN and NEW_CLI_BIN are required" >&2; exit 1)
+	OLD_CLI_BIN="$(OLD_CLI_BIN)" NEW_CLI_BIN="$(NEW_CLI_BIN)" go test -tags=cli_compatibility ./internal/handler/image -run '^TestReleasedCLICompatibility$$' -count=1 -v
+
 ##@ Build
 
 .PHONY: build

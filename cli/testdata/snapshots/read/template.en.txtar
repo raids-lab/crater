@@ -1,0 +1,67 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-template-list-json/argv --
+crater template ls --json
+-- en/01-template-list-json/exit --
+0
+-- en/01-template-list-json/stdout --
+{
+  "data": {
+    "templates": [
+      {
+        "createdAt": "2026-01-01T00:00:00Z",
+        "id": 1,
+        "name": "training",
+        "userInfo": {
+          "nickname": "owner"
+        }
+      },
+      {
+        "createdAt": "2026-01-02T00:00:00Z",
+        "id": 2,
+        "name": "evaluation",
+        "userInfo": {
+          "nickname": "owner"
+        }
+      }
+    ]
+  },
+  "status": "OK"
+}
+-- en/01-template-list-json/stderr --
+-- en/02-template-empty-json/argv --
+crater template ls --json
+-- en/02-template-empty-json/exit --
+0
+-- en/02-template-empty-json/stdout --
+{
+  "data": {
+    "templates": []
+  },
+  "status": "OK"
+}
+-- en/02-template-empty-json/stderr --
+-- en/03-template-later-page-failure-json/argv --
+crater template ls --json
+-- en/03-template-later-page-failure-json/exit --
+4
+-- en/03-template-later-page-failure-json/stdout --
+-- en/03-template-later-page-failure-json/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_SERVER_INTERNAL_5XX",
+  "message": "HTTP 500: list job templates failed",
+  "context": {
+    "crater_code": 50002,
+    "http_status": 500,
+    "msg": "list job templates failed"
+  }
+}
+-- en/04-template-list-table/argv --
+crater template ls --no-interactive
+-- en/04-template-list-table/exit --
+0
+-- en/04-template-list-table/stdout --
+ID       NAME                         OWNER              CREATED
+1        training                     owner              2026-01-01T00:00:00Z
+2        evaluation                   owner              2026-01-02T00:00:00Z
+-- en/04-template-list-table/stderr --

@@ -16,10 +16,11 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	// v4 allows model/dataset downloads to reuse another source or revision.
-	APIVersion = 4
+	// v5 consolidates optionally paginated database lists with legacy complete reads.
+	APIVersion = 5
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
-	// v2 and older CLIs still call the removed prequeue endpoints and the dropped schedule_type filter with no fallback.
+	// Explicit pagination keeps pre-pagination reads on the same routes, so the
+	// pre-v5 compatibility floor remains unchanged.
 	MinSupportedCLIAPIVersion = 3
 )

@@ -56,7 +56,7 @@ import { MetadataFormAccount } from '@/components/form/types'
 import { SandwichLayout } from '@/components/sheet/sandwich-sheet'
 
 import { IAccount, apiAccountCreate, apiAccountUpdate } from '@/services/api/account'
-import { apiAdminUserList } from '@/services/api/admin/user'
+import { apiAdminUserListAll } from '@/services/api/admin/user'
 import {
   apiAdminGetAccountBillingConfig,
   apiAdminUpdateAccountBillingConfig,
@@ -162,7 +162,7 @@ export const AccountForm = ({ onOpenChange, account }: AccountFormProps) => {
 
   const { data: userList } = useQuery({
     queryKey: ['admin', 'userlist'],
-    queryFn: apiAdminUserList,
+    queryFn: ({ signal }) => apiAdminUserListAll(signal),
     select: (res) =>
       res.data.map((user) => ({
         value: user.id.toString(),

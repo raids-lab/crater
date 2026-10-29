@@ -13,8 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
+import { fetchAllPages } from '@/services/api/pagination'
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 import { IResponse } from '@/services/types'
+import type { IPage } from '@/services/types'
 
 import { IUserInfo } from './vcjob'
 
@@ -35,6 +42,13 @@ export interface ApprovalOrder {
   reviewer: IUserInfo
   createdAt: string
 }
+
+export interface ApprovalOrderSummary {
+  totalPending: number
+  pendingJobDelay: number
+  pendingDataset: number
+  updatedAt: string
+}
 export interface ApprovalOrderReq {
   name: string
   type: string
@@ -52,10 +66,30 @@ export interface ApprovalOrderReviewReq {
 }
 
 export const listApprovalOrders = () => {
-  return apiV1Get<IResponse<ApprovalOrder[]>>('admin/approvalorder')
+  return fetchAllPages((page) =>
+    apiGetApprovalOrderPage({ page, page_size: 200, sort: '-createdAt', filters: {} }, true)
+  )
 }
 export const listMyApprovalOrder = () => {
-  return apiV1Get<IResponse<ApprovalOrder[]>>('approvalorder')
+  return fetchAllPages((page) =>
+    apiGetApprovalOrderPage({ page, page_size: 200, sort: '-createdAt', filters: {} })
+  )
+}
+export const apiGetApprovalOrderPage = (
+  params: RemoteTableParams,
+  admin = false,
+  signal?: AbortSignal
+) => {
+  return apiV1Get<IResponse<IPage<ApprovalOrder>>>(
+    admin ? 'admin/approvalorder' : 'approvalorder',
+    {
+      searchParams: buildRemoteSearchParams(params),
+      signal,
+    }
+  )
+}
+export const apiGetApprovalOrderSummary = (signal?: AbortSignal) => {
+  return apiV1Get<IResponse<ApprovalOrderSummary>>('admin/approvalorder/summary', { signal })
 }
 export const deleteApprovalOrder = (id: number) => {
   return apiV1Delete<IResponse<ApprovalOrder>>(`approvalorder/${id}`)

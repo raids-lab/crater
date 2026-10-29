@@ -15,6 +15,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/governance/modeldataset"
+	"github.com/raids-lab/crater/internal/pagination"
+	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
+	"github.com/raids-lab/crater/pkg/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	batchv1 "k8s.io/api/batch/v1"
@@ -22,20 +32,9 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
-
-	"k8s.io/client-go/kubernetes"
-
-	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/bizerr"
-	"github.com/raids-lab/crater/internal/governance/modeldataset"
-	"github.com/raids-lab/crater/internal/resputil"
-	"github.com/raids-lab/crater/internal/service"
-	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/config"
-	"github.com/raids-lab/crater/pkg/utils"
 )
 
 const (
@@ -82,6 +81,7 @@ func (mgr *ModelDownloadMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *ModelDownloadMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.POST("/models/download", mgr.CreateDownload)
 	g.GET("/models/downloads", mgr.ListDownloads)
+	g.GET("/models/downloads/summary", mgr.ListDownloadsSummary)
 	g.GET("/models/downloads/:id", mgr.GetDownload)
 	g.GET("/models/downloads/:id/logs", mgr.GetDownloadLogs)
 	g.POST("/models/downloads/:id/retry", mgr.RetryDownload)
@@ -91,7 +91,7 @@ func (mgr *ModelDownloadMgr) RegisterProtected(g *gin.RouterGroup) {
 }
 
 func (mgr *ModelDownloadMgr) RegisterAdmin(g *gin.RouterGroup) {
-	g.GET("/models/downloads", mgr.ListAllDownloads)
+	g.GET("/models/downloads", mgr.ListDownloads)
 	g.DELETE("/models/downloads/:id", mgr.AdminDeleteDownload)
 }
 
@@ -155,18 +155,12 @@ const (
 	ModelDownloadRelationSubmitted = "submitted"
 )
 
-type ListDownloadsReq struct {
-	Page     int    `form:"page"`
-	PageSize int    `form:"pageSize,default=20"`
-	Category string `form:"category"`
-	Status   string `form:"status"`
-	Search   string `form:"search"`
-}
-
 type ModelDownloadListResp struct {
-	Total   int64               `json:"total"`
-	Items   []ModelDownloadResp `json:"items"`
-	Summary map[string]int64    `json:"summary"`
+	Page     int                 `json:"page,omitempty"`
+	PageSize int                 `json:"page_size,omitempty"`
+	Total    int64               `json:"total"`
+	Items    []ModelDownloadResp `json:"items"`
+	Summary  map[string]int64    `json:"summary"`
 }
 
 func bindDownloadAction(c *gin.Context) (DownloadActionReq, error) {
@@ -664,98 +658,6 @@ func reusedDownloadMessage(
 		"Resource is already being downloaded from %s; reusing that download instead of starting one from %s.%s",
 		download.Source, requestedSource, revisionNote,
 	)
-}
-
-// ListDownloads godoc
-//
-//	@Summary		获取模型下载任务列表
-//	@Description	下载记录对全平台用户可见。带 page 参数时返回分页结构(含状态汇总),否则返回全量数组(兼容旧客户端)
-//	@Tags			ModelDownload
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			category	query		string	false	"过滤类别: model 或 dataset"
-//	@Param			page		query		int		false	"页码(从1开始);不传则返回全量数组"
-//	@Param			pageSize	query		int		false	"每页数量,默认20,最大100"
-//	@Param			status		query		string	false	"过滤状态: Pending/Downloading/Paused/Ready/Failed"
-//	@Param			search		query		string	false	"按名称模糊搜索"
-//	@Success		200	{object}	resputil.Response[ModelDownloadListResp]
-//	@Router			/v1/models/downloads [GET]
-//
-//nolint:gocyclo // Pagination, compatibility mode, filters, and permission enrichment share one endpoint contract.
-func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
-	token := util.GetToken(c)
-
-	var req ListDownloadsReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameter"))
-		return
-	}
-
-	q := query.ModelDownload
-	builder := q.WithContext(c).Preload(q.Creator)
-	if req.Category == CategoryModel || req.Category == CategoryDataset {
-		builder = builder.Where(q.Category.Eq(req.Category))
-	}
-
-	// 兼容模式(无 page 参数, 旧版 CLI/前端): 返回全量数组
-	if req.Page <= 0 {
-		downloads, err := builder.Order(q.CreatedAt.Desc()).Find()
-		if err != nil {
-			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list downloads failed"))
-			return
-		}
-		resp := make([]ModelDownloadResp, len(downloads))
-		for i, d := range downloads {
-			resp[i] = convertDownloadToResp(d, token)
-		}
-		if err := mgr.applyDownloadUserContext(c, downloads, resp, token); err != nil {
-			resputil.HandleError(c, err)
-			return
-		}
-		resputil.Success(c, resp)
-		return
-	}
-
-	if req.Status != "" {
-		builder = builder.Where(q.Status.Eq(req.Status))
-	}
-	if req.Search != "" {
-		builder = builder.Where(q.Name.Like("%" + req.Search + "%"))
-	}
-
-	const maxPageSize = 100
-	if req.PageSize <= 0 {
-		req.PageSize = 20
-	}
-	if req.PageSize > maxPageSize {
-		req.PageSize = maxPageSize
-	}
-
-	// 按更新时间倒序:刚重试/正在下载的任务排在最前
-	downloads, total, err := builder.Order(q.UpdatedAt.Desc()).FindByPage((req.Page-1)*req.PageSize, req.PageSize)
-	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list downloads failed"))
-		return
-	}
-
-	// 状态汇总只按 category 过滤,反映整体情况而不受搜索/状态筛选影响
-	summary, err := mgr.downloadStatusSummary(c, req.Category)
-	if err != nil {
-		klog.Warningf("count download status summary failed: %v", err)
-		summary = map[string]int64{}
-	}
-
-	items := make([]ModelDownloadResp, len(downloads))
-	for i, d := range downloads {
-		items[i] = convertDownloadToResp(d, token)
-	}
-	if err := mgr.applyDownloadUserContext(c, downloads, items, token); err != nil {
-		resputil.HandleError(c, err)
-		return
-	}
-
-	resputil.Success(c, ModelDownloadListResp{Total: total, Items: items, Summary: summary})
 }
 
 // downloadStatusSummary returns record counts grouped by status, optionally
@@ -1271,41 +1173,6 @@ func (mgr *ModelDownloadMgr) prepareResumeDownload(
 		return nil
 	})
 	return download, err
-}
-
-// ListAllDownloads godoc
-//
-//	@Summary		管理员获取所有模型下载任务
-//	@Description	管理员查看所有用户的模型下载任务
-//	@Tags			ModelDownload
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[[]ModelDownloadResp]
-//	@Router			/v1/admin/models/downloads [GET]
-func (mgr *ModelDownloadMgr) ListAllDownloads(c *gin.Context) {
-	token := util.GetToken(c)
-	q := query.ModelDownload
-
-	downloads, err := q.WithContext(c).
-		Preload(q.Creator).
-		Order(q.CreatedAt.Desc()).
-		Find()
-	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list downloads failed"))
-		return
-	}
-
-	resp := make([]ModelDownloadResp, len(downloads))
-	for i, d := range downloads {
-		resp[i] = convertDownloadToResp(d, token)
-	}
-	if err := mgr.applyDownloadUserContext(c, downloads, resp, token); err != nil {
-		resputil.HandleError(c, err)
-		return
-	}
-
-	resputil.Success(c, resp)
 }
 
 // AdminDeleteDownload godoc
@@ -2315,4 +2182,183 @@ func (mgr *ModelDownloadMgr) GetDownloadLogs(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, download.Logs)
+}
+
+type modelDownloadPageQuery struct {
+	Page     int    `form:"page,default=1" binding:"min=1"`
+	PageSize int    `form:"page_size,default=10" binding:"min=1,max=200"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
+	Category string `form:"category"`
+}
+
+var modelDownloadSortFields = map[string]string{
+	"name":      "model_downloads.name",
+	"category":  "model_downloads.category",
+	"status":    "model_downloads.status",
+	"sizeBytes": "model_downloads.size_bytes",
+	"createdAt": "model_downloads.created_at",
+	"updatedAt": "model_downloads.updated_at",
+}
+
+var modelDownloadStatuses = map[string]struct{}{
+	string(model.ModelDownloadStatusPending):     {},
+	string(model.ModelDownloadStatusDownloading): {},
+	string(model.ModelDownloadStatusPaused):      {},
+	string(model.ModelDownloadStatusReady):       {},
+	string(model.ModelDownloadStatusFailed):      {},
+}
+
+func modelDownloadSortClauses(sortValue string) []string {
+	return pagination.SortClauses(sortValue, modelDownloadSortFields, "model_downloads.id DESC")
+}
+
+func bindModelDownloadPageQuery(c *gin.Context) (modelDownloadPageQuery, []string, error) {
+	const legacyMaxPageSize, maxPageSize = 100, 200
+	var request modelDownloadPageQuery
+	if err := c.ShouldBindQuery(&request); err != nil {
+		return modelDownloadPageQuery{}, nil, bizerr.BadRequest.ParameterError.Wrap(
+			err,
+			"invalid model download list query",
+		)
+	}
+	var err error
+	if !c.Request.URL.Query().Has("page_size") {
+		var legacy struct {
+			PageSize int `form:"pageSize"`
+		}
+		if err := c.ShouldBindQuery(&legacy); err != nil {
+			return modelDownloadPageQuery{}, nil, bizerr.BadRequest.ParameterError.Wrap(err, "invalid pageSize")
+		}
+		request.PageSize = legacy.PageSize
+		if request.PageSize <= 0 {
+			request.PageSize = 20
+		}
+		if request.PageSize > legacyMaxPageSize {
+			request.PageSize = legacyMaxPageSize
+		}
+	} else {
+		request.PageSize, err = pagination.PageSizeAlias(c.Request.URL.Query(), request.PageSize, "pageSize", maxPageSize)
+		if err != nil {
+			return modelDownloadPageQuery{}, nil, err
+		}
+	}
+	request.Search, err = pagination.NormalizePageQuery(request.Search, request.Page, request.PageSize)
+	if err != nil {
+		return modelDownloadPageQuery{}, nil, err
+	}
+	if request.Category != "" && request.Category != CategoryModel && request.Category != CategoryDataset {
+		return modelDownloadPageQuery{}, nil, bizerr.BadRequest.ParameterError.New(
+			fmt.Sprintf("unsupported model download category %q", request.Category),
+		)
+	}
+	defaultSort := "-updatedAt"
+	if !pagination.Requested(c.Request.URL.Query()) {
+		defaultSort = "-createdAt"
+	}
+	request.Sort, err = pagination.DefaultAndValidateSort(request.Sort, defaultSort, modelDownloadSortFields)
+	if err != nil {
+		return modelDownloadPageQuery{}, nil, err
+	}
+
+	statuses := c.QueryArray("status")
+	for _, status := range statuses {
+		if _, ok := modelDownloadStatuses[status]; !ok {
+			return modelDownloadPageQuery{}, nil, bizerr.BadRequest.ParameterError.New(
+				fmt.Sprintf("unsupported model download status %q", status),
+			)
+		}
+	}
+	return request, statuses, nil
+}
+
+// ListDownloads returns model download records using the shared page protocol.
+//
+//	@Summary	分页获取模型下载任务
+//	@Description	Omitting page and page_size returns the complete legacy array.
+//	@Description	Legacy page/pageSize requests keep items, total and summary; canonical page_size adds page metadata.
+//	@Tags		ModelDownload
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		page		query	int		false	"Page number"
+//	@Param		page_size	query	int		false	"Page size, 1-200"
+//	@Param		pageSize	query	int		false	"Legacy page size, defaults to 20 and caps at 100"
+//	@Param		search		query	string	false	"Search download name"
+//	@Param		category	query	string	false	"Filter by model or dataset"
+//	@Param		status		query	string	false	"Filter by status; repeatable"
+//	@Param		sort		query	string	false	"Sort fields"
+//	@Success	200			{object}	resputil.Response[ModelDownloadListResp]
+//	@Router		/v1/model-download/models/downloads [get]
+//	@Router		/v1/admin/model-download/models/downloads [get]
+func (mgr *ModelDownloadMgr) ListDownloads(c *gin.Context) {
+	request, statuses, err := bindModelDownloadPageQuery(c)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	q := query.ModelDownload
+	db := q.WithContext(c).Preload(q.Creator)
+	if request.Category != "" {
+		db = db.Where(q.Category.Eq(request.Category))
+	}
+	if len(statuses) > 0 {
+		db = db.Where(q.Status.In(statuses...))
+	}
+	if request.Search != "" {
+		db = db.Where(q.Name.Lower().Like(util.ContainsPattern(request.Search)))
+	}
+	downloads, total, err := db.Order(pagination.SortFields(request.Sort, modelDownloadSortFields, "model_downloads.id DESC")...).
+		FindByPage(pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize))
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list model downloads failed"))
+		return
+	}
+	token := util.GetToken(c)
+	items := make([]ModelDownloadResp, len(downloads))
+	for i, download := range downloads {
+		items[i] = convertDownloadToResp(download, token)
+	}
+	if err := mgr.applyDownloadUserContext(c, downloads, items, token); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	if !pagination.Requested(c.Request.URL.Query()) {
+		resputil.Success(c, items)
+		return
+	}
+	summary, err := mgr.downloadStatusSummary(c, request.Category)
+	if err != nil {
+		klog.Warningf("count download status summary failed: %v", err)
+		summary = map[string]int64{}
+	}
+	response := ModelDownloadListResp{Items: items, Total: total, Page: request.Page, PageSize: request.PageSize, Summary: summary}
+	if !c.Request.URL.Query().Has("page_size") {
+		response.Page, response.PageSize = 0, 0
+	}
+	resputil.Success(c, response)
+}
+
+// ListDownloadsSummary returns status totals independently from list filters.
+//
+//	@Summary	获取模型下载任务状态汇总
+//	@Tags		ModelDownload
+//	@Produce	json
+//	@Security	Bearer
+//	@Param		category	query		string	false	"Filter by model or dataset"
+//	@Success	200			{object}	resputil.Response[map[string]int64]
+//	@Router		/v1/model-download/models/downloads/summary [get]
+func (mgr *ModelDownloadMgr) ListDownloadsSummary(c *gin.Context) {
+	category := c.Query("category")
+	if category != "" && category != CategoryModel && category != CategoryDataset {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New(
+			fmt.Sprintf("unsupported model download category %q", category),
+		))
+		return
+	}
+	summary, err := mgr.downloadStatusSummary(c, category)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "count download status summary failed"))
+		return
+	}
+	resputil.Success(c, summary)
 }

@@ -13,9 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+  type RemoteTableParams,
+  buildRemoteSearchParams,
+} from '@/components/query-table/remote-state'
+
+import { fetchAllPages } from '@/services/api/pagination'
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
 import { IResponse } from '../types'
+import type { IPage } from '../types'
 import { IUserAttributes } from './admin/user'
 import { Role } from './auth'
 import { QuotaResp } from './context'
@@ -60,7 +67,16 @@ export interface IAccount {
   expiredAt?: string
 }
 
-export const apiAdminAccountList = () => apiV1Get<IResponse<IAccount[]>>('admin/accounts')
+export const apiAdminAccountList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IAccount>>>('admin/accounts', {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
+
+export const apiAdminAccountListAll = (signal?: AbortSignal) =>
+  fetchAllPages((page) =>
+    apiAdminAccountList({ page, page_size: 200, sort: 'id', filters: {} }, signal)
+  )
 
 export const apiAccountCreate = (account: ICreateOrUpdateAccount) =>
   apiV1Post<IResponse<ICreateProjectResponse>>('admin/accounts', account)
@@ -121,8 +137,15 @@ export const apiUpdateUser = async (pid: number, user: IUserInAccountCreate) =>
 export const apiRemoveUser = async (pid: number, user: IUserInAccountCreate) =>
   apiV1Delete<IResponse<IUserInAccount>>(`admin/accounts/${pid}/${user.id}`)
 
-export const apiUserInProjectList = (pid: number) =>
-  apiV1Get<IResponse<IUserInAccount[]>>(`admin/accounts/userIn/${pid}`)
+export const apiUserInProjectList = (
+  pid: number,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IPage<IUserInAccount>>>(`admin/accounts/userIn/${pid}`, {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 export const apiUserOutOfProjectList = (pid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>(`admin/accounts/userOutOf/${pid}`)
@@ -156,8 +179,15 @@ export const apiUserUpdateAccountMemberPartial = (
 export const apiUserRemoveAccountMember = async (aid: number, user: IUserInAccountCreate) =>
   apiV1Delete<IResponse<IUserInAccount>>(`accounts/${aid}/users/${user.id}`)
 
-export const apiUserListAccountMembers = (aid: number) =>
-  apiV1Get<IResponse<IUserInAccount[]>>(`accounts/${aid}/users`)
+export const apiUserListAccountMembers = (
+  aid: number,
+  params: RemoteTableParams,
+  signal?: AbortSignal
+) =>
+  apiV1Get<IResponse<IPage<IUserInAccount>>>(`accounts/${aid}/users`, {
+    searchParams: buildRemoteSearchParams(params),
+    signal,
+  })
 
 export const apiUserListUsersOutOfAccount = (aid: number) =>
   apiV1Get<IResponse<IUserInAccount[]>>(`accounts/${aid}/users/out`)

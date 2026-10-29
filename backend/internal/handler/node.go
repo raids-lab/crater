@@ -242,11 +242,11 @@ func (mgr *NodeMgr) handleGetPods(c *gin.Context, fetcher func(context.Context, 
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			name	query		string					false	"节点名称"
-//	@Success		200		{object}	resputil.Response[any]	"成功返回值描述"
+//	@Param			name	path		string					true	"节点名称"
+//	@Success		200		{object}	resputil.Response[[]crclient.Pod]	"完整 Pod 列表"
 //	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
 //	@Failure		500		{object}	resputil.Response[any]	"其他错误"
-//	@Router			/v1/nodes/{name}/pod/ [get]
+//	@Router			/v1/nodes/{name}/pods [get]
 func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 	mgr.handleGetPods(c, mgr.nodeClient.GetPodsForNode, "Node List Pod")
 }
@@ -263,7 +263,7 @@ func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 //	@Success		200		{object}	resputil.Response[[]crclient.Pod]	"成功返回值描述"
 //	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
 //	@Failure		500		{object}	resputil.Response[any]	"其他错误"
-//	@Router			/admin/nodes/{name}/pods [get]
+//	@Router			/v1/admin/nodes/{name}/pods [get]
 func (mgr *NodeMgr) AdminGetPodsForNode(c *gin.Context) {
 	mgr.handleGetPods(c, mgr.nodeClient.AdminGetPodsForNode, "Admin Node List Pod")
 }

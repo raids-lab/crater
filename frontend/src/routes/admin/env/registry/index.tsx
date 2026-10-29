@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { KanikoListTable } from '@/components/image/registry'
 
-import { apiAdminDeleteKanikoList, apiAdminListKaniko } from '@/services/api/admin/imagepack'
+import { apiAdminDeleteKanikoList, apiAdminListKanikoPage } from '@/services/api/admin/imagepack'
 
 export const Route = createFileRoute('/admin/env/registry/')({
   component: RouteComponent,
@@ -11,7 +11,7 @@ export const Route = createFileRoute('/admin/env/registry/')({
 function RouteComponent() {
   return (
     <KanikoListTable
-      apiListKaniko={apiAdminListKaniko}
+      apiListKaniko={apiAdminListKanikoPage}
       apiRemoveKanikoList={apiAdminDeleteKanikoList}
       isAdminMode={true}
     />

@@ -139,7 +139,21 @@ func runAccountLs(cmd *cobra.Command, _ []string) error {
 }
 
 func runAdminAccountLs(cmd *cobra.Command, _ []string) error {
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "accounts", Path: api.AdminAccountsPrefix, Params: noParams, Table: printAccountTable})
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	accounts, err := client.ListAdminAccounts()
+	if err != nil {
+		return cliErrFromAPI(err)
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"accounts": accounts,
+		}))
+	}
+	printAccountTable(accounts)
+	return nil
 }
 
 func runAccountGet(cmd *cobra.Command, args []string) error {
@@ -165,7 +179,13 @@ func runAccountMembers(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	path := fmt.Sprintf("%s/%s/users", api.AccountsPrefix, api.UintPath(id))
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "members", Path: path, Params: noParams, Table: printAccountMemberTable})
+	return runRawRead(cmd, rawReadSpec{
+		PayloadKey: "members",
+		Path:       path,
+		Params:     noParams,
+		Table:      printAccountMemberTable,
+		AllPages:   true,
+	})
 }
 
 func runAdminAccountMembers(cmd *cobra.Command, args []string) error {
@@ -173,7 +193,13 @@ func runAdminAccountMembers(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "members", Path: fmt.Sprintf("%s/userIn/%s", api.AdminAccountsPrefix, api.UintPath(id)), Params: noParams, Table: printAccountMemberTable})
+	return runRawRead(cmd, rawReadSpec{
+		PayloadKey: "members",
+		Path:       fmt.Sprintf("%s/userIn/%s", api.AdminAccountsPrefix, api.UintPath(id)),
+		Params:     noParams,
+		Table:      printAccountMemberTable,
+		AllPages:   true,
+	})
 }
 
 func runAccountUsersOut(cmd *cobra.Command, args []string) error {

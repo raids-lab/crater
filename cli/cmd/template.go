@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/i18n"
+	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +26,21 @@ var templateLsCmd = &cobra.Command{Use: "ls", Short: "List job templates", Args:
 var templateGetCmd = &cobra.Command{Use: "get <id>", Short: "Get a job template", Args: exactArgs(1, "id"), RunE: runTemplateGet}
 
 func runTemplateLs(cmd *cobra.Command, _ []string) error {
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "templates", Path: api.JobTemplatePrefix + "/list", Params: noParams, Table: printTemplateTable})
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	templates, err := client.ListJobTemplates()
+	if err != nil {
+		return cliErrFromAPI(err)
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
+			"templates": templates,
+		}))
+	}
+	printTemplateTable(templates)
+	return nil
 }
 
 func runTemplateGet(cmd *cobra.Command, args []string) error {
@@ -36,9 +52,9 @@ func runTemplateGet(cmd *cobra.Command, args []string) error {
 }
 
 func printTemplateTable(data interface{}) {
-	fmt.Printf("%s %s %s %s\n", i18n.PadRight(i18n.T("table_id"), 8), i18n.PadRight(i18n.T("table_name"), 28), i18n.PadRight(i18n.T("table_owner"), 18), i18n.PadRight("CREATED", 22))
+	fmt.Printf("%s %s %s %s\n", i18n.PadRight(i18n.T("table_id"), 8), i18n.PadRight(i18n.T("table_name"), 28), i18n.PadRight(i18n.T("table_owner"), 18), "CREATED")
 	for _, row := range rawList(data) {
-		fmt.Printf("%s %s %s %s\n", i18n.PadRight(rawString(row, "id"), 8), i18n.PadRight(rawString(row, "name"), 28), i18n.PadRight(rawNestedString(row, "userInfo", "nickname"), 18), i18n.PadRight(rawString(row, "createdAt"), 22))
+		fmt.Printf("%s %s %s %s\n", i18n.PadRight(rawString(row, "id"), 8), i18n.PadRight(rawString(row, "name"), 28), i18n.PadRight(rawNestedString(row, "userInfo", "nickname"), 18), rawString(row, "createdAt"))
 	}
 }
 

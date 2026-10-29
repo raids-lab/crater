@@ -27,6 +27,26 @@ Detailed monitoring data and log records provide users with the basis to deeply 
 
 ![log_diagnosis](./assets/log_diagnosis.webp)
 
+## Browsing Paginated Lists
+
+### Templates, datasets, shared files, models, and images
+
+1. Open the relevant list and narrow the results with its search and filter controls. Paginated queries search, filter, and sort before returning the requested page; search is not limited to records on the current page.
+2. Use the page numbers, previous/next controls, and page-size selector below the list. The total counts records you can access under the current filters.
+3. On template, dataset, shared-file, and model pages, changing the search, owner filter, sort, or page size returns to page one. Existing permissions still govern template updates and deletion.
+
+The model overview groups models by organization. Open an organization to view its models. Model pages retain local search, filtering, and pagination; the overview total counts matching organizations.
+
+Account-member tables load one page at a time and support username search, sorting, and role and access-mode filters. Dataset shared-user tables still load the complete list and search, sort, and paginate locally. When adding members or sharing a dataset, the selector still shows the complete list of eligible users.
+
+Template, dataset, and shared-file lists preserve the requested page when a read fails and provide a Retry control. Select Retry to try again; missing data or an unavailable total after a failure does not mean a successful query found zero records. If deletion leaves the current page beyond the latest results, a successful reload moves to the last valid page.
+
+### Viewing node and Pod lists
+
+Node lists, node-detail Pods, and ordinary job-detail Pods retain complete-list reads. After a successful load, search, filters, and sorting apply to the complete list without selecting Load More first. Tables retain their existing local page controls and refresh behavior. Search respects the selected type and status filters; adjust or clear them to find other Pods. Refreshing reapplies the existing default filters.
+
+Each scheduler continues using its existing Pod read APIs. Administrator node-Pod views retain job, user, account, and lock information; regular user views retain their existing visibility scope.
+
 ## Table of Contents
 
 This manual can help cluster users learn how to access the platform, use interactive jobs and batch processing jobs, submit data, create images, and access VSCode extensions, among other functions.

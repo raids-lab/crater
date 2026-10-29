@@ -35,7 +35,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 共同语义：
 
 - `--page` 必须大于等于 `1`；`--page-size` 必须在对应命令允许范围内。分页参数与状态、类型等领域筛选参数会在发请求前一起校验；存在多个问题时按「用法错误聚合」返回一次 `usage_error`。
-- 服务端分页命令把分页和服务端支持的筛选参数传给 API；本地分页命令先取得端点返回的完整数组，再筛选、稳定排序（若命令另有排序约定）并分页。混合分页命令需要本地筛选时，会先顺序读取全部服务端候选页，再本地筛选并重新分页。
+- 服务端分页命令把分页和服务端支持的筛选参数传给 API；本地分页命令先完整读取端点列表（数据库分页端点由 CLI 自动聚合，节点和 Pod 等完整数组端点单次读取），再筛选、稳定排序（若命令另有排序约定）并分页。混合分页命令需要本地筛选时，会先顺序读取全部服务端候选页，再本地筛选并重新分页。
 - 默认 JSON 成功体在 `data` 中同时包含资源数组与 `pagination: {"page": N, "page_size": N, "total": N}`；`total` 是筛选后的总数。`--all-pages` 返回完整数组并省略 `pagination`。
 - 默认表格只展示当前页，并在末尾显示当前页码和筛选后的总数；`--all-pages` 不显示分页摘要。
 
@@ -78,8 +78,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 4,
-      "min_supported_backend_api_version": 3
+      "api_version": 5,
+      "min_supported_backend_api_version": 5
     }
   }
   ```
@@ -114,15 +114,15 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 4,
-      "min_supported_backend_api_version": 3
+      "api_version": 5,
+      "min_supported_backend_api_version": 5
     },
     "backend": {
       "product_version": "1.1.1",
       "short_commit_sha": "f42b0c2",
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
-      "api_version": 4,
+      "api_version": 5,
       "min_supported_cli_api_version": 3
     }
   }
@@ -443,9 +443,9 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `--page` (int, default `1`) / `--page-size` (int, default `15`, max `200`): 对过滤后的列表分页。
   - `--all-pages` (bool): 不截断，返回全部过滤结果。
 - **处理逻辑**:
-  - 调用 `/api/v1/nodes/{name}/pods`。
+  - 调用 `/api/v1/nodes/{name}/pods`，单次读取原有完整 Pod 数组，不发送服务端分页或游标参数；读取失败时返回错误。
   - 平台当前没有向普通用户暴露作业命名空间配置，因此 CLI 不猜测固定默认值；必须显式选择 `--namespace` 或 `--all-namespaces`。
-  - CLI 会从 owner reference 补齐缺失的控制器类型，先在本地执行命名空间、状态、类型和名称过滤，再按 Pod 名称、命名空间稳定排序并分页。
+  - CLI 在完整列表上执行命名空间、状态、类型和名称筛选，按名称与命名空间稳定排序，再应用原有本地 `--page` / `--page-size`。`--all-pages` 返回完整筛选结果，不需要用户逐页请求后端。
   - 默认模式以表格展示 Pod 名称、命名空间、IP、状态、类型和资源。
 - **`--json` 的 `data`**：`pods`（当前页数组）和 `pagination`（`page`、`page_size`、过滤后的 `total`）；`--all-pages` 时省略 `pagination`。
 - **状态**: [x] Completed
@@ -698,7 +698,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - Admin variants:
   - `crater admin image build-ls [--page N] [--page-size N] [--all-pages]`
   - `crater admin image build-remove --ids 1,2`
-- 两个构建列表保持接口返回顺序后在本地分页；`page-size` 默认 `15`、最大 `200`。
+- 两个构建列表先逐页读取原列表路径，再保持接口返回顺序在本地分页；`page-size` 默认 `15`、最大 `200`。
 - JSON payload keys: `builds`（列表非 `--all-pages` 时同时有 `pagination`）、`build`、`template`、`pod`、`message`.
 
 ### Image Record Commands
@@ -750,6 +750,8 @@ This section records the read-only API surface covered by the CLI after the broa
 - `crater account billing config <id>`: `/api/v1/accounts/{id}/billing/config`.
 - `crater account billing members <id>`: `/api/v1/accounts/{id}/billing/members`.
 - `crater admin account ls|get|members|users-out|quota`: `/api/v1/admin/accounts...`.
+- `crater account members <id>` and `crater admin account members <id>` read every server page and preserve complete member-list output; if any page fails, the command returns an error without partial results.
+- `crater admin account ls` 自动读取原列表路径的全部分页，保留 `data.accounts` 完整数组输出（空结果为 `[]`）；任意页失败时返回错误，不输出部分成功结果。
 - `crater admin account billing config|members <id>`: `/api/v1/admin/accounts/{id}/billing/...`.
 - JSON payload keys: `accounts`, `account`, `members`, `users`, `quota`, `billing_config`.
 
@@ -759,23 +761,24 @@ This section records the read-only API surface covered by the CLI after the broa
 - `crater resource vgpu <id>`: `/api/v1/resources/{id}/vgpu`.
 - `crater resource prices`: `/api/v1/resources/billing/prices`.
 - `crater admin resource networks|vgpu <id>`: `/api/v1/admin/resources/{id}/...`.
-- JSON payload keys: `resources`, `networks`, `vgpu`, `prices`.
+- `resource ls` 单次读取原有完整资源数组，不发送分页参数。JSON payload keys: `resources`, `networks`, `vgpu`, `prices`.
 
 ### Dataset And Template Reads
-- `crater dataset ls`: `/api/v1/dataset/mydataset`.
+- `crater dataset ls`: `/api/v1/dataset/mydataset`，逐页聚合所有可见资源类型，保留完整 `datasets` 数组。
 - `crater dataset get <id>`: `/api/v1/dataset/detail/{id}`.
-- `crater dataset users <id>` / `queues <id>`: current share relationship reads.
-- `crater dataset users-out <id>` / `queues-out <id>`: unshared user/account candidate reads.
-- `crater admin dataset ls`: `/api/v1/admin/dataset/alldataset`.
-- `crater template ls`: `/api/v1/jobtemplate/list`.
+- `crater dataset users <id>`: `/api/v1/dataset/{id}/usersIn`，读取完整的已共享用户数组，保留 `data.users` 数组；此接口不使用服务端分页。`crater dataset queues <id>`: `/api/v1/dataset/{id}/queuesIn`.
+- `crater dataset users-out <id>`: `/api/v1/dataset/{id}/usersNotIn`; `crater dataset queues-out <id>`: `/api/v1/dataset/{id}/queuesNotIn`.
+- `crater admin dataset ls`: `/api/v1/admin/dataset/alldataset`，逐页聚合完整数组。
+- `crater template ls`: `/api/v1/jobtemplate/list`，按创建时间、ID 升序自动读取全部分页，保持完整列表输出。`--json` 的 `data.templates` 为数组，空结果为 `[]`；任何一页读取失败时返回 API 错误，不输出不完整的成功列表。
 - `crater template get <id>`: `/api/v1/jobtemplate/{id}`.
+- API 契约 5 引入本次整合的 CLI 数据库分页列表契约，覆盖模板、管理员用户/账户、数据集、镜像及镜像构建、审批工单、模型下载和 GPU 分析。对应完整列表命令会自动逐页聚合；依赖新数据库分页契约的读取不回退到旧数组响应，因此新 CLI 最低后端版本为 5。节点、节点 Pod 和资源规格继续使用原有完整列表接口。新后端复用同一路由和权限查询，未显式请求数据库分页的旧调用保留完整数组或 imageList、kanikoList 包装；模型下载与操作日志保留已有分页参数别名和响应。因此后端最低 CLI 版本保持原有的 3，兼容目标包括 API V4 CLI。API 版本头仅用于诊断，不改变响应格式或拦截业务请求。
 - JSON payload keys: `datasets`, `dataset`, `users`, `queues`, `templates`, `template`.
 
 ### Model Download Reads
 - `crater model-download ls [--category model|dataset] [--status STATUS] [--search TEXT] [--page N] [--page-size N] [--all-pages]`: `/api/v1/model-download/models/downloads`；这是 `download ls` 的兼容入口，复用相同的服务端分页、筛选和 JSON 契约，`page-size` 默认 `15`、最大 `100`。
 - `crater model-download get <id>`: `/api/v1/model-download/models/downloads/{id}`.
 - `crater model-download logs <id>`: `/api/v1/model-download/models/downloads/{id}/logs`.
-- `crater admin model-download ls [--category model|dataset] [--status STATUS] [--search TEXT] [--page N] [--page-size N] [--all-pages]`: `/api/v1/admin/model-download/models/downloads`；后端返回数组，CLI 完成本地筛选后分页，`page-size` 默认 `15`、最大 `100`。
+- `crater admin model-download ls [--category model|dataset] [--status STATUS] [--search TEXT] [--page N] [--page-size N] [--all-pages]`: `/api/v1/admin/model-download/models/downloads`；CLI 逐页获取服务端候选记录，完成本地筛选后分页，`page-size` 默认 `15`、最大 `100`。
 - 列表 JSON payload 包含 `downloads` 与当前页 `pagination`；普通列表还包含后端 `summary`。`--all-pages` 省略 `pagination`。其他 payload keys: `download`, `logs`.
 
 ### Context, Billing, User, And Approval Reads
@@ -790,6 +793,7 @@ This section records the read-only API surface covered by the CLI after the broa
 - `crater admin order ls` 支持相同的本地筛选和分页，并额外支持 `--creator TEXT`。普通用户 `order ls` 不提供 creator filter；两者的 `--search` 均匹配工单名称或创建者信息。
 - 工单列表默认按 `Pending`、`Approved`、`Rejected`、`Canceled` 分组，同状态按创建时间和 ID 倒序排列。
 - `crater admin user ls [--base] [--search TEXT] [--role Guest|User|Admin] [--status Pending|Active|Inactive] [--page N] [--page-size N] [--all-pages]`；搜索覆盖用户名与显示名，默认按 ID 倒序。`--base` 与 `--role` / `--status` 互斥。
+- 不带 `--base` 时自动读取 `/api/v1/admin/users` 的全部分页，再执行既有本地筛选、ID 排序和命令分页；任意页失败时返回错误，不输出部分列表。`--base` 保留独立的 `/baseinfo` 简要数组契约。
 - 上述工单和用户列表均先本地筛选再分页，`page-size` 默认 `15`、最大 `200`；JSON 当前页输出同时包含 `data.pagination`。
 - `crater admin billing status|jobs`, `crater admin order get <id>`, `crater admin user billing summary|accounts <username>`.
 
@@ -828,6 +832,7 @@ This section records the read-only API surface covered by the CLI after the broa
 - `crater admin queue-quotas`: `/api/v1/admin/queue-quotas`.
 - `crater admin gpu-analyses`: `/api/v1/admin/gpu-analysis`.
 - `crater admin operation-logs [--page N] [--limit N] [--operator USER] [--operation-type TYPE] [--target TARGET] [--start-time TIME] [--end-time TIME]`: `/api/v1/admin/operation-logs`.
+- 操作日志的 `--limit` 保留原命令名，对应后端 `page_size`；`data.operation_logs` 保留 `items` / `total` 并包含 `page` / `page_size`。`admin gpu-analyses` 和审批工单完整列表通过同一分页接口逐页聚合。
 - `crater admin cronjobs`: `/api/v1/admin/operations/cronjob`.
 - `crater admin whitelist`: `/api/v1/admin/operations/whitelist`.
 - These commands surface existing admin GET APIs only. They do not perform update/delete/reconcile actions.
@@ -904,7 +909,7 @@ This section records the read-only API surface covered by the CLI after the broa
   - `bytes`（整数）：服务端完整接收并发布的字节数。
   - `overwrite`（布尔）：本次是否显式启用了覆盖选项。
   - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
-- **兼容性**：安全上传端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 3。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **兼容性**：安全上传端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 5。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
 - **状态**：[x] Completed
 
 ### `crater file mkdir <remote-path>`
@@ -963,5 +968,5 @@ This section records the read-only API surface covered by the CLI after the broa
   - 默认模式：展示已删除的规范化远端路径。
   - `--json`：stdout 仅输出成功信封；失败时 stdout 为空。
 - **`--json` 的 `data`**：`remote_path`（字符串）、`recursive`（布尔）。
-- **兼容性**：安全删除端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 3，不回退到旧 `/delete` 端点。
+- **兼容性**：安全删除端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 5，不回退到旧 `/delete` 端点。
 - **状态**：[x] Completed

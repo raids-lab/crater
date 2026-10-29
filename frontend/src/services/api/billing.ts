@@ -124,11 +124,15 @@ export const apiUpdateAccountBillingConfig = (
   data: { issueAmount?: number; issuePeriodMinutes?: number }
 ) => apiV1Put<IResponse<AccountBillingConfig>>(`accounts/${accountId}/billing/config`, data)
 
-export const apiAdminGetAccountBillingMembers = (accountId: number) =>
-  apiV1Get<IResponse<AccountBillingMember[]>>(`admin/accounts/${accountId}/billing/members`)
+export const apiAdminGetAccountBillingMembers = (accountId: number, userIds: number[]) =>
+  apiV1Get<IResponse<AccountBillingMember[]>>(`admin/accounts/${accountId}/billing/members`, {
+    searchParams: new URLSearchParams(userIds.map((userId) => ['user_id', String(userId)])),
+  })
 
-export const apiGetAccountBillingMembers = (accountId: number) =>
-  apiV1Get<IResponse<AccountBillingMember[]>>(`accounts/${accountId}/billing/members`)
+export const apiGetAccountBillingMembers = (accountId: number, userIds: number[]) =>
+  apiV1Get<IResponse<AccountBillingMember[]>>(`accounts/${accountId}/billing/members`, {
+    searchParams: new URLSearchParams(userIds.map((userId) => ['user_id', String(userId)])),
+  })
 
 export const apiAdminUpdateAccountBillingMemberIssueAmount = (
   accountId: number,
