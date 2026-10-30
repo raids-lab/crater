@@ -21,8 +21,12 @@ import (
 )
 
 // The pinned SDK follows only relative HEAD redirects. Some mirrors return an
-// absolute redirect without metadata; follow it without changing HF_ENDPOINT.
+// absolute redirect without metadata. Resolve subsequent relative redirects here
+// against the current response origin, rather than the SDK's original mirror URL.
 const huggingFaceHTTPClientScript = `
+from urllib.parse import urlsplit
+
+
 class HuggingFaceMetadataClient(httpx.Client):
     def send(self, request, **kwargs):
         response = super().send(request, **kwargs)
@@ -32,10 +36,19 @@ class HuggingFaceMetadataClient(httpx.Client):
         if request.method != "HEAD" or origin != configured_origin or "/resolve/" not in request.url.path:
             return response
         redirects = 0
-        while response.is_redirect and not response.headers.get("X-Repo-Commit"):
+        while response.is_redirect:
             next_request = response.next_request
             if next_request is None or next_request.url.scheme != "https":
                 return response
+            target = urlsplit(response.headers["Location"])
+            if (target.scheme or target.netloc) and response.headers.get("X-Repo-Commit"):
+                # Keep metadata-bearing CDN redirects for the SDK and Xet.
+                # A network-path reference needs a scheme before the SDK uses it.
+                if not target.scheme:
+                    response.headers["Location"] = str(next_request.url)
+                return response
+            # Relative redirects must use the current response origin even when
+            # they already carry a commit; returning them would rebase onto the mirror.
             if redirects >= self.max_redirects:
                 response.close()
                 raise httpx.TooManyRedirects("Too many Hub metadata redirects", request=request)
