@@ -72,8 +72,23 @@ func (m *Manager) Save() error {
 	if err := os.MkdirAll(filepath.Dir(m.Path), 0755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
-	if err := os.Chmod(m.Path, 0600); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to restrict state file permissions: %w", err)
+	file, err := os.CreateTemp(filepath.Dir(m.Path), ".state-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary state file: %w", err)
 	}
-	return os.WriteFile(m.Path, data, 0600)
+	defer os.Remove(file.Name())
+	defer file.Close()
+	if _, err := file.Write(data); err != nil {
+		return fmt.Errorf("failed to write state file: %w", err)
+	}
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("failed to sync state file: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close state file: %w", err)
+	}
+	if err := os.Rename(file.Name(), m.Path); err != nil {
+		return fmt.Errorf("failed to replace state file: %w", err)
+	}
+	return nil
 }

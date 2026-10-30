@@ -1,11 +1,26 @@
 ---
 title: Users and Accounts
-description: As the number of users increases, we may refine the details regarding quotas.
+description: Understand accounts and scheduling queues, and inspect or switch the current account with the CLI.
 ---
 
-During the closed beta phase, we have not yet opened the full quota capabilities for users and accounts. Currently, each user has no submission limits and is queued according to the FIFO rule, so you do not need to pay attention to this section.
+A user signs in with their own identity and can belong to multiple accounts. An account determines the scheduling queue and billing context. The current account determines the context for subsequent job submissions, account storage access, resource quotas, and billing queries.
 
-In the future, as the number of users increases, we may refine the details regarding quotas.
+## Inspect and switch accounts with the CLI
+
+With the Crater CLI already signed in, list your accounts, inspect the current account, and switch by account name:
+
+```bash
+crater account ls
+crater account current
+crater account use research
+crater account current
+```
+
+Replace `research` with an exact `name` returned by `account ls`, rather than a nickname or ID. A successful switch saves new credentials for the current login identity, and subsequent commands use the target account. Other saved identities stay unchanged. Scripts and AI agents can add `--json` and read the current account name from `data.context.queue`.
+
+Use `crater auth switch` to change platforms or login identities. Use `crater account use <name>` to switch accounts for the same user.
+
+## Users and accounts
 
 <Mermaid
   chart="

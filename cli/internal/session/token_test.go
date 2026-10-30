@@ -157,3 +157,34 @@ func mustStatePath(t *testing.T) string {
 	}
 	return filepath.Join(configHome, "crater", "state.json")
 }
+
+func TestReplaceTokenRejectsMissingCredentials(t *testing.T) {
+	testutil.IsolateUserConfigDir(t)
+	t.Setenv("CRATER_TEST_SANDBOX", "")
+	t.Setenv("CRATER_TEST_SANDBOX_SESSION", "")
+	active := ActiveContext{PlatformURL: "https://example.invalid", Username: "alice", Method: "ldap"}
+	if err := ReplaceToken(active, ""); !errors.Is(err, ErrNoToken) {
+		t.Fatalf("empty token: got %v, want ErrNoToken", err)
+	}
+	if err := ReplaceToken(active, "new-access"); !errors.Is(err, ErrAuthInfoNotFound) {
+		t.Fatalf("missing identity: got %v, want ErrAuthInfoNotFound", err)
+	}
+	if _, err := os.Stat(mustStatePath(t)); !os.IsNotExist(err) {
+		t.Fatalf("failed replacement created a state file: %v", err)
+	}
+}
+
+func TestReplaceTokenSandboxDoesNotTouchDisk(t *testing.T) {
+	testutil.IsolateUserConfigDir(t)
+	t.Setenv("CRATER_TEST_SANDBOX", "1")
+	st, err := LoadState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ReplaceToken(st.ActiveContext, "new-access"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(mustStatePath(t)); !os.IsNotExist(err) {
+		t.Fatalf("sandbox replacement touched disk: %v", err)
+	}
+}

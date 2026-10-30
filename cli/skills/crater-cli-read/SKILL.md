@@ -1,6 +1,6 @@
 ---
 name: crater-cli-read
-version: 1.3.3
+version: 1.3.4
 description: "Crater CLI 用户视图读取域：指导 AI Agent 通过 crater node、job、image、account、resource、dataset、model-download、pod 等用户可见命令查看平台只读信息。管理员视图请使用 crater-cli-admin-read。"
 metadata:
   requires:
@@ -52,6 +52,7 @@ crater image ls --page-size 15 --json
 crater image ls --available --type jupyter --json
 crater image build ls --page-size 15 --json
 crater account ls --json
+crater account current --json
 crater resource ls --with-vendor-domain --json
 crater dataset ls --json
 crater template ls --json
@@ -71,6 +72,7 @@ crater pod logs my-pod main --namespace team-workloads --tail 100 --json
 2. 需要机器解析时加 `--json --no-interactive`，读取 stdout 中的 `data.*` 对象，例如 `data.nodes`、`data.jobs`、`data.images`、`data.resources`。
 3. 公共分页列表默认每页 `15` 条，并返回 `data.pagination`。优先按页读取；只有明确需要完整结果时才使用 `--all-pages`。Job/download 使用服务端分页；Pod、工单、镜像、计费等数组列表会先完成命令约定的本地筛选再分页。
 4. `node pods` 必须显式提供 `--namespace` 或 `--all-namespaces`；直接 `pod containers|events|logs|ingresses|nodeports` 必须提供 `--namespace`，也兼容旧的显式 namespace 位置参数。平台没有向普通用户暴露全局作业命名空间配置，因此不要猜测固定默认值；`job get|pods|events|yaml` 按作业 API 定位并保留后端真实 namespace。
-5. Volcano 作业使用 `crater job`。AIJob/SPJob 读命令暂未暴露在本 Skill 中，避免错误使用不一致的后端 ID 契约。
-6. API 失败时根据 stderr JSON 的 `category`、`code`、`context.http_status` 判断是未登录、无权限、资源不存在还是服务端错误；`usage_error` 有 `context.issues` 时一次修正全部字段。
-7. 作业 `status` 为 `Pending` 时不能单独判断阶段：读取 `--json` 记录中的 `podGroupPhase`，`Pending` 为未准入、`Inqueue` 为已准入等待节点、`Running`/`Completed` 为节点已分配正在启动；这些是 PodGroup 阶段，不能作为 `--status` 的筛选值。完整状态含义见 crater-cli-job Skill 的 Job Status 一节。
+5. 用 `account current --json` 查看当前账户的 `data.context.queue`。需要切换账户时使用 `crater-cli-auth` 中的账户切换流程；`account use` 会修改本地凭据。
+6. Volcano 作业使用 `crater job`。AIJob/SPJob 读命令暂未暴露在本 Skill 中，避免错误使用不一致的后端 ID 契约。
+7. API 失败时根据 stderr JSON 的 `category`、`code`、`context.http_status` 判断是未登录、无权限、资源不存在还是服务端错误；`usage_error` 有 `context.issues` 时一次修正全部字段。
+8. 作业 `status` 为 `Pending` 时不能单独判断阶段：读取 `--json` 记录中的 `podGroupPhase`，`Pending` 为未准入、`Inqueue` 为已准入等待节点、`Running`/`Completed` 为节点已分配正在启动；这些是 PodGroup 阶段，不能作为 `--status` 的筛选值。完整状态含义见 crater-cli-job Skill 的 Job Status 一节。
