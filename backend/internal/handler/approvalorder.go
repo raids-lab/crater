@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"k8s.io/klog/v2"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
@@ -337,88 +339,108 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 	var req ApprovalOrderreq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		klog.Errorf("failed to bind request parameters: %v", err)
-		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid request parameters"))
 		return
 	}
 
 	// 1. 获取当前用户信息
 	token := util.GetToken(c)
 	if token.UserID == 0 {
-		resputil.Error(c, "cannot get user id", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("cannot get user id"))
 		return
 	}
 
 	if req.Type == model.ApprovalOrderTypeJob {
-		// The job is only looked up to reject orders for jobs that do not exist.
+		// Reject inactive jobs before attempting automatic approval.
 		jobDB := query.Job
-		_, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
+		job, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				resputil.BadRequestError(c, "job not found")
+				resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "job not found"))
 				return
 			}
 			klog.Errorf("failed to query job for approval order, userID: %d, jobName: %s, err: %v",
 				token.UserID, req.Name, err)
-			resputil.Error(c, "failed to query target job", resputil.NotSpecified)
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to query target job"))
+			return
+		}
+		if !mgr.isJobRunning(job.Status) {
+			resputil.HandleError(c, errApprovalOrderJobInactive)
 			return
 		}
 	}
 
 	// 2. 检查是否满足自动审批条件
-	autoApproved := false
-
 	canAutoApprove, err := mgr.checkAutoApprovalEligibility(c, token.UserID, &req)
 	if err != nil {
 		klog.Errorf("failed to check auto approval eligibility, userID: %d, err: %v", token.UserID, err)
-		resputil.Error(c, "failed to check recent orders", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to check recent orders"))
 		return
 	}
 
-	if canAutoApprove {
-		// 尝试锁定作业
-		if err := mgr.lockJobForApproval(c, req.Name, req.ExtensionHours); err != nil {
-			klog.Errorf("failed to lock job for auto approval, jobName: %s, err: %v", req.Name, err)
-			// 锁定失败时不进行自动审批，但继续创建工单
-		} else {
-			autoApproved = true
-		}
-	}
-
 	// 3. 创建审批工单
-	orderStatus := model.ApprovalOrderStatusPending
-	orderReason := ""
-
-	// 如果满足自动审批条件，则将工单状态设置为已批准,并添加备注
-	if autoApproved {
-		orderStatus = model.ApprovalOrderStatusApproved
-		orderReason = autoApprovalReason
-	}
-
 	order := model.ApprovalOrder{
 		Name:   req.Name,
 		Type:   req.Type,
-		Status: orderStatus,
+		Status: model.ApprovalOrderStatusPending,
 		Content: datatypes.NewJSONType(model.ApprovalOrderContent{
 			ApprovalOrderTypeID:         req.TypeID,
 			ApprovalOrderExtensionHours: req.ExtensionHours,
 			ApprovalOrderReason:         req.Reason,
 		}),
-		CreatorID:   token.UserID,
-		ReviewNotes: orderReason,
+		CreatorID: token.UserID,
 	}
 
-	if err := query.ApprovalOrder.WithContext(c).Create(&order); err != nil {
+	if err := mgr.createApprovalOrder(c, query.Q, &order, canAutoApprove); err != nil {
+		if errors.Is(err, errApprovalOrderJobInactive) || errors.Is(err, gorm.ErrRecordNotFound) {
+			resputil.HandleError(c, errApprovalOrderJobInactive)
+			return
+		}
 		klog.Errorf("failed to create approval order, userID: %d, err: %v", token.UserID, err)
-		resputil.Error(c, "failed to create approval order", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to create approval order"))
 		return
 	}
 
 	message := "create approvalorder successfully"
-	if autoApproved {
+	if order.Status == model.ApprovalOrderStatusApproved {
 		message = "create approvalorder successfully and auto-approved with job locked"
 	}
 
 	resputil.Success(c, message)
+}
+
+var errApprovalOrderJobInactive = bizerr.BadRequest.ParameterError.New("cannot create approval order for an inactive job")
+
+func (mgr *ApprovalOrderMgr) createApprovalOrder(
+	ctx context.Context, q *query.Query, order *model.ApprovalOrder, canAutoApprove bool,
+) error {
+	if order.Type != model.ApprovalOrderTypeJob {
+		return q.ApprovalOrder.WithContext(ctx).Create(order)
+	}
+
+	return q.Transaction(func(tx *query.Query) error {
+		// Hold the job row lock through the status check, lock extension, and order
+		// insertion so a rejected or failed request cannot leave an unrecorded extension.
+		j := tx.Job
+		job, err := j.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where(j.JobName.Eq(order.Name)).First()
+		if err != nil {
+			return err
+		}
+		if !mgr.isJobRunning(job.Status) {
+			return errApprovalOrderJobInactive
+		}
+		if canAutoApprove {
+			if err := mgr.lockJobForApproval(ctx, tx, job, order.Content.Data().ApprovalOrderExtensionHours); err != nil {
+				klog.Errorf("failed to lock job for auto approval, jobName: %s, err: %v", order.Name, err)
+				// Preserve pending orders when automatic locking is unavailable.
+			} else {
+				order.Status = model.ApprovalOrderStatusApproved
+				order.ReviewNotes = autoApprovalReason
+			}
+		}
+		return tx.ApprovalOrder.WithContext(ctx).Create(order)
+	})
 }
 
 type UpdateApprovalOrder struct {
@@ -878,8 +900,8 @@ func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 
 // checkAutoApprovalEligibility 检查是否满足自动审批条件
 func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID uint, req *ApprovalOrderreq) (bool, error) {
-	// 只有作业类型且延长时间小于12小时才可能自动审批
-	if req.Type != model.ApprovalOrderTypeJob || req.ExtensionHours >= 12 {
+	// 只有作业类型且延长时间不超过12小时才可能自动审批
+	if req.Type != model.ApprovalOrderTypeJob || req.ExtensionHours > 12 {
 		return false, nil
 	}
 
@@ -908,18 +930,12 @@ func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID
 }
 
 // lockJobForApproval 为审批工单锁定作业
-func (mgr *ApprovalOrderMgr) lockJobForApproval(c *gin.Context, jobName string, extensionHours uint) error {
-	jobDB := query.Job
-
-	// 查找作业
-	j, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(jobName)).First()
-	if err != nil {
-		return err
-	}
+func (mgr *ApprovalOrderMgr) lockJobForApproval(ctx context.Context, q *query.Query, j *model.Job, extensionHours uint) error {
+	jobDB := q.Job
 
 	// 检查是否已经永久锁定
 	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
-		return fmt.Errorf("job %s is already permanently locked", jobName)
+		return bizerr.Conflict.ResourceStatusError.New(fmt.Sprintf("job %s is already permanently locked", j.JobName))
 	}
 
 	// 检查延长小时数是否在合理范围内，防止整数溢出
@@ -939,10 +955,10 @@ func (mgr *ApprovalOrderMgr) lockJobForApproval(c *gin.Context, jobName string, 
 	lockTime = lockTime.Add(extensionDuration)
 
 	// 更新作业锁定时间
-	if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(jobName)).Update(jobDB.LockedTimestamp, lockTime); err != nil {
+	if _, err := jobDB.WithContext(ctx).Where(jobDB.ID.Eq(j.ID)).Update(jobDB.LockedTimestamp, lockTime); err != nil {
 		return err
 	}
 
-	klog.Infof("auto-locked job %s until %s", jobName, lockTime.Format("2006-01-02 15:04:05"))
+	klog.Infof("auto-locked job %s until %s", j.JobName, lockTime.Format("2006-01-02 15:04:05"))
 	return nil
 }
