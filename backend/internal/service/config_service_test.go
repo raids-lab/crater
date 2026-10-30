@@ -121,3 +121,30 @@ func TestParseSchedulerExtenderConfig_InvalidQueueQuotaFlag(t *testing.T) {
 		t.Fatalf("expected key name in error, got %v", err)
 	}
 }
+
+func TestKthenaInferenceEnabledDefaultsOffAndUpdates(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:kthena_inference_config?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&model.SystemConfig{}); err != nil {
+		t.Fatal(err)
+	}
+	service := NewConfigService(query.Use(db))
+
+	if service.IsKthenaInferenceEnabled(t.Context()) {
+		t.Fatal("Kthena inference feature should default to disabled")
+	}
+	if err := service.SetKthenaInferenceEnabled(t.Context(), true); err != nil {
+		t.Fatal(err)
+	}
+	if !service.IsKthenaInferenceEnabled(t.Context()) {
+		t.Fatal("Kthena inference feature should be enabled after update")
+	}
+	if err := service.SetKthenaInferenceEnabled(t.Context(), false); err != nil {
+		t.Fatal(err)
+	}
+	if service.IsKthenaInferenceEnabled(t.Context()) {
+		t.Fatal("Kthena inference feature should be disabled after update")
+	}
+}

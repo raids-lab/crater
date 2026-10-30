@@ -52,6 +52,7 @@ type Server struct {
 	accumulator   *sessionAccumulator
 	address       string
 	logger        logr.Logger
+	decisionMu    sync.Mutex
 
 	mu          sync.Mutex
 	session     *sessionState

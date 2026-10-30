@@ -2,6 +2,7 @@
   "pages": [
     "---과제 및 서비스---",
     "quick-start",
+    "inference-services",
     "---이미지 및 데이터---",
     "image",
     "...file",

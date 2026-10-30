@@ -27,16 +27,21 @@ type vote struct {
 // decide runs the design's vote order: per-user queue quota, then timeout blocking, then the capability
 // guard, which only decides whether to reserve. Every exit is either Reject or Abstain.
 func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
-	jobName := req.ownerJobName()
-	if jobName == "" {
-		return vote{status: voteAbstain, fields: []any{"podGroup", req.podGroupName(), "skip", "not owned by a vcjob"}}
-	}
-
-	if req.Namespace != config.GetConfig().Namespaces.Job {
+	if req != nil && req.Namespace != config.GetConfig().Namespaces.Job {
 		return vote{status: voteAbstain, fields: []any{
-			"job", jobName, "namespace", req.Namespace, "skip", "outside the job namespace",
+			"namespace", req.Namespace, "skip", "outside the job namespace",
 		}}
 	}
+	jobName, err := s.workloadName(ctx, req)
+	if err != nil {
+		return vote{status: voteReject, err: err, fields: []any{"podGroup", req.podGroupName(), "cause", "serving owner unavailable"}}
+	}
+	if jobName == "" {
+		return vote{status: voteAbstain, fields: []any{"podGroup", req.podGroupName(), "skip", "not a managed workload"}}
+	}
+	// A quota check and its reservation form one decision, including across concurrent callbacks.
+	s.decisionMu.Lock()
+	defer s.decisionMu.Unlock()
 
 	state, err := s.currentSession(ctx)
 	if err != nil {

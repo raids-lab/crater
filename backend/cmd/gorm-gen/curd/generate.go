@@ -53,6 +53,10 @@ func main() {
 		model.SystemConfig{},
 		model.QueueQuotaLimit{},
 		model.UserBanRecord{},
+		model.KthenaChatSession{},
+		model.KthenaChatMessage{},
+		model.KthenaInferenceTemplate{},
+		model.ServingUsage{},
 	)
 
 	// 执行并生成代码

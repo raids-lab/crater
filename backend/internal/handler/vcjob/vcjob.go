@@ -45,32 +45,34 @@ func init() {
 }
 
 type VolcanojobMgr struct {
-	name           string
-	client         client.Client
-	config         *rest.Config
-	kubeClient     kubernetes.Interface
-	imagePacker    packer.ImagePackerInterface
-	imageRegistry  imageregistry.ImageRegistryInterface
-	serviceManager crclient.ServiceManagerInterface
-	configService  *service.ConfigService
-	queueQuotaSvc  *service.QueueQuotaService
-	billingService *service.BillingService
-	userBanService *service.UserBanService
+	workloadNamespace string
+	name              string
+	client            client.Client
+	config            *rest.Config
+	kubeClient        kubernetes.Interface
+	imagePacker       packer.ImagePackerInterface
+	imageRegistry     imageregistry.ImageRegistryInterface
+	serviceManager    crclient.ServiceManagerInterface
+	configService     *service.ConfigService
+	queueQuotaSvc     *service.QueueQuotaService
+	billingService    *service.BillingService
+	userBanService    *service.UserBanService
 }
 
 func NewVolcanojobMgr(conf *handler.RegisterConfig) handler.Manager {
 	return &VolcanojobMgr{
-		name:           "vcjobs",
-		client:         conf.Client,
-		config:         conf.KubeConfig,
-		kubeClient:     conf.KubeClient,
-		imagePacker:    conf.ImagePacker,
-		imageRegistry:  conf.ImageRegistry,
-		serviceManager: conf.ServiceManager,
-		configService:  conf.ConfigService,
-		queueQuotaSvc:  conf.QueueQuotaService,
-		billingService: conf.BillingService,
-		userBanService: conf.UserBanService,
+		workloadNamespace: config.GetConfig().Namespaces.Job,
+		name:              "vcjobs",
+		client:            conf.Client,
+		config:            conf.KubeConfig,
+		kubeClient:        conf.KubeClient,
+		imagePacker:       conf.ImagePacker,
+		imageRegistry:     conf.ImageRegistry,
+		serviceManager:    conf.ServiceManager,
+		configService:     conf.ConfigService,
+		queueQuotaSvc:     conf.QueueQuotaService,
+		billingService:    conf.BillingService,
+		userBanService:    conf.UserBanService,
 	}
 }
 
@@ -180,23 +182,14 @@ const (
 
 type Forward = vcjobservice.Forward
 
-func (mgr *VolcanojobMgr) checkBillingBeforeCreate(c *gin.Context, userID, accountID uint) error {
-	if mgr.billingService == nil {
-		return nil
-	}
-	return mgr.billingService.OnJobCreateCheck(c.Request.Context(), userID, accountID)
-}
-
 func (mgr *VolcanojobMgr) preCheckCreateJob(
 	c *gin.Context,
 	token util.JWTMessage,
 	requireInteractiveLimit bool,
 ) bool {
-	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityJobSubmission) {
-		return false
-	}
-	if err := mgr.checkBillingBeforeCreate(c, token.UserID, token.AccountID); err != nil {
-		resputil.Error(c, err.Error(), resputil.BusinessLogicError)
+	if err := service.CheckWorkloadSubmission(c.Request.Context(), mgr.userBanService, mgr.billingService,
+		mgr.queueQuotaSvc, token.UserID, token.AccountID); err != nil {
+		resputil.HandleError(c, err)
 		return false
 	}
 	if requireInteractiveLimit {

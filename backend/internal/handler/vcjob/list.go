@@ -37,9 +37,13 @@ type jobListQuery struct {
 	Search   string   `form:"search"`
 	Days     *int     `form:"days" binding:"omitempty,eq=-1|gt=0"`
 	JobTypes []string `form:"job_type" binding:"max=20,dive,required"`
-	Statuses []string `form:"status" binding:"max=20,dive,required"`
-	Node     *string  `form:"node"`
-	sorts    []jobSort
+	// WorkloadKinds is only consumed by the unified workload list. Keeping it
+	// in the shared query makes the new endpoint accept the same filters as the
+	// existing job list without changing the latter's response contract.
+	WorkloadKinds []string `form:"workload_kind" binding:"max=20,dive,required"`
+	Statuses      []string `form:"status" binding:"max=20,dive,required"`
+	Node          *string  `form:"node"`
+	sorts         []jobSort
 }
 
 type jobSort struct {
@@ -124,9 +128,16 @@ func parseJobSort(raw string) ([]jobSort, error) {
 func validateJobListEnums(request *jobListQuery) error {
 	for _, value := range request.JobTypes {
 		switch value {
-		case "jupyter", "webide", "pytorch", "tensorflow", "kuberay", "deepspeed", "openmpi", "custom":
+		case "jupyter", "webide", "pytorch", "tensorflow", "kuberay", "deepspeed", "openmpi", "custom", "model-deployment":
 		default:
 			return bizerr.BadRequest.ParameterError.New("unsupported job_type " + strconv.Quote(value))
+		}
+	}
+	for _, value := range request.WorkloadKinds {
+		switch value {
+		case workloadKindVolcanoJob, workloadKindKthenaInference:
+		default:
+			return bizerr.BadRequest.ParameterError.New("unsupported workload_kind " + strconv.Quote(value))
 		}
 	}
 	for _, value := range request.Statuses {
@@ -268,6 +279,8 @@ func jobFacetQuery(source *jobListQuery, facet string) jobListQuery {
 		request.JobTypes = nil
 	case "status":
 		request.Statuses = nil
+	case "workload_kind":
+		request.WorkloadKinds = nil
 	}
 	return request
 }
