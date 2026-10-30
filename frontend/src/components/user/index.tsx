@@ -20,6 +20,7 @@ import { useAtomValue } from 'jotai'
 import {
   Activity,
   Calendar,
+  ChartLineIcon,
   Database,
   GpuIcon,
   List,
@@ -36,6 +37,7 @@ import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page
 import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
 // 引入新的通用组件
 import { StatisticsDashboard } from '@/components/statistics/statistics-dashboard'
+import TensorboardPanelList from '@/components/tensorboard/tensorboard-panel-list'
 
 import { Role } from '@/services/api/auth'
 import { apiGetUser } from '@/services/api/user'
@@ -59,6 +61,7 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
   const currentUser = useAtomValue(atomUserInfo)
   const grafanaUser = useAtomValue(configGrafanaUserAtom)
   const isAdminView = useIsAdmin()
+  const isCurrentUserProfile = !isAdminView && currentUser?.name === name
   // TODO: 这两个标签页对应的能力尚未实现，先在正式版本中隐藏（管理员/用户视图都隐藏）。
   // 等 SharedItems / RecentActivity 真实可用后，再把该开关改为可配置项（feature flag / config）。
   const hideUnimplementedTabs = true
@@ -145,6 +148,17 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
       children: <UserJobsOverview username={name} />,
       scrollable: true,
     },
+    ...(isCurrentUserProfile
+      ? [
+          {
+            key: 'tensorboard',
+            icon: ChartLineIcon,
+            label: t('userDetail.tabs.tensorboard'),
+            children: <TensorboardPanelList />,
+            scrollable: true,
+          },
+        ]
+      : []),
     {
       key: 'ban-history',
       icon: ShieldBanIcon,

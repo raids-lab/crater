@@ -1,0 +1,64 @@
+---
+title: 部署与运维 TensorBoard 面板
+description: 配置 TensorBoard 镜像、鉴权、调度、TTL、升级与回滚
+---
+
+<ChartBadge />
+
+## 镜像与调度
+
+动态创建的 TensorBoard Pod 使用以下 Helm values：
+
+- `images.tensorboard.repository` 与 `images.tensorboard.tag`
+- 全局 `imagePullPolicy` 与 `imagePullSecrets`
+- TensorBoard 专用的 `tensorboard.nodeSelector`、`tensorboard.tolerations` 与 `tensorboard.affinity`
+- TensorBoard Ingress 鉴权开关 `tensorboard.ingressAuthEnabled`（默认 `true`）
+- 连续未访问时限 `tensorboard.idleTimeoutSeconds`（正整数秒，默认 `57600`，即 16 小时）
+
+私有镜像的 pull secret 必须存在于作业命名空间。面板会提交到所有者对应的 Volcano 队列。默认 affinity 倾向无 GPU 节点，但不会强制落到 control-plane；如有专用服务节点，请覆盖 TensorBoard 专用调度值，并通过 Pod 的实际节点与事件验证配置。
+
+## 访问鉴权
+
+TensorBoard Ingress 通过 ingress-nginx external auth 回调 Crater。每次打开面板时，受保护 API 先校验用户与面板所有权，再签发 Secure、HttpOnly、SameSite=Strict 且限定到面板路径的短期 Cookie。必须部署 ingress-nginx，并为 Crater 域名正确配置 HTTPS/TLS；随机 URL 不是安全边界。
+
+共享、测试和生产环境必须保持 `tensorboard.ingressAuthEnabled: true`。将其设为 `false` 会移除 Ingress 的 external-auth 注解，使持有 URL 的访问者绕过 Crater 登录态和所有权校验；该值仅可用于网络明确隔离的本地开发环境。
+
+建议使用两个普通用户和未登录窗口验证：他人的面板返回拒绝，未登录窗口无法访问，删除或过期后原 URL 立即失效。
+
+## TTL 与状态
+
+镜像须提供可通过 `python` 调用的 Python 3 和 TensorBoard。启动器代理仅支持 HTTP，不支持 WebSocket 升级；并发连接上限为 32，Socket 超时为 60 秒。默认 TensorBoard 页面和 scalar API 已验证，自定义插件及较慢的数据请求应额外测试。
+
+每个面板是一个申请 100m CPU、256Mi 内存的单 Pod Volcano Job。容器内启动器启动 TensorBoard，并通过本地 HTTP 代理在内存中记录访问时间，不逐请求写数据库或 Kubernetes。连续 16 小时未访问（可配置）或启动器运行满四天时，启动器终止 TensorBoard 并以 0 退出，使 Pod 为 Succeeded、VCJob 为 Completed；真实启动或运行错误仍为 Failed。排队和镜像拉取时间不计入启动器运行时间。
+
+用户页面、静态资源和数据请求会更新活动时间，独立健康探针及 Crater 面板列表轮询不会更新。浏览器后台自动刷新也算访问；关闭标签页不是立即删除，而是从最后一次请求开始计空闲时间。访问只延后空闲到期，不延后四天上限。`tensorboard.idleTimeoutSeconds` 只影响新建面板，例如隔离测试环境可临时设为 `60` 来验证回收，验证后恢复默认值。
+
+Job 的 `TaskCompleted → CompleteJob` 策略完成状态流转，Volcano 通过 `ttlSecondsAfterFinished: 300` 在五分钟后删除终止 Job；Service 和 Ingress 通过 owner reference 级联清理。面板结束后不再提供 HTTP 服务。用户仍可随时通过删除接口直接删除 VCJob 并停止 Pod，不删除来源日志。Pod 的 `activeDeadlineSeconds` 仅作为四天加一小时的故障兜底，不用于正常到期；兜底触发仍可能是 Failed。每个用户最多保有 10 个等待中或活动面板。当前版本仅管理 VCJob 面板，不再运行旧面板的过期 GC。
+
+API 的 `pending`、`starting`、`ready`、`completed`、`failed`、`expired` 状态来自 Volcano Job 阶段与 Pod Ready 条件；其中 `pending` 与普通 VCJob 的 Pending 阶段一致。目前不综合 Service、Ingress 或 EndpointSlice 健康度。故障排查还应检查 Volcano 队列、Pod 事件、Service endpoints 和 Ingress controller 日志。
+
+启动器正常到期和其他正常退出均返回 `completed`，页面复用普通作业的绿色“已完成”；原因仍区分 `idle_expired`、`runtime_expired` 和 `completed`。`expired` 仅保留给故障兜底到期路径。结束原因从容器 termination message 读取，不新增活动上报 API。
+
+TensorBoard 是辅助工作负载，不纳入普通作业列表、数量与作业资源用量汇总；查询也排除历史 TensorBoard 记录。集群实际 CPU、内存和队列资源占用仍如实统计。无需删除历史数据库记录。
+
+## 升级与回滚
+
+按 **backend → frontend** 顺序升级。升级前应清理历史面板，确认保留的 TensorBoard 面板均为 VCJob。
+
+回滚到不支持 VCJob 面板的旧 backend 前，应先记录并确认待清理的面板：
+
+```bash
+kubectl -n <job-namespace> get jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+```
+
+delete 命令会删除列出的全部 TensorBoard 面板，执行前必须确认影响范围。旧 backend 无法列出、鉴权或删除 VCJob 面板；面板日志保留在来源存储中。
+
+## 发布前验证
+
+- 使用非默认镜像仓库、pull secret 和实际目标 tag 创建面板。
+- 在带 control-plane taint 的集群确认 Pod 落点。
+- 覆盖个人目录、单/多来源、同名作业、TensorFlow PS、排队/就绪/完成/失败/过期状态、四天回收、并发配额和异常路径。
+- 在面板前放置无法调度的大 GPU 作业，确认集群仍有兼容 CPU/内存时，小型 CPU 面板可以启动。
+- 对 Chart 执行 lint 和 template，并确认渲染后的 backend 配置包含镜像、pull policy、pull secrets、`ingressAuthEnabled` 与调度字段。
+- 用短空闲时限验证：持续访问会续期，只有探针时仍会结束；到期后 Pod exit code 为 0、VCJob 为 Completed，五分钟后资源级联删除；同时验证手动删除和真实进程失败。

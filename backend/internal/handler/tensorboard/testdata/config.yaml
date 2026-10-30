@@ -1,0 +1,27 @@
+host: crater.example.test
+port: ":8088"
+namespaces:
+  job: runtime-test-jobs
+  image: runtime-test-images
+auth:
+  token:
+    accessTokenSecret: FAKE-TEST-ACCESS-SECRET
+    refreshTokenSecret: FAKE-TEST-REFRESH-SECRET
+  normal:
+    allowLogin: true
+postgres:
+  host: database.invalid
+  port: "5432"
+  dbname: runtime-test
+  user: fake-test-user
+  password: FAKE-TEST-PASSWORD
+storage:
+  pvc:
+    readWriteMany: runtime-test-storage
+  prefix:
+    user: users
+    account: accounts
+    public: public
+secrets:
+  tlsSecretName: runtime-test-tls
+  tlsForwardSecretName: runtime-test-forward-tls
