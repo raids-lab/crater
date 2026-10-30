@@ -210,29 +210,24 @@ export default function TensorboardPanelList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">{t('tensorboard.list.title')}</h2>
-          <p className="text-muted-foreground">
-            {t('tensorboard.list.description', {
-              count: activeTensorboardCount,
-              limit: MAX_ACTIVE_TENSORBOARDS,
-            })}
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <Button
-            disabled={hasReachedLimit}
-            title={
-              hasReachedLimit
-                ? t('tensorboard.list.limitReached', { count: MAX_ACTIVE_TENSORBOARDS })
-                : undefined
-            }
-            onClick={() => navigate({ to: '/portal/jobs/new/tensorboard' })}
-          >
-            <PlusIcon className="mr-2 size-4" /> {t('tensorboard.list.create')}
-          </Button>
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-muted-foreground text-sm">
+          {t('tensorboard.list.description', {
+            count: activeTensorboardCount,
+            limit: MAX_ACTIVE_TENSORBOARDS,
+          })}
+        </p>
+        <Button
+          disabled={hasReachedLimit}
+          title={
+            hasReachedLimit
+              ? t('tensorboard.list.limitReached', { count: MAX_ACTIVE_TENSORBOARDS })
+              : undefined
+          }
+          onClick={() => navigate({ to: '/portal/jobs/new/tensorboard' })}
+        >
+          <PlusIcon className="mr-2 size-4" /> {t('tensorboard.list.create')}
+        </Button>
       </div>
 
       <DataTable<TensorboardInfo, unknown>

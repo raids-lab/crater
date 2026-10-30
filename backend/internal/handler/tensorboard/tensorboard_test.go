@@ -134,6 +134,12 @@ func TestIsOwnedTensorboardURL(t *testing.T) {
 }
 
 func TestAuthorizeIngress(t *testing.T) {
+	previousMode := gin.Mode()
+	t.Cleanup(func() { gin.SetMode(previousMode) })
+	t.Setenv("CRATER_DEBUG_CONFIG_PATH", "testdata/config.yaml")
+	// Load the fake test configuration before Gin test mode selects the deployment config path.
+	gin.SetMode(gin.DebugMode)
+	config.GetConfig()
 	gin.SetMode(gin.TestMode)
 	accessToken, _, err := interutil.GetTokenMgr().CreateTokens(&interutil.JWTMessage{
 		Username: "alice",

@@ -648,10 +648,8 @@ func (c *Config) ValidateConfig() error {
 		}
 	}
 
-	if c.SchedulerPlugins.SEACS.Enable {
-		if c.SchedulerPlugins.SEACS.PredictionServiceAddress == "" {
-			errors = append(errors, "schedulerPlugins.spjob.predictionServiceAddress is required when SEACS is enabled")
-		}
+	if c.SchedulerPlugins.SEACS.Enable && c.SchedulerPlugins.SEACS.PredictionServiceAddress == "" {
+		errors = append(errors, "schedulerPlugins.spjob.predictionServiceAddress is required when SEACS is enabled")
 	}
 
 	// Return validation errors if any
@@ -742,6 +740,7 @@ func (c *Config) logConfigWarnings() {
 //
 //nolint:gocyclo // The summary intentionally prints optional configuration sections independently.
 func (c *Config) PrintConfig() {
+	klog.Infof("Gin mode: %s", gin.Mode())
 	klog.Info("=== Configuration Summary ===")
 
 	// Basic configuration

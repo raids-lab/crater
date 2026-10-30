@@ -21,7 +21,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -560,12 +562,34 @@ func normalizeTensorboardName(name string) (string, error) {
 	return name, nil
 }
 
+// resolveTensorboardIngressAuth applies the existing Gin debug mode only to new panel ingresses.
+func resolveTensorboardIngressAuth(cfg *config.TensorboardConfig) (bool, error) {
+	if !config.IsDebugMode() {
+		return cfg.IsIngressAuthEnabled(), nil
+	}
+	value := os.Getenv("CRATER_DEV_TENSORBOARD_INGRESS_AUTH")
+	if value == "" {
+		return true, nil
+	}
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, bizerr.Internal.K8sServiceError.New(
+			"TensorBoard development ingress authentication option must be a boolean",
+		)
+	}
+	return enabled, nil
+}
+
 func (svc *TensorboardService) Create(
 	ctx context.Context,
 	token interutil.JWTMessage,
 	req *payload.CreateTensorboardReq,
 ) (*payload.CreateTensorboardResp, error) {
 	name, err := normalizeTensorboardName(req.Name)
+	if err != nil {
+		return nil, err
+	}
+	ingressAuthEnabled, err := resolveTensorboardIngressAuth(&config.GetConfig().Tensorboard)
 	if err != nil {
 		return nil, err
 	}
@@ -634,7 +658,7 @@ func (svc *TensorboardService) Create(
 	cfg := config.GetConfig()
 	host := cfg.Host // Global domain mapped from server config
 	ingressOptions := make([]crclient.IngressOptions, 0, 1)
-	if cfg.Tensorboard.IsIngressAuthEnabled() {
+	if ingressAuthEnabled {
 		ingressOptions = append(ingressOptions, crclient.IngressOptions{Annotations: map[string]string{
 			"nginx.ingress.kubernetes.io/auth-url":    "https://$host" + tensorboardAuthPath,
 			"nginx.ingress.kubernetes.io/auth-method": "GET",

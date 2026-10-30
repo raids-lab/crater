@@ -16,11 +16,13 @@ The TensorFlow PS template lets worker-0 (the chief) write summaries by default 
 ## Creating a panel
 
 1. Open the **TensorBoard** creation page. Enter the required **Panel name** (1–40 characters; Unicode is supported). Duplicate names are allowed. The personal list and delete confirmation show the name and independent ID; names do not change log paths, access URLs, or permissions.
-2. Enter a personal directory or select jobs owned by the current user. Open the source-job dropdown and type a name in its top search box to search all historical jobs. The selector initially shows the latest 50 jobs and shows up to 50 matches per query. Options show the user-defined name and unique job ID, and either field can be searched. IDs distinguish jobs with the same name, and selected names are retained when search results change.
+2. Enter a personal directory or click **Browse personal directories** to select an existing one. You can also select jobs owned by the current user. Open the source-job dropdown and type a name in its top search box to search all historical jobs. The selector initially shows the latest 50 jobs and shows up to 50 matches per query. Options show the user-defined name and unique job ID, and either field can be searched. IDs distinguish jobs with the same name, and selected names are retained when search results change.
 3. Add zero to ten sources. Multiple job sources are mounted under `/tensorboard-runs/<job-name>`, where TensorBoard discovers runs recursively.
 4. Submit the panel. It joins your scheduling queue and runs for at most four days after the launcher starts; inactivity can end it earlier. Each user can keep at most ten pending or active panels.
 
-A personal directory must be inside the current user's `/home/<user>` tree. A job source may reference only the user's own job and storage mounts that job is allowed to use. The creation page does not inspect directory contents, so verify that each path exists and contains TensorBoard event files.
+A personal directory must be inside the current user's `/home/<user>` tree. The browser lets you enter subdirectories, go up, return to the personal workspace root, and filter the current directory's children by name. Click **Use current directory** to fill in the path. If browsing fails, retry or cancel and enter a path manually. Creating a panel does not require successful browsing; you may also enter a directory that your training process will create.
+
+A job source may reference only the user's own job and storage mounts that job is allowed to use. Use its suggested log directory or enter one manually; browsing arbitrary job PVCs is not supported. Directory browsing does not check for event files, so ensure your training process writes logs to the selected path.
 
 ## Status, access, and cleanup
 

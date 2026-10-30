@@ -17,6 +17,20 @@
 export const TensorboardLogDirEnv = 'TENSORBOARD_LOGDIR'
 export const TensorboardJobNamePlaceholder = '__CRATER_JOB_NAME__'
 
+// Only personal panels share the storage API's logical "user" root.
+export const getTensorboardPersonalStoragePath = (logDir: string, username?: string) => {
+  if (!username || /[\\/]/.test(username)) return null
+  const trimmed = logDir.trim()
+  if (!trimmed.startsWith('/') || trimmed.includes('\\')) return null
+  const segments = trimmed.split('/').filter(Boolean)
+  if (segments.some((segment) => segment === '.' || segment === '..')) return null
+  const cleanLogDir = `/${segments.join('/')}`
+  const personalRoot = `/home/${username}`
+  if (cleanLogDir === personalRoot) return 'user'
+  if (!cleanLogDir.startsWith(`${personalRoot}/`)) return null
+  return `user/${cleanLogDir.slice(personalRoot.length + 1)}`
+}
+
 interface EnvironmentVariable {
   name: string
   value: string

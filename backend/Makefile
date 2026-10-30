@@ -2,6 +2,7 @@ KUBECONFIG_PATH := $(if $(KUBECONFIG),$(KUBECONFIG),${PWD}/kubeconfig)
 KUBECONFIG_FILES := $(subst :, ,$(KUBECONFIG_PATH))
 MISSING_KUBECONFIG_FILES := $(filter-out $(wildcard $(KUBECONFIG_FILES)),$(KUBECONFIG_FILES))
 CONFIG_FILE := ./etc/debug-config.yaml
+GIN_MODE ?= debug
 CACHE_DIR := $(PWD)/.cache
 GOCACHE ?= $(CACHE_DIR)/go-build
 GOLANGCI_LINT_CACHE ?= $(CACHE_DIR)/golangci-lint
@@ -173,7 +174,7 @@ docs: swaggo ## Generate docs docs.
 .PHONY: run
 run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host.
 	@echo "$(GREEN)🚀 Starting crater backend server...$(RESET)"
-	KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
+	GIN_MODE="$(GIN_MODE)" KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
 pre-commit-check: lint docs test-tensorboard-launcher ## Run lint, generate docs, and test the TensorBoard launcher.
@@ -238,7 +239,7 @@ $(SWAGGO): $(LOCALBIN)
 .PHONY: run-storage
 run-storage: prepare fmt imports ## Run storage server from backend module.
 	@echo "$(GREEN)Starting crater storage server...$(RESET)"
-	go run -ldflags="$(VERSION_LDFLAGS)" cmd/storage-server/main.go
+	GIN_MODE="$(GIN_MODE)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/storage-server/main.go
 
 .PHONY: build-storage
 build-storage: fmt lint ## Build storage server binary.
