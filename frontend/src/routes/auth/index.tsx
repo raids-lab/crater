@@ -15,7 +15,7 @@
  */
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { HelpCircle } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -37,11 +37,11 @@ import CraterText from '@/components/icon/crater-text'
 import NotFound from '@/components/placeholder/not-found'
 
 import { AuthMode } from '@/services/api/auth'
+import { authText } from '@/services/auth-text'
 import { queryAuthMode } from '@/services/query/auth'
 
 import { useTheme } from '@/utils/theme'
 
-import { ForgotPasswordForm } from './-components/forgot-password-form'
 import { LoginForm } from './-components/login-form'
 import { SignupForm } from './-components/signup-form'
 
@@ -63,6 +63,7 @@ export const Route = createFileRoute('/auth/')({
         // ensureQueryData returns the raw result from queryFn (IResponse<IAuthModeResponse>)
         // We need to manually access .data here
         return {
+          modeUnavailable: false,
           enableLdap: res.data?.enableLdap ?? false,
           ldapAlias: res.data?.ldapAlias,
           ldapHelp: res.data?.ldapHelp,
@@ -72,10 +73,11 @@ export const Route = createFileRoute('/auth/')({
       })
       .catch(() => {
         return {
+          modeUnavailable: true,
           enableLdap: false,
           ldapAlias: undefined,
           ldapHelp: undefined,
-          enableNormalLogin: true,
+          enableNormalLogin: false,
           enableNormalRegister: false,
         }
       })
@@ -86,16 +88,25 @@ export const Route = createFileRoute('/auth/')({
 
 function LoginPage() {
   const { t } = useTranslation()
+  const [sessionHint] = useState(() => sessionStorage.getItem('auth-session-hint'))
+  useEffect(() => {
+    sessionStorage.removeItem('auth-session-hint')
+  }, [])
   const currentYear = new Date().getFullYear()
   const searchParams = Route.useSearch()
   const { auth } = Route.useRouteContext()
   const [showSignup, setShowSignup] = useState(false)
-  const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [showRegisterDialog, setShowRegisterDialog] = useState(false)
   const [registerDialogType, setRegisterDialogType] = useState<'ldap' | 'normal_disabled'>('ldap')
   const { theme, setTheme } = useTheme()
-  const { enableLdap, ldapAlias, ldapHelp, enableNormalLogin, enableNormalRegister } =
-    Route.useLoaderData()
+  const {
+    modeUnavailable,
+    enableLdap,
+    ldapAlias,
+    ldapHelp,
+    enableNormalLogin,
+    enableNormalRegister,
+  } = Route.useLoaderData()
 
   // Ensure selectedMode is one of enabled modes, preferring LDAP as default if enabled
   const [selectedMode, setSelectedMode] = useState<AuthMode>(() => {
@@ -111,7 +122,6 @@ function LoginPage() {
     const mode = newMode as AuthMode
     setSelectedMode(mode)
     setShowSignup(false)
-    setShowForgotPassword(false)
   }
 
   // Handle registration button click
@@ -122,7 +132,6 @@ function LoginPage() {
     } else {
       if (enableNormalRegister) {
         setShowSignup(true)
-        setShowForgotPassword(false)
       } else {
         setRegisterDialogType('normal_disabled')
         setShowRegisterDialog(true)
@@ -132,18 +141,12 @@ function LoginPage() {
 
   // Handle forgot password button click
   const handleForgotPasswordClick = () => {
-    if (selectedMode === AuthMode.LDAP) {
-      toast.info('请联系平台管理员协助重置密码')
-    } else {
-      setShowForgotPassword(true)
-      setShowSignup(false)
-    }
+    toast.info(authText('resetPassword'))
   }
 
   // 返回登录表单
   const handleBackToLogin = () => {
     setShowSignup(false)
-    setShowForgotPassword(false)
   }
 
   return (
@@ -185,7 +188,7 @@ function LoginPage() {
               <DocsButton
                 variant="ghost"
                 className="dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/85 dark:hover:text-primary-foreground bg-white text-black hover:bg-slate-200 hover:text-black"
-                title="平台文档"
+                title={t('docsButton.platformDocs', { defaultValue: '平台文档' })}
                 url=""
               />
             </div>
@@ -194,31 +197,26 @@ function LoginPage() {
       </div>
       {/* 右侧表单部分 */}
       <div className="flex items-center justify-center py-12">
-        {showSignup && selectedMode === AuthMode.NORMAL ? (
+        {modeUnavailable || (!enableLdap && !enableNormalLogin && !showSignup) ? (
+          <div className="space-y-3 text-center" role="alert">
+            <p>
+              {modeUnavailable ? authText('loginServiceUnavailable') : authText('loginDisabled')}
+            </p>
+            <button className="underline" onClick={() => window.location.reload()}>
+              重新加载
+            </button>
+          </div>
+        ) : showSignup && selectedMode === AuthMode.NORMAL ? (
           <div className="mx-auto w-full max-w-[350px] space-y-6 px-4 sm:px-0">
             <div className="space-y-2 text-center">
               <h1 className="text-3xl font-bold">用户注册</h1>
               <p className="text-muted-foreground text-sm">注册您在 Crater 平台的账号</p>
             </div>
-            <SignupForm />
+            <SignupForm onSuccess={handleBackToLogin} />
             <div className="text-muted-foreground text-center text-sm">
               已有账号？
               <button onClick={handleBackToLogin} className="underline">
                 立即登录
-              </button>
-            </div>
-          </div>
-        ) : showForgotPassword && selectedMode === AuthMode.NORMAL ? (
-          <div className="mx-auto w-full max-w-[350px] space-y-6 px-4 sm:px-0">
-            <div className="space-y-2 text-center">
-              <h1 className="text-3xl font-bold">重置密码</h1>
-              <p className="text-muted-foreground text-sm">我们将向您的邮箱发送密码重置链接</p>
-            </div>
-            <ForgotPasswordForm />
-            <div className="text-muted-foreground text-center text-sm">
-              想起密码了？
-              <button onClick={handleBackToLogin} className="underline">
-                返回登录
               </button>
             </div>
           </div>
@@ -229,14 +227,14 @@ function LoginPage() {
               <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-sm">
                 {selectedMode === AuthMode.LDAP ? (
                   <>
-                    已接入 {ldapAlias || 'LDAP'} 统一身份认证
+                    已接入 {ldapAlias || '统一身份'} 统一身份认证
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <HelpCircle className="text-muted-foreground/60 h-3.5 w-3.5 cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent side="top" align="center" className="max-w-64">
-                          <p>{ldapHelp || '通过管理员配置的 LDAP 服务器进行身份认证'}</p>
+                          <p>{ldapHelp || '请使用统一身份账号登录'}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -251,7 +249,7 @@ function LoginPage() {
               <Tabs value={selectedMode} onValueChange={handleModeChange} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value={AuthMode.LDAP} className="flex items-center gap-1.5">
-                    {ldapAlias || 'LDAP'} 登录
+                    {ldapAlias || '统一身份'} 登录
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span className="inline-flex shrink-0 cursor-help">
@@ -259,7 +257,7 @@ function LoginPage() {
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="center" className="max-w-64">
-                        <p>{ldapHelp || '通过管理员配置的 LDAP 服务器进行身份认证'}</p>
+                        <p>{ldapHelp || '请使用统一身份账号登录'}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TabsTrigger>
@@ -268,7 +266,13 @@ function LoginPage() {
               </Tabs>
             )}
 
+            {sessionHint && (
+              <p role="alert" className="text-destructive text-sm">
+                {sessionHint}
+              </p>
+            )}
             <LoginForm
+              key={selectedMode}
               searchParams={searchParams}
               login={auth.login}
               authMode={selectedMode}
@@ -291,12 +295,12 @@ function LoginPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {registerDialogType === 'ldap'
-                ? `${ldapAlias || 'LDAP'} 账号登录说明`
+                ? `${ldapAlias || '统一身份'} 账号登录说明`
                 : '注册功能已禁用'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {registerDialogType === 'ldap'
-                ? `平台已接入 ${ldapAlias || 'LDAP'} 统一身份认证。如果您拥有 ${ldapAlias || 'LDAP'} 账号，可以直接在登录页面使用该账号及密码登录，系统将自动为您创建平台账户，无需进行额外的注册操作。`
+                ? `平台已接入 ${ldapAlias || '统一身份'} 统一身份认证。如果您拥有 ${ldapAlias || '统一身份'} 账号，可以直接在登录页面使用该账号及密码登录，系统将自动为您创建平台账户，无需进行额外的注册操作。`
                 : '当前平台已禁用普通用户自主注册功能。请联系系统管理员协助为您创建账号，或者申请打开注册功能。'}
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -9,6 +9,7 @@
     "build": "vite build",
     "build-testing": "tsc && vite build --mode testing",
     "lint": "tsc && eslint .",
+    "test:auth": "node --experimental-strip-types --test tests/auth-errors.test.mjs tests/session-client.test.mjs",
     "fix": "eslint . --fix",
     "eslint": "eslint . --max-warnings 0",
     "preview": "vite preview"
