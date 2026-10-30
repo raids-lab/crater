@@ -1,13 +1,13 @@
 ---
 title: Users and Accounts
-description: Understand project accounts and scheduling queues, and inspect or switch the current account with the CLI.
+description: Understand accounts and scheduling queues, and inspect or switch the current account with the CLI.
 ---
 
-A user signs in with their own identity and can belong to multiple accounts. An account represents a project's scheduling queue and billing context. The current account determines the context for subsequent job submissions, account storage access, resource quotas, and billing queries.
+A user signs in with their own identity and can belong to multiple accounts. An account determines the scheduling queue and billing context. The current account determines the context for subsequent job submissions, account storage access, resource quotas, and billing queries.
 
 ## Inspect and switch accounts with the CLI
 
-With the Crater CLI already signed in, list your accounts, inspect the current project, and switch by account name:
+With the Crater CLI already signed in, list your accounts, inspect the current account, and switch by account name:
 
 ```bash
 crater account ls
@@ -18,7 +18,7 @@ crater account current
 
 Replace `research` with an exact `name` returned by `account ls`, rather than a nickname or ID. A successful switch saves new credentials for the current login identity, and subsequent commands use the target account. Other saved identities stay unchanged. Scripts and AI agents can add `--json` and read the current account name from `data.context.queue`.
 
-Use `crater auth switch` to change platforms or login identities. Use `crater account use <name>` to switch project accounts for the same user.
+Use `crater auth switch` to change platforms or login identities. Use `crater account use <name>` to switch accounts for the same user.
 
 ## Users and accounts
 

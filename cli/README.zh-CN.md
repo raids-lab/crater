@@ -17,7 +17,7 @@ Crater CLI 是 Crater 的命令行客户端，通过 HTTP API 与 Crater 平台�
 
 - 面向 Agent 的 `--json` 与 `--no-interactive` 模式。
 - 本地认证上下文管理。
-- 查看当前项目账户／队列，并切换后续命令使用的账户。
+- 查看当前账户／队列，并切换后续命令使用的账户。
 - Bash 与 zsh 补全。
 - 中文与英文显示语言支持。
 - 面向 Linux、macOS 和 Windows 的 x64 与 ARM64 原生二进制。

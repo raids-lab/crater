@@ -69,7 +69,7 @@ CLI 与 Crater 平台之间的请求、响应解析与传输层异常，集中�
 - `compatibility.go`：调用公开的 `/api/cli/compatibility` 并解包版本范围与可选后端构建信息；`internal/version` 保存 CLI 当前 API 版本、最低后端 API 版本与产品版本，统一客户端据此写入 `User-Agent` 和 `X-Crater-API-Version`。兼容性判断只读取 API 版本字段；后端产品版本、短提交 SHA、构建类型和构建时间仅用于诊断展示。
 - 按域文件（如 `auth.go`）：该域请求/响应 DTO、对外小接口（如 `AuthClient`）、`NewXxxClient` 及 `(*Client)` 上的 HTTP 方法；测试可注入假实现而不必连网。
 
-账户上下文命令复用 `internal/api/auth.go` 的认证 DTO：`CurrentAccount` 从 `/api/auth/check` 获取服务端确认的当前账户，`SwitchAccount` 调用 `/api/v1/auth/switch` 获取目标账户的凭据。命令层通过 `activeAPIClientWithContext` 在请求前记录登录身份，校验切换响应后调用 `session.ReplaceToken` 更新该身份的 access token；即使请求期间激活身份发生变化，也不会把新 token 写入另一个身份。当前项目始终由服务端查询，不另建本地项目缓存，切换结果的用户输出只包含身份标识和账户上下文。
+账户上下文命令复用 `internal/api/auth.go` 的认证 DTO：`CurrentAccount` 从 `/api/auth/check` 获取服务端确认的当前账户，`SwitchAccount` 调用 `/api/v1/auth/switch` 获取目标账户的凭据。命令层通过 `activeAPIClientWithContext` 在请求前记录登录身份，校验切换响应后调用 `session.ReplaceToken` 更新该身份的 access token；即使请求期间激活身份发生变化，也不会把新 token 写入另一个身份。当前账户始终由服务端查询，不另建本地账户缓存，切换结果的用户输出只包含身份标识和账户上下文。
 
 `cmd` 将 `RequestError` / `NetworkError` 等映射为 `*clierror.Error`（见 `cmd/errors.go` 的 `cliErrFromAPI` 与 `apiCodeForHTTP`）；`internal/api` 不打印、不决定 `--json`。
 

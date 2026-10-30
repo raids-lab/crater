@@ -1,13 +1,13 @@
 ---
 title: 用户与账户
-description: 了解项目账户与调度队列，并通过 CLI 查看和切换当前账户。
+description: 了解账户与调度队列，并通过 CLI 查看和切换当前账户。
 ---
 
-用户通过自己的登录身份访问 Crater，一个用户可以属于多个账户。账户代表项目的调度队列与计费归属；当前账户影响后续作业提交、账户存储访问、资源配额及计费查询。
+用户通过自己的登录身份访问 Crater，一个用户可以属于多个账户。账户用于确定调度队列和计费归属；当前账户影响后续作业提交、账户存储访问、资源配额及计费查询。
 
 ## 使用 CLI 查看和切换账户
 
-使用已登录的 Crater CLI 列出所属账户、查看当前项目，再按账户名称切换：
+使用已登录的 Crater CLI 列出所属账户、查看当前账户，再按账户名称切换：
 
 ```bash
 crater account ls
@@ -18,7 +18,7 @@ crater account current
 
 将 `research` 替换为 `account ls` 返回的精确 `name`，不要使用昵称或 ID。切换成功后，CLI 保存当前登录身份的新凭据，后续命令使用目标账户；其它已保存身份保持不变。脚本和 AI Agent 可添加 `--json`，从 `data.context.queue` 读取当前账户名称。
 
-`crater auth switch` 用于切换平台或登录用户。需要在同一用户下切换项目账户时，使用 `crater account use <name>`。
+`crater auth switch` 用于切换平台或登录用户。需要在同一用户下切换账户时，使用 `crater account use <name>`。
 
 ## 用户与账户的关系
 

@@ -744,15 +744,15 @@ This section covers account context and additional resource commands. All comman
 
 ### Account And Queue Context
 
-`Account`（账户）表示平台中的项目账户／调度队列；登录身份由 `auth` 管理。
+`Account`（账户）用于确定调度队列和计费归属；登录身份由 `auth` 管理。
 
 #### `crater account current`
 
-- **描述**：查询当前登录身份正在使用的项目账户／队列。
+- **描述**：查询当前登录身份正在使用的账户／队列。
 - **位置参数**：无；拒绝多余位置参数。
-- **处理逻辑**：使用当前身份的 access token 请求 `GET /api/auth/check`，读取响应中的 `context`，不解码 JWT 或根据本地缓存猜测当前项目。
+- **处理逻辑**：使用当前身份的 access token 请求 `GET /api/auth/check`，读取响应中的 `context`，不解码 JWT 或根据本地缓存猜测当前账户。
 - **默认输出**：平台、用户名、当前账户／队列名称和账户角色数值。
-- **`--json` 的 `data`**：`platform_url`、`username`、`context`。`context` 保留后端的 `queue`、`roleQueue`、`rolePlatform`、`accessQueue`、`accessPublic`、`space`；不输出凭据或其它认证响应字段。
+- **`--json` 的 `data`**：`platform_url`、`username`、`context`。`context` 保留后端的 `queue`、`roleQueue`、`rolePlatform`、`accessQueue`、`accessPublic`、`space`；角色和访问模式数值保持原样，包括未知值。不输出凭据或其它认证响应字段。
 - **错误**：未登录或未保存 token 时遵循认证错误约定；后端返回空 `data`、缺少 `context` 或队列名称为空时返回 `api_error`，不报告成功。已收到 HTTP 响应时，即使 JSON 无法解码，也按实际 HTTP 状态映射错误并保留 `http_status`；无 HTTP 响应的传输失败才归为 `ERR_NETWORK_FAILURE`。
 
 #### `crater account use <name>`

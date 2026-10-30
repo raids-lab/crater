@@ -226,7 +226,7 @@ var catalogRead = map[Language]map[string]string{
 		"image_ls_short": "列出镜像",
 
 		"account_short":                                "查看和切换账户",
-		"account_long":                                 "查看所属账户和当前账户／队列，切换后续命令使用的项目账户。",
+		"account_long":                                 "查看所属账户和当前账户／队列，切换后续命令使用的账户。",
 		"account_current_short":                        "查看当前账户／队列",
 		"account_current_long":                         "从当前平台查询正在使用的账户／队列及账户角色。",
 		"account_use_short":                            "切换当前账户／队列",

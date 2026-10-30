@@ -4,7 +4,7 @@ crater account --help
 -- zh-CN/01-account-help/exit --
 0
 -- zh-CN/01-account-help/stdout --
-查看所属账户和当前账户／队列，切换后续命令使用的项目账户。
+查看所属账户和当前账户／队列，切换后续命令使用的账户。
 
 Usage:
   crater account [flags]

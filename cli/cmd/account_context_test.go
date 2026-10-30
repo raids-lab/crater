@@ -101,7 +101,7 @@ func TestAccountUsePersistsCredentialsForSubsequentRequests(t *testing.T) {
 			io.WriteString(w, `{"code":0,"data":{"accessToken":"scoped-access","refreshToken":"private-refresh","context":{"queue":"research","roleQueue":2}}}`)
 		case api.AuthCheckPath:
 			if r.Method != http.MethodGet || r.Header.Get("Authorization") != "Bearer scoped-access" {
-				t.Error("current must GET with the persisted project credentials")
+				t.Error("current must GET with the persisted account credentials")
 			}
 			io.WriteString(w, `{"code":0,"data":{"context":{"queue":"research","roleQueue":2}}}`)
 		default:
@@ -147,7 +147,7 @@ func TestAccountUsePersistsCredentialsForSubsequentRequests(t *testing.T) {
 	}
 	afterRead, err := session.LoadState()
 	if err != nil || !reflect.DeepEqual(afterRead, want) {
-		t.Fatal("reading the current project must preserve local state")
+		t.Fatal("reading the current account must preserve local state")
 	}
 	if !reflect.DeepEqual(methods, []string{"POST " + api.AuthSwitchPath, "GET " + api.AuthCheckPath}) {
 		t.Errorf("requests = %v, want switch followed by check without extra requests", methods)
@@ -243,5 +243,54 @@ func TestAccountUseRejectsIdentityRemovedDuringRequest(t *testing.T) {
 	var cliErr *clierror.Error
 	if !errors.As(err, &cliErr) || cliErr.Code != errorcodes.ErrConfigWriteFailed || stdout != "" {
 		t.Fatalf("persistence failure: error=%v stdout=%q, want config error and no success output", err, stdout)
+	}
+}
+
+func TestAccountContextPreservesRoleAndAccessValues(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		context api.AccountContext
+	}{
+		{"different permission scopes", api.AccountContext{
+			Queue: "research", RoleQueue: 2, RolePlatform: 3, AccessQueue: 1, AccessPublic: 4, Space: "alice",
+		}},
+		{"unknown values", api.AccountContext{
+			Queue: "research", RoleQueue: 91, RolePlatform: 92, AccessQueue: 93, AccessPublic: 94, Space: "alice",
+		}},
+	} {
+		for _, operation := range []string{"current", "use"} {
+			t.Run(operation+"/"+test.name, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					if err := json.NewEncoder(w).Encode(map[string]any{
+						"code": 0, "data": api.LoginResp{AccessToken: "scoped-access", Context: test.context},
+					}); err != nil {
+						t.Error(err)
+					}
+				}))
+				t.Cleanup(server.Close)
+				setupAccountSession(t, server.URL)
+				stdout, err := captureAccountOutput(t, func() error {
+					if operation == "current" {
+						return runAccountCurrent(accountCurrentCmd, nil)
+					}
+					return runAccountUse(accountUseCmd, []string{"research"})
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				var result struct {
+					Data struct {
+						Context api.AccountContext `json:"context"`
+					} `json:"data"`
+				}
+				if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+					t.Fatal(err)
+				}
+				if result.Data.Context != test.context {
+					t.Errorf("%s context = %+v, want backend values %+v", operation, result.Data.Context, test.context)
+				}
+			})
+		}
 	}
 }
