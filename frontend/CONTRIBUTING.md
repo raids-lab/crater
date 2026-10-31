@@ -130,6 +130,14 @@ Before opening or updating a PR:
 - Confirm affected pages were manually checked by the developer, with role, page, action, and observed result recorded for the PR.
 - Provide frontend / UI screenshots or explain why they are unavailable, as described above.
 
+### Agent-aware forms
+
+- A form that supports Agent-assisted filling must register a typed capability with `useAgentFormCapability`; the original form remains responsible for validation and submission through its existing API.
+- Register only fields that are safe for model-assisted editing. Never expose API keys, access tokens, passwords, environment secrets, or other credentials in a capability or its snapshot.
+- Keep field paths tied to the form schema with `defineAgentFormFields`. Renaming or removing a registered field must therefore fail TypeScript checking until the capability is updated.
+- Increment the capability `schemaVersion` when a field changes meaning, type, units, constraints, or compatibility. Stale proposals must remain blocked rather than being applied to a changed form.
+- When adding a form field, explicitly decide whether Agent assistance is appropriate. New fields are not automatically exposed because safety and editability cannot be inferred from the schema.
+
 ## Known Issues
 
 - Dark-mode input styling: browser autofill produces white backgrounds in dark mode ([TailwindCSS#8679](https://github.com/tailwindlabs/tailwindcss/discussions/8679)).

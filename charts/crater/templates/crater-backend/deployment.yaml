@@ -1,3 +1,4 @@
+{{- $agentSecretName := required "agent.existingSecretName must name an externally managed Secret" .Values.agent.existingSecretName }}
 # Secret for admin credentials
 apiVersion: v1
 kind: Secret
@@ -30,6 +31,7 @@ spec:
         app: crater-backend
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/crater-backend/configmap.yaml") . | sha256sum }}
+        checksum/agent-secret-config: {{ printf "%s:%s" $agentSecretName .Values.agent.secretRevision | sha256sum }}
     spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -59,6 +61,32 @@ spec:
         - name: crater-backend-container
           image: {{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: SYSTEM_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $agentSecretName }}
+                  key: encryption-key
+            - name: SYSTEM_SECRET_KEY_PREVIOUS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $agentSecretName }}
+                  key: previous-encryption-keys
+                  optional: true
+            {{- if .Values.agent.enabled }}
+            - name: CRATER_AGENT_URL
+              value: http://crater-agent:8000
+            - name: CRATER_AGENT_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $agentSecretName }}
+                  key: internal-token
+            - name: CRATER_AGENT_CONTEXT_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $agentSecretName }}
+                  key: context-signing-key
+            {{- end }}
           command:
             - /controller
             - --config-file=/etc/config/config.yaml

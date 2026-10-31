@@ -438,6 +438,30 @@ definitions:
       msg:
         type: string
     type: object
+  ? github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentConversationSummary
+  : properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentConversationSummary'
+        type: array
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentUIMessage:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentUIMessage'
+        type: array
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod:
     properties:
       code:
@@ -498,6 +522,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-bool:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        type: boolean
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis:
     properties:
       code:
@@ -545,6 +579,36 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentConversationPage:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentConversationPage'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentSubjectPage:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentSubjectPage'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentRuntimeConfig:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeConfig'
       msg:
         type: string
     type: object
@@ -878,6 +942,26 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_generateAgentTitleResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.generateAgentTitleResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.personalLLMConfigResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngress:
     properties:
       code:
@@ -948,6 +1032,207 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_service.AdminAgentConversationPage:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentConversationSummary'
+        type: array
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_service.AdminAgentConversationSummary:
+    properties:
+      createdAt:
+        type: integer
+      customTitle:
+        type: boolean
+      id:
+        type: string
+      identityScope:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentIdentity'
+      messageCount:
+        type: integer
+      nickname:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: integer
+      userId:
+        type: integer
+      username:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.AdminAgentSubjectPage:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentSubjectSummary'
+        type: array
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_service.AdminAgentSubjectSummary:
+    properties:
+      conversationCount:
+        type: integer
+      identityScope:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentIdentity'
+      messageCount:
+        type: integer
+      nickname:
+        type: string
+      updatedAt:
+        type: integer
+      userId:
+        type: integer
+      username:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentConversationSummary:
+    properties:
+      createdAt:
+        type: integer
+      customTitle:
+        type: boolean
+      id:
+        type: string
+      title:
+        type: string
+      updatedAt:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentFormContext:
+    properties:
+      capabilityId:
+        type: string
+      currentValues:
+        additionalProperties:
+          items:
+            type: integer
+          type: array
+        type: object
+      fields:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentFormFieldDescriptor'
+        type: array
+      schemaVersion:
+        type: integer
+      title:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentFormFieldDescriptor:
+    properties:
+      description:
+        type: string
+      label:
+        type: string
+      path:
+        type: string
+      valueType:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentIdentity:
+    enum:
+    - user
+    - admin
+    type: string
+    x-enum-varnames:
+    - AgentIdentityUser
+    - AgentIdentityAdmin
+  github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig:
+    properties:
+      basePrompt:
+        type: string
+      formAssistantPrompt:
+        type: string
+      jobDiagnosisPrompt:
+        type: string
+      jobDiagnosisUnavailablePrompt:
+        type: string
+      platformGuidePrompt:
+        type: string
+      platformKnowledge:
+        type: string
+      promptOverrideRegex:
+        type: string
+      scopeRefusalMessage:
+        type: string
+      titlePrompt:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentPageContext:
+    properties:
+      action:
+        type: string
+      form:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentFormContext'
+      prompt:
+        type: string
+      resource:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentResourceContext'
+      route:
+        type: string
+      title:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentResourceContext:
+    properties:
+      jobName:
+        type: string
+      jobType:
+        type: string
+      kind:
+        type: string
+      status:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentRuntimeConfig:
+    properties:
+      locales:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeLocales'
+      version:
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentRuntimeLocales:
+    properties:
+      enUS:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig'
+      zhCN:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentLocaleRuntimeConfig'
+    type: object
+  github_com_raids-lab_crater_internal_service.AgentUIMessage:
+    properties:
+      id:
+        type: string
+      metadata:
+        items:
+          type: integer
+        type: array
+      parts:
+        items:
+          type: integer
+        type: array
+      role:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_service.LLMConfigSource:
+    enum:
+    - personal
+    - platform
+    type: string
+    x-enum-varnames:
+    - LLMConfigSourcePersonal
+    - LLMConfigSourcePlatform
   github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult:
     properties:
       details:
@@ -2283,6 +2568,19 @@ definitions:
           $ref: '#/definitions/internal_handler.VisibleUserBanRecordResp'
         type: array
     type: object
+  internal_handler.agentChatReq:
+    properties:
+      conversationId:
+        type: string
+      message:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentUIMessage'
+      mode:
+        type: string
+      pageContext:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentPageContext'
+      parentMessageId:
+        type: string
+    type: object
   internal_handler.cancelSharedQueueReq:
     properties:
       datasetID:
@@ -2302,6 +2600,84 @@ definitions:
     required:
     - datasetID
     - userID
+    type: object
+  internal_handler.generateAgentTitleReq:
+    properties:
+      conversationId:
+        type: string
+      firstMessage:
+        type: string
+    type: object
+  internal_handler.generateAgentTitleResp:
+    properties:
+      title:
+        type: string
+    type: object
+  internal_handler.personalLLMConfigResp:
+    properties:
+      apiKey:
+        type: string
+      baseUrl:
+        type: string
+      effectiveSource:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.LLMConfigSource'
+      modelName:
+        type: string
+      personalConfigured:
+        type: boolean
+      platformConfigured:
+        type: boolean
+    type: object
+  internal_handler.renameAgentConversationReq:
+    properties:
+      title:
+        maxLength: 320
+        type: string
+    required:
+    - title
+    type: object
+  internal_handler.saveAgentToolOutputReq:
+    properties:
+      errorText:
+        maxLength: 2048
+        type: string
+      messageId:
+        maxLength: 128
+        type: string
+      output:
+        items:
+          type: integer
+        type: array
+      state:
+        enum:
+        - output-available
+        - output-error
+        type: string
+      toolCallId:
+        maxLength: 128
+        type: string
+    required:
+    - messageId
+    - state
+    - toolCallId
+    type: object
+  internal_handler.updatePersonalLLMConfigReq:
+    properties:
+      apiKey:
+        maxLength: 8192
+        type: string
+      baseUrl:
+        maxLength: 1024
+        type: string
+      modelName:
+        maxLength: 256
+        type: string
+      validate:
+        type: boolean
+    required:
+    - apiKey
+    - baseUrl
+    - modelName
     type: object
   internal_handler_image.ChangeImagePublicStatusRequest:
     properties:
@@ -3452,6 +3828,141 @@ paths:
       summary: 获取指定账户
       tags:
       - Project
+  /v1/admin/agent/conversations:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: pageSize
+        type: integer
+      - description: Username, nickname, user ID, or title
+        in: query
+        name: search
+        type: string
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: query
+        name: identityScope
+        type: string
+      - description: User ID
+        in: query
+        minimum: 1
+        name: userId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentConversationPage'
+      security:
+      - Bearer: []
+      summary: List all Agent conversations
+      tags:
+      - Agent Admin
+  /v1/admin/agent/conversations/{id}/messages:
+    get:
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentUIMessage'
+      security:
+      - Bearer: []
+      summary: Get Agent conversation messages as an administrator
+      tags:
+      - Agent Admin
+  /v1/admin/agent/runtime-config:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AgentRuntimeConfig'
+      security:
+      - Bearer: []
+      summary: Get Agent runtime configuration
+      tags:
+      - Agent
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Agent runtime configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_service.AgentRuntimeConfig'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: Update Agent runtime configuration
+      tags:
+      - Agent
+  /v1/admin/agent/subjects:
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: pageSize
+        type: integer
+      - description: Username, nickname, or user ID
+        in: query
+        name: search
+        type: string
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: query
+        name: identityScope
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentSubjectPage'
+      security:
+      - Bearer: []
+      summary: List users with Agent conversation history
+      tags:
+      - Agent Admin
   /v1/admin/approvalorder:
     get:
       consumes:
@@ -5587,6 +6098,312 @@ paths:
       summary: Admin delete the job
       tags:
       - VolcanoJob
+  /v1/agent/chat:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: header
+        name: X-Crater-Agent-Identity
+        type: string
+      - description: Agent chat request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.agentChatReq'
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      security:
+      - Bearer: []
+      summary: Chat with Crater-Agent
+      tags:
+      - Agent
+  /v1/agent/conversations:
+    get:
+      parameters:
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: header
+        name: X-Crater-Agent-Identity
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentConversationSummary'
+      security:
+      - Bearer: []
+      summary: List Agent conversations
+      tags:
+      - Agent
+  /v1/agent/conversations/{id}:
+    delete:
+      parameters:
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: header
+        name: X-Crater-Agent-Identity
+        type: string
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: Delete an Agent conversation
+      tags:
+      - Agent
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: header
+        name: X-Crater-Agent-Identity
+        type: string
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New conversation title
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.renameAgentConversationReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: Rename an Agent conversation
+      tags:
+      - Agent
+  /v1/agent/conversations/{id}/cancel:
+    post:
+      parameters:
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: header
+        name: X-Crater-Agent-Identity
+        type: string
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-bool'
+      security:
+      - Bearer: []
+      summary: Cancel the active Agent response
+      tags:
+      - Agent
+  /v1/agent/conversations/{id}/messages:
+    get:
+      parameters:
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: header
+        name: X-Crater-Agent-Identity
+        type: string
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentUIMessage'
+      security:
+      - Bearer: []
+      summary: Get Agent conversation messages
+      tags:
+      - Agent
+  /v1/agent/conversations/{id}/tool-output:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: header
+        name: X-Crater-Agent-Identity
+        type: string
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resolved tool result
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.saveAgentToolOutputReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: Save an Agent tool result
+      tags:
+      - Agent
+  /v1/agent/llm-config:
+    delete:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: Delete personal LLM configuration
+      tags:
+      - Agent
+    get:
+      description: Returns the masked personal configuration and whether a platform
+        fallback is available.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp'
+      security:
+      - Bearer: []
+      summary: Get personal LLM configuration
+      tags:
+      - Agent
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Personal LLM configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.updatePersonalLLMConfigReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: Update personal LLM configuration
+      tags:
+      - Agent
+  /v1/agent/llm-config/test:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Personal LLM configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.updatePersonalLLMConfigReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+      security:
+      - Bearer: []
+      summary: Test personal LLM configuration
+      tags:
+      - Agent
+  /v1/agent/title:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Agent identity scope
+        enum:
+        - user
+        - admin
+        in: header
+        name: X-Crater-Agent-Identity
+        type: string
+      - description: Title generation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.generateAgentTitleReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_generateAgentTitleResp'
+      security:
+      - Bearer: []
+      summary: Generate an Agent conversation title
+      tags:
+      - Agent
   /v1/aijobs:
     get:
       consumes:

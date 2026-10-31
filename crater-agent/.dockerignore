@@ -1,0 +1,11 @@
+node_modules
+dist
+.venv
+.env
+.env.*
+*.log
+.DS_Store
+coverage
+__pycache__
+*.py[cod]
+*.egg-info

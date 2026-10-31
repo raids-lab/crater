@@ -40,6 +40,7 @@ import { Route as AdminJobsIndexRouteImport } from './routes/admin/jobs/index'
 import { Route as AdminGpuAnalysisIndexRouteImport } from './routes/admin/gpu-analysis/index'
 import { Route as AdminDataIndexRouteImport } from './routes/admin/data/index'
 import { Route as AdminCronjobsIndexRouteImport } from './routes/admin/cronjobs/index'
+import { Route as AdminAgentIndexRouteImport } from './routes/admin/agent/index'
 import { Route as AdminAccountsIndexRouteImport } from './routes/admin/accounts/index'
 import { Route as PortalUsersNameRouteImport } from './routes/portal/users/$name'
 import { Route as PortalOverviewNodeRouteImport } from './routes/portal/overview/$node'
@@ -61,6 +62,7 @@ import { Route as AdminMonitorGpuRouteImport } from './routes/admin/monitor/gpu'
 import { Route as AdminJobsNameRouteImport } from './routes/admin/jobs/$name'
 import { Route as AdminFilesSplatRouteImport } from './routes/admin/files/$'
 import { Route as AdminDataIdRouteImport } from './routes/admin/data/$id'
+import { Route as AdminAgentConfigurationRouteImport } from './routes/admin/agent/configuration'
 import { Route as AdminAccountsIdRouteImport } from './routes/admin/accounts/$id'
 import { Route as PortalMoreOrdersRouteRouteImport } from './routes/portal/more/orders/route'
 import { Route as PortalJobsNewRouteRouteImport } from './routes/portal/jobs/new/route'
@@ -263,6 +265,11 @@ const AdminCronjobsIndexRoute = AdminCronjobsIndexRouteImport.update({
   path: '/cronjobs/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminAgentIndexRoute = AdminAgentIndexRouteImport.update({
+  id: '/agent/',
+  path: '/agent/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminAccountsIndexRoute = AdminAccountsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -367,6 +374,11 @@ const AdminDataIdRoute = AdminDataIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => AdminDataRouteRoute,
+} as any)
+const AdminAgentConfigurationRoute = AdminAgentConfigurationRouteImport.update({
+  id: '/agent/configuration',
+  path: '/agent/configuration',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAccountsIdRoute = AdminAccountsIdRouteImport.update({
   id: '/$id',
@@ -639,6 +651,7 @@ export interface FileRoutesByFullPath {
   '/portal/jobs/new': typeof PortalJobsNewRouteRouteWithChildren
   '/portal/more/orders': typeof PortalMoreOrdersRouteRouteWithChildren
   '/admin/accounts/$id': typeof AdminAccountsIdRoute
+  '/admin/agent/configuration': typeof AdminAgentConfigurationRoute
   '/admin/data/$id': typeof AdminDataIdRoute
   '/admin/files/$': typeof AdminFilesSplatRoute
   '/admin/jobs/$name': typeof AdminJobsNameRoute
@@ -660,6 +673,7 @@ export interface FileRoutesByFullPath {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts/': typeof AdminAccountsIndexRoute
+  '/admin/agent': typeof AdminAgentIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
   '/admin/data/': typeof AdminDataIndexRoute
   '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
@@ -717,6 +731,7 @@ export interface FileRoutesByTo {
   '/portal/jobs/detail': typeof PortalJobsDetailRouteRouteWithChildren
   '/portal/jobs/new': typeof PortalJobsNewRouteRouteWithChildren
   '/admin/accounts/$id': typeof AdminAccountsIdRoute
+  '/admin/agent/configuration': typeof AdminAgentConfigurationRoute
   '/admin/data/$id': typeof AdminDataIdRoute
   '/admin/files/$': typeof AdminFilesSplatRoute
   '/admin/jobs/$name': typeof AdminJobsNameRoute
@@ -738,6 +753,7 @@ export interface FileRoutesByTo {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts': typeof AdminAccountsIndexRoute
+  '/admin/agent': typeof AdminAgentIndexRoute
   '/admin/cronjobs': typeof AdminCronjobsIndexRoute
   '/admin/data': typeof AdminDataIndexRoute
   '/admin/gpu-analysis': typeof AdminGpuAnalysisIndexRoute
@@ -818,6 +834,7 @@ export interface FileRoutesById {
   '/portal/jobs/new': typeof PortalJobsNewRouteRouteWithChildren
   '/portal/more/orders': typeof PortalMoreOrdersRouteRouteWithChildren
   '/admin/accounts/$id': typeof AdminAccountsIdRoute
+  '/admin/agent/configuration': typeof AdminAgentConfigurationRoute
   '/admin/data/$id': typeof AdminDataIdRoute
   '/admin/files/$': typeof AdminFilesSplatRoute
   '/admin/jobs/$name': typeof AdminJobsNameRoute
@@ -839,6 +856,7 @@ export interface FileRoutesById {
   '/portal/overview/$node': typeof PortalOverviewNodeRoute
   '/portal/users/$name': typeof PortalUsersNameRoute
   '/admin/accounts/': typeof AdminAccountsIndexRoute
+  '/admin/agent/': typeof AdminAgentIndexRoute
   '/admin/cronjobs/': typeof AdminCronjobsIndexRoute
   '/admin/data/': typeof AdminDataIndexRoute
   '/admin/gpu-analysis/': typeof AdminGpuAnalysisIndexRoute
@@ -920,6 +938,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/new'
     | '/portal/more/orders'
     | '/admin/accounts/$id'
+    | '/admin/agent/configuration'
     | '/admin/data/$id'
     | '/admin/files/$'
     | '/admin/jobs/$name'
@@ -941,6 +960,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts/'
+    | '/admin/agent'
     | '/admin/cronjobs'
     | '/admin/data/'
     | '/admin/gpu-analysis/'
@@ -998,6 +1018,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/detail'
     | '/portal/jobs/new'
     | '/admin/accounts/$id'
+    | '/admin/agent/configuration'
     | '/admin/data/$id'
     | '/admin/files/$'
     | '/admin/jobs/$name'
@@ -1019,6 +1040,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts'
+    | '/admin/agent'
     | '/admin/cronjobs'
     | '/admin/data'
     | '/admin/gpu-analysis'
@@ -1098,6 +1120,7 @@ export interface FileRouteTypes {
     | '/portal/jobs/new'
     | '/portal/more/orders'
     | '/admin/accounts/$id'
+    | '/admin/agent/configuration'
     | '/admin/data/$id'
     | '/admin/files/$'
     | '/admin/jobs/$name'
@@ -1119,6 +1142,7 @@ export interface FileRouteTypes {
     | '/portal/overview/$node'
     | '/portal/users/$name'
     | '/admin/accounts/'
+    | '/admin/agent/'
     | '/admin/cronjobs/'
     | '/admin/data/'
     | '/admin/gpu-analysis/'
@@ -1396,6 +1420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCronjobsIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/agent/': {
+      id: '/admin/agent/'
+      path: '/agent'
+      fullPath: '/admin/agent'
+      preLoaderRoute: typeof AdminAgentIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/accounts/': {
       id: '/admin/accounts/'
       path: '/'
@@ -1542,6 +1573,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/data/$id'
       preLoaderRoute: typeof AdminDataIdRouteImport
       parentRoute: typeof AdminDataRouteRoute
+    }
+    '/admin/agent/configuration': {
+      id: '/admin/agent/configuration'
+      path: '/agent/configuration'
+      fullPath: '/admin/agent/configuration'
+      preLoaderRoute: typeof AdminAgentConfigurationRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/accounts/$id': {
       id: '/admin/accounts/$id'
@@ -2029,11 +2067,13 @@ interface AdminRouteRouteChildren {
   AdminClusterResourcesRouteRoute: typeof AdminClusterResourcesRouteRouteWithChildren
   AdminEnvRegistryRouteRoute: typeof AdminEnvRegistryRouteRouteWithChildren
   AdminMoreOrdersRouteRoute: typeof AdminMoreOrdersRouteRouteWithChildren
+  AdminAgentConfigurationRoute: typeof AdminAgentConfigurationRoute
   AdminFilesSplatRoute: typeof AdminFilesSplatRoute
   AdminMonitorGpuRoute: typeof AdminMonitorGpuRoute
   AdminMonitorIdleRoute: typeof AdminMonitorIdleRoute
   AdminMonitorNetworkRoute: typeof AdminMonitorNetworkRoute
   AdminMoreVersionRoute: typeof AdminMoreVersionRoute
+  AdminAgentIndexRoute: typeof AdminAgentIndexRoute
   AdminCronjobsIndexRoute: typeof AdminCronjobsIndexRoute
   AdminMoreIndexRoute: typeof AdminMoreIndexRoute
   AdminOperationLogsIndexRoute: typeof AdminOperationLogsIndexRoute
@@ -2053,11 +2093,13 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminClusterResourcesRouteRoute: AdminClusterResourcesRouteRouteWithChildren,
   AdminEnvRegistryRouteRoute: AdminEnvRegistryRouteRouteWithChildren,
   AdminMoreOrdersRouteRoute: AdminMoreOrdersRouteRouteWithChildren,
+  AdminAgentConfigurationRoute: AdminAgentConfigurationRoute,
   AdminFilesSplatRoute: AdminFilesSplatRoute,
   AdminMonitorGpuRoute: AdminMonitorGpuRoute,
   AdminMonitorIdleRoute: AdminMonitorIdleRoute,
   AdminMonitorNetworkRoute: AdminMonitorNetworkRoute,
   AdminMoreVersionRoute: AdminMoreVersionRoute,
+  AdminAgentIndexRoute: AdminAgentIndexRoute,
   AdminCronjobsIndexRoute: AdminCronjobsIndexRoute,
   AdminMoreIndexRoute: AdminMoreIndexRoute,
   AdminOperationLogsIndexRoute: AdminOperationLogsIndexRoute,

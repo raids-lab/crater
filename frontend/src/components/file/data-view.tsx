@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
 import DocsButton from '@/components/button/docs-button'
 import ListedButton from '@/components/button/listed-button'
 import { DataCreateForm } from '@/components/file/data-create-form'
@@ -166,6 +167,20 @@ export function DataView({ apiGetDataset, sourceType, organization }: DatesetTab
             全部组织
           </Button>
         </Link>
+      )}
+      {!isShareFile && (
+        <AgentActionButton
+          context={{
+            action: 'find-platform-resource',
+            title: sourceType === 'model' ? '模型查找与使用' : '数据集查找与使用',
+            prompt:
+              sourceType === 'model'
+                ? '说明需要的模型和使用场景，Agent 将指导优先使用平台资源或进入下载表单。'
+                : '说明需要的数据集和使用场景，Agent 将指导优先使用平台资源或进入下载表单。',
+            route: sourceType === 'model' ? '/portal/data/models' : '/portal/data/datasets',
+          }}
+          label="AI 查找与使用"
+        />
       )}
       {!isShareFile && (
         <Link

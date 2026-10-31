@@ -52,11 +52,14 @@ type RegisterConfig struct {
 	CronJobManager *cronjob.CronJobManager
 
 	// services
-	ConfigService      *service.ConfigService
-	QueueQuotaService  *service.QueueQuotaService
-	BillingService     *service.BillingService
-	GpuAnalysisService *service.GpuAnalysisService
-	UserBanService     *service.UserBanService
+	ConfigService             *service.ConfigService
+	AgentConfigService        *service.AgentConfigService
+	AgentRuntimeConfigService *service.AgentRuntimeConfigService
+	AgentConversationService  *service.AgentConversationService
+	QueueQuotaService         *service.QueueQuotaService
+	BillingService            *service.BillingService
+	GpuAnalysisService        *service.GpuAnalysisService
+	UserBanService            *service.UserBanService
 }
 
 // Registers is a slice of Manager Init functions.

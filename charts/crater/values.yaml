@@ -29,6 +29,11 @@ imagePullPolicy: Always
 imagePullSecrets: []
 # -- Container images configuration
 images:
+  agent:
+    # -- Crater-Agent AI SDK runtime image repository
+    repository: "ghcr.io/raids-lab/crater-agent"
+    # -- Crater-Agent image tag
+    tag: "latest"
   backend:
     # -- Backend service image repository
     repository: "ghcr.io/raids-lab/crater-backend"
@@ -79,6 +84,37 @@ images:
     repository: "docker.io/library/postgres"
     # -- DBBackup image tag
     tag: "16.4"
+
+# -- Crater-Agent runtime configuration
+agent:
+  # -- Deploy the internal Crater-Agent service with this chart
+  enabled: true
+  # -- Number of stateless Agent runtime replicas
+  replicas: 1
+  # -- Existing externally managed Secret containing `internal-token`, `context-signing-key`, and `encryption-key`
+  existingSecretName: "crater-agent-secret"
+  # -- Change this value after rotating an external Secret to roll both backend and Agent pods
+  secretRevision: ""
+  # -- Pod-level security settings for the Agent runtime
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  # -- Container-level security settings for the Agent runtime
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+  # -- Resource requests and limits for the Agent runtime
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 # -- Periodically refresh public model and dataset metadata from configured source endpoints
 modelMetadataRefresh:

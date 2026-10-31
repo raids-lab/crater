@@ -15,7 +15,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useRouter } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import {
   ActivityIcon,
   BarChartBigIcon,
@@ -37,12 +37,13 @@ import {
   UserRoundIcon,
   XIcon,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
 import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import TooltipButton from '@/components/button/tooltip-button'
@@ -96,6 +97,7 @@ import { useSnapshotDisabled } from '@/hooks/use-snapshot-disabled'
 
 import { formatBillingPoints } from '@/utils/billing'
 import { hasNvidiaGPU } from '@/utils/resource'
+import { atomAgentPageResourceContext } from '@/utils/store'
 import { configGrafanaJobAtom } from '@/utils/store/config'
 import { getDaysDifference } from '@/utils/time'
 
@@ -113,6 +115,7 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   const queryClient = useQueryClient()
   const router = useRouter()
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
+  const setAgentPageResourceContext = useSetAtom(atomAgentPageResourceContext)
   const { t } = useTranslation()
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false)
 
@@ -212,10 +215,29 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
     return getJobStateType(data.status)
   }, [data])
 
+  useEffect(() => {
+    if (!data) {
+      setAgentPageResourceContext(undefined)
+      return
+    }
+    setAgentPageResourceContext({
+      kind: 'job',
+      route: window.location.pathname,
+      jobName: data.jobName,
+      status: data.status,
+      jobType: data.jobType,
+    })
+    return () => setAgentPageResourceContext(undefined)
+  }, [data, setAgentPageResourceContext])
+
   if (isLoading || !data) {
     return <></>
   }
 
+  const waitingForStart =
+    data.status === JobPhase.Prequeue ||
+    data.status === JobPhase.Pending ||
+    data.status === JobPhase.Init
   const fromTime = data.startedAt ? new Date(data.startedAt).toISOString() : 'now-3h'
   const toTime = data.completedAt ? new Date(data.completedAt).toISOString() : 'now'
   return (
@@ -230,6 +252,25 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
         >
           {
             <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
+              {waitingForStart && (
+                <AgentActionButton
+                  context={{
+                    action: 'diagnose-job',
+                    title: t('craterAgent.action.diagnose-job.title'),
+                    prompt: t('craterAgent.action.diagnose-job.prompt'),
+                    route: window.location.pathname,
+                    resource: {
+                      kind: 'job',
+                      route: window.location.pathname,
+                      jobName: data.jobName,
+                      status: data.status,
+                      jobType: data.jobType,
+                    },
+                  }}
+                  initialMessage={t('craterAgent.action.diagnose-job.waitingInitialMessage')}
+                  labelOverride={t('craterAgent.action.diagnose-job.waitingLabel')}
+                />
+              )}
               {data.status === JobPhase.Running && (
                 <>
                   {isSingleJob(data.jobType) && (
@@ -377,7 +418,31 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
         {
           title: '状态',
           icon: ActivityIcon,
-          value: <JobPhaseLabel jobPhase={data.status} podGroupPhase={data.podGroupPhase} />,
+          value: (
+            <div className="flex flex-wrap items-center gap-2">
+              <JobPhaseLabel jobPhase={data.status} podGroupPhase={data.podGroupPhase} />
+              {data.status === JobPhase.Failed && (
+                <AgentActionButton
+                  size="sm"
+                  context={{
+                    action: 'diagnose-job',
+                    title: t('craterAgent.action.diagnose-job.title'),
+                    prompt: t('craterAgent.action.diagnose-job.prompt'),
+                    route: window.location.pathname,
+                    resource: {
+                      kind: 'job',
+                      route: window.location.pathname,
+                      jobName: data.jobName,
+                      status: data.status,
+                      jobType: data.jobType,
+                    },
+                  }}
+                  initialMessage={t('craterAgent.action.diagnose-job.failureInitialMessage')}
+                  labelOverride={t('craterAgent.action.diagnose-job.failureLabel')}
+                />
+              )}
+            </div>
+          ),
         },
         {
           title: '累计消耗',

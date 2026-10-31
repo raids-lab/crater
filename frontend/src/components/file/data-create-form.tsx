@@ -33,6 +33,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import { FileSelectDialog } from '@/components/file/file-select-dialog'
 import FormLabelMust from '@/components/form/form-label-must'
 import { TagsInput } from '@/components/form/tags-input'
@@ -65,6 +71,16 @@ export const dataFormSchema = z.object({
 })
 
 export type DataFormSchema = z.infer<typeof dataFormSchema>
+
+const agentFields = defineAgentFormFields<DataFormSchema>()([
+  { path: 'datasetName', label: '资源名称', valueType: 'string', includeCurrentValue: true },
+  { path: 'describe', label: '资源描述', valueType: 'string', includeCurrentValue: true },
+  { path: 'url', label: '平台文件路径', valueType: 'string', includeCurrentValue: true },
+  { path: 'weburl', label: '来源网址', valueType: 'string', includeCurrentValue: true },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
+  { path: 'ispublic', label: '公开资源', valueType: 'boolean', includeCurrentValue: true },
+  { path: 'readOnly', label: '只读挂载', valueType: 'boolean', includeCurrentValue: true },
+])
 
 export interface DataCreateFormProps extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void
@@ -120,6 +136,13 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
       readOnly: true,
     },
   })
+  const capability =
+    type === 'model'
+      ? agentFormCapabilities.modelCreate
+      : type === 'sharefile'
+        ? agentFormCapabilities.sharedFileCreate
+        : agentFormCapabilities.datasetCreate
+  useAgentFormCapability({ capability, fields: agentFields, form })
   useEffect(() => {
     if (type === 'sharefile') {
       form.setValue('ispublic', false)
@@ -137,7 +160,22 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <SandwichLayout footer={<Button type="submit">提交{dataTypeLabel}</Button>}>
+        <SandwichLayout
+          footer={
+            <div className="flex gap-2">
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: `${dataTypeLabel}辅助填写`,
+                  prompt: `说明${dataTypeLabel}的位置、用途和共享要求，Agent 将生成可确认的表单建议。`,
+                  route: capability.route,
+                  capabilityId: capability.id,
+                }}
+              />
+              <Button type="submit">提交{dataTypeLabel}</Button>
+            </div>
+          }
+        >
           <FormField
             control={form.control}
             name="datasetName"
