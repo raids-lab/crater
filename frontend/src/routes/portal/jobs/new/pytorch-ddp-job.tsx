@@ -40,6 +40,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -174,6 +180,88 @@ const formSchema = z.object({
 })
 
 type FormSchema = z.infer<typeof formSchema>
+
+const agentFields = defineAgentFormFields<FormSchema>()([
+  { path: 'jobName', label: '作业名称', valueType: 'string', includeCurrentValue: true },
+  { path: 'ps.replicas', label: 'Master 副本数', valueType: 'number', includeCurrentValue: true },
+  {
+    path: 'ps.image.imageLink',
+    label: 'Master 镜像',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'ps.resource.cpu',
+    label: 'Master CPU 核数',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'ps.resource.memory',
+    label: 'Master 内存 GiB',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  { path: 'ps.command', label: 'Master 启动命令', valueType: 'string', includeCurrentValue: true },
+  {
+    path: 'worker.replicas',
+    label: 'Worker 副本数',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.image.imageLink',
+    label: 'Worker 镜像',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.resource.cpu',
+    label: 'Worker CPU 核数',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.resource.memory',
+    label: 'Worker 内存 GiB',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.resource.gpu.count',
+    label: 'Worker 加速卡数量',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.resource.gpu.model',
+    label: 'Worker 加速卡型号',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.command',
+    label: 'Worker 启动命令',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'volumeMounts', label: '数据与文件挂载', valueType: 'volume-mount-array' },
+  { path: 'forwards', label: '端口转发', valueType: 'forward-array' },
+  { path: 'alertEnabled', label: '异常提醒', valueType: 'boolean', includeCurrentValue: true },
+  {
+    path: 'nodeSelector.enable',
+    label: '限制工作节点',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'nodeSelector.mode',
+    label: '节点限制模式',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'nodeSelector.nodes', label: '工作节点', valueType: 'string-array' },
+])
 
 const dataProcessor = (data: FormSchema) => {
   // 处理镜像字段兼容性
@@ -333,6 +421,12 @@ function RouteComponent() {
     control: form.control,
   })
 
+  useAgentFormCapability({
+    capability: agentFormCapabilities.pytorchJob,
+    fields: agentFields,
+    form,
+  })
+
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
@@ -381,6 +475,15 @@ function RouteComponent() {
             tipContent={`版本 ${MetadataFormPytorch.version}`}
           >
             <div className="items-centor flex w-full flex-wrap justify-start gap-2 sm:w-fit sm:flex-nowrap sm:justify-end sm:gap-3">
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'PyTorch DDP 作业辅助填写',
+                  prompt: '说明分布式训练规模、镜像和启动命令，Agent 将生成可确认的表单修改建议。',
+                  route: agentFormCapabilities.pytorchJob.route,
+                  capabilityId: agentFormCapabilities.pytorchJob.id,
+                }}
+              />
               <FormImportButton
                 metadata={MetadataFormPytorch}
                 form={form}

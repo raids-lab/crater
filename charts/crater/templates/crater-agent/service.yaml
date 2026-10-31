@@ -1,0 +1,18 @@
+{{- if .Values.agent.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: crater-agent
+spec:
+  type: ClusterIP
+  selector:
+    app: crater-agent
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+{{- end }}

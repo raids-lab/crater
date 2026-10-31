@@ -31,6 +31,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import LoadableButton from '@/components/button/loadable-button'
 import FormExportButton from '@/components/form/form-export-button'
 import FormImportButton from '@/components/form/form-import-button'
@@ -106,6 +112,14 @@ const envdRawFormSchema = z.object({
 
 export type EnvdRawFormValues = z.infer<typeof envdRawFormSchema>
 
+const agentFields = defineAgentFormFields<EnvdRawFormValues>()([
+  { path: 'envdScript', label: 'envd 脚本', valueType: 'string', includeCurrentValue: true },
+  { path: 'description', label: '镜像描述', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageName', label: '镜像名称', valueType: 'string', includeCurrentValue: true },
+  { path: 'imageTag', label: '镜像标签', valueType: 'string', includeCurrentValue: true },
+  { path: 'tags', label: '分类标签', valueType: 'option-array' },
+])
+
 interface EnvdRawSheetContentProps {
   closeSheet: () => void
   imagePackName?: string
@@ -135,6 +149,12 @@ def build():
       imageName: '',
       imageTag: '',
     },
+  })
+
+  useAgentFormCapability({
+    capability: agentFormCapabilities.imageEnvdRaw,
+    fields: agentFields,
+    form,
   })
 
   const { mutate: submitEnvdRawSheet, isPending } = useMutation({
@@ -181,6 +201,15 @@ def build():
         <SandwichLayout
           footer={
             <>
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'envd 脚本辅助填写',
+                  prompt: '说明环境和依赖需求，Agent 将生成可确认的 envd 脚本表单建议。',
+                  route: agentFormCapabilities.imageEnvdRaw.route,
+                  capabilityId: agentFormCapabilities.imageEnvdRaw.id,
+                }}
+              />
               <FormImportButton metadata={MetadataFormEnvdRaw} form={form} />
               <FormExportButton metadata={MetadataFormEnvdRaw} form={form} />
 

@@ -1,0 +1,68 @@
+# Copyright 2026 The Crater Project Team, RAIDS-Lab
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-postgresql
+  namespace: crater-system
+spec:
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+  selector:
+    app.kubernetes.io/name: crater-postgresql
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: crater-postgresql
+  namespace: crater-system
+spec:
+  serviceName: crater-postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: crater-postgresql
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: crater-postgresql
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: postgresql
+          image: postgres:16.4-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: crater-agent-kind-credentials
+                  key: postgres-password
+          ports:
+            - name: postgresql
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - --username=postgres
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
