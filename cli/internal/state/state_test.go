@@ -3,6 +3,7 @@ package state
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"testing"
 
@@ -44,6 +45,17 @@ func TestManagerSaveCreatesConfigDir(t *testing.T) {
 	if _, err := os.Stat(m.Path); err != nil {
 		t.Fatalf("state file should exist after Save: %v", err)
 	}
+	loaded, err := NewManager()
+	if err != nil || !reflect.DeepEqual(loaded.State, m.State) {
+		t.Fatal("saved state did not round-trip")
+	}
+	entries, err := os.ReadDir(filepath.Dir(m.Path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "state.json" {
+		t.Fatal("successful save left temporary credentials on disk")
+	}
 }
 
 func TestManagerSaveRestrictsExistingStateFilePermissions(t *testing.T) {
@@ -78,5 +90,32 @@ func TestManagerSaveRestrictsExistingStateFilePermissions(t *testing.T) {
 	}
 	if got := info.Mode().Perm(); got != 0600 {
 		t.Fatalf("state file permissions = %04o, want 0600", got)
+	}
+}
+
+func TestManagerSaveReplacementFailureCleansTemporaryFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state.json")
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(path, "original")
+	if err := os.WriteFile(marker, []byte("preserve"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	m := &Manager{Path: path, State: State{Language: "zh-CN"}}
+	if err := m.Save(); err == nil {
+		t.Fatal("Save should fail when the destination is a nonempty directory")
+	}
+	data, err := os.ReadFile(marker)
+	if err != nil || string(data) != "preserve" {
+		t.Fatal("replacement failure changed the existing destination")
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "state.json" {
+		t.Fatal("replacement failure left temporary credentials on disk")
 	}
 }

@@ -35,3 +35,28 @@ func LoadToken(st state.State, ac state.ActiveContext) (string, error) {
 	}
 	return info.Token, nil
 }
+
+// ReplaceToken updates one saved identity without changing the active identity.
+func ReplaceToken(ac ActiveContext, token string) error {
+	if token == "" {
+		return ErrNoToken
+	}
+	if testSessionEnabled() {
+		return nil
+	}
+	st, err := LoadState()
+	if err != nil {
+		return err
+	}
+	if _, ok := AuthInfoFor(st, ac); !ok {
+		return ErrAuthInfoNotFound
+	}
+	for i := range st.AuthInfos {
+		info := &st.AuthInfos[i]
+		if info.PlatformURL == ac.PlatformURL && info.Username == ac.Username && info.Method == ac.Method {
+			info.Token = token
+			return SaveState(st)
+		}
+	}
+	return ErrAuthInfoNotFound
+}
