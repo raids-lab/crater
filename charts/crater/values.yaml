@@ -258,6 +258,16 @@ backendConfig:
   # volcano configmap points at it and the admin switch is on; set it to "" to skip the endpoint.
   # Keep the backend at one replica: quota reservations live in process memory and are not shared.
   schedulerExtenderPort: :8089
+  # -- Native Kthena inference workload configuration
+  kthena:
+    # -- ModelServing init-container image (independent of the Crater download-job image)
+    downloaderImage: ghcr.io/volcano-sh/downloader:v1.0.0
+    # -- Enable distributed profiles after validating this cluster's images, storage and GPU networking.
+    # Values: vLLM/combined/ray, vLLM/disaggregated/single,
+    # vLLM/disaggregated/ray, SGLang/disaggregated/single
+    enabledProfiles: []
+    # Exact image references per profile; overrides built-in images. Use version tags or sha256 digests.
+    runtimeImages: {}
 
   # -- Model download functionality configurations
   modelDownload:
@@ -648,3 +658,15 @@ tls:
     cert: "<MASKED>"
     # -- Forward certificate private key (masked)
     key: "<MASKED>"
+
+# -- Native inference metrics scraping (requires Prometheus Operator)
+inferenceMonitoring:
+  router:
+    # -- Scrape Kthena Router for request/error rates and end-to-end latency
+    enabled: true
+  # -- Create a PodMonitor for vLLM engine metrics in the job namespace
+  enabled: false
+  # -- Labels used by the Prometheus instance's podMonitorSelector
+  labels: {}
+  # -- Metrics scrape interval
+  interval: 30s

@@ -227,6 +227,7 @@ func newPodGroup(job *batch.Job, phase scheduling.PodGroupPhase) *scheduling.Pod
 
 func volcanoScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
+	utilruntime.Must(v1.AddToScheme(scheme))
 	utilruntime.Must(batch.AddToScheme(scheme))
 	utilruntime.Must(scheduling.AddToScheme(scheme))
 	return scheme

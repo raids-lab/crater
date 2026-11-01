@@ -43,6 +43,12 @@ export enum JobType {
   KubeRay = 'kuberay',
   DeepSpeed = 'deepspeed',
   OpenMPI = 'openmpi',
+  ModelDeployment = 'model-deployment',
+}
+
+export enum WorkloadKind {
+  VolcanoJob = 'volcano-job',
+  KthenaInference = 'kthena-inference',
 }
 
 export const isInteracitveJob = (jobType: JobType) => {
@@ -71,6 +77,19 @@ export interface IJobInfo {
   permanentLocked: boolean
   lockedTimestamp?: string
   billedPointsTotal: number
+}
+
+// IWorkloadInfo keeps the legacy job table fields while making long-running
+// Kthena inference deployments explicit. Model deployments are not VolcanoJob CRs, so
+// consumers must branch on workloadKind for links and allowed operations.
+export interface IWorkloadInfo extends IJobInfo {
+  workloadID: string
+  workloadKind: WorkloadKind
+  scheduler: string
+  detailPath: string
+  statusDetail?: string
+  namespace?: string
+  model?: string
 }
 
 export const apiAdminGetJobList = (params: RemoteTableParams, signal?: AbortSignal) =>
@@ -132,6 +151,18 @@ export const apiJobAllList = (params: RemoteTableParams, signal?: AbortSignal) =
 
 export const apiJobAllFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
   apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/all/facets`, {
+    searchParams: buildFacetSearchParams(toJobProtocol(params)),
+    signal,
+  })
+
+export const apiWorkloadAllList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IWorkloadInfo>>>(`${JOB_URL}/workloads/all`, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(params)),
+    signal,
+  })
+
+export const apiWorkloadAllFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/workloads/all/facets`, {
     searchParams: buildFacetSearchParams(toJobProtocol(params)),
     signal,
   })
@@ -243,6 +274,18 @@ export const apiJobBatchList = (params: RemoteTableParams, signal?: AbortSignal)
 
 export const apiJobBatchFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
   apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/facets`, {
+    searchParams: buildFacetSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),
+    signal,
+  })
+
+export const apiWorkloadBatchList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IWorkloadInfo>>>(`${JOB_URL}/workloads`, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),
+    signal,
+  })
+
+export const apiWorkloadBatchFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/workloads/facets`, {
     searchParams: buildFacetSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),
     signal,
   })

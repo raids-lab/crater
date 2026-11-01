@@ -1,0 +1,23 @@
+{{- if and .Values.inferenceMonitoring.enabled .Values.inferenceMonitoring.router.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}-inference-router
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: crater
+    {{- with .Values.inferenceMonitoring.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - kthena-system
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: kthena-router-metrics
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.inferenceMonitoring.interval | quote }}
+{{- end }}
