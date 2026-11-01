@@ -22,6 +22,28 @@ import (
 
 type CraterJobType string
 
+// IngressOptions contains optional settings applied to a prefixed Ingress.
+type IngressOptions struct {
+	Annotations map[string]string
+}
+
+func ingressAnnotations(portName string, options []IngressOptions) map[string]string {
+	annotations := map[string]string{
+		"nginx.ingress.kubernetes.io/ssl-redirect":          "true",
+		"nginx.ingress.kubernetes.io/proxy-body-size":       "20480m",
+		"nginx.ingress.kubernetes.io/proxy-connect-timeout": "300",
+		"nginx.ingress.kubernetes.io/proxy-send-timeout":    "300",
+		"nginx.ingress.kubernetes.io/proxy-read-timeout":    "300",
+		AnnotationKeyPortName:                               portName,
+	}
+	if len(options) > 0 {
+		for key, value := range options[0].Annotations {
+			annotations[key] = value
+		}
+	}
+	return annotations
+}
+
 const (
 	CraterJobTypeTensorflow CraterJobType = "tensorflow"
 	CraterJobTypePytorch    CraterJobType = "pytorch"
@@ -64,6 +86,7 @@ type ServiceManagerInterface interface {
 		port *v1.ServicePort,
 		host string,
 		prefix string,
+		options ...IngressOptions,
 	) (ingressPath string, err error)
 
 	// CreateIngress 创建一个 ClusterIP 类型的 Service，并创建 Ingress
@@ -258,6 +281,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 	port *v1.ServicePort,
 	host string,
 	prefix string,
+	options ...IngressOptions,
 ) (ingressPath string, err error) {
 	if port == nil {
 		return "", fmt.Errorf("port and ownerRef cannot be nil")
@@ -298,14 +322,7 @@ func (s *serviceManagerImpl) CreateIngressWithPrefix(
 			Namespace:       namespace,
 			OwnerReferences: ownerReferences,
 			Labels:          labels,
-			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/ssl-redirect":          "true",
-				"nginx.ingress.kubernetes.io/proxy-body-size":       "20480m",
-				"nginx.ingress.kubernetes.io/proxy-connect-timeout": "300",
-				"nginx.ingress.kubernetes.io/proxy-send-timeout":    "300",
-				"nginx.ingress.kubernetes.io/proxy-read-timeout":    "300",
-				AnnotationKeyPortName:                               port.Name,
-			},
+			Annotations:     ingressAnnotations(port.Name, options),
 		},
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: ptr.To("nginx"),

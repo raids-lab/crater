@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -33,6 +34,7 @@ import (
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/pkg/crclient"
 )
 
 const (
@@ -142,4 +144,41 @@ func TestGenerateUpdateJobModel(t *testing.T) {
 		So(group, ShouldBeNil)
 		So(err, ShouldBeNil)
 	})
+}
+
+func TestShouldReconcileVCJobSkipsTensorboard(t *testing.T) {
+	t.Parallel()
+
+	tensorboardJob := &batch.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
+		crclient.LabelKeyTaskType: "tensorboard",
+	}}}
+	if shouldReconcileVCJob(tensorboardJob) {
+		t.Fatal("TensorBoard auxiliary workloads must not be reconciled as normal jobs")
+	}
+
+	normalJob := &batch.Job{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{
+		crclient.LabelKeyTaskType: "jupyter",
+	}}}
+	if !shouldReconcileVCJob(normalJob) {
+		t.Fatal("normal Volcano Jobs must remain managed by the reconciler")
+	}
+}
+
+// PodGroup owner events enqueue a Job key even when the PodGroup has no task-type label.
+func TestReconcileSkipsTensorboardFromOwnerEvent(t *testing.T) {
+	scheme := podGroupScheme()
+	utilruntime.Must(batch.AddToScheme(scheme))
+	job := vcjobWithPhase(batch.Running)
+	job.Labels = map[string]string{crclient.LabelKeyTaskType: string(model.JobTypeTensorboard)}
+	r := &VcJobReconciler{
+		Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(job).Build(),
+		log:    logr.Discard(),
+	}
+	// No database is configured: auxiliary workloads must return before accessing one.
+	result, err := r.Reconcile(t.Context(), ctrl.Request{
+		NamespacedName: client.ObjectKeyFromObject(job),
+	})
+	if err != nil || result != (ctrl.Result{}) {
+		t.Fatalf("auxiliary Job reconciliation = (%+v, %v), want no work", result, err)
+	}
 }

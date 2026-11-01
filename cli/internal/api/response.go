@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"strings"
+
+	"github.com/imroc/req/v3"
 )
 
 const maxPlainTextErrorRunes = 512
@@ -16,6 +18,22 @@ type responseDetails interface {
 	responseStatus
 	GetContentType() string
 	String() string
+}
+
+// errorFromRequest keeps HTTP failures distinct from transport and decode failures.
+func errorFromRequest(resp *req.Response, requestErr error, craterCode int, msg string) error {
+	if resp != nil && resp.GetStatusCode() != 0 {
+		if err := errorFromResponse(resp, craterCode, msg); err != nil {
+			return err
+		}
+		if requestErr != nil {
+			return &RequestError{HTTPStatus: resp.GetStatusCode(), Msg: "platform returned an invalid response"}
+		}
+	}
+	if requestErr != nil {
+		return &NetworkError{Cause: requestErr}
+	}
+	return nil
 }
 
 func errorFromResponse(resp responseStatus, craterCode int, msg string) error {
