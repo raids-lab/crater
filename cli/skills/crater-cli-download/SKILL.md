@@ -1,6 +1,6 @@
 ---
 name: crater-cli-download
-version: 1.1.0
+version: 1.2.0
 description: "Crater CLI 下载域：指导 AI Agent 通过 crater download 创建、等待、查看、暂停、恢复、重试、删除模型和数据集下载任务，并安全处理 Hugging Face / ModelScope token。用户提到 crater download、模型下载、数据集下载、ModelScope、Hugging Face、hf、ms、下载日志、暂停/恢复/重试下载时使用。"
 metadata:
   requires:
@@ -36,6 +36,14 @@ metadata:
 - 来源支持 `modelscope` / `ms` 和 `huggingface` / `hf`。
 - 类别支持 `model` 和 `dataset`。
 - `ms` 与 `hf` 是 CLI 简写，CLI 会在请求平台前规范化为全拼。
+
+## 共享资源与结果核对
+
+- 平台按 `name + category` 共享一份公共资源；已有 Ready、Pending、Downloading 或 Paused 记录时，可能复用其他来源或版本，不采用本次请求的 `--source` / `--revision`。
+- 创建时优先使用 `--json`，必须核对返回的 `data.download.source`、`data.download.revision`、`data.download.status` 和 `data.download.path`；只有普通输出时，可用 `crater download get <id> --json` 补查。退出码成功或 `--wait` 返回不代表指定资源已经下载完成。
+- 实际来源或版本与请求不同时，明确报告复用事实与实际值。用户明确要求的来源或版本不匹配时，报告该要求尚未满足，不能宣称指定来源或版本已下载；`revision` 为空也不能证明某个明确版本已满足。
+- 只有 `status=Ready` 且实际来源、版本符合用户明确要求时，才能报告所需资源已可用；Pending、Downloading、Paused 或 Failed 均不能当作已完成。
+- 禁止擅自删除共享下载记录、文件或目录，也不能擅自清理、重试其他任务来强制获取指定来源或版本；说明当前复用限制，必要时请平台管理员协调。
 
 ## 工作流参考
 

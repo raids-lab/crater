@@ -1,0 +1,64 @@
+---
+title: TensorBoard 패널 배포 및 운영
+description: 이미지, 인증, 스케줄링, TTL, 업그레이드 및 롤백 구성
+---
+
+<ChartBadge />
+
+## 이미지 및 스케줄링
+
+동적으로 생성되는 TensorBoard Pod는 다음 Helm values를 사용합니다.
+
+- `images.tensorboard.repository` 및 `images.tensorboard.tag`
+- 전역 `imagePullPolicy` 및 `imagePullSecrets`
+- TensorBoard 전용 `tensorboard.nodeSelector`, `tensorboard.tolerations` 및 `tensorboard.affinity`
+- TensorBoard Ingress 인증 스위치 `tensorboard.ingressAuthEnabled`(기본값: `true`)
+- 연속 미접근 제한 `tensorboard.idleTimeoutSeconds`(양의 정수 초, 기본값 `57600`, 16시간)
+
+비공개 레지스트리 pull secret은 작업 namespace에 있어야 합니다. 패널은 소유자의 Volcano 대기열에 제출됩니다. 기본 affinity는 GPU가 없는 노드를 선호하지만 control-plane으로 강제하지 않습니다. 전용 서비스 노드가 있으면 TensorBoard 전용 values를 재정의하고 실제 Pod 배치와 이벤트를 확인하십시오.
+
+## 접근 인증
+
+TensorBoard Ingress는 ingress-nginx external auth로 Crater를 호출합니다. 보호된 API가 사용자와 소유권을 확인한 뒤 해당 패널 경로로 제한된 단기 Secure, HttpOnly, SameSite=Strict Cookie를 발급합니다. ingress-nginx와 Crater 호스트의 HTTPS/TLS를 올바르게 구성하십시오. 임의 URL은 보안 경계가 아닙니다.
+
+공유, 테스트 및 운영 환경에서는 `tensorboard.ingressAuthEnabled: true`를 유지하십시오. `false`로 설정하면 Ingress에서 external-auth annotation이 제거되어 URL을 아는 사용자가 Crater 로그인 및 소유권 검사를 우회할 수 있습니다. 네트워크가 명확히 격리된 로컬 개발 환경에서만 비활성화하십시오.
+
+일반 사용자 두 명과 로그아웃 창으로 다른 사용자의 패널 및 비로그인 접근이 거부되고 삭제 또는 만료 직후 URL이 무효화되는지 확인하십시오.
+
+## TTL 및 상태
+
+이미지에는 `python`으로 실행할 수 있는 Python 3와 TensorBoard가 필요합니다. 실행기 프록시는 HTTP만 지원하며 WebSocket 업그레이드는 지원하지 않습니다. 동시 연결은 최대 32개이고 Socket 제한 시간은 60초입니다. 기본 페이지와 scalar API는 검증했지만 사용자 지정 플러그인과 느린 데이터 요청은 별도로 테스트하십시오.
+
+각 패널은 CPU 100m와 메모리 256Mi를 요청하는 단일 Pod Volcano Job입니다. 컨테이너의 실행기가 TensorBoard를 시작하고 로컬 HTTP 프록시로 마지막 접근 시간을 메모리에 기록하므로 요청마다 데이터베이스나 Kubernetes에 쓰지 않습니다. 연속 16시간 미접근(설정 가능) 또는 실행기 시작 후 4일이 지나면 TensorBoard를 종료하고 코드 0으로 끝납니다. Pod는 Succeeded, VCJob은 Completed가 되며 실제 시작 또는 실행 오류는 Failed로 남습니다. 대기열과 이미지 pull 시간은 실행 시간에 포함하지 않습니다.
+
+패널 페이지, 정적 파일 및 데이터 요청은 활동 시간을 갱신하지만 별도 상태 프로브와 Crater 목록 폴링은 갱신하지 않습니다. 브라우저의 백그라운드 새로 고침도 접근으로 간주합니다. 탭을 닫아도 즉시 삭제되지 않으며 마지막 요청부터 미접근 시간을 계산합니다. 접근해도 최대 4일 제한은 연장되지 않습니다. `tensorboard.idleTimeoutSeconds`는 새 패널에만 적용됩니다. 격리된 테스트 환경에서 잠시 `60`으로 설정해 정리를 검증한 뒤 기본값으로 복원하십시오.
+
+`TaskCompleted → CompleteJob` 정책으로 Job이 완료되고 `ttlSecondsAfterFinished: 300`에 따라 5분 후 삭제됩니다. Service와 Ingress는 owner reference로 함께 삭제되며 종료된 패널은 HTTP 서비스를 중지합니다. 사용자는 언제든 VCJob을 삭제하여 Pod를 중지할 수 있고 소스 로그는 유지됩니다. Pod `activeDeadlineSeconds`는 4일에 1시간을 더한 장애 시 안전장치이며 정상 만료에는 사용하지 않습니다. 안전장치가 작동하면 Failed가 될 수 있습니다. 사용자마다 대기 중이거나 활성 상태인 패널을 최대 10개 유지할 수 있습니다. 현재 버전은 VCJob만 관리하며 이전 패널의 만료 GC는 실행하지 않습니다.
+
+`pending`, `starting`, `ready`, `completed`, `failed`, `expired`는 Volcano Job phase와 Pod Ready 조건으로 판단합니다. `pending`은 일반 VCJob의 Pending phase와 일치합니다. Service, Ingress 및 EndpointSlice 상태는 종합하지 않습니다. Volcano 대기열, Pod 이벤트, Service endpoint 및 ingress-controller 로그도 확인하십시오.
+
+정상 만료와 기타 정상 종료는 `completed`를 반환하고 일반 작업과 같은 녹색 완료 배지로 표시합니다. 사유는 `idle_expired`, `runtime_expired`, `completed`로 구분합니다. `expired`는 장애 시 제한 시간 안전장치에만 남습니다. 사유는 컨테이너 termination message에서 읽으며 활동 보고 API는 추가하지 않습니다.
+
+TensorBoard는 보조 워크로드이므로 과거 기록을 포함하여 일반 작업 목록, 개수 및 작업 리소스 사용량 집계에서 제외합니다. 실제 클러스터 CPU, 메모리 및 대기열 사용량은 계속 반영됩니다. 과거 데이터베이스 기록을 삭제할 필요는 없습니다.
+
+## 업그레이드 및 롤백
+
+**backend → frontend** 순서로 업그레이드합니다. 업그레이드 전에 이전 패널을 정리하고 남아 있는 TensorBoard 패널이 모두 VCJob인지 확인하십시오.
+
+VCJob 패널을 지원하지 않는 이전 backend로 롤백하기 전에 삭제할 패널을 확인합니다.
+
+```bash
+kubectl -n <job-namespace> get jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+```
+
+delete 명령은 목록의 모든 패널을 삭제하므로 범위를 먼저 확인하십시오. 이전 backend는 VCJob 패널을 조회, 인증 또는 삭제할 수 없습니다. 로그는 소스 스토리지에 남습니다.
+
+## 릴리스 전 검증
+
+- 기본값이 아닌 registry, pull secret 및 운영 tag로 패널을 생성합니다.
+- control-plane taint가 있는 클러스터에서 Pod 배치를 확인합니다.
+- 개인 디렉터리, 단일/다중 소스, 같은 표시 이름, TensorFlow PS, 대기/준비/완료/실패/만료 상태, 4일 정리, 동시 할당량 및 오류 경로를 검증합니다.
+- 스케줄링할 수 없는 대형 GPU 작업을 앞에 두고 호환 CPU/메모리가 남아 있을 때 소형 패널이 시작되는지 확인합니다.
+- Chart lint/template을 실행하고 렌더링된 backend 설정에 이미지, `ingressAuthEnabled` 및 스케줄링 항목이 있는지 확인합니다.
+- 짧은 미접근 제한으로 사용자 트래픽만 시간을 갱신하고 프로브만으로는 종료되는지 확인합니다. Pod 종료 코드 0, VCJob Completed, 5분 후 연쇄 삭제, 수동 삭제 및 실제 프로세스 실패도 검증합니다.

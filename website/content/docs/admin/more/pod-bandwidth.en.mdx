@@ -3,7 +3,7 @@ title: Configure Pod bandwidth limits
 description: Configure separate network limits for model download and Volcano job Pods
 ---
 
-Administrators can use **Pod bandwidth limits** in Platform Settings to configure model download, Volcano job ingress, and Volcano job egress bandwidth separately. The job settings cover both normal and backfill jobs. The feature is disabled by default so clusters without bandwidth CNI support are not affected.
+Administrators can use **Pod bandwidth limits** in Platform Settings to configure model download, Volcano job ingress, and Volcano job egress bandwidth separately. The feature is disabled by default so clusters without bandwidth CNI support are not affected.
 
 ## Cluster capability check
 
@@ -19,12 +19,12 @@ This is the Flannel deployment contract currently supported by Crater. Other nam
 ## Settings
 
 - **Model download bandwidth**: writes the ingress annotation on model-dl Pods and limits downloaded data entering the Pod.
-- **Job ingress**: limits data entering normal and backfill job Pods.
-- **Job egress**: limits data sent from normal and backfill job Pods.
+- **Job ingress**: limits data entering job Pods.
+- **Job egress**: limits data sent from job Pods.
 
 The page separates the numeric value from the unit. Units can be Kbit/s, Mbit/s, or Gbit/s. For example, value `1` with Gbit/s is stored as the Kubernetes quantity `1G`.
 
-The value is stored in system configuration and updates do not require a backend restart. Crater reads the latest configuration when it actually creates a model download Pod or Volcano Job. Prequeued jobs use the configuration from activation time, not a submission-time snapshot. Because CNI reads annotations only when creating the Pod sandbox, running Pods are unchanged and must be recreated to use a new value.
+The value is stored in system configuration and updates do not require a backend restart. Crater reads the latest configuration when it actually creates a model download Pod or Volcano Job. Because CNI reads annotations only when creating the Pod sandbox, running Pods are unchanged and must be recreated to use a new value.
 
 ## Verification note
 

@@ -328,11 +328,9 @@ func TestShouldBlockJobCreateForBalance(t *testing.T) {
 	}
 }
 
-func TestCalcSettlementChargeUsesScheduleTypeBillingMultiplier(t *testing.T) {
+func TestCalcSettlementChargeAccumulatesOnTotal(t *testing.T) {
 	t.Parallel()
 
-	normal := model.ScheduleTypeNormal
-	backfill := model.ScheduleTypeBackfill
 	resources := v1.ResourceList{
 		v1.ResourceCPU: apiresource.MustParse("2"),
 	}
@@ -340,30 +338,16 @@ func TestCalcSettlementChargeUsesScheduleTypeBillingMultiplier(t *testing.T) {
 		string(v1.ResourceCPU): 3 * BillingPointScale,
 	}
 
-	normalJob := &model.Job{
-		ScheduleType:      &normal,
+	job := &model.Job{
 		Resources:         datatypes.NewJSONType(resources),
 		BilledPointsTotal: BillingPointScale,
 	}
-	newTotalMicro, jobCost := calcSettlementCharge(normalJob, priceMap, 30*time.Minute)
+	newTotalMicro, jobCost := calcSettlementCharge(job, priceMap, 30*time.Minute)
 	if jobCost != 3*BillingPointScale {
-		t.Fatalf("normal jobCost = %d, want %d", jobCost, 3*BillingPointScale)
+		t.Fatalf("jobCost = %d, want %d", jobCost, 3*BillingPointScale)
 	}
 	if newTotalMicro != 4*BillingPointScale {
-		t.Fatalf("normal newTotalMicro = %d, want %d", newTotalMicro, 4*BillingPointScale)
-	}
-
-	backfillJob := &model.Job{
-		ScheduleType:      &backfill,
-		Resources:         datatypes.NewJSONType(resources),
-		BilledPointsTotal: BillingPointScale,
-	}
-	newTotalMicro, jobCost = calcSettlementCharge(backfillJob, priceMap, 30*time.Minute)
-	if jobCost != 0 {
-		t.Fatalf("backfill jobCost = %d, want 0", jobCost)
-	}
-	if newTotalMicro != BillingPointScale {
-		t.Fatalf("backfill newTotalMicro = %d, want %d", newTotalMicro, BillingPointScale)
+		t.Fatalf("newTotalMicro = %d, want %d", newTotalMicro, 4*BillingPointScale)
 	}
 }
 
@@ -376,22 +360,6 @@ func TestDeductSettlementCostSkipsNonPositiveCost(t *testing.T) {
 	}
 	if freeDeduct != 0 || extraDeduct != 0 || freeDebt != 0 {
 		t.Fatalf("deductions = (%d, %d, %d), want (0, 0, 0)", freeDeduct, extraDeduct, freeDebt)
-	}
-}
-
-func TestShouldSkipJobCreateBillingCheck(t *testing.T) {
-	t.Parallel()
-
-	backfill := model.ScheduleTypeBackfill
-	normal := model.ScheduleTypeNormal
-	if !shouldSkipJobCreateBillingCheck(&backfill) {
-		t.Fatal("expected backfill jobs to skip billing create check")
-	}
-	if shouldSkipJobCreateBillingCheck(&normal) {
-		t.Fatal("expected normal jobs to keep billing create check")
-	}
-	if shouldSkipJobCreateBillingCheck(nil) {
-		t.Fatal("expected missing schedule type to keep billing create check")
 	}
 }
 

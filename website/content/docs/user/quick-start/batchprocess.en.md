@@ -213,6 +213,8 @@ By doing this, you can override the default startup command of the image and exe
 
 The initial state is to mount the entire user file system. Generally, the file system and dataset are mounted to the /mnt/ folder.
 
+If your job does not require shared storage, you can remove all file-directory and dataset mounts before submitting it. Jobs without storage mounts skip the storage quota check and continue with other creation checks even if the personal directory is full or the quota query fails. For jobs with mounts, a quota or usage query failure prevents creation and suggests retrying later or removing all mounts; it does not necessarily mean that the Ceph cluster has failed. Before removing mounts, ensure that the image, startup command, and working directory do not depend on those files, and arrange another way to save outputs. Temporary container files are not automatically saved to shared storage.
+
 ![mount](./assets/mount.webp)
 
 For example, to import the mnist folder from the user space, you can use the cd /mnt/mnist; command to access this folder.

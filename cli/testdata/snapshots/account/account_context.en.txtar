@@ -1,0 +1,373 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-account-help/argv --
+crater account --help
+-- en/01-account-help/exit --
+0
+-- en/01-account-help/stdout --
+View accounts, inspect the current account/queue, and switch the account used by subsequent commands.
+
+Usage:
+  crater account [flags]
+  crater account [command]
+
+Available Commands:
+  billing     View account billing
+  current     Show the current account/queue
+  get         Get an account
+  ls          List accounts
+  members     List account members
+  use         Switch the current account/queue
+  users-out   List users outside an account
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+
+Use "crater account [command] --help" for more information about a command.
+-- en/01-account-help/stderr --
+-- en/02-current-help/argv --
+crater account current --help
+-- en/02-current-help/exit --
+0
+-- en/02-current-help/stdout --
+Query the active platform for the current account/queue and account role.
+
+Usage:
+  crater account current [flags]
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/02-current-help/stderr --
+-- en/03-use-help/argv --
+crater account use --help
+-- en/03-use-help/exit --
+0
+-- en/03-use-help/stdout --
+Switch to an account/queue by its exact name from account ls and save credentials for subsequent commands.
+
+Usage:
+  crater account use <name> [flags]
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/03-use-help/stderr --
+-- en/04-use-missing-json/argv --
+crater account use --json
+-- en/04-use-missing-json/exit --
+2
+-- en/04-use-missing-json/stdout --
+-- en/04-use-missing-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Account/queue is required (\u003cname\u003e)"
+}
+-- en/05-use-blank-json/argv --
+crater account use   --json
+-- en/05-use-blank-json/exit --
+2
+-- en/05-use-blank-json/stdout --
+-- en/05-use-blank-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_MISSING_REQUIRED_FLAG",
+  "message": "Account/queue is required (\u003cname\u003e)"
+}
+-- en/06-use-extra-json/argv --
+crater account use research extra --json
+-- en/06-use-extra-json/exit --
+2
+-- en/06-use-extra-json/stdout --
+-- en/06-use-extra-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "too many arguments for crater account use: got 2, want at most 1"
+}
+-- en/07-current-extra-json/argv --
+crater account current extra --json
+-- en/07-current-extra-json/exit --
+2
+-- en/07-current-extra-json/stdout --
+-- en/07-current-extra-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "too many arguments for crater account current: got 1, want at most 0"
+}
+-- en/08-typo-json/argv --
+crater account invalid-command --json
+-- en/08-typo-json/exit --
+2
+-- en/08-typo-json/stdout --
+-- en/08-typo-json/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_UNKNOWN_COMMAND",
+  "message": "unknown command \"invalid-command\" for \"crater account\"\nRun \"crater account --help\" for usage."
+}
+-- en/09-typo-text/argv --
+crater account invalid-command --no-interactive
+-- en/09-typo-text/exit --
+2
+-- en/09-typo-text/stdout --
+-- en/09-typo-text/stderr --
+Error:
+  unknown command "invalid-command" for "crater account"
+  Run "crater account --help" for usage.
+-- en/10-current-no-active/argv --
+crater account current --json
+-- en/10-current-no-active/exit --
+2
+-- en/10-current-no-active/stdout --
+-- en/10-current-no-active/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "no active credentials found"
+}
+-- en/11-use-no-active/argv --
+crater account use research --json
+-- en/11-use-no-active/exit --
+2
+-- en/11-use-no-active/stdout --
+-- en/11-use-no-active/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "no active credentials found"
+}
+-- en/12-current-timeout/argv --
+crater account current --json
+-- en/12-current-timeout/exit --
+4
+-- en/12-current-timeout/stdout --
+-- en/12-current-timeout/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NETWORK_FAILURE",
+  "message": "could not reach server: Get \"https://example.invalid/api/auth/check\": context deadline exceeded",
+  "context": {
+    "msg": "network error: Get \"https://example.invalid/api/auth/check\": context deadline exceeded"
+  }
+}
+-- en/13-use-timeout/argv --
+crater account use research --no-interactive
+-- en/13-use-timeout/exit --
+4
+-- en/13-use-timeout/stdout --
+-- en/13-use-timeout/stderr --
+Error:
+  could not reach server: Post "https://example.invalid/api/v1/auth/switch": context deadline exceeded
+-- en/14-current-404/argv --
+crater account current --json
+-- en/14-current-404/exit --
+4
+-- en/14-current-404/stdout --
+-- en/14-current-404/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "HTTP 404: simulated",
+  "context": {
+    "crater_code": 404,
+    "http_status": 404,
+    "msg": "simulated"
+  }
+}
+-- en/15-use-forbidden/argv --
+crater account use forbidden --json
+-- en/15-use-forbidden/exit --
+4
+-- en/15-use-forbidden/stdout --
+-- en/15-use-forbidden/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_FORBIDDEN_403",
+  "message": "HTTP 403: not a member",
+  "context": {
+    "crater_code": 1001,
+    "http_status": 403,
+    "msg": "not a member"
+  }
+}
+-- en/16-current-text/argv --
+crater account current --no-interactive
+-- en/16-current-text/exit --
+0
+-- en/16-current-text/stdout --
+PLATFORM: https://example.invalid
+USERNAME: alice
+Account/queue: public
+ROLE: 2
+-- en/16-current-text/stderr --
+-- en/17-current-json/argv --
+crater account current --json
+-- en/17-current-json/exit --
+0
+-- en/17-current-json/stdout --
+{
+  "data": {
+    "context": {
+      "queue": "public",
+      "roleQueue": 2,
+      "rolePlatform": 2,
+      "accessQueue": 3,
+      "accessPublic": 3,
+      "space": "alice"
+    },
+    "platform_url": "https://example.invalid",
+    "username": "alice"
+  },
+  "status": "OK"
+}
+-- en/17-current-json/stderr --
+-- en/18-use-text/argv --
+crater account use research --no-interactive
+-- en/18-use-text/exit --
+0
+-- en/18-use-text/stdout --
+PLATFORM: https://example.invalid
+USERNAME: alice
+Account/queue: research
+ROLE: 2
+-- en/18-use-text/stderr --
+-- en/19-use-json/argv --
+crater account use research --json
+-- en/19-use-json/exit --
+0
+-- en/19-use-json/stdout --
+{
+  "data": {
+    "context": {
+      "queue": "research",
+      "roleQueue": 2,
+      "rolePlatform": 2,
+      "accessQueue": 3,
+      "accessPublic": 3,
+      "space": "alice"
+    },
+    "platform_url": "https://example.invalid",
+    "username": "alice"
+  },
+  "status": "OK"
+}
+-- en/19-use-json/stderr --
+-- en/20-use-invalid-response/argv --
+crater account use invalid --json
+-- en/20-use-invalid-response/exit --
+4
+-- en/20-use-invalid-response/stdout --
+-- en/20-use-invalid-response/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_API_OTHER",
+  "message": "HTTP 200: platform returned invalid account switch credentials or context",
+  "context": {
+    "http_status": 200,
+    "msg": "platform returned invalid account switch credentials or context"
+  }
+}
+-- en/21-current-malformed-401/argv --
+crater account current --json
+-- en/21-current-malformed-401/exit --
+4
+-- en/21-current-malformed-401/stdout --
+-- en/21-current-malformed-401/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_UNAUTHORIZED_401",
+  "message": "HTTP 401: Unauthorized",
+  "context": {
+    "http_status": 401,
+    "msg": "Unauthorized"
+  }
+}
+-- en/22-use-malformed-401/argv --
+crater account use research --json
+-- en/22-use-malformed-401/exit --
+4
+-- en/22-use-malformed-401/stdout --
+-- en/22-use-malformed-401/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_UNAUTHORIZED_401",
+  "message": "HTTP 401: Unauthorized",
+  "context": {
+    "http_status": 401,
+    "msg": "Unauthorized"
+  }
+}
+-- en/23-current-malformed-403/argv --
+crater account current --json
+-- en/23-current-malformed-403/exit --
+4
+-- en/23-current-malformed-403/stdout --
+-- en/23-current-malformed-403/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_FORBIDDEN_403",
+  "message": "HTTP 403: Forbidden",
+  "context": {
+    "http_status": 403,
+    "msg": "Forbidden"
+  }
+}
+-- en/24-use-malformed-403/argv --
+crater account use research --json
+-- en/24-use-malformed-403/exit --
+4
+-- en/24-use-malformed-403/stdout --
+-- en/24-use-malformed-403/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_FORBIDDEN_403",
+  "message": "HTTP 403: Forbidden",
+  "context": {
+    "http_status": 403,
+    "msg": "Forbidden"
+  }
+}
+-- en/25-current-malformed-500/argv --
+crater account current --json
+-- en/25-current-malformed-500/exit --
+4
+-- en/25-current-malformed-500/stdout --
+-- en/25-current-malformed-500/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_SERVER_INTERNAL_5XX",
+  "message": "HTTP 500: Internal Server Error",
+  "context": {
+    "http_status": 500,
+    "msg": "Internal Server Error"
+  }
+}
+-- en/26-use-malformed-500/argv --
+crater account use research --json
+-- en/26-use-malformed-500/exit --
+4
+-- en/26-use-malformed-500/stdout --
+-- en/26-use-malformed-500/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_SERVER_INTERNAL_5XX",
+  "message": "HTTP 500: Internal Server Error",
+  "context": {
+    "http_status": 500,
+    "msg": "Internal Server Error"
+  }
+}
+-- en/27-use-malformed-text/argv --
+crater account use research --no-interactive
+-- en/27-use-malformed-text/exit --
+4
+-- en/27-use-malformed-text/stdout --
+-- en/27-use-malformed-text/stderr --
+Error:
+  HTTP 403: Forbidden

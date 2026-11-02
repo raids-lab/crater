@@ -27,20 +27,32 @@ export interface MetadataFormType {
   migrations?: Record<string, MetadataFormMigration>
 }
 
-const CurrentJobTemplateVersion = '20260707'
+// Each bump registers a migration from the previous version so older templates chain up to the current one.
+const NodeSelectorTemplateVersion = '20260707'
+const CurrentJobTemplateVersion = '20260922'
+const CurrentTensorboardJobTemplateVersion = '20261030'
+const CurrentTensorboardPanelTemplateVersion = '20261013'
+const TensorboardLogDirEnv = 'TENSORBOARD_LOGDIR'
 
 const NodeSelectorMode = {
   Include: 'include',
   Exclude: 'exclude',
 } as const
 
-const migrateToCurrentNodeSelector = {
-  to: CurrentJobTemplateVersion,
+const migrateToNodeSelectorVersion = {
+  to: NodeSelectorTemplateVersion,
   migrate: (data: unknown) => migrateRootNodeSelector(data),
 }
 
-const withNodeSelectorMigration = (fromVersion: string): Record<string, MetadataFormMigration> => ({
-  [fromVersion]: migrateToCurrentNodeSelector,
+// scheduleType left the job forms with the scheduler extender; templates of every older version may carry it.
+const migrateToCurrent = {
+  to: CurrentJobTemplateVersion,
+  migrate: (data: unknown) => removeScheduleType(data),
+}
+
+const jobTemplateMigrations = (fromVersion: string): Record<string, MetadataFormMigration> => ({
+  [fromVersion]: migrateToNodeSelectorVersion,
+  [NodeSelectorTemplateVersion]: migrateToCurrent,
 })
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
@@ -59,6 +71,15 @@ const uniqueStrings = (values: unknown): string[] => {
         .map((value) => value.trim())
     )
   ).filter(Boolean)
+}
+
+const removeScheduleType = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('模板数据格式无效，无法移除调度类型配置')
+  }
+  const rest = { ...data }
+  delete rest.scheduleType
+  return rest
 }
 
 const migrateRootNodeSelector = (data: unknown): unknown => {
@@ -121,51 +142,115 @@ const migrateNodeSelector = (nodeSelector?: Record<string, unknown>) => {
   }
 }
 
+const migrateTensorboardLogDir = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('The job template data is invalid')
+  }
+
+  const configuredLogDir =
+    typeof data.tensorboardLogDir === 'string' ? data.tensorboardLogDir.trim() : ''
+  const legacyEnv = Array.isArray(data.envs)
+    ? data.envs.find(
+        (env) => isRecord(env) && env.name === TensorboardLogDirEnv && typeof env.value === 'string'
+      )
+    : undefined
+  const legacyLogDir = isRecord(legacyEnv) ? String(legacyEnv.value).trim() : ''
+
+  return {
+    ...data,
+    tensorboardLogDir: configuredLogDir || legacyLogDir,
+  }
+}
+
+const migrateTensorboardPanelLifetime = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('The TensorBoard template data is invalid')
+  }
+
+  const currentData = { ...data }
+  delete currentData.ttlHours
+  return currentData
+}
+
+const migrateTensorboardPanelName = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('The TensorBoard template data is invalid')
+  }
+  return { ...data, name: typeof data.name === 'string' ? data.name : '' }
+}
+
+const withTensorboardLogDirMigration = (
+  fromVersion: string,
+  legacyTensorboardVersion = '20260729'
+): Record<string, MetadataFormMigration> => ({
+  ...jobTemplateMigrations(fromVersion),
+  [legacyTensorboardVersion]: migrateToCurrent,
+  [CurrentJobTemplateVersion]: {
+    to: CurrentTensorboardJobTemplateVersion,
+    migrate: migrateTensorboardLogDir,
+  },
+})
+
 export const MetadataFormAccount: MetadataFormType = {
   version: '20241208',
   type: 'account',
 }
 
 export const MetadataFormJupyter: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'jupyter',
-  migrations: withNodeSelectorMigration('20250420'),
+  migrations: withTensorboardLogDirMigration('20250420'),
 }
 
 export const MetadataFormWebIDE: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'webide',
-  migrations: withNodeSelectorMigration('20251126'),
+  migrations: withTensorboardLogDirMigration('20251126'),
 }
 
 export const MetadataFormCustom: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'custom',
-  migrations: withNodeSelectorMigration('20250317'),
+  migrations: withTensorboardLogDirMigration('20250317', '20260728'),
 }
 
 export const MetadataFormCustomEmias: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'custom-emias',
-  migrations: withNodeSelectorMigration('20250420'),
+  migrations: jobTemplateMigrations('20250420'),
 }
 
 export const MetadataFormTensorflow: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'tensorflow',
-  migrations: withNodeSelectorMigration('20240528'),
+  migrations: withTensorboardLogDirMigration('20240528'),
+}
+
+export const MetadataFormTensorboard: MetadataFormType = {
+  version: CurrentTensorboardPanelTemplateVersion,
+  type: 'tensorboard',
+  migrations: {
+    [NodeSelectorTemplateVersion]: {
+      to: '20260930',
+      migrate: migrateTensorboardPanelLifetime,
+    },
+    '20260930': {
+      to: CurrentTensorboardPanelTemplateVersion,
+      migrate: migrateTensorboardPanelName,
+    },
+  },
 }
 
 export const MetadataFormPytorch: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'pytorch',
-  migrations: withNodeSelectorMigration('20240528'),
+  migrations: withTensorboardLogDirMigration('20240528'),
 }
 
 export const MetadataFormSingle: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'single',
-  migrations: withNodeSelectorMigration('20240528'),
+  migrations: jobTemplateMigrations('20240528'),
 }
 
 // 基于Dockerfile构建
@@ -195,5 +280,5 @@ export const MetadataFormEnvdRaw: MetadataFormType = {
 export const MetadataFormJupyterEmias: MetadataFormType = {
   version: CurrentJobTemplateVersion,
   type: 'jupyter-emias',
-  migrations: withNodeSelectorMigration('20240528'),
+  migrations: jobTemplateMigrations('20240528'),
 }

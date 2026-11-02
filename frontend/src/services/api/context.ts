@@ -70,13 +70,6 @@ export interface JobResourceSummaryResp {
   accelerators: JobResourceSummaryAccelerator[]
 }
 
-export interface PrequeueFeatureStatusResp {
-  backfillEnabled: boolean
-}
-
-export const apiContextPrequeueStatus = () =>
-  apiV1Get<IResponse<PrequeueFeatureStatusResp>>('context/prequeue')
-
 export const apiContextBillingSummary = () =>
   apiV1Get<IResponse<BillingSummaryResp>>('context/billing/summary')
 

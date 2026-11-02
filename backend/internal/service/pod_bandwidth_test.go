@@ -139,35 +139,6 @@ func TestApplyJobPodBandwidthUsesCurrentConfig(t *testing.T) {
 	}
 }
 
-func TestApplyJobPodBandwidthCoversNormalAndBackfillJobs(t *testing.T) {
-	configService := newPodBandwidthTestConfigService(t, "pod_bandwidth_schedule_types")
-	if err := configService.UpdatePodBandwidthConfig(t.Context(), PodBandwidthConfig{
-		Enabled:                true,
-		ModelDownloadBandwidth: "100M",
-		JobIngressBandwidth:    testJobIngressBandwidth,
-		JobEgressBandwidth:     testJobEgressBandwidth,
-	}); err != nil {
-		t.Fatal(err)
-	}
-
-	for _, scheduleType := range []model.ScheduleType{model.ScheduleTypeNormal, model.ScheduleTypeBackfill} {
-		job := &batch.Job{
-			ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{
-				"crater.raids.io/schedule-type": scheduleType.String(),
-			}},
-			Spec: batch.JobSpec{Tasks: []batch.TaskSpec{{Template: corev1.PodTemplateSpec{}}}},
-		}
-		if err := ApplyJobPodBandwidth(t.Context(), configService, supportedFlannelClient(), job); err != nil {
-			t.Fatal(err)
-		}
-		annotations := job.Spec.Tasks[0].Template.Annotations
-		if annotations[podIngressBandwidthAnnotation] != testJobIngressBandwidth ||
-			annotations[podEgressBandwidthAnnotation] != testJobEgressBandwidth {
-			t.Fatalf("schedule type %s annotations = %#v", scheduleType.String(), annotations)
-		}
-	}
-}
-
 func TestPodBandwidthCapabilityFailureDisablesFeatureAndFailsOpen(t *testing.T) {
 	configService := newPodBandwidthTestConfigService(t, "pod_bandwidth_fail_open")
 	enabledConfig := PodBandwidthConfig{
@@ -266,7 +237,7 @@ func newPodBandwidthTestConfigService(t *testing.T, databaseName string) *Config
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := db.AutoMigrate(&model.SystemConfig{}, &model.PrequeueConfig{}); err != nil {
+	if err := db.AutoMigrate(&model.SystemConfig{}); err != nil {
 		t.Fatal(err)
 	}
 	return NewConfigService(query.Use(db))

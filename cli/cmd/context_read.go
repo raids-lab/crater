@@ -20,14 +20,9 @@ var contextCmd = &cobra.Command{
 	},
 }
 
-var contextPrequeueCmd = &cobra.Command{Use: "prequeue", Short: "Get prequeue feature status", Args: noArgs, RunE: runContextPrequeue}
 var contextQuotaCmd = &cobra.Command{Use: "quota", Short: "Get current account quota", Args: noArgs, RunE: runContextQuota}
 var contextResourcesCmd = &cobra.Command{Use: "resources", Short: "Get current job resource summary", Args: noArgs, RunE: runContextResources}
 var contextBillingCmd = &cobra.Command{Use: "billing", Short: "Get current billing summary", Args: noArgs, RunE: runContextBilling}
-
-func runContextPrequeue(cmd *cobra.Command, _ []string) error {
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "prequeue", Path: api.ContextPrefix + "/prequeue", Params: noParams, Table: printRawObject})
-}
 
 func runContextQuota(cmd *cobra.Command, _ []string) error {
 	return runRawRead(cmd, rawReadSpec{PayloadKey: "quota", Path: api.ContextPrefix + "/quota", Params: noParams, Table: printRawObject})
@@ -58,6 +53,6 @@ func printContextResources(data interface{}) {
 }
 
 func init() {
-	contextCmd.AddCommand(contextPrequeueCmd, contextQuotaCmd, contextResourcesCmd, contextBillingCmd)
+	contextCmd.AddCommand(contextQuotaCmd, contextResourcesCmd, contextBillingCmd)
 	rootCmd.AddCommand(contextCmd)
 }

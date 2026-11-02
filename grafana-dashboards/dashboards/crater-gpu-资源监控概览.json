@@ -60,7 +60,22 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "未使用 GPU 卡"
+                "options": "当前账户可用"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "green",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "已分配未使用"
               },
               "properties": [
                 {
@@ -75,7 +90,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "已使用 GPU 卡"
+                "options": "使用中"
               },
               "properties": [
                 {
@@ -151,7 +166,7 @@
             "editorMode": "code",
             "expr": "count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"})",
             "instant": false,
-            "legendFormat": "已申请 GPU 卡",
+            "legendFormat": "已分配gpu资源",
             "range": true,
             "refId": "A"
           },
@@ -162,10 +177,10 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}[1m])>0)",
+            "expr": "count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}[1m])>0) or (0 * count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}))",
             "hide": false,
             "instant": true,
-            "legendFormat": "已使用 GPU 卡",
+            "legendFormat": "使用中",
             "range": false,
             "refId": "B"
           },
@@ -176,12 +191,26 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"})-count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}[1m])>0)",
+            "expr": "(count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) or (0 * count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}))) - (count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}[1m])>0) or (0 * count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"})))",
             "hide": false,
             "instant": true,
-            "legendFormat": "未使用 GPU 卡",
+            "legendFormat": "已分配未使用",
             "range": false,
             "refId": "F"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${idc}"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "sum(\n  ((\n  count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"} * on (pod) group_left(host_ip) kube_pod_info) by (Hostname,modelName)\n  -\n  (\n    count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) by (Hostname,modelName)\n    or\n    sum by (Hostname,modelName) (0 * count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}) by (Hostname,modelName))\n  )\n))\n  * on(Hostname,modelName)\n  ((\n  (\n    count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"} * on (pod) group_left(host_ip) kube_pod_info) by (Hostname,modelName)\n    -\n    (\n      count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) by (Hostname,modelName)\n      or\n      sum by (Hostname,modelName) (0 * count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}) by (Hostname,modelName))\n    )\n  ) >= bool $min_free_gpu\n)\n* on(Hostname) group_left()\nlabel_replace(max by (node) (kube_node_status_condition{condition=\"Ready\",status=\"true\"}), \"Hostname\", \"$1\", \"node\", \"(.*)\")\n* on(Hostname) group_left()\nlabel_replace(1 - max by (node) (kube_node_spec_unschedulable), \"Hostname\", \"$1\", \"node\", \"(.*)\")\n* on(Hostname) group_left()\nlabel_replace(\n  1 - (\n    max by (node) (kube_node_spec_taint{key=\"crater.raids.io/account\",effect=\"NoSchedule\",value!~\"^${account:regex}$\"})\n    or on(node)\n    max by (node) (0 * kube_node_info)\n  ),\n  \"Hostname\", \"$1\", \"node\", \"(.*)\"\n)\nand on() (\n  label_replace(vector(1), \"crater_view\", \"$view\", \"__name__\", \".*\")\n  and on(crater_view)\n  label_replace(vector(1), \"crater_view\", \"user\", \"__name__\", \".*\")\n))\n)",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "当前账户可用",
+            "range": false,
+            "refId": "G"
           }
         ],
         "title": "GPU 卡申请与使用情况",
@@ -464,7 +493,7 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}[3m])>0) / count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) * avg(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"} > 0)",
+            "expr": "avg(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"})",
             "instant": true,
             "legendFormat": "__auto",
             "range": false,
@@ -539,7 +568,7 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "avg(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"} > 0)",
+            "expr": "avg(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"} > 0) or (0 * count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}))",
             "instant": true,
             "legendFormat": "__auto",
             "range": false,
@@ -910,7 +939,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "已申请 GPU 资源"
+                "options": "已分配gpu资源"
               },
               "properties": [
                 {
@@ -957,7 +986,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "已使用 GPU 资源"
+                "options": "使用中"
               },
               "properties": [
                 {
@@ -1037,7 +1066,7 @@
             {
               "matcher": {
                 "id": "byName",
-                "options": "空闲 GPU 资源"
+                "options": "未分配 GPU"
               },
               "properties": [
                 {
@@ -1068,6 +1097,147 @@
                   "value": 219
                 }
               ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "user 当前账户基础候选"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "当前账户基础候选"
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text"
+                  }
+                },
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "options": {
+                        "0": {
+                          "color": "red",
+                          "index": 0,
+                          "text": "否"
+                        },
+                        "1": {
+                          "color": "green",
+                          "index": 1,
+                          "text": "是"
+                        }
+                      },
+                      "type": "value"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "admin Ready 状态"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Ready 状态"
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text"
+                  }
+                },
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "options": {
+                        "0": {
+                          "color": "red",
+                          "index": 0,
+                          "text": "NotReady"
+                        },
+                        "1": {
+                          "color": "green",
+                          "index": 1,
+                          "text": "Ready"
+                        }
+                      },
+                      "type": "value"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "admin 允许调度"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "允许调度"
+                },
+                {
+                  "id": "custom.cellOptions",
+                  "value": {
+                    "type": "color-text"
+                  }
+                },
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "options": {
+                        "0": {
+                          "color": "red",
+                          "index": 0,
+                          "text": "禁止"
+                        },
+                        "1": {
+                          "color": "green",
+                          "index": 1,
+                          "text": "允许"
+                        }
+                      },
+                      "type": "value"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "admin 账户 Taint（NoSchedule）"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "账户 Taint（NoSchedule）"
+                },
+                {
+                  "id": "mappings",
+                  "value": [
+                    {
+                      "options": {
+                        "match": "null+nan",
+                        "result": {
+                          "index": 0,
+                          "text": "无"
+                        }
+                      },
+                      "type": "special"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -1090,7 +1260,12 @@
             "show": false
           },
           "showHeader": true,
-          "sortBy": []
+          "sortBy": [
+            {
+              "desc": false,
+              "displayName": "主机名"
+            }
+          ]
         },
         "pluginVersion": "11.3.0+security-01",
         "targets": [
@@ -1115,7 +1290,7 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\"}) by (Hostname)\nor\n(sum by (Hostname) (0 * count(DCGM_FI_DEV_GPU_UTIL) by (Hostname)))",
+            "expr": "count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) by (Hostname,modelName)\nor\n(sum by (Hostname,modelName) (0 * count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}) by (Hostname,modelName)))",
             "format": "table",
             "hide": false,
             "instant": true,
@@ -1130,11 +1305,11 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}[1m])>0) by (Hostname)",
+            "expr": "count(avg_over_time(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}[1m])>0) by (Hostname,modelName)",
             "format": "table",
             "hide": false,
             "instant": true,
-            "legendFormat": "已使用 GPU 资源",
+            "legendFormat": "使用中",
             "range": false,
             "refId": "C"
           },
@@ -1145,13 +1320,73 @@
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"} * on (pod) group_left(host_ip) kube_pod_info) by (Hostname) - (count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) by (Hostname)\nor\n(sum by (Hostname) (0 * count(DCGM_FI_DEV_GPU_UTIL) by (Hostname))))",
+            "expr": "(\n  count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"} * on (pod) group_left(host_ip) kube_pod_info) by (Hostname,modelName)\n  -\n  (\n    count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) by (Hostname,modelName)\n    or\n    sum by (Hostname,modelName) (0 * count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}) by (Hostname,modelName))\n  )\n) >= $min_free_gpu",
             "format": "table",
             "hide": false,
             "instant": true,
             "legendFormat": "__auto",
             "range": false,
             "refId": "D"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${idc}"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "max by (Hostname) (label_replace(max by (node) (kube_node_status_condition{condition=\"Ready\",status=\"true\"}), \"Hostname\", \"$1\", \"node\", \"(.*)\")\nand on() (\n  label_replace(vector(1), \"crater_view\", \"$view\", \"__name__\", \".*\")\n  and on(crater_view)\n  label_replace(vector(1), \"crater_view\", \"admin\", \"__name__\", \".*\")\n))",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "E"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${idc}"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "max by (Hostname) (label_replace(1 - max by (node) (kube_node_spec_unschedulable), \"Hostname\", \"$1\", \"node\", \"(.*)\")\nand on() (\n  label_replace(vector(1), \"crater_view\", \"$view\", \"__name__\", \".*\")\n  and on(crater_view)\n  label_replace(vector(1), \"crater_view\", \"admin\", \"__name__\", \".*\")\n))",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "F"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${idc}"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "max by (Hostname, dedicatedAccount) ((\n  max by (Hostname, dedicatedAccount) (\n    label_replace(\n      label_replace(kube_node_spec_taint{key=\"crater.raids.io/account\",effect=\"NoSchedule\"}, \"Hostname\", \"$1\", \"node\", \"(.*)\"),\n      \"dedicatedAccount\", \"$1\", \"value\", \"(.*)\"\n    )\n  )\n  or on(Hostname)\n  label_replace(\n    label_replace(max by (node) (0 * kube_node_info), \"Hostname\", \"$1\", \"node\", \"(.*)\"),\n    \"dedicatedAccount\", \"无\", \"__name__\", \".*\"\n  )\n)\nand on() (\n  label_replace(vector(1), \"crater_view\", \"$view\", \"__name__\", \".*\")\n  and on(crater_view)\n  label_replace(vector(1), \"crater_view\", \"admin\", \"__name__\", \".*\")\n))",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "G"
+          },
+          {
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${idc}"
+            },
+            "editorMode": "code",
+            "exemplar": false,
+            "expr": "(\n  (\n    count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"} * on (pod) group_left(host_ip) kube_pod_info) by (Hostname,modelName)\n    -\n    (\n      count(DCGM_FI_DEV_GPU_UTIL{namespace!=\"nvidia-gpu-operator\",Hostname=~\"$hostname\"}) by (Hostname,modelName)\n      or\n      sum by (Hostname,modelName) (0 * count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}) by (Hostname,modelName))\n    )\n  ) >= bool $min_free_gpu\n)\n* on(Hostname) group_left()\nlabel_replace(max by (node) (kube_node_status_condition{condition=\"Ready\",status=\"true\"}), \"Hostname\", \"$1\", \"node\", \"(.*)\")\n* on(Hostname) group_left()\nlabel_replace(1 - max by (node) (kube_node_spec_unschedulable), \"Hostname\", \"$1\", \"node\", \"(.*)\")\n* on(Hostname) group_left()\nlabel_replace(\n  1 - (\n    max by (node) (kube_node_spec_taint{key=\"crater.raids.io/account\",effect=\"NoSchedule\",value!~\"^${account:regex}$\"})\n    or on(node)\n    max by (node) (0 * kube_node_info)\n  ),\n  \"Hostname\", \"$1\", \"node\", \"(.*)\"\n)\nand on() (\n  label_replace(vector(1), \"crater_view\", \"$view\", \"__name__\", \".*\")\n  and on(crater_view)\n  label_replace(vector(1), \"crater_view\", \"user\", \"__name__\", \".*\")\n)",
+            "format": "table",
+            "hide": false,
+            "instant": true,
+            "legendFormat": "__auto",
+            "range": false,
+            "refId": "H"
           }
         ],
         "title": "已申请 GPU 明细（节点维度）",
@@ -1165,7 +1400,8 @@
             "options": {
               "excludeByName": {
                 "Time": false,
-                "Value #D": false
+                "Value #D": false,
+                "Value #G": true
               },
               "includeByName": {},
               "indexByName": {
@@ -1175,36 +1411,50 @@
                 "Value #B": 6,
                 "Value #C": 7,
                 "Value #D": 5,
+                "Value #E": 8,
+                "Value #F": 9,
+                "Value #H": 8,
+                "dedicatedAccount": 10,
                 "host_ip": 2,
                 "modelName": 3
               },
               "renameByName": {
                 "Hostname": "主机名",
                 "Value #A": "总 GPU 资源",
-                "Value #B": "已申请 GPU 资源",
-                "Value #C": "已使用 GPU 资源",
-                "Value #D": "空闲 GPU 资源",
-                "Value #E": "已使用 GPU 资源（外部业务）",
-                "Value #F": "已申请 GPU 资源（内部业务）",
-                "Value #G": "已使用 GPU 资源（内部业务）",
+                "Value #B": "已分配gpu资源",
+                "Value #C": "使用中",
+                "Value #D": "未分配 GPU",
+                "Value #E": "admin Ready 状态",
+                "Value #F": "admin 允许调度",
+                "Value #H": "user 当前账户基础候选",
+                "dedicatedAccount": "admin 账户 Taint（NoSchedule）",
                 "host_ip": "主机 IP",
                 "modelName": "GPU 型号"
               }
             }
           },
           {
+            "id": "filterByValue",
+            "options": {
+              "filters": [
+                {
+                  "config": {
+                    "id": "isNotNull",
+                    "options": {}
+                  },
+                  "fieldName": "未分配 GPU"
+                }
+              ],
+              "match": "all",
+              "type": "include"
+            }
+          },
+          {
             "id": "filterFieldsByName",
             "options": {
+              "byVariable": true,
               "include": {
-                "names": [
-                  "主机名",
-                  "主机 IP",
-                  "总 GPU 资源",
-                  "空闲 GPU 资源",
-                  "已申请 GPU 资源",
-                  "已使用 GPU 资源",
-                  "GPU 型号"
-                ]
+                "variable": "主机名,主机 IP,总 GPU 资源,未分配 GPU,已分配gpu资源,使用中,GPU 型号,${view} 当前账户基础候选,${view} Ready 状态,${view} 允许调度,${view} 账户 Taint（NoSchedule）"
               }
             }
           }
@@ -1828,41 +2078,7 @@
                 },
                 {
                   "id": "mappings",
-                  "value": [
-                    {
-                      "options": {
-                        "1": {
-                          "color": "green",
-                          "index": 0,
-                          "text": "正常"
-                        }
-                      },
-                      "type": "value"
-                    },
-                    {
-                      "options": {
-                        "from": 0,
-                        "result": {
-                          "color": "red",
-                          "index": 1,
-                          "text": "不正常"
-                        },
-                        "to": 0
-                      },
-                      "type": "range"
-                    },
-                    {
-                      "options": {
-                        "match": "null+nan",
-                        "result": {
-                          "color": "red",
-                          "index": 2,
-                          "text": "不正常"
-                        }
-                      },
-                      "type": "special"
-                    }
-                  ]
+                  "value": []
                 }
               ]
             },
@@ -2116,18 +2332,23 @@
             "show": false
           },
           "showHeader": true,
-          "sortBy": []
+          "sortBy": [
+            {
+              "desc": false,
+              "displayName": "主机名"
+            }
+          ]
         },
         "pluginVersion": "11.3.0+security-01",
         "targets": [
           {
             "datasource": {
               "type": "prometheus",
-              "uid": "P1809F7CD0C75ACF3"
+              "uid": "${idc}"
             },
             "editorMode": "code",
             "exemplar": false,
-            "expr": "count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}) by (Hostname)",
+            "expr": "count(DCGM_FI_DEV_GPU_UTIL{Hostname=~\"$hostname\"}) by (Hostname,modelName)",
             "format": "table",
             "hide": false,
             "instant": true,
@@ -2775,6 +2996,110 @@
           "refresh": 1,
           "regex": "",
           "type": "query"
+        },
+        {
+          "current": {
+            "text": "user",
+            "value": "user"
+          },
+          "hide": 2,
+          "includeAll": false,
+          "name": "view",
+          "options": [
+            {
+              "selected": true,
+              "text": "user",
+              "value": "user"
+            },
+            {
+              "selected": false,
+              "text": "admin",
+              "value": "admin"
+            }
+          ],
+          "query": "user,admin",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "default",
+            "value": "default"
+          },
+          "hide": 2,
+          "label": "账户",
+          "name": "account",
+          "options": [
+            {
+              "selected": true,
+              "text": "default",
+              "value": "default"
+            }
+          ],
+          "query": "default",
+          "type": "textbox"
+        },
+        {
+          "current": {
+            "text": "0",
+            "value": "0"
+          },
+          "includeAll": false,
+          "label": "同型号未分配 ≥",
+          "name": "min_free_gpu",
+          "options": [
+            {
+              "selected": true,
+              "text": "0",
+              "value": "0"
+            },
+            {
+              "selected": false,
+              "text": "1",
+              "value": "1"
+            },
+            {
+              "selected": false,
+              "text": "2",
+              "value": "2"
+            },
+            {
+              "selected": false,
+              "text": "3",
+              "value": "3"
+            },
+            {
+              "selected": false,
+              "text": "4",
+              "value": "4"
+            },
+            {
+              "selected": false,
+              "text": "5",
+              "value": "5"
+            },
+            {
+              "selected": false,
+              "text": "6",
+              "value": "6"
+            },
+            {
+              "selected": false,
+              "text": "7",
+              "value": "7"
+            },
+            {
+              "selected": false,
+              "text": "8",
+              "value": "8"
+            },
+            {
+              "selected": false,
+              "text": "16",
+              "value": "16"
+            }
+          ],
+          "query": "0,1,2,3,4,5,6,7,8,16",
+          "type": "custom"
         }
       ]
     },

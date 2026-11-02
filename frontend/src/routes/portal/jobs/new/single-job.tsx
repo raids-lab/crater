@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { useAtomValue } from 'jotai'
@@ -54,8 +54,8 @@ import { ForwardFormCard } from '@/components/form/forward-form-field'
 import { ImageFormField } from '@/components/form/image-form-field'
 import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
 import { ResourceFormFields } from '@/components/form/resource-form-field'
-import { ScheduleTypeFormField } from '@/components/form/schedule-type-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
+import { TensorboardLogDirFormField } from '@/components/form/tensorboard-log-dir-form-field'
 import { MetadataFormCustom } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
 import { JobSubmitButton } from '@/components/job/job-submit-button'
@@ -63,8 +63,7 @@ import { PublishConfigForm, publishValidateSearch } from '@/components/job/publi
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'
 
-import { apiContextPrequeueStatus } from '@/services/api/context'
-import { ScheduleType, apiTrainingCreate } from '@/services/api/vcjob'
+import { apiTrainingCreate } from '@/services/api/vcjob'
 
 import { useJobCreateBillingBlockDialog } from '@/hooks/use-job-create-billing-block'
 
@@ -84,6 +83,7 @@ import {
   volumeMountsSchema,
 } from '@/utils/form'
 import { atomUserInfo } from '@/utils/store'
+import { getDefaultTensorboardLogDir, withTensorboardLogDirEnv } from '@/utils/tensorboard'
 import { showErrorToast } from '@/utils/toast'
 
 export const Route = createFileRoute('/portal/jobs/new/single-job')({
@@ -105,13 +105,20 @@ const markdown = `## 运行规则
 const formSchema = z.object({
   jobName: jobNameSchema,
   task: taskSchema,
+  // Keep this additive field optional so existing custom-job templates remain valid.
+  tensorboardLogDir: z
+    .string()
+    .refine(
+      (value) => value === '' || value.startsWith('/'),
+      t('tensorboard.singleJob.absolutePath')
+    )
+    .optional(),
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
   alertEnabled: z.boolean().default(true),
   cpuPinningEnabled: z.boolean().default(false),
   forwards: forwardsSchema,
-  scheduleType: z.nativeEnum(ScheduleType).default(ScheduleType.Normal),
 })
 
 type FormSchema = z.infer<typeof formSchema>
@@ -139,9 +146,6 @@ const dataProcessor = (data: FormSchema) => {
       enabled: false,
     }
   }
-  if (data.scheduleType === undefined) {
-    data.scheduleType = ScheduleType.Normal
-  }
   return data
 }
 
@@ -156,14 +160,12 @@ function RouteComponent() {
   const user = useAtomValue(atomUserInfo)
   const { billingBlockDialogOpen, setBillingBlockDialogOpen, handleJobCreateError } =
     useJobCreateBillingBlockDialog()
-  const { data: prequeueStatusData } = useQuery({
-    queryKey: ['context', 'prequeue'],
-    queryFn: () => apiContextPrequeueStatus().then((res) => res.data),
-  })
-  const isBackfillEnabled = prequeueStatusData?.backfillEnabled ?? false
   const { mutate: createTask, isPending } = useMutation({
-    mutationFn: (values: FormSchema) =>
-      apiTrainingCreate({
+    mutationFn: (values: FormSchema) => {
+      const tensorboardLogDir =
+        values.tensorboardLogDir?.trim() || getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}`)
+
+      return apiTrainingCreate({
         name: values.jobName,
         resource: convertToResourceList(values.task.resource),
         image: values.task.image,
@@ -171,14 +173,14 @@ function RouteComponent() {
         command: values.task.command,
         workingDir: values.task.workingDir,
         volumeMounts: values.volumeMounts,
-        envs: values.envs,
+        envs: withTensorboardLogDirEnv(values.envs, tensorboardLogDir),
         forwards: values.forwards,
         alertEnabled: values.alertEnabled,
         cpuPinningEnabled: values.cpuPinningEnabled,
-        scheduleType: isBackfillEnabled ? values.scheduleType : ScheduleType.Normal,
         selectors: buildNodeSelectors(values.nodeSelector),
         template: exportToJsonString(MetadataFormCustom, values),
-      }),
+      })
+    },
     onSuccess: async (_, { jobName }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['job'] }),
@@ -221,10 +223,10 @@ function RouteComponent() {
           mountPath: `/home/${user?.name}`,
         },
       ],
+      tensorboardLogDir: '',
       envs: [],
       alertEnabled: true,
       cpuPinningEnabled: false,
-      scheduleType: ScheduleType.Normal,
       nodeSelector: {
         enable: false,
         mode: NodeSelectorMode.Include,
@@ -321,10 +323,8 @@ function RouteComponent() {
                     vgpuEnabled: 'task.resource.vgpu.enabled',
                     vgpuModels: 'task.resource.vgpu.models',
                   }}
-                  scheduleTypePath={isBackfillEnabled ? 'scheduleType' : undefined}
                 />
                 <ImageFormField form={form} name="task.image" />
-                {isBackfillEnabled && <ScheduleTypeFormField form={form} name="scheduleType" />}
                 <FormField
                   control={form.control}
                   name="task.shell"
@@ -417,6 +417,20 @@ conda activate base;
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tensorboardLogDir"
+                  render={({ field }) => (
+                    <TensorboardLogDirFormField
+                      defaultPath={getDefaultTensorboardLogDir(
+                        `/home/${user?.name ?? '<user>'}`,
+                        '<unique-job-name>'
+                      )}
+                      descriptionKey="tensorboard.singleJob.logDirDescription"
+                      inputProps={{ ...field, value: field.value ?? '' }}
+                    />
                   )}
                 />
               </CardContent>

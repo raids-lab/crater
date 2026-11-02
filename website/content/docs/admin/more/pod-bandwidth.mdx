@@ -3,7 +3,7 @@ title: 配置 Pod 带宽限制
 description: 分别配置模型下载和 Volcano 作业 Pod 的网络带宽上限
 ---
 
-管理员可以在“平台设置”中的“Pod 带宽限制”分别控制模型下载、Volcano 作业入站和出站带宽。作业配置同时覆盖普通作业与回填作业。该功能默认关闭，避免在尚未安装 bandwidth CNI 的集群上影响作业创建。
+管理员可以在“平台设置”中的“Pod 带宽限制”分别控制模型下载、Volcano 作业入站和出站带宽。该功能默认关闭，避免在尚未安装 bandwidth CNI 的集群上影响作业创建。
 
 ## 集群能力检查
 
@@ -19,12 +19,12 @@ description: 分别配置模型下载和 Volcano 作业 Pod 的网络带宽上�
 ## 配置项
 
 - **模型下载带宽**：写入 model-dl Pod 的入站 bandwidth annotation，限制下载数据进入 Pod 的速率。
-- **作业入站带宽**：限制流入普通与回填作业 Pod 的速率。
-- **作业出站带宽**：限制从普通与回填作业 Pod 发出的速率。
+- **作业入站带宽**：限制流入作业 Pod 的速率。
+- **作业出站带宽**：限制从作业 Pod 发出的速率。
 
 页面将数值和单位分开填写，单位可选择 Kbit/s、Mbit/s 或 Gbit/s。例如数值 `1` 配合 Gbit/s 会保存为 Kubernetes 数量 `1G`。
 
-配置保存在系统配置中，修改后无需重启后端。Crater 会在实际创建模型下载 Pod 或 Volcano Job 时读取最新配置；Prequeue 作业使用激活时的配置，而不是提交时的快照。CNI 只在 Pod sandbox 创建时读取 annotation，因此已经运行的 Pod 不会被在线修改，必须重建后才能使用新值。
+配置保存在系统配置中，修改后无需重启后端。Crater 会在实际创建模型下载 Pod 或 Volcano Job 时读取最新配置。CNI 只在 Pod sandbox 创建时读取 annotation，因此已经运行的 Pod 不会被在线修改，必须重建后才能使用新值。
 
 ## 验证注意事项
 

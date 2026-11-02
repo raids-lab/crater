@@ -47,8 +47,8 @@ printf '%s' "$HF_TOKEN" | crater download model meta-llama/Llama-2-7b-hf --sourc
 - `crater download model <NAME>`：创建模型下载任务，类别固定为 `model`。
 - `crater download dataset <NAME>`：创建数据集下载任务，类别固定为 `dataset`。
 - `crater download create --name <NAME> --category model|dataset`：通用创建形式。
-- `--source`：支持 `modelscope` / `ms`、`huggingface` / `hf`，默认 `modelscope`。
-- `--revision`：指定分支、tag 或 revision。
+- `--source`：请求的下载来源，支持 `modelscope` / `ms`、`huggingface` / `hf`，默认 `modelscope`；复用已有资源时可能不采用该来源。
+- `--revision`：请求的分支、tag 或 revision；复用已有资源时可能不采用该版本，不能仅凭传入此参数认定已取得指定版本。
 - `--wait`：创建后轮询任务，直到状态为 `Ready`、`Failed` 或 `Paused`。
 - `--poll-interval`：轮询间隔，默认 `5s`。
 - `--timeout`：最大等待时间，默认 `0` 表示不超时。
@@ -61,6 +61,18 @@ printf '%s' "$HF_TOKEN" | crater download model meta-llama/Llama-2-7b-hf --sourc
 - 如果用户需要脚本等待下载结束，可以组合 `--wait --json`，最终读取 `data.download.status`。
 - 如果用户只给了来源缩写，`hf` 表示 Hugging Face，`ms` 表示 ModelScope。
 - 如果用户给出 gated/private 仓库，优先建议 `--token-env`，不要让用户把 token 发到聊天里。
+
+## 共享资源与完成判定
+
+平台按 `name + category` 共享一份公共资源。已有 Ready、Pending、Downloading 或 Paused 记录时，后端可能复用其他来源或版本的记录，而不是新建下载任务。因此命令成功只表示请求成功处理，不保证请求的来源、版本已被采用，也不保证下载完成。
+
+1. 创建时优先使用 `--json`；若已执行普通输出命令，用 `crater download get <id> --json` 补查。
+2. 必须读取 `data.download.source`、`data.download.revision`、`data.download.status` 和 `data.download.path`，将实际来源、版本与用户要求对照；来源缩写先按 `hf` → `huggingface`、`ms` → `modelscope` 规范化后比较。
+3. 来源或版本不一致时，明确说明复用了已有资源，展示实际来源、版本、状态与路径。用户明确要求的来源或版本未匹配时，报告“指定来源或版本要求尚未满足”，不能宣称指定版本已下载。返回空 `revision` 时，说明记录未指定版本，不能推断它就是用户要求的分支、tag 或 commit。
+4. `Ready` 才表示资源已可用；Pending、Downloading 表示尚未完成，Paused 表示已暂停，Failed 表示失败。即使使用 `--wait`，也必须按最终状态判断，并再次核对实际来源、版本与路径。
+5. 不得擅自删除共享下载记录或公共目录，也不得擅自清理、重试其他任务来绕过复用规则。用户确实需要不同来源或版本时，说明当前限制，并请平台管理员协调，不把已有公共资源当作可随意覆盖的私人文件。
+
+例如：用户要求 Hugging Face 的 `v2`，返回的却是 ModelScope 的 `v1`、状态 Ready，应报告“已复用 ModelScope v1，位于返回路径；Hugging Face v2 的要求尚未满足”，而不是“v2 下载成功”。
 
 ## 输出与字段
 
@@ -75,8 +87,9 @@ printf '%s' "$HF_TOKEN" | crater download model meta-llama/Llama-2-7b-hf --sourc
       "name": "owner/name",
       "source": "huggingface",
       "category": "model",
+      "revision": "main",
       "status": "Downloading",
-      "path": "public/Models/owner-name"
+      "path": "public/Models/owner/name"
     }
   }
 }

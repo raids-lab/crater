@@ -35,12 +35,21 @@ export async function generateStaticParams() {
 export default function HomePage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = use(params);
   setRequestLocale(lang);
+  const tLinks = useTranslations('Links');
   const tFooter = useTranslations('Footer');
   const currentYear = new Date().getFullYear();
 
   return (
     <div className="min-h-screen text-gray-900 dark:text-gray-100">
       <main>
+        <a
+          href={`https://raids-lab.github.io/crater/${lang}/docs/admin/`}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="block bg-blue-600 px-4 py-3 text-center text-sm font-medium text-white transition-colors hover:bg-blue-700"
+        >
+          {tLinks('latestOnlineDocs')}
+        </a>
         <HeroSection />
         <WhyChooseSection />
         <CoreCapabilities />

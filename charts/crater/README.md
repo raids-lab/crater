@@ -1,6 +1,6 @@
 # crater
 
-![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.3.0](https://img.shields.io/badge/AppVersion-1.3.0-informational?style=flat-square)
+![Version: 1.5.0](https://img.shields.io/badge/Version-1.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.5.0](https://img.shields.io/badge/AppVersion-1.5.0-informational?style=flat-square)
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
@@ -20,7 +20,7 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"NotIn","values":["true"]}]},"weight":100}]}}` | Pod affinity configuration |
+| affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"NotIn","values":["true"]}]},"weight":100}]}}` | Pod affinity for chart Deployments |
 | backendConfig | object | `{"auth":{"ldap":{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}},"normal":{"allowLogin":true,"allowRegister":true},"token":{"accessTokenSecret":"example-access-token","refreshTokenSecret":"example-refresh-token"}},"enableLeaderElection":false,"modelDownload":{"huggingFaceEndpoint":"https://huggingface.co","image":"ghcr.io/raids-lab/crater-model-downloader:v1.0.0","modelScopeEndpoint":"https://modelscope.cn"},"modelMetadata":{"huggingFaceEndpoints":["https://huggingface.co"],"logicalPublicPrefix":"public","logoAllowedHosts":["huggingface.co","cdn-avatars.huggingface.co","resouces.modelscope.cn","resources.modelscope.cn"],"maxLogoBytes":524288,"modelScopeEndpoints":["https://modelscope.cn"],"timeoutSeconds":20},"port":":8088","postgres":{"TimeZone":"Asia/Shanghai","dbname":"postgres","host":"crater-postgresql.crater-system.svc.cluster.local","password":"<MUSTEDIT>","port":5432,"sslmode":"disable","user":"postgres"},"prometheusAPI":"http://192.168.0.1:12345","registry":{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":false,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}},"secrets":{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"},"smtp":{"enable":false,"host":"mail.example.com","insecureSkipVerify":false,"notify":"example@example.com","password":"<MASKED>","port":25,"user":"example"},"storage":{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"}}}` | Backend configuration |
 | backendConfig.auth | object | `{"ldap":{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}},"normal":{"allowLogin":true,"allowRegister":true},"token":{"accessTokenSecret":"example-access-token","refreshTokenSecret":"example-refresh-token"}}` | Configuration for authentication methods and tokens |
 | backendConfig.auth.ldap | object | `{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}}` | LDAP authentication settings |
@@ -73,15 +73,16 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | backendConfig.prometheusAPI | string | `"http://192.168.0.1:12345"` | Endpoint URL for Prometheus API used for metrics and monitoring If not specified, Prometheus integration will be disabled |
 | backendConfig.registry | object | `{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":false,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}}` | Container registry configuration for image storage and building If Enable is false, registry functionality will be disabled |
 | backendConfig.registry.buildTools | object | `{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}}` | Configuration for container image building tools and proxies Required if Registry.Enable is true |
-| backendConfig.registry.buildTools.proxyConfig | object | `{"httpProxy":null,"httpsProxy":null,"noProxy":null}` | HTTP proxy settings for build environments If not specified, no proxy will be configured for builds |
-| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `nil` | HTTP proxy URL for build environments If not specified, HTTP traffic will not be proxied |
-| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `nil` | HTTPS proxy URL for build environments If not specified, HTTPS traffic will not be proxied |
+| backendConfig.registry.buildTools.proxyConfig | object | `{"httpProxy":null,"httpsProxy":null,"noProxy":null}` | HTTP proxy settings for build environments and Hugging Face download Jobs If not specified, builds and downloads will not use an explicit proxy |
+| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `nil` | HTTP proxy URL for build environments and Hugging Face downloads If not specified, HTTP traffic will not be proxied |
+| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `nil` | HTTPS proxy URL for build environments and Hugging Face downloads If not specified, HTTPS traffic will not be proxied |
 | backendConfig.registry.buildTools.proxyConfig.noProxy | string | `nil` | Comma-separated list of domains that should not be proxied If not specified, all traffic will go through the proxy |
 | backendConfig.registry.enable | bool | `false` | Enable container registry integration Defaults to false if not specified |
 | backendConfig.registry.harbor | object | `{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}` | Configuration for Harbor container registry integration Required if Registry.Enable is true: All Harbor fields must be specified |
 | backendConfig.registry.harbor.password | string | `"<MASKED>"` | Admin password for Harbor authentication (Required) Must match the specified user's password |
 | backendConfig.registry.harbor.server | string | `"harbor.example.com"` | Harbor registry server URL (Required) Must be a valid Harbor instance URL |
 | backendConfig.registry.harbor.user | string | `"admin"` | Admin username for Harbor authentication (Required) User must have appropriate permissions in Harbor |
+| backendConfig.schedulerExtenderPort | string | `":8089"` | Network port serving volcano's scheduler extender callbacks (Optional) The default deploys the ClusterIP Service crater-volcano-extender-svc, idle until extender.urlPrefix in the volcano configmap points at it and the admin switch is on; set it to "" to skip the endpoint. Keep the backend at one replica: quota reservations live in process memory and are not shared. |
 | backendConfig.secrets | object | `{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"}` | Kubernetes secret names for various security components (Required) All secret names must correspond to existing Kubernetes secrets |
 | backendConfig.secrets.imagePullSecretName | string | `""` | Name of the Kubernetes secret for pulling container images from private registries. Also applied to model download Jobs when `modelDownload.image` is private. If not specified, no image pull secret will be used. |
 | backendConfig.secrets.tlsForwardSecretName | string | `"crater-tls-forward-secret"` | Name of the Kubernetes secret for TLS forwarding configuration (Required) Secret must contain appropriate forwarding certificates |
@@ -181,9 +182,9 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | grafanaProxy.host | string | `"gpu-grafana.example.com"` | Domain name for exposing Grafana via Ingress Also used in frontend config even if grafanaProxy.enable is false |
 | grafanaProxy.token | string | `"<MASKED>"` | Grafana access token (masked, please apply for read-only token in Grafana) |
 | host | string | `"crater.example.com"` | Domain name or IP address that the server will bind to (Required) Must be specified for the server to start |
-| imagePullPolicy | string | `"Always"` | Image pull policy ("IfNotPresent" | "Always", for development, use Always) |
-| imagePullSecrets | list | `[]` | Image pull secrets |
-| images | object | `{"backend":{"repository":"ghcr.io/raids-lab/crater-backend","tag":"latest"},"buildkit":{"repository":"docker.io/moby/buildkit","tag":"v0.23.1"},"buildx":{"repository":"ghcr.io/raids-lab/buildx-client","tag":"latest"},"cronjob":{"repository":"docker.io/badouralix/curl-jq","tag":"latest"},"dbBackup":{"repository":"docker.io/library/postgres","tag":"16.4"},"envd":{"repository":"ghcr.io/raids-lab/envd-client","tag":"latest"},"frontend":{"repository":"ghcr.io/raids-lab/crater-frontend","tag":"latest"},"grafanaProxy":{"repository":"docker.io/library/nginx","tag":"1.27.3-bookworm"},"nerdctl":{"repository":"ghcr.io/raids-lab/nerdctl-client","tag":"latest"},"storage":{"repository":"ghcr.io/raids-lab/storage-server","tag":"latest"}}` | Container images configuration |
+| imagePullPolicy | string | `"Always"` | Image pull policy for chart workloads and dynamically created TensorBoard panels Allowed values: "Always", "IfNotPresent", or "Never" |
+| imagePullSecrets | list | `[]` | Image pull secrets for chart workloads and dynamically created TensorBoard panels TensorBoard secrets must also exist in namespaces.job |
+| images | object | `{"backend":{"repository":"ghcr.io/raids-lab/crater-backend","tag":"latest"},"buildkit":{"repository":"docker.io/moby/buildkit","tag":"v0.23.1"},"buildx":{"repository":"ghcr.io/raids-lab/buildx-client","tag":"latest"},"cronjob":{"repository":"docker.io/badouralix/curl-jq","tag":"latest"},"dbBackup":{"repository":"docker.io/library/postgres","tag":"16.4"},"envd":{"repository":"ghcr.io/raids-lab/envd-client","tag":"latest"},"frontend":{"repository":"ghcr.io/raids-lab/crater-frontend","tag":"latest"},"grafanaProxy":{"repository":"docker.io/library/nginx","tag":"1.27.3-bookworm"},"nerdctl":{"repository":"ghcr.io/raids-lab/nerdctl-client","tag":"latest"},"storage":{"repository":"ghcr.io/raids-lab/storage-server","tag":"latest"},"tensorboard":{"repository":"docker.io/tensorflow/tensorflow","tag":"2.20.0"}}` | Container images configuration |
 | images.backend.repository | string | `"ghcr.io/raids-lab/crater-backend"` | Backend service image repository |
 | images.backend.tag | string | `"latest"` | Backend service image tag |
 | images.buildkit.repository | string | `"docker.io/moby/buildkit"` | Buildkit image repository for containerd-based builds |
@@ -204,6 +205,8 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | images.nerdctl.tag | string | `"latest"` | Nerdctl image tag |
 | images.storage.repository | string | `"ghcr.io/raids-lab/storage-server"` | Storage server image repository |
 | images.storage.tag | string | `"latest"` | Storage server image tag |
+| images.tensorboard.repository | string | `"docker.io/tensorflow/tensorflow"` | TensorBoard image repository used by dynamically created panels |
+| images.tensorboard.tag | string | `"2.20.0"` | TensorBoard image tag |
 | modelDatasetGovernance | object | `{"apply":false,"datasetMarkerPatterns":"","datasetsSubdirectory":"Datasets","enabled":false,"excludeDirectories":".cache,.git,.conda,node_modules,site-packages,test,tests,tmp,temp","logicalPublicPrefix":"public","maxDepth":8,"maxReadmeBytes":65536,"modelWeightPatterns":"*.safetensors,pytorch_model*.bin,model*.bin,*.gguf,tf_model.h5,flax_model.msgpack","modelsSubdirectories":[],"modelsSubdirectory":"Models","resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"scanTimeout":"30m","schedule":"30 2 * * 0","storageRoot":"/crater"}` | Reconcile public model and dataset storage with database records |
 | modelDatasetGovernance.apply | bool | `false` | Apply reconciliation results; keep false for the first validation run |
 | modelDatasetGovernance.datasetMarkerPatterns | string | `""` | Dataset marker filename patterns; empty keeps filesystem-only dataset discovery disabled |
@@ -231,7 +234,7 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | namespaces.create | bool | `true` | Whether to create namespaces along with the deployment |
 | namespaces.image | string | `"crater-images"` | Namespace for building images |
 | namespaces.job | string | `"crater-workspace"` | Namespace for running jobs |
-| nodeSelector | object | `{"node-role.kubernetes.io/control-plane":""}` | Node selector for all Deployments Prevents control components from being scheduled to GPU worker nodes |
+| nodeSelector | object | `{"node-role.kubernetes.io/control-plane":""}` | Node selector for chart Deployments Prevents control components from being scheduled to GPU worker nodes |
 | protocol | string | `"http"` | Protocol for server communication ("http" or "https") |
 | quotaAgent | object | `{"enabled":false,"existingClaim":"","replicas":1,"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"64Mi"}}}` | Dedicated CephFS quota agent that reuses `images.storage` and a pre-created static PVC with path-scoped CephX `p` capability |
 | quotaAgent.enabled | bool | `false` | Create the internal quota-agent Deployment and Service |
@@ -242,6 +245,12 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | storage.pvcName | string | `"crater-rw-storage"` | PVC name (existing or created, also used in backendConfig) |
 | storage.request | string | `"10Gi"` | If create, Storage request size |
 | storage.storageClass | string | `"nfs"` | If create, Storage class name (e.g. cephfs, nfs, must support ReadWriteMany) |
+| tensorboard | object | `{"affinity":{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"DoesNotExist"}]},"weight":100}]}},"idleTimeoutSeconds":57600,"ingressAuthEnabled":true,"nodeSelector":{},"tolerations":[]}` | Scheduling and access policy for dynamically created TensorBoard Volcano Jobs |
+| tensorboard.affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"DoesNotExist"}]},"weight":100}]}}` | Prefer nodes without GPUs while still allowing the scheduler to use other eligible nodes |
+| tensorboard.idleTimeoutSeconds | int | `57600` | Finish a panel after this many seconds without user HTTP access (16 hours by default); probes do not renew it |
+| tensorboard.ingressAuthEnabled | bool | `true` | Protect every TensorBoard Ingress request through the Crater authentication endpoint |
+| tensorboard.nodeSelector | object | `{}` | Node selector applied only to TensorBoard Pods |
+| tensorboard.tolerations | list | `[]` | Tolerations applied only to TensorBoard Pods |
 | tls | object | `{"base":{"cert":"<MASKED>","create":false,"key":"<MASKED>"},"forward":{"cert":"<MASKED>","create":false,"key":"<MASKED>"}}` | TLS certificate configuration for exposing services via Ingress cert-manager configuration variables |
 | tls.base | object | `{"cert":"<MASKED>","create":false,"key":"<MASKED>"}` | Base certificate configuration (Standard mode, e.g., crater.example.com certificate) |
 | tls.base.cert | string | `"<MASKED>"` | Base certificate content (masked) |
@@ -251,7 +260,7 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | tls.forward.cert | string | `"<MASKED>"` | Forward certificate content (masked) |
 | tls.forward.create | bool | `false` | Whether to create forward certificate |
 | tls.forward.key | string | `"<MASKED>"` | Forward certificate private key (masked) |
-| tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]` | Pod tolerations |
+| tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]` | Pod tolerations for chart Deployments |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

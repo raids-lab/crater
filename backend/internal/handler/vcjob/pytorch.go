@@ -17,7 +17,7 @@ import (
 	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
-//nolint:gocyclo // Job assembly coordinates validation, queues, and task generation in one request flow.
+// //nolint:gocyclo // Job assembly coordinates validation, queues, and task generation in one request flow.
 func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	token := util.GetToken(c)
 
@@ -26,21 +26,16 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	scheduleType, err := req.validateScheduleOptions(false)
-	if err != nil {
-		resputil.BadRequestError(c, err.Error())
-		return
-	}
 
-	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
+	if err := util.CheckStorageQuota(token.Username, req.VolumeMounts, mgr.kubeClient, mgr.config); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
 
-	if !mgr.preCheckCreateJob(c, token, scheduleType, false) {
+	if !mgr.preCheckCreateJob(c, token, false) {
 		return
 	}
-	scheduleMetadata, err := mgr.resolveJobScheduleMetadata(c.Request.Context(), scheduleType)
+	waitingToleranceSeconds, err := mgr.resolveWaitingTolerance(c)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
@@ -86,7 +81,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	// 2. Node Affinity and Tolerations
 	baseAffinity := GenerateNodeAffinity(req.Selectors, jobResources)
 	baseTolerations := GenerateTaintTolerationsForAccount(token)
-	envs := GenerateEnvs(c, token, req.Envs)
+	envs := GenerateEnvs(c, token, jobName, req.Envs)
 
 	// 3. Labels and Annotations
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
@@ -94,7 +89,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		token,
 		baseURL,
 		&req.CreateJobCommon,
-		scheduleMetadata,
+		waitingToleranceSeconds,
 	)
 
 	// 4. Create the task spec
@@ -189,7 +184,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	}
 
 	if err = mgr.submitJob(c, token, &job); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		handleJobSubmissionError(c, err)
 		return
 	}
 

@@ -87,6 +87,7 @@ func (s *StatisticsService) GetResourceStatistics(ctx context.Context, req *payl
 func (s *StatisticsService) fetchStatsJobs(ctx context.Context, req *payload.StatisticsReq) ([]*model.Job, error) {
 	q := query.Job
 	jobDo := q.WithContext(ctx).Unscoped().
+		Where(q.JobType.Neq(string(model.JobTypeTensorboard))).
 		Select(
 			q.RunningTimestamp,
 			q.CompletedTimestamp,

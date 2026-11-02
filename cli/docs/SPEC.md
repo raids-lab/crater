@@ -97,6 +97,7 @@
 这套机制只对齐用户自行管理的 CLI 与运维团队部署的后端，不包含随平台部署的前端。版本更新决策以根 [CONTRIBUTING.md](../../CONTRIBUTING.md#cli--backend-api-compatibility-versions) 为准。
 
 - CLI 的 `APIVersion` 与 `MinSupportedBackendAPIVersion` 定义在 `internal/version/version.go`；它们分别表示 CLI 编译时所依据的共享契约版本、CLI 能支持的最低后端契约版本。
+- 当前共享契约版本为 `4`，标识模型/数据集按 `name + category` 跨来源、版本复用的语义。双方最低支持版本仍为 `3`：基本请求仍兼容，不因复用语义变化强制淘汰版本 `3` 的 CLI 或后端；接口 URL 中的 `/api/v1` 不变。
 - 正式 API 契约从 `1` 开始，`0` 不得作为受支持的正式契约发布。握手接口明确返回 `0` 时，CLI 将其作为早于正式契约的旧版本参与最低版本比较，以便输出具体的不兼容条件；字段缺失或负数仍表示未知或非法。
 - 所有经统一客户端发出的请求都带 `User-Agent: crater-cli/<product-version>` 和 `X-Crater-API-Version: <APIVersion>`。两者仅用于日志与诊断，不能作为服务端兼容性判断、鉴权或强制拦截依据。
 - 只有显式执行 `crater compatibility` 时才调用一次公开的 `GET /api/cli/compatibility`。响应提供后端 `apiVersion` 与 `minSupportedCliApiVersion`，以及产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间；CLI 只使用两个 API 版本字段检查当前 CLI 是否低于后端最低要求、当前后端是否低于 CLI 最低要求。构建信息仅用于展示和排障，缺失时显示未知，不得影响兼容性结论。

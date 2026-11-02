@@ -96,6 +96,14 @@ preview: ## 👀 Preview production build
 	pnpm preview
 
 ## 🧪 Testing & Quality Assurance
+.PHONY: test-model-download
+test-model-download: ## Check shared model/dataset download result warnings.
+	node --test hack/model_download_result.test.mjs
+
+.PHONY: test-tensorboard-templates
+test-tensorboard-templates: ## Check compatibility of saved job and TensorBoard templates.
+	node --test hack/tensorboard_template_migration.test.mjs
+
 .PHONY: lint
 lint: ## 🔍 Run ESLint and TypeScript checks
 	@echo "$(YELLOW)Running TypeScript checks...$(RESET)"
@@ -104,7 +112,7 @@ lint: ## 🔍 Run ESLint and TypeScript checks
 	pnpm eslint .
 
 .PHONY: pre-commit-check
-pre-commit-check: ## Run pre-commit checks (lint and lint-staged).
+pre-commit-check: test-model-download test-tensorboard-templates ## Run pre-commit checks (download tests, lint and lint-staged).
 	@echo "$(BLUE)Checking translation file format...$(RESET)"
 	@if [ -z "$(PYTHON)" ]; then \
 		echo "$(RED)❌ Python interpreter not found (python3/python).$(RESET)"; \
@@ -165,7 +173,7 @@ format-translation: ## 🌐 Format translation files
 .PHONY: test
 test: ## 🧪 Run tests
 	@echo "$(CYAN)Running tests...$(RESET)"
-	@echo "$(YELLOW)Note: Add test command to package.json if needed$(RESET)"
+	pnpm test
 
 ## 🛡️  Code Generation & Backend Integration
 .PHONY: generate-error-code

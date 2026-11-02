@@ -23,9 +23,11 @@ firstUser:
   password: "Masked@Password"
 
 # -- Image configuration
-# -- Image pull policy ("IfNotPresent" | "Always", for development, use Always)
+# -- Image pull policy for chart workloads and dynamically created TensorBoard panels
+# Allowed values: "Always", "IfNotPresent", or "Never"
 imagePullPolicy: Always
-# -- Image pull secrets
+# -- Image pull secrets for chart workloads and dynamically created TensorBoard panels
+# TensorBoard secrets must also exist in namespaces.job
 imagePullSecrets: []
 # -- Container images configuration
 images:
@@ -79,6 +81,31 @@ images:
     repository: "docker.io/library/postgres"
     # -- DBBackup image tag
     tag: "16.4"
+  tensorboard:
+    # -- TensorBoard image repository used by dynamically created panels
+    repository: "docker.io/tensorflow/tensorflow"
+    # -- TensorBoard image tag
+    tag: "2.20.0"
+
+# Scheduling policy for dynamically created TensorBoard Volcano Jobs
+tensorboard:
+  # -- End panels normally after this many seconds without user HTTP requests (default: 16 hours); must be positive
+  idleTimeoutSeconds: 57600
+  # -- Protect every TensorBoard Ingress request through the Crater authentication endpoint
+  ingressAuthEnabled: true
+  # -- Node selector applied only to TensorBoard Pods
+  nodeSelector: {}
+  # -- Tolerations applied only to TensorBoard Pods
+  tolerations: []
+  # -- Prefer nodes without GPUs while still allowing the scheduler to use other eligible nodes
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: nvidia.com/gpu.present
+                operator: DoesNotExist
 
 # -- Periodically refresh public model and dataset metadata from configured source endpoints
 modelMetadataRefresh:
@@ -172,18 +199,18 @@ quotaAgent:
       cpu: 500m
       memory: 512Mi
 
-# -- Node selector for all Deployments
+# -- Node selector for chart Deployments
 # Prevents control components from being scheduled to GPU worker nodes
 nodeSelector:
   node-role.kubernetes.io/control-plane: ""
 
-# -- Pod tolerations
+# -- Pod tolerations for chart Deployments
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
 
-# -- Pod affinity configuration
+# -- Pod affinity for chart Deployments
 affinity:
   nodeAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:
@@ -252,6 +279,12 @@ backendConfig:
   # -- Network port that the server endpoint will listen on (Required)
   # Must be specified for the server to start
   port: :8088
+
+  # -- Network port serving volcano's scheduler extender callbacks (Optional)
+  # The default deploys the ClusterIP Service crater-volcano-extender-svc, idle until extender.urlPrefix in the
+  # volcano configmap points at it and the admin switch is on; set it to "" to skip the endpoint.
+  # Keep the backend at one replica: quota reservations live in process memory and are not shared.
+  schedulerExtenderPort: :8089
 
   # -- Model download functionality configurations
   modelDownload:
@@ -389,13 +422,13 @@ backendConfig:
     # -- Configuration for container image building tools and proxies
     # Required if Registry.Enable is true
     buildTools:
-      # -- HTTP proxy settings for build environments
-      # If not specified, no proxy will be configured for builds
+      # -- HTTP proxy settings for build environments and Hugging Face download Jobs
+      # If not specified, builds and downloads will not use an explicit proxy
       proxyConfig:
-        # -- HTTPS proxy URL for build environments
+        # -- HTTPS proxy URL for build environments and Hugging Face downloads
         # If not specified, HTTPS traffic will not be proxied
         httpsProxy: null
-        # -- HTTP proxy URL for build environments
+        # -- HTTP proxy URL for build environments and Hugging Face downloads
         # If not specified, HTTP traffic will not be proxied
         httpProxy: null
         # -- Comma-separated list of domains that should not be proxied

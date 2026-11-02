@@ -54,6 +54,8 @@ import { showErrorToast } from '@/utils/toast'
 
 import { cn } from '@/lib/utils'
 
+import { getModelDownloadReuseNotice } from './model-download-result'
+
 const createFormSchema = (t: TFunction) =>
   z.object({
     name: z
@@ -127,7 +129,16 @@ export function ModelDownloadDialog({
           ? t('modelDownload.dialog.success.dataset')
           : t('modelDownload.dialog.success.model')
       const message = response.msg || defaultMessage
-      toast.success(message)
+      const reuseNotice = getModelDownloadReuseNotice(variables, response.data, t)
+      if (reuseNotice) {
+        toast.warning(reuseNotice.title, {
+          description: `${reuseNotice.description}${response.msg ? `\n${response.msg}` : ''}`,
+          duration: Infinity,
+          closeButton: true,
+        })
+      } else {
+        toast.success(message)
+      }
       queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
       setPendingRequest(null)
       closeSheet()
@@ -268,6 +279,7 @@ export function ModelDownloadDialog({
                       {...field}
                     />
                   </FormControl>
+                  <FormDescription>{t('modelDownload.dialog.reuseHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -323,7 +335,8 @@ export function ModelDownloadDialog({
               {t('modelDownload.dialog.confirmTitle', { category: pendingCategoryLabel })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t('modelDownload.dialog.confirmDescription', { quota: quotaHint })}
+              {t('modelDownload.dialog.confirmDescription', { quota: quotaHint })}{' '}
+              {t('modelDownload.dialog.reuseHint')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {pendingRequest && (
