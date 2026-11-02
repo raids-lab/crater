@@ -27,6 +27,9 @@ import (
 	. "github.com/bytedance/mockey"
 	"github.com/go-logr/logr/funcr"
 	. "github.com/smartystreets/goconvey/convey"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+	clocktesting "k8s.io/utils/clock/testing"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/service"
@@ -243,5 +246,38 @@ func TestHandleSessionClose(t *testing.T) {
 		So(rec.Code, ShouldEqual, http.StatusOK)
 		So(s.session, ShouldBeNil)
 		So(s.lastCloseAt, ShouldNotBeZeroValue)
+	})
+}
+
+func TestSpamKeyByReason(t *testing.T) {
+	PatchConvey("a reason that used up its burst does not hold back a new reason", t, func() {
+		// The fake clock never advances, so no token refills while the first reason repeats.
+		correlator := record.NewEventCorrelatorWithOptions(record.CorrelatorOptions{
+			SpamKeyFunc: spamKeyByReason,
+			Clock:       clocktesting.NewFakeClock(fixedNow),
+		})
+		hold := func(reason string) *v1.Event {
+			return &v1.Event{
+				InvolvedObject: *newView("job-a", rl("cpu", "1")).reference(),
+				Source:         v1.EventSource{Component: "crater-volcano-extender"},
+				Type:           v1.EventTypeWarning,
+				Reason:         reason,
+				Message:        "held",
+				Count:          1,
+			}
+		}
+
+		skipped := false
+		for range 100 {
+			if result, _ := correlator.EventCorrelate(hold(reasonQueueQuotaExceeded)); result.Skip {
+				skipped = true
+				break
+			}
+		}
+		So(skipped, ShouldBeTrue)
+
+		result, err := correlator.EventCorrelate(hold(reasonBlockedByTimedOutJob))
+		So(err, ShouldBeNil)
+		So(result.Skip, ShouldBeFalse)
 	})
 }

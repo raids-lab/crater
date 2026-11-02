@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	schedulinginternal "volcano.sh/apis/pkg/apis/scheduling"
@@ -135,6 +136,7 @@ func addQueue(snap *snapshot, name, parent string, capability v1.ResourceList) {
 // seededServer freezes one scheduling round so decide never reaches the config service or the cache.
 func seededServer(snap *snapshot) *Server {
 	return &Server{
+		recorder:    record.NewFakeRecorder(16),
 		accumulator: newSessionAccumulator(),
 		logger:      logr.Discard(),
 		session: &sessionState{

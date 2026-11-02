@@ -5,10 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -47,6 +53,7 @@ type sessionState struct {
 // makes a single backend replica a hard requirement.
 type Server struct {
 	reader        client.Reader
+	recorder      record.EventRecorder
 	quotaService  *service.QueueQuotaService
 	configService *service.ConfigService
 	accumulator   *sessionAccumulator
@@ -63,18 +70,46 @@ type Server struct {
 
 func New(
 	reader client.Reader,
+	recorder record.EventRecorder,
 	quotaService *service.QueueQuotaService,
 	configService *service.ConfigService,
 	address string,
 ) *Server {
 	return &Server{
 		reader:        reader,
+		recorder:      recorder,
 		quotaService:  quotaService,
 		configService: configService,
 		accumulator:   newSessionAccumulator(),
 		address:       address,
 		logger:        ctrl.Log.WithName("volcano-extender"),
 	}
+}
+
+// NewEventRecorder keys client-go's spam filter on the reason as well. The default key is source plus
+// object, so every reason on a job shares one token bucket: after 25 rounds of one reason, a changed
+// reason waited up to five minutes. The message stays out of the key so writes stay bounded.
+func NewEventRecorder(kubeClient kubernetes.Interface) record.EventRecorder {
+	broadcaster := record.NewBroadcaster(record.WithCorrelatorOptions(record.CorrelatorOptions{
+		SpamKeyFunc: spamKeyByReason,
+	}))
+	broadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
+	return broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "crater-volcano-extender"})
+}
+
+// spamKeyByReason is client-go's default spam key with the reason appended.
+func spamKeyByReason(event *v1.Event) string {
+	return strings.Join([]string{
+		event.Source.Component,
+		event.Source.Host,
+		event.InvolvedObject.Kind,
+		event.InvolvedObject.Namespace,
+		event.InvolvedObject.Name,
+		string(event.InvolvedObject.UID),
+		event.InvolvedObject.APIVersion,
+		event.Type,
+		event.Reason,
+	}, "")
 }
 
 // NeedLeaderElection is false: the endpoint must answer whenever the pod serves traffic, otherwise
