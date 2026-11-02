@@ -18,6 +18,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { HTTPError } from 'ky'
+import { HelpCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -51,6 +52,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 import DocsButton from '@/components/button/docs-button'
 import LoadableButton from '@/components/button/loadable-button'
@@ -72,43 +74,12 @@ import { IErrorResponse, IResponse } from '@/services/types'
 import { atomPrivacyAccepted, atomUserContext, atomUserInfo, useResetStore } from '@/utils/store'
 import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 
+import { loginFormSchema as formSchema } from './login-schema'
+
 export type LoginSearch = {
   redirect?: string
   token?: string
 }
-
-const formSchema = z.object({
-  username: z
-    .string()
-    .min(1, {
-      message: '用户名不能为空',
-    })
-    .max(20, {
-      message: '用户名最多 20 个字符',
-    })
-    .refine(
-      (value) => {
-        // 首字符必须小写字母，包含小写字母、数字、中划线
-        const regex = /^[a-z][a-z0-9-]*[a-z0-9]$/
-        return regex.test(value)
-      },
-      {
-        message: '只能包含小写字母和数字，中划线可作为连接符',
-      }
-    ),
-  password: z
-    .string()
-    .min(1, {
-      message: '密码不能为空',
-    })
-    .max(20, {
-      message: '密码最多 20 个字符',
-    }),
-  // 必须勾选隐私政策,否则无法通过校验
-  acceptPrivacy: z.boolean().refine((val) => val === true, {
-    message: '请先阅读并同意隐私政策方可登录',
-  }),
-})
 
 interface LoginFormProps {
   authMode: AuthMode
@@ -236,9 +207,35 @@ export function LoginForm({
             name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>账号</FormLabel>
+                <div className="flex items-center gap-1.5">
+                  <FormLabel>账号</FormLabel>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="用户名规则"
+                        className="text-muted-foreground/60 hover:text-muted-foreground focus-visible:ring-ring rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+                      >
+                        <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" align="center" className="max-w-64">
+                      <p>
+                        用户名须为 2–20
+                        个字符，以小写字母开头，以小写字母或数字结尾，中间可包含小写字母、数字和中划线。大写字母会自动转为小写。
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
                 <FormControl>
-                  <Input autoComplete="username" {...field} />
+                  <Input
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    {...field}
+                    onChange={(event) => {
+                      field.onChange(event.target.value.toLowerCase())
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
