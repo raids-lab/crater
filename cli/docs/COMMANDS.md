@@ -738,9 +738,31 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 
 ---
 
-## 7. Additional Read Modules
+## 7. Additional Account And Resource Modules
 
-This section records the read-only API surface covered by the CLI after the broader read-interface audit. All commands require active credentials. User-visible reads stay under their resource domain. Administrator-only reads are explicitly under `crater admin ...` and require platform administrator permissions.
+This section covers account context and additional resource commands. All commands require active credentials. User-visible commands stay under their resource domain. Administrator-only reads are explicitly under `crater admin ...` and require platform administrator permissions.
+
+### Account And Queue Context
+
+`Account`（账户）用于确定调度队列和计费归属；登录身份由 `auth` 管理。
+
+#### `crater account current`
+
+- **描述**：查询当前登录身份正在使用的账户／队列。
+- **位置参数**：无；拒绝多余位置参数。
+- **处理逻辑**：使用当前身份的 access token 请求 `GET /api/auth/check`，读取响应中的 `context`，不解码 JWT 或根据本地缓存猜测当前账户。
+- **默认输出**：平台、用户名、当前账户／队列名称和账户角色数值。
+- **`--json` 的 `data`**：`platform_url`、`username`、`context`。`context` 保留后端的 `queue`、`roleQueue`、`rolePlatform`、`accessQueue`、`accessPublic`、`space`；角色和访问模式数值保持原样，包括未知值。不输出凭据或其它认证响应字段。
+- **错误**：未登录或未保存 token 时遵循认证错误约定；后端返回空 `data`、缺少 `context` 或队列名称为空时返回 `api_error`，不报告成功。已收到 HTTP 响应时，即使 JSON 无法解码，也按实际 HTTP 状态映射错误并保留 `http_status`；无 HTTP 响应的传输失败才归为 `ERR_NETWORK_FAILURE`。
+
+#### `crater account use <name>`
+
+- **描述**：将当前登录身份切换到其所属的指定账户／队列，供后续平台命令使用。
+- **位置参数**：`<name>` 为 `account ls` 返回的精确 `name`，不是昵称或 ID；首尾空白会去掉，空值、缺参及多余参数返回 `usage_error`。非交互模式同样必须提供名称。
+- **处理逻辑**：使用当前身份的 access token 请求 `POST /api/v1/auth/switch`，请求体为 `{"queue":"<name>"}`。账户存在性和成员权限由后端校验；显式指定名称后直接切换，无额外确认。
+- **持久化**：仅在成功响应包含非空 access token，且 `context.queue` 与目标名称一致时，更新发起请求的 `(platform_url, username, method)` 对应身份的 access token；保留其它身份、激活身份与语言。后续作业、文件、资源和计费命令使用新 token。refresh token 不持久化。
+- **默认输出与 JSON**：与 `account current` 相同，展示切换后的上下文，不输出 access token 或 refresh token。
+- **错误**：API、网络或无效响应不会写入本地状态；HTTP 与解码错误遵循 `account current` 的分类规则，保留后端错误事实。凭据先在同目录的私有临时文件中完整写入、同步并关闭，再替换原状态文件；写入或替换失败时保留原文件，清理临时文件，返回 `system_error`，不输出成功结果。
 
 ### Account And Queue Reads
 - `crater account ls`: `/api/v1/accounts`.

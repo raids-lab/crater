@@ -131,7 +131,7 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 		return
 	}
 
-	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.kubeConfig); err != nil {
+	if err := util.CheckStorageQuota(token.Username, req.VolumeMounts, mgr.kubeClient, mgr.kubeConfig); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}

@@ -27,7 +27,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 		return
 	}
 
-	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
+	if err := util.CheckStorageQuota(token.Username, req.VolumeMounts, mgr.kubeClient, mgr.config); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -81,7 +81,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 	// 2. Node Affinity and Tolerations
 	baseAffinity := GenerateNodeAffinity(req.Selectors, jobResources)
 	baseTolerations := GenerateTaintTolerationsForAccount(token)
-	envs := GenerateEnvs(c, token, req.Envs)
+	envs := GenerateEnvs(c, token, jobName, req.Envs)
 
 	// 3. Labels and Annotations
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(

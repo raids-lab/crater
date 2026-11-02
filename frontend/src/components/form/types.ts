@@ -30,6 +30,9 @@ export interface MetadataFormType {
 // Each bump registers a migration from the previous version so older templates chain up to the current one.
 const NodeSelectorTemplateVersion = '20260707'
 const CurrentJobTemplateVersion = '20260922'
+const CurrentTensorboardJobTemplateVersion = '20261030'
+const CurrentTensorboardPanelTemplateVersion = '20261013'
+const TensorboardLogDirEnv = 'TENSORBOARD_LOGDIR'
 
 const NodeSelectorMode = {
   Include: 'include',
@@ -139,27 +142,76 @@ const migrateNodeSelector = (nodeSelector?: Record<string, unknown>) => {
   }
 }
 
+const migrateTensorboardLogDir = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('The job template data is invalid')
+  }
+
+  const configuredLogDir =
+    typeof data.tensorboardLogDir === 'string' ? data.tensorboardLogDir.trim() : ''
+  const legacyEnv = Array.isArray(data.envs)
+    ? data.envs.find(
+        (env) => isRecord(env) && env.name === TensorboardLogDirEnv && typeof env.value === 'string'
+      )
+    : undefined
+  const legacyLogDir = isRecord(legacyEnv) ? String(legacyEnv.value).trim() : ''
+
+  return {
+    ...data,
+    tensorboardLogDir: configuredLogDir || legacyLogDir,
+  }
+}
+
+const migrateTensorboardPanelLifetime = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('The TensorBoard template data is invalid')
+  }
+
+  const currentData = { ...data }
+  delete currentData.ttlHours
+  return currentData
+}
+
+const migrateTensorboardPanelName = (data: unknown): unknown => {
+  if (!isRecord(data)) {
+    throw new Error('The TensorBoard template data is invalid')
+  }
+  return { ...data, name: typeof data.name === 'string' ? data.name : '' }
+}
+
+const withTensorboardLogDirMigration = (
+  fromVersion: string,
+  legacyTensorboardVersion = '20260729'
+): Record<string, MetadataFormMigration> => ({
+  ...jobTemplateMigrations(fromVersion),
+  [legacyTensorboardVersion]: migrateToCurrent,
+  [CurrentJobTemplateVersion]: {
+    to: CurrentTensorboardJobTemplateVersion,
+    migrate: migrateTensorboardLogDir,
+  },
+})
+
 export const MetadataFormAccount: MetadataFormType = {
   version: '20241208',
   type: 'account',
 }
 
 export const MetadataFormJupyter: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'jupyter',
-  migrations: jobTemplateMigrations('20250420'),
+  migrations: withTensorboardLogDirMigration('20250420'),
 }
 
 export const MetadataFormWebIDE: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'webide',
-  migrations: jobTemplateMigrations('20251126'),
+  migrations: withTensorboardLogDirMigration('20251126'),
 }
 
 export const MetadataFormCustom: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'custom',
-  migrations: jobTemplateMigrations('20250317'),
+  migrations: withTensorboardLogDirMigration('20250317', '20260728'),
 }
 
 export const MetadataFormCustomEmias: MetadataFormType = {
@@ -169,15 +221,30 @@ export const MetadataFormCustomEmias: MetadataFormType = {
 }
 
 export const MetadataFormTensorflow: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'tensorflow',
-  migrations: jobTemplateMigrations('20240528'),
+  migrations: withTensorboardLogDirMigration('20240528'),
+}
+
+export const MetadataFormTensorboard: MetadataFormType = {
+  version: CurrentTensorboardPanelTemplateVersion,
+  type: 'tensorboard',
+  migrations: {
+    [NodeSelectorTemplateVersion]: {
+      to: '20260930',
+      migrate: migrateTensorboardPanelLifetime,
+    },
+    '20260930': {
+      to: CurrentTensorboardPanelTemplateVersion,
+      migrate: migrateTensorboardPanelName,
+    },
+  },
 }
 
 export const MetadataFormPytorch: MetadataFormType = {
-  version: CurrentJobTemplateVersion,
+  version: CurrentTensorboardJobTemplateVersion,
   type: 'pytorch',
-  migrations: jobTemplateMigrations('20240528'),
+  migrations: withTensorboardLogDirMigration('20240528'),
 }
 
 export const MetadataFormSingle: MetadataFormType = {

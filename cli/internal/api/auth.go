@@ -1,5 +1,7 @@
 package api
 
+import "strings"
+
 // AuthClient 认证相关 API 的抽象。默认实现为 *Client（真实 HTTP；若设置 CRATER_TEST_SANDBOX_HTTP 则传输层统一模拟，见本包 client.go）。测试可注入其它实现。
 type AuthClient interface {
 	Login(username, password, mode string) (*LoginResp, error)
@@ -88,4 +90,43 @@ func (c *Client) Login(username, password, mode string) (*LoginResp, error) {
 	}
 
 	return &result.Data, nil
+}
+
+type accountCheckResponse struct {
+	Context *AccountContext `json:"context"`
+}
+
+// CurrentAccount returns the account context validated by the backend.
+func (c *Client) CurrentAccount() (*AccountContext, error) {
+	var result Response[*accountCheckResponse]
+	resp, err := c.httpClient.R().
+		SetSuccessResult(&result).
+		SetErrorResult(&result).
+		Get(AuthCheckPath)
+	if err := errorFromRequest(resp, err, result.Code, result.Message); err != nil {
+		return nil, err
+	}
+	if result.Data == nil || result.Data.Context == nil || strings.TrimSpace(result.Data.Context.Queue) == "" {
+		return nil, &RequestError{HTTPStatus: resp.GetStatusCode(), Msg: "platform returned no current account context"}
+	}
+	return result.Data.Context, nil
+}
+
+// SwitchAccount requests credentials scoped to the named account/queue.
+func (c *Client) SwitchAccount(queue string) (*LoginResp, error) {
+	var result Response[*LoginResp]
+	resp, err := c.httpClient.R().
+		SetBody(struct {
+			Queue string `json:"queue"`
+		}{Queue: queue}).
+		SetSuccessResult(&result).
+		SetErrorResult(&result).
+		Post(AuthSwitchPath)
+	if err := errorFromRequest(resp, err, result.Code, result.Message); err != nil {
+		return nil, err
+	}
+	if result.Data == nil || strings.TrimSpace(result.Data.AccessToken) == "" || result.Data.Context.Queue != queue {
+		return nil, &RequestError{HTTPStatus: resp.GetStatusCode(), Msg: "platform returned invalid account switch credentials or context"}
+	}
+	return result.Data, nil
 }

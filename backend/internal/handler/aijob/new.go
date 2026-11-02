@@ -84,7 +84,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 2. Env Vars
-	envs := vcjob.GenerateEnvs(c, token, vcReq.Envs)
+	envs := vcjob.GenerateEnvs(c, token, "", vcReq.Envs)
 	envs = append(
 		envs,
 		v1.EnvVar{Name: "GRANT_SUDO", Value: "1"},
@@ -140,7 +140,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username
 
-	if err := interutil.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.kubeConfig); err != nil {
+	if err := interutil.CheckStorageQuota(token.Username, vcReq.VolumeMounts, mgr.kubeClient, mgr.kubeConfig); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -198,7 +198,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	req.WorkingDir = vcReq.WorkingDir
 
 	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
-	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq)
+	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, "", &vcReq.CreateCustomReq)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
 		return
@@ -212,7 +212,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username
 
-	if err := interutil.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.kubeConfig); err != nil {
+	if err := interutil.CheckStorageQuota(token.Username, vcReq.VolumeMounts, mgr.kubeClient, mgr.kubeConfig); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}

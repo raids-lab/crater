@@ -56,7 +56,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		return
 	}
 
-	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
+	if err := util.CheckStorageQuota(token.Username, req.VolumeMounts, mgr.kubeClient, mgr.config); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -95,7 +95,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	)
 
 	// 5. Create the pod spec
-	podSpec, err := GenerateCustomPodSpec(c, token, &req)
+	podSpec, err := GenerateCustomPodSpec(c, token, jobName, &req)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -155,6 +155,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 func GenerateCustomPodSpec(
 	ctx context.Context,
 	token util.JWTMessage,
+	jobName string,
 	custom *CreateCustomReq,
 ) (podSpec v1.PodSpec, err error) {
 	volumes, volumeMounts, err := GenerateVolumeMounts(ctx, custom.VolumeMounts, token)
@@ -165,7 +166,7 @@ func GenerateCustomPodSpec(
 	baseAffinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
 	affinity := GenerateArchitectureNodeAffinity(custom.Image, baseAffinity)
 	tolerations := GenerateTaintTolerationsForAccount(token)
-	envs := GenerateEnvs(ctx, token, custom.Envs)
+	envs := GenerateEnvs(ctx, token, jobName, custom.Envs)
 
 	imagePullSecrets := []v1.LocalObjectReference{}
 	if config.GetConfig().Secrets.ImagePullSecretName != "" {

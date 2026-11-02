@@ -20,7 +20,7 @@ func TestReadCommandMatrix(t *testing.T) {
 		{"image", "upload"}, {"image", "delete"}, {"image", "delete-many"}, {"image", "description"}, {"image", "type"}, {"image", "tags"}, {"image", "arch"}, {"image", "valid"},
 		{"image", "share", "ls"}, {"image", "share", "users"}, {"image", "share", "accounts"}, {"image", "share", "add"}, {"image", "share", "remove"},
 		{"image", "cuda", "ls"}, {"image", "harbor", "info"}, {"image", "harbor", "credential"}, {"image", "quota", "get"}, {"image", "quota", "set"},
-		{"account", "ls"}, {"account", "get"}, {"account", "members"}, {"account", "users-out"}, {"account", "billing", "config"}, {"account", "billing", "members"},
+		{"account", "ls"}, {"account", "current"}, {"account", "use"}, {"account", "get"}, {"account", "members"}, {"account", "users-out"}, {"account", "billing", "config"}, {"account", "billing", "members"},
 		{"resource", "ls"}, {"resource", "networks"}, {"resource", "vgpu"}, {"resource", "prices"},
 		{"dataset", "ls"}, {"dataset", "get"}, {"dataset", "users"}, {"dataset", "queues"}, {"dataset", "users-out"}, {"dataset", "queues-out"},
 		{"template", "ls"}, {"template", "get"},
@@ -57,7 +57,7 @@ func TestReadCommandMatrix(t *testing.T) {
 
 	apiCases := [][]string{
 		{"node", "ls"}, {"job", "ls"}, {"image", "ls"}, {"image", "build", "ls"}, {"image", "cuda", "ls"}, {"image", "harbor", "info"}, {"image", "quota", "get"},
-		{"account", "ls"}, {"resource", "ls"}, {"dataset", "ls"}, {"template", "ls"}, {"model-download", "ls"},
+		{"account", "ls"}, {"account", "current"}, {"account", "use", "research"}, {"resource", "ls"}, {"dataset", "ls"}, {"template", "ls"}, {"model-download", "ls"},
 		{"context", "quota"}, {"context", "resources"}, {"context", "billing"},
 		{"billing", "status"}, {"billing", "summary"}, {"billing", "prices"}, {"billing", "jobs"},
 		{"order", "ls"}, {"user", "email-verified"},

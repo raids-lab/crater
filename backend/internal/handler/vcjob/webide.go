@@ -51,7 +51,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		return
 	}
 
-	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
+	if err := util.CheckStorageQuota(token.Username, req.VolumeMounts, mgr.kubeClient, mgr.config); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -102,6 +102,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 	podSpec, err := generateInteractivePodSpec(
 		c,
 		token,
+		jobName,
 		&req.CreateJobCommon,
 		req.Resource,
 		req.Image,
