@@ -16,8 +16,8 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	// v5 resolves the job-name placeholder in TENSORBOARD_LOGDIR during job creation.
-	APIVersion = 5
+	// v6 adds per-user job container SYS_ADMIN authorization on top of the v5 TensorBoard log directory contract.
+	APIVersion = 6
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
 	// v2 and older CLIs still call the removed prequeue endpoints and the dropped schedule_type filter with no fallback.

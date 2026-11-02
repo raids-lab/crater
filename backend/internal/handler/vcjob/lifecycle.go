@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	v1 "k8s.io/api/core/v1"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/internal/bizerr"
@@ -24,6 +25,13 @@ func (mgr *VolcanojobMgr) submitJob(
 	token util.JWTMessage,
 	job *batch.Job,
 ) error {
+	pods := make([]*v1.PodSpec, 0, len(job.Spec.Tasks))
+	for i := range job.Spec.Tasks {
+		pods = append(pods, &job.Spec.Tasks[i].Template.Spec)
+	}
+	if err := service.ApplyUserJobCapabilities(ctx, token.UserID, pods...); err != nil {
+		return err
+	}
 	if err := mgr.ensureJobAdmitted(ctx, job); err != nil {
 		return err
 	}

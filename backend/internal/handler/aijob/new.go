@@ -137,6 +137,10 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 		EnableServiceLinks: ptr.To(false),
 	}
 
+	if err := service.ApplyUserJobCapabilities(c.Request.Context(), token.UserID, &podSpec); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username
 
@@ -201,6 +205,11 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, "", &vcReq.CreateCustomReq)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	if err := service.ApplyUserJobCapabilities(c.Request.Context(), token.UserID, &podSpec); err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 

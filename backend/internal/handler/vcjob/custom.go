@@ -215,5 +215,6 @@ func GenerateCustomPodSpec(
 		podSpec.Containers[0].Command = []string{*custom.Shell, "-c", *custom.Command}
 	}
 
+	utils.AddJobProfilingCapabilities(&podSpec)
 	return podSpec, nil
 }

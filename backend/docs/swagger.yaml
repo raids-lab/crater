@@ -3,6 +3,8 @@ definitions:
     type: object
   datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota:
     type: object
+  datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute:
+    type: object
   datatypes.JSONType-v1_ResourceList:
     type: object
   github_com_raids-lab_crater_dao_model.AccessMode:
@@ -607,6 +609,18 @@ definitions:
       data:
         items:
           $ref: '#/definitions/internal_handler.ModelDownloadResp'
+        type: array
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.UserResp'
         type: array
       msg:
         type: string
@@ -1384,6 +1398,44 @@ definitions:
         type: array
       windowHours:
         type: integer
+    type: object
+  internal_handler.AdminUpdateUserAttributesReq:
+    properties:
+      avatar:
+        description: 头像
+        type: string
+      containerSysAdminEnabled:
+        type: boolean
+      email:
+        description: 邮箱
+        type: string
+      expiredAt:
+        description: 过期时间
+        type: string
+      gid:
+        description: GID
+        type: string
+      group:
+        description: 课题组
+        type: string
+      id:
+        description: ID
+        type: integer
+      name:
+        description: 账号
+        type: string
+      nickname:
+        description: 昵称，如果没有指定，则与账号相同
+        type: string
+      phone:
+        description: 电话
+        type: string
+      teacher:
+        description: 老师
+        type: string
+      uid:
+        description: UID and GID are used for Filesystem
+        type: string
     type: object
   internal_handler.ApprovalOrderResp:
     properties:
@@ -2366,6 +2418,45 @@ definitions:
         $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota'
       role:
         type: string
+    type: object
+  internal_handler.UserResp:
+    properties:
+      attributes:
+        allOf:
+        - $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute'
+        description: 用户额外属性
+      banRestrictions:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+        description: 当前生效的封禁限制，未封禁时为空
+      banned:
+        description: 当前是否处于封禁状态
+        type: boolean
+      bannedTimestamp:
+        description: 用户封禁截止时间
+        type: string
+      containerSysAdminEnabled:
+        type: boolean
+      extraBalance:
+        description: 用户额外点数
+        type: number
+      id:
+        description: 用户ID
+        type: integer
+      name:
+        description: 用户名称
+        type: string
+      permanentBanned:
+        description: 是否永久封禁
+        type: boolean
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Role'
+        description: 用户角色
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Status'
+        description: 用户状态
     type: object
   internal_handler.VersionInfo:
     properties:
@@ -5471,7 +5562,7 @@ paths:
         "200":
           description: 成功获取用户信息
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserResp'
         "400":
           description: 请求参数错误
           schema:
@@ -5520,37 +5611,46 @@ paths:
     put:
       consumes:
       - application/json
-      description: 管理员更新指定用户的属性
+      description: Update user attributes and optionally grant or revoke SYS_ADMIN
+        for subsequently created job containers.
       parameters:
       - description: username
         in: path
         name: name
         required: true
         type: string
-      - description: 用户属性
+      - description: User attributes and optional container permission
         in: body
         name: attributes
         required: true
         schema:
-          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
+          $ref: '#/definitions/internal_handler.AdminUpdateUserAttributesReq'
       produces:
       - application/json
       responses:
         "200":
-          description: 用户属性更新成功
+          description: User attributes updated
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: Invalid request
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: 请求参数错误
+        "403":
+          description: Administrator permission required
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: User not found
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: 其他错误
+          description: Database unavailable
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 管理员更新用户属性
+      summary: Admin update user attributes
       tags:
       - User
   /v1/admin/users/{name}/ban:

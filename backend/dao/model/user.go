@@ -59,6 +59,8 @@ func (r UserBanRestrictions) Any() bool {
 // User is the basic entity of the system
 type User struct {
 	gorm.Model
+	ContainerSysAdminEnabled bool `gorm:"not null;default:false;comment:Container SYS_ADMIN grant"`
+
 	Name                string                                  `gorm:"uniqueIndex;type:varchar(64);not null;comment:用户名"`
 	Nickname            string                                  `gorm:"type:varchar(64);comment:昵称"`
 	Password            *string                                 `gorm:"type:varchar(256);comment:密码"`

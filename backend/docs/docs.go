@@ -3775,7 +3775,7 @@ const docTemplate = `{
                     "200": {
                         "description": "成功获取用户信息",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserResp"
                         }
                     },
                     "400": {
@@ -3889,7 +3889,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "管理员更新指定用户的属性",
+                "description": "Update user attributes and optionally grant or revoke SYS_ADMIN for subsequently created job containers.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3899,7 +3899,7 @@ const docTemplate = `{
                 "tags": [
                     "User"
                 ],
-                "summary": "管理员更新用户属性",
+                "summary": "Admin update user attributes",
                 "parameters": [
                     {
                         "type": "string",
@@ -3909,30 +3909,42 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "用户属性",
+                        "description": "User attributes and optional container permission",
                         "name": "attributes",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute"
+                            "$ref": "#/definitions/internal_handler.AdminUpdateUserAttributesReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "用户属性更新成功",
+                        "description": "User attributes updated",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
-                    "400": {
-                        "description": "请求参数错误",
+                    "403": {
+                        "description": "Administrator permission required",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "其他错误",
+                        "description": "Database unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -10686,6 +10698,9 @@ const docTemplate = `{
         "datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota": {
             "type": "object"
         },
+        "datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute": {
+            "type": "object"
+        },
         "datatypes.JSONType-v1_ResourceList": {
             "type": "object"
         },
@@ -11517,6 +11532,24 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/internal_handler.ModelDownloadResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.UserResp"
                     }
                 },
                 "msg": {
@@ -12686,6 +12719,58 @@ const docTemplate = `{
                 },
                 "windowHours": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.AdminUpdateUserAttributesReq": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "description": "头像",
+                    "type": "string"
+                },
+                "containerSysAdminEnabled": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "description": "邮箱",
+                    "type": "string"
+                },
+                "expiredAt": {
+                    "description": "过期时间",
+                    "type": "string"
+                },
+                "gid": {
+                    "description": "GID",
+                    "type": "string"
+                },
+                "group": {
+                    "description": "课题组",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "账号",
+                    "type": "string"
+                },
+                "nickname": {
+                    "description": "昵称，如果没有指定，则与账号相同",
+                    "type": "string"
+                },
+                "phone": {
+                    "description": "电话",
+                    "type": "string"
+                },
+                "teacher": {
+                    "description": "老师",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "UID and GID are used for Filesystem",
+                    "type": "string"
                 }
             }
         },
@@ -14162,6 +14247,70 @@ const docTemplate = `{
                 },
                 "role": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_handler.UserResp": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "用户额外属性",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute"
+                        }
+                    ]
+                },
+                "banRestrictions": {
+                    "description": "当前生效的封禁限制，未封禁时为空",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions"
+                        }
+                    ]
+                },
+                "banned": {
+                    "description": "当前是否处于封禁状态",
+                    "type": "boolean"
+                },
+                "bannedTimestamp": {
+                    "description": "用户封禁截止时间",
+                    "type": "string"
+                },
+                "containerSysAdminEnabled": {
+                    "type": "boolean"
+                },
+                "extraBalance": {
+                    "description": "用户额外点数",
+                    "type": "number"
+                },
+                "id": {
+                    "description": "用户ID",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "用户名称",
+                    "type": "string"
+                },
+                "permanentBanned": {
+                    "description": "是否永久封禁",
+                    "type": "boolean"
+                },
+                "role": {
+                    "description": "用户角色",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.Role"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "用户状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.Status"
+                        }
+                    ]
                 }
             }
         },

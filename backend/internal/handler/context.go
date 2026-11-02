@@ -374,7 +374,7 @@ func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 	attributes.GID = oldAttributes.GID
 
 	user.Attributes = datatypes.NewJSONType(attributes)
-	if err := u.WithContext(c).Save(user); err != nil {
+	if _, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).Update(u.Attributes, user.Attributes); err != nil {
 		resputil.Error(c, fmt.Sprintf("Failed to update user attributes:  %v", err), resputil.NotSpecified)
 		return
 	}

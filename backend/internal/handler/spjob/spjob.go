@@ -197,6 +197,10 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 			InputTensor:         req.InputTensor,
 		},
 	}
+	if err := service.ApplyUserJobCapabilities(c.Request.Context(), token.UserID, &job.Spec.Template.Spec); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
 	if req.Command != nil {
 		job.Spec.Template.Spec.Containers[0].Command = []string{"sh", "-c", *req.Command}
 	}
