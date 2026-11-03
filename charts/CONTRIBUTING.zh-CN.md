@@ -27,10 +27,11 @@
 - 修改 Chart 模板、依赖或配置逻辑时，必须同时将两个字段提升到同一个新值。
 - 新增、删除、重命名配置项，或改变配置项行为 / 默认值时，必须同时将两个字段提升到同一个新值，并同步更新 `charts/crater/README.md`。
 - `version` / `appVersion` 共用同一个语义化版本值。
-- 仅修改 `values.yaml` 配置项时可提升 patch 版本，除非该变更同时影响前后端 API 兼容性。
-- 前端 / 后端 API 发生变化并影响 Chart 部署出的应用契约时，必须提升 minor 版本。
-- 不要主动提升 major 版本，除非维护者明确判断这是一次 major breaking release。
+- 配置变更仅涉及 `values.yaml` 时可提升 patch 版本。
+- 正式发版准备时，根据上次正式发布以来的累计变化提升版本号，包括前后端接口新增功能或行为变化。具体提升 patch、minor 还是 major，由维护者根据实际改动决定。
 - 发布版本变化时，提醒开发者在 GitHub 上创建对应 tag，通常为 `v<version>`。
+
+CLI / 后端 API 兼容版本随 API 契约变化独立维护，具体遵循根贡献文档的 [CLI / 后端 API 兼容版本](../docs/zh-CN/CONTRIBUTING.md#cli--后端-api-兼容版本) 规则。
 
 ## Values 与文档
 

@@ -27,10 +27,11 @@ Use this file when you change chart metadata, `values.yaml`, Helm templates, dep
 - Changes to chart templates, dependencies, or configuration logic must update both fields to the same new value.
 - Changes that add, remove, rename, or change behavior/defaults of configuration items must update both fields to the same new value and update `charts/crater/README.md`.
 - Use semantic versioning for the shared `version` / `appVersion` value.
-- `values.yaml`-only configuration changes may use a patch bump unless the change also alters frontend/backend API compatibility.
-- Frontend/backend API changes that affect the charted application contract require a minor bump.
-- Do not proactively bump the major version unless the maintainer explicitly decides the release is a major breaking release.
+- Configuration changes limited to `values.yaml` may use a patch bump.
+- During formal release preparation, increase the release version to cover all changes since the previous formal release, including new frontend/backend API features or changes in API behavior. The maintainer chooses patch, minor, or major based on the actual changes.
 - When the release version changes, remind the developer to create the corresponding GitHub tag, usually `v<version>`.
+
+CLI/backend API compatibility versions are maintained independently as the API contract changes; follow the root [CLI / Backend API Compatibility Versions](../CONTRIBUTING.md#cli--backend-api-compatibility-versions) rules.
 
 ## Values And Documentation
 
