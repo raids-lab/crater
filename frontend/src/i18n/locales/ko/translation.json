@@ -302,7 +302,7 @@
   "cronPolicy.billingBaseLoopTitle": "과금 정산 점검",
   "cronPolicy.cancel": "취소",
   "cronPolicy.cleanerJobsTitle": "정리 작업",
-  "cronPolicy.cleanupSummary": "Cleanup completed: {{total}} jobs in total (Deleted: {{deleted}}, Reminded: {{reminded}})",
+  "cronPolicy.cleanupSummary": "정리 완료: 총 {{total}}개 작업 (삭제: {{deleted}}개, 알림: {{reminded}}개)",
   "cronPolicy.confirm": "확인",
   "cronPolicy.confirmMessage": "Are you sure you want to execute the immediate cleanup? This will clean up jobs that meet the criteria based on the current configuration (suspended policies will be skipped).",
   "cronPolicy.confirmTitle": "작업 정리 확인",

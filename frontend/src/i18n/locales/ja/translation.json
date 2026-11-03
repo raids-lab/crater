@@ -303,7 +303,7 @@
   "cronPolicy.billingBaseLoopTitle": "課金精算パトロール",
   "cronPolicy.cancel": "キャンセル",
   "cronPolicy.cleanerJobsTitle": "クリーンアップジョブ",
-  "cronPolicy.cleanupSummary": "Cleanup completed: {{total}} jobs in total (Deleted: {{deleted}}, Reminded: {{reminded}})",
+  "cronPolicy.cleanupSummary": "クリーンアップ完了：合計 {{total}} 件のジョブ（削除済み：{{deleted}} 件、通知済み：{{reminded}} 件）",
   "cronPolicy.confirm": "確認",
   "cronPolicy.confirmMessage": "Are you sure you want to execute the immediate cleanup? This will clean up jobs that meet the criteria based on the current configuration (suspended policies will be skipped).",
   "cronPolicy.confirmTitle": "ジョブクリーンアップ確認",
