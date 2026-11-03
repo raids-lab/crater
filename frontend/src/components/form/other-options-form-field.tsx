@@ -60,6 +60,7 @@ import { NodeSelectorMode } from '@/utils/form'
 import { cn } from '@/lib/utils'
 
 import AccordionCard from './accordion-card'
+import { JobSysAdminFormField } from './job-sys-admin-form-field'
 
 export function getOtherCardTitle(t: (key: string) => string) {
   return t('otherOptionsFormCard.accordionTitle')
@@ -184,6 +185,7 @@ interface OtherOptionsFormCardProps<T extends FieldValues> {
   nodeSelectorEnablePath: FieldPath<T>
   nodeSelectorModePath: FieldPath<T>
   nodeSelectorNodesPath: FieldPath<T>
+  sysAdminEnabledPath?: FieldPath<T>
   cpuPinningEnabledPath?: FieldPath<T> // 可选的 CPU 绑核路径
   open: boolean
   setOpen: (open: boolean) => void
@@ -196,6 +198,7 @@ export function OtherOptionsFormCard<T extends FieldValues>({
   nodeSelectorModePath,
   nodeSelectorNodesPath,
   cpuPinningEnabledPath,
+  sysAdminEnabledPath,
   open,
   setOpen,
 }: OtherOptionsFormCardProps<T>) {
@@ -219,6 +222,7 @@ export function OtherOptionsFormCard<T extends FieldValues>({
         setOpen={setOpen}
       >
         <div className="mt-3 space-y-3">
+          {sysAdminEnabledPath && <JobSysAdminFormField form={form} name={sysAdminEnabledPath} />}
           <FormField
             control={form.control}
             name={alertEnabledPath}

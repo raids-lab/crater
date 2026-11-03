@@ -668,6 +668,7 @@
   "jobs.new.action": "新規作成",
   "jobs.new.emiasJob": "EMIAS ジョブ",
   "jobs.new.emiasJupyterJob": "EMIAS Jupyter ジョブ",
+  "jobs.new.enableSysAdmin": "このジョブで SYS_ADMIN を有効にする",
   "jobs.new.jupyterJob": "Jupyter Lab ジョブ",
   "jobs.new.pytorchDDPJob": "PyTorch DDP ジョブ",
   "jobs.new.seacsJob": "SEACS ジョブ",

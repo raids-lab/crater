@@ -114,6 +114,19 @@ func TestAdminUserContainerPermissionAPI(t *testing.T) {
 			if tc.path == "/context/attributes" && (saved.Attributes.Data().UID == nil || *saved.Attributes.Data().UID != "1001") {
 				t.Fatal("profile edit changed UID")
 			}
+			permissions := request(model.RoleUser, http.MethodGet, "/context/job-permissions", "")
+			var eligibility resputil.Response[struct {
+				ContainerSysAdminEnabled bool `json:"containerSysAdminEnabled"`
+			}]
+			if permissions.Code != http.StatusOK {
+				t.Fatal(permissions.Body.String())
+			}
+			if err := json.Unmarshal(permissions.Body.Bytes(), &eligibility); err != nil {
+				t.Fatal(err)
+			}
+			if eligibility.Data.ContainerSysAdminEnabled != tc.enabled {
+				t.Fatal("user permissions returned stale authorization")
+			}
 			listed := request(model.RoleAdmin, http.MethodGet, "/admin/users", "")
 			var resp resputil.Response[[]handler.UserResp]
 			if listed.Code != http.StatusOK {

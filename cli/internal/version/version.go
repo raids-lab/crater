@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	// v6 adds per-user job container SYS_ADMIN authorization on top of the v5 TensorBoard log directory contract.
+	// v6 adds per-user SYS_ADMIN eligibility and explicit, default-off per-job opt-in.
 	APIVersion = 6
 	// v3 first exposes /admin/system-config/scheduler-extender, which this CLI calls with no fallback.
 	MinSupportedBackendAPIVersion    = 3

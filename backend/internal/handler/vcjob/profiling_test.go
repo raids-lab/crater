@@ -16,6 +16,7 @@ package vcjob
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,9 +32,9 @@ import (
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
-	"github.com/raids-lab/crater/internal/service"
-
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -193,13 +195,27 @@ func TestVolcanoSubmissionAppliesCurrentUserGrant(t *testing.T) {
 		{Name: "webide", Replicas: 1, Template: corev1.PodTemplateSpec{Spec: webide}},
 		{Name: "worker", Replicas: 2, Template: corev1.PodTemplateSpec{Spec: parallel}},
 	}}}
-	for i, enabled := range []bool{false, true, false} {
+	for i, tc := range []struct{ granted, requested bool }{
+		{false, false}, {true, false}, {true, true}, {false, true}, {false, false},
+	} {
+		enabled := tc.granted
 		if err := db.Model(&model.User{}).Where("id = ?", user.ID).Update("container_sys_admin_enabled", enabled).Error; err != nil {
 			t.Fatal(err)
 		}
 		job := original.DeepCopy()
 		job.Name = fmt.Sprintf("profiling-%d", i)
-		if err := mgr.submitJob(t.Context(), token, job); err != nil {
+		err := mgr.submitJob(t.Context(), token, job, tc.requested)
+		if tc.requested && !tc.granted {
+			if !errors.Is(err, bizerr.Forbidden.Base) {
+				t.Fatalf("expected permission rejection, got %v", err)
+			}
+			var rejected batch.Job
+			if err := fakeClient.Get(t.Context(), client.ObjectKeyFromObject(job), &rejected); !apierrors.IsNotFound(err) {
+				t.Fatalf("denied job was submitted: %v", err)
+			}
+			continue
+		}
+		if err != nil {
 			t.Fatal(err)
 		}
 		var stored batch.Job
@@ -208,7 +224,7 @@ func TestVolcanoSubmissionAppliesCurrentUserGrant(t *testing.T) {
 		}
 		for _, task := range stored.Spec.Tasks {
 			for _, container := range task.Template.Spec.Containers {
-				if slices.Contains(container.SecurityContext.Capabilities.Add, "SYS_ADMIN") != enabled || slices.Contains(container.SecurityContext.Capabilities.Add, "PERFMON") {
+				if slices.Contains(container.SecurityContext.Capabilities.Add, "SYS_ADMIN") != tc.requested || slices.Contains(container.SecurityContext.Capabilities.Add, "PERFMON") {
 					t.Fatalf("%s grant %v: %+v", task.Name, enabled, container.SecurityContext)
 				}
 			}

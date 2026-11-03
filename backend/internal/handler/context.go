@@ -55,6 +55,7 @@ func (mgr *ContextMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *ContextMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("quota", mgr.GetQuota)
+	g.GET("job-permissions", mgr.UserGetJobPermissions)
 	g.GET("job-resource-summary", mgr.GetJobResourceSummary)
 	g.POST("resource-limit-check", mgr.CheckResourceLimit)
 	g.GET("billing/summary", mgr.GetBillingSummary)
@@ -97,6 +98,25 @@ type (
 		Accelerators []JobResourceSummaryAcceleratorResp `json:"accelerators"`
 	}
 )
+
+// UserGetJobPermissions returns current eligibility for optional job container permissions.
+//
+// @Summary Get current user job container permissions
+// @Tags Context
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} resputil.Response[service.UserJobPermissions]
+// @Failure 401 {object} resputil.Response[any] "User not found"
+// @Failure 500 {object} resputil.Response[any] "Unable to read permissions"
+// @Router /v1/context/job-permissions [get]
+func (mgr *ContextMgr) UserGetJobPermissions(c *gin.Context) {
+	permissions, err := service.GetUserJobPermissions(c.Request.Context(), util.GetToken(c).UserID)
+	if err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
+	resputil.Success(c, permissions)
+}
 
 // GetQuota godoc
 //

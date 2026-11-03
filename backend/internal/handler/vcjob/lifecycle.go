@@ -24,12 +24,13 @@ func (mgr *VolcanojobMgr) submitJob(
 	ctx context.Context,
 	token util.JWTMessage,
 	job *batch.Job,
+	sysAdminEnabled bool,
 ) error {
 	pods := make([]*v1.PodSpec, 0, len(job.Spec.Tasks))
 	for i := range job.Spec.Tasks {
 		pods = append(pods, &job.Spec.Tasks[i].Template.Spec)
 	}
-	if err := service.ApplyUserJobCapabilities(ctx, token.UserID, pods...); err != nil {
+	if err := service.ApplyUserJobCapabilities(ctx, token.UserID, sysAdminEnabled, pods...); err != nil {
 		return err
 	}
 	if err := mgr.ensureJobAdmitted(ctx, job); err != nil {

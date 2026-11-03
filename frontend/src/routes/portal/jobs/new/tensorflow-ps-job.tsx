@@ -221,6 +221,7 @@ su - \${NB_USER} -c 'your_command_2'
 `
 
 const formSchema = z.object({
+  sysAdminEnabled: z.boolean().default(false),
   jobName: z
     .string()
     .min(1, {
@@ -301,6 +302,7 @@ function RouteComponent() {
 
       return apiTensorflowCreate({
         name: values.jobName,
+        sysAdminEnabled: values.sysAdminEnabled,
         tasks: [
           {
             name: values.ps.taskName,
@@ -350,6 +352,7 @@ function RouteComponent() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       jobName: '',
+      sysAdminEnabled: false,
       ps: {
         taskName: 'ps',
         replicas: 1,
@@ -802,6 +805,7 @@ function RouteComponent() {
             <VolumeMountsCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
+              sysAdminEnabledPath="sysAdminEnabled"
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"

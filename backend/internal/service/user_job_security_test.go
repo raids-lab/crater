@@ -61,7 +61,7 @@ func TestUserJobCapabilitiesFollowCurrentGrant(t *testing.T) {
 	pod := corev1.PodSpec{Containers: []corev1.Container{{Name: "main"}, {Name: "worker"}},
 		InitContainers: []corev1.Container{{Name: "init"}}}
 	// A platform administrator receives no container grant implicitly.
-	if err := ApplyUserJobCapabilities(t.Context(), user.ID, &pod); err != nil {
+	if err := ApplyUserJobCapabilities(t.Context(), user.ID, false, &pod); err != nil {
 		t.Fatal(err)
 	}
 	if slices.Contains(pod.Containers[0].SecurityContext.Capabilities.Add, "SYS_ADMIN") {
@@ -72,7 +72,7 @@ func TestUserJobCapabilitiesFollowCurrentGrant(t *testing.T) {
 			t.Fatal(err)
 		}
 		other := pod.DeepCopy()
-		if err := ApplyUserJobCapabilities(t.Context(), user.ID, &pod, other); err != nil {
+		if err := ApplyUserJobCapabilities(t.Context(), user.ID, enabled, &pod, other); err != nil {
 			t.Fatal(err)
 		}
 		for _, spec := range []*corev1.PodSpec{&pod, other} {
@@ -94,7 +94,7 @@ func TestUserJobCapabilitiesFollowCurrentGrant(t *testing.T) {
 		}
 	}
 	before := pod.DeepCopy()
-	if err := ApplyUserJobCapabilities(t.Context(), user.ID, &pod); err != nil {
+	if err := ApplyUserJobCapabilities(t.Context(), user.ID, true, &pod); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(before, &pod) {
@@ -117,7 +117,7 @@ func TestUserJobCapabilitiesFollowCurrentGrant(t *testing.T) {
 	if !reflect.DeepEqual(before, &pod) {
 		t.Fatal("revoke mutated an existing template")
 	}
-	if err := ApplyUserJobCapabilities(t.Context(), user.ID, &pod); err != nil {
+	if err := ApplyUserJobCapabilities(t.Context(), user.ID, false, &pod); err != nil {
 		t.Fatal(err)
 	}
 	if slices.Contains(pod.Containers[0].SecurityContext.Capabilities.Add, "SYS_ADMIN") {
@@ -129,7 +129,7 @@ func TestUserJobCapabilitiesFailClosed(t *testing.T) {
 	db := jobPermissionDB(t)
 	pod := corev1.PodSpec{Containers: []corev1.Container{{Name: "main"}}}
 	before := pod.DeepCopy()
-	if err := ApplyUserJobCapabilities(t.Context(), 999, &pod); !errors.Is(err, bizerr.Auth.Base) {
+	if err := ApplyUserJobCapabilities(t.Context(), 999, true, &pod); !errors.Is(err, bizerr.Auth.Base) {
 		t.Fatalf("missing user: %v", err)
 	}
 	if !reflect.DeepEqual(before, &pod) {
@@ -141,10 +141,59 @@ func TestUserJobCapabilitiesFailClosed(t *testing.T) {
 	if err := db.Migrator().DropTable(&model.User{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := ApplyUserJobCapabilities(t.Context(), 1, &pod); !errors.Is(err, bizerr.Internal.Base) {
+	if err := ApplyUserJobCapabilities(t.Context(), 1, true, &pod); !errors.Is(err, bizerr.Internal.Base) {
 		t.Fatalf("database failure: %v", err)
 	}
 	if !reflect.DeepEqual(before, &pod) {
 		t.Fatal("mutated pod on database failure")
+	}
+}
+
+func TestUserJobSysAdminRequiresGrantAndOptIn(t *testing.T) {
+	db := jobPermissionDB(t)
+	user := model.User{Name: "opt-in", Space: "opt-in", Role: model.RoleUser, Status: model.StatusActive}
+	if err := db.Create(&user).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name                       string
+		granted, requested, denied bool
+	}{
+		{"ungranted default", false, false, false},
+		{"ungranted explicit request", false, true, true},
+		{"granted default remains off", true, false, false},
+		{"granted explicit request", true, true, false},
+		{"revoked explicit request", false, true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := db.Model(&user).Update("container_sys_admin_enabled", tc.granted).Error; err != nil {
+				t.Fatal(err)
+			}
+			// Imported/stale pod capabilities must never substitute for a new request.
+			pod := corev1.PodSpec{Containers: []corev1.Container{{Name: "main", SecurityContext: &corev1.SecurityContext{
+				Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"SYS_ADMIN", "IPC_LOCK"}},
+			}}}}
+			before := pod.DeepCopy()
+			err := ApplyUserJobCapabilities(t.Context(), user.ID, tc.requested, &pod)
+			if tc.denied {
+				if !errors.Is(err, bizerr.Forbidden.Base) {
+					t.Fatalf("want permission error, got %v", err)
+				}
+				if !reflect.DeepEqual(before, &pod) {
+					t.Fatal("denied request changed template")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			caps := pod.Containers[0].SecurityContext.Capabilities.Add
+			if slices.Contains(caps, "SYS_ADMIN") != tc.requested {
+				t.Fatalf("unexpected capabilities: %v", caps)
+			}
+			if !slices.Contains(caps, "SYS_PTRACE") || !slices.Contains(caps, "IPC_LOCK") {
+				t.Fatal("lost unrelated capabilities")
+			}
+		})
 	}
 }

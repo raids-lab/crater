@@ -667,6 +667,7 @@
   "jobs.new.action": "새로 만들기",
   "jobs.new.emiasJob": " EMIAS 작업",
   "jobs.new.emiasJupyterJob": "EMIAS Jupyter 작업",
+  "jobs.new.enableSysAdmin": "이 작업에 SYS_ADMIN 사용",
   "jobs.new.jupyterJob": "Jupyter Lab 작업",
   "jobs.new.pytorchDDPJob": "PyTorch DDP 작업",
   "jobs.new.seacsJob": "SEACS 작업",

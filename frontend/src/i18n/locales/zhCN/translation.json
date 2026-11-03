@@ -668,6 +668,7 @@
   "jobs.new.action": "新建",
   "jobs.new.emiasJob": " EMIAS 作业",
   "jobs.new.emiasJupyterJob": " EMIAS Jupyter 作业",
+  "jobs.new.enableSysAdmin": "为本次作业启用 SYS_ADMIN",
   "jobs.new.jupyterJob": " Jupyter Lab 作业",
   "jobs.new.pytorchDDPJob": " PyTorch DDP 作业",
   "jobs.new.seacsJob": " SEACS 作业",

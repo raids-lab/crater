@@ -119,6 +119,20 @@ type (
 	}
 )
 
+// Create godoc
+//
+// @Summary Create a SEACS job
+// @Description SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.
+// @Tags SparseJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param job body CreateRecommendDLJobReq true "Job creation request"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Invalid request"
+// @Failure 403 {object} resputil.Response[any] "SYS_ADMIN is not authorized"
+// @Failure 500 {object} resputil.Response[any] "Service error"
+// @Router /v1/spjobs/training [post]
 func (mgr *SparseJobMgr) Create(c *gin.Context) {
 	req := &CreateRecommendDLJobReq{}
 	if err := c.ShouldBindJSON(req); err != nil {
@@ -197,7 +211,7 @@ func (mgr *SparseJobMgr) Create(c *gin.Context) {
 			InputTensor:         req.InputTensor,
 		},
 	}
-	if err := service.ApplyUserJobCapabilities(c.Request.Context(), token.UserID, &job.Spec.Template.Spec); err != nil {
+	if err := service.ApplyUserJobCapabilities(c.Request.Context(), token.UserID, req.SysAdminEnabled, &job.Spec.Template.Spec); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}

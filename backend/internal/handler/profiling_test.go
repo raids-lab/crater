@@ -52,7 +52,7 @@ type profilingTaskController struct {
 
 func (*profilingTaskController) TaskUpdated(_ util.TaskUpdateChan) {}
 
-func createProfilingJob(t *testing.T, manager handler.Manager, endpoint string) {
+func profilingJobRequest(t *testing.T, manager handler.Manager, endpoint, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -60,10 +60,20 @@ func createProfilingJob(t *testing.T, manager handler.Manager, endpoint string) 
 		c.Next()
 	})
 	manager.RegisterProtected(router.Group("/jobs"))
-	request := httptest.NewRequest(http.MethodPost, "/jobs/"+endpoint, strings.NewReader(profilingRequest))
+	request := httptest.NewRequest(http.MethodPost, "/jobs/"+endpoint, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	router.ServeHTTP(response, request)
+	return response
+}
+
+func createProfilingJob(t *testing.T, manager handler.Manager, endpoint string, sysAdminEnabled ...bool) {
+	t.Helper()
+	body := profilingRequest
+	if len(sysAdminEnabled) > 0 && sysAdminEnabled[0] {
+		body = strings.Replace(body, `"name":`, `"sysAdminEnabled": true, "name":`, 1)
+	}
+	response := profilingJobRequest(t, manager, endpoint, body)
 	if response.Code != http.StatusOK {
 		t.Fatalf("create job: %d %s", response.Code, response.Body.String())
 	}
@@ -170,7 +180,7 @@ func TestOptionalBackendsInjectGrantedSysAdmin(t *testing.T) {
 				}
 				client := fake.NewClientBuilder().WithScheme(scheme).Build()
 				manager := spjob.NewSparseJobMgr(&handler.RegisterConfig{Client: client})
-				createProfilingJob(t, manager, "training")
+				createProfilingJob(t, manager, "training", true)
 				var jobs recommendapi.RecommendDLJobList
 				if err := client.List(t.Context(), &jobs); err != nil {
 					t.Fatal(err)
@@ -185,7 +195,7 @@ func TestOptionalBackendsInjectGrantedSysAdmin(t *testing.T) {
 				if backend == "emias-custom" {
 					endpoint = "training"
 				}
-				createProfilingJob(t, manager, endpoint)
+				createProfilingJob(t, manager, endpoint, true)
 				var record model.AITask
 				if err := db.First(&record).Error; err != nil {
 					t.Fatal(err)
@@ -194,6 +204,48 @@ func TestOptionalBackendsInjectGrantedSysAdmin(t *testing.T) {
 			}
 			if len(pod.Containers) != 1 || !slices.Contains(pod.Containers[0].SecurityContext.Capabilities.Add, "SYS_ADMIN") || slices.Contains(pod.Containers[0].SecurityContext.Capabilities.Add, "PERFMON") {
 				t.Fatalf("grant missing from %s: %+v", backend, pod)
+			}
+		})
+	}
+}
+
+func TestOptionalBackendsRejectUnauthorizedSysAdmin(t *testing.T) {
+	for _, backend := range []string{"emias-jupyter", "emias-custom", "seacs"} {
+		t.Run(backend, func(t *testing.T) {
+			db := setupOptionalJobPermissionDB(t)
+			var manager handler.Manager
+			endpoint := "training"
+			scheme := runtime.NewScheme()
+			if err := recommendapi.AddToScheme(scheme); err != nil {
+				t.Fatal(err)
+			}
+			client := fake.NewClientBuilder().WithScheme(scheme).Build()
+			if backend == "seacs" {
+				manager = spjob.NewSparseJobMgr(&handler.RegisterConfig{Client: client})
+			} else {
+				manager = aijob.NewAITaskMgr(&handler.RegisterConfig{AITaskCtrl: &profilingTaskController{}})
+				if backend == "emias-jupyter" {
+					endpoint = "jupyter"
+				}
+			}
+			body := strings.Replace(profilingRequest, `"name":`, `"sysAdminEnabled": true, "name":`, 1)
+			response := profilingJobRequest(t, manager, endpoint, body)
+			if response.Code != http.StatusForbidden {
+				t.Fatalf("expected 403, got %d: %s", response.Code, response.Body.String())
+			}
+			var count int64
+			if err := db.Model(&model.AITask{}).Count(&count).Error; err != nil {
+				t.Fatal(err)
+			}
+			if count != 0 {
+				t.Fatal("unauthorized task was persisted")
+			}
+			var jobs recommendapi.RecommendDLJobList
+			if err := client.List(t.Context(), &jobs); err != nil {
+				t.Fatal(err)
+			}
+			if len(jobs.Items) != 0 {
+				t.Fatal("unauthorized task was submitted")
 			}
 		})
 	}

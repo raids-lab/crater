@@ -668,6 +668,7 @@
   "jobs.new.action": "Create New",
   "jobs.new.emiasJob": "EMIAS Job",
   "jobs.new.emiasJupyterJob": "EMIAS Jupyter Job",
+  "jobs.new.enableSysAdmin": "Enable SYS_ADMIN for this job",
   "jobs.new.jupyterJob": "Jupyter Lab job",
   "jobs.new.pytorchDDPJob": "PyTorch DDP Job",
   "jobs.new.seacsJob": " SEACS Job",
