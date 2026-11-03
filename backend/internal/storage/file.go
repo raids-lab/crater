@@ -344,8 +344,7 @@ func GetRWFiles(c *gin.Context, token util.JWTMessage) []Files {
 }
 
 func GetFilesByPaths(paths []string, c *gin.Context) []Files {
-	var data []Files
-	data = nil
+	data := make([]Files, 0, len(paths))
 	for _, p := range paths {
 		fi, err := fs.FileSystem.Stat(c.Request.Context(), p)
 		if err == nil {
@@ -584,7 +583,7 @@ func handleDirsList(fs webdav.FileSystem, path string) ([]Files, error) {
 	if err != nil {
 		return nil, err
 	}
-	var files []Files
+	files := make([]Files, 0)
 	defer f.Close()
 	if fi, _ := f.Stat(); fi != nil && !fi.IsDir() {
 		klog.Info("cann't read a empty file")
