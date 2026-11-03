@@ -13,7 +13,7 @@ applyTo: "charts/**"
 以下为高优先拦截项（完整规则见 `charts/CONTRIBUTING.md`）：
 
 - **版本同步**: 凡涉及模板、依赖、配置逻辑，或新增 / 删除 / 重命名 / 改变配置项行为或默认值，必须同步更新 `charts/crater/Chart.yaml` 中的 `version` 与 `appVersion`，并保持二者为完全相同的值。
-- **版本级别**: 仅 `values.yaml` 配置项变更可提升 patch；前后端 API 变化并影响应用契约时必须提升 minor；不要主动提升 major，除非维护者明确决定。
+- **版本级别与时机**: 配置变更仅涉及 `values.yaml` 时可提升 patch。正式发版准备时，根据上次正式发布以来的累计变化提升版本号，包括前后端接口新增功能或行为变化；具体提升 patch、minor 还是 major，由维护者根据实际改动决定。CLI / 后端 API 兼容版本按根规范随契约变化独立维护。
 - **GitHub tag**: `version` / `appVersion` 为发布而变化时，须提醒开发者创建对应 GitHub tag（因两者相同，通常为 `v<version>`）。
 - **配置文档同步**: 修改 `values.yaml` 参数后，必须同步更新 `charts/crater/README.md`；新增配置参数须包含含义描述、默认值与必要的使用说明 / 示例。
 - **注释规范**: `values.yaml` 新增配置项必须包含准确、清晰、能辅助用户理解用途与期望值的**英文注释**。

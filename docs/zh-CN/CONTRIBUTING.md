@@ -346,6 +346,7 @@ PR 创建后，需要检查 workflow 状态。PR 也可能需要和 Copilot revi
 
 ### 发布准备与验证
 
+- 正式发版准备时，根据上次正式发布以来的累计变化（包括前后端接口新增功能或行为变化）提升三段式发布版本（`major.minor.patch`）。维护者按 [charts/CONTRIBUTING.zh-CN.md](../../charts/CONTRIBUTING.zh-CN.md) 决定具体提升哪一段，并同步更新 `Chart.yaml` 的 `version` / `appVersion`。
 - 打 tag 前，先把发布准备内容（包括已审阅的 What's New 文案）合并到 `main`。记录 `main` 上经过确认的准确提交 SHA；squash merge 后的 SHA 可能不同于功能分支。`main` 前进后重新检查发布范围，不要直接给无关的本地 `HEAD` 打 tag。
 - 推送 tag 前核对目标版本、What's New 版本、Chart `version` / `appVersion`、相关 CI 结果和开发者人工检查。Chart 版本决策遵循 [charts/CONTRIBUTING.md](../../charts/CONTRIBUTING.md)；应用构建版本与 API 兼容计数器仍相互独立。
 - 分别记录 tag 创建、产物构建、npm 暂存、npm 审批和公开可用状态。核验预期的镜像与 Chart tag，以及 CLI 的 [npm 审批与安装检查](../../cli/CONTRIBUTING.zh-CN.md#npm-暂存发布)；暂存 workflow 变绿不等于 CLI 已发布。发布产物也不等于已部署到集群。
@@ -375,6 +376,7 @@ GitHub Release 以目标提交中已审阅的 [What's New](../../frontend/CONTRI
 
 - 后端常量位于 `backend/internal/version/api.go`，CLI 常量位于 `cli/internal/version/version.go`。
 - `APIVersion` 是双方共享、只增不减的 API 契约计数器。CLI 所用的 API 契约发生变化后，后端与 CLI 必须携带相同的当前值。
+- 即使路径和请求 / 响应结构未变，新增 CLI 用户可感知的错误类型、作业类型，或改变对外处理语义，使旧 CLI 可能缺失重要信息或误解结果时，也须同步提升 `APIVersion`。修复小 bug、纠正原本错误逻辑或恢复预期行为，以及不影响 CLI 用户的内部调整，通常不提升；按实际用户影响判断，不把每次后端修改机械地视为 API 变化。
 - `1` 是首个正式契约版本；`0` 不得作为受支持的正式契约版本发布。握手接口明确报告 `0` 时，CLI 将其视为早于正式契约的旧版本，以便说明哪个最低版本条件不满足；字段缺失或负数仍表示未知或非法。
 - 双方分别维护自己所需的最低对方版本：后端维护 `MinSupportedCLIAPIVersion`，CLI 维护 `MinSupportedBackendAPIVersion`。两者不要求相等，也不能仅因 `APIVersion` 增长就自动提升。
 - 只有一方在没有回退路径时确实无法与旧版对方完成受影响操作，才提升该方维护的最低版本；其值应为首次提供所需契约的对方 API 版本。
@@ -382,8 +384,9 @@ GitHub Release 以目标提交中已审阅的 [What's New](../../frontend/CONTRI
 
 | 变更 | `APIVersion` | 最低对方版本 |
 |------|--------------|--------------|
-| 仅后端实现、仅前端使用的 API 或仅 CLI 本地行为 | 不变 | 不变 |
+| 仅后端实现、恢复预期行为的小 bug 修复、仅前端使用的 API 或仅 CLI 本地行为 | 不变 | 不变 |
 | 新增 CLI 会消费的接口、字段或可选语义 | 后端与 CLI 同时加一 | 通常不变 |
+| CLI 用户可感知的行为或语义变化，例如新增错误 / 作业类型或改变对外处理方式 | 后端与 CLI 同时加一 | 通常不变，分别判断双方的兼容回退路径 |
 | 修改或删除 CLI 所用的路径、方法、必填字段、字段类型、含义、鉴权要求或响应结构 | 后端与 CLI 同时加一 | 仅无法再支持旧版对方的一侧提升 |
 | CLI 开始强依赖后端 API 契约中已经存在的能力 | 不变 | 没有回退路径时，将 CLI 的最低后端版本提升至首次提供该能力的 API 版本 |
 | CLI 增加回退路径或保持已有能力可选 | 后端 API 契约本身未变化时不变 | 不提升最低版本 |
