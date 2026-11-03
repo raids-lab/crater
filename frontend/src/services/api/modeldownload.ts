@@ -37,6 +37,7 @@ export type ModelDownloadRelation = 'creator' | 'submitted' | 'none'
 
 export interface ModelDownload {
   id: number
+  resourceId?: number
   name: string
   source: string
   category: 'model' | 'dataset'

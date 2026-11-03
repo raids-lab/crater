@@ -1815,6 +1815,9 @@ definitions:
         items:
           $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
         type: array
+      resourceId:
+        description: Linked resource, when available in a Ready download detail.
+        type: integer
       revision:
         type: string
       sizeBytes:
@@ -7468,7 +7471,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 根据 ID 获取模型下载任务详情
+      description: 根据 ID 获取模型下载任务详情，已完成任务包含实际关联资源的 resourceId（资源存在时）
       parameters:
       - description: 下载任务ID
         in: path

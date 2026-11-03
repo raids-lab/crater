@@ -6904,7 +6904,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "根据 ID 获取模型下载任务详情",
+                "description": "根据 ID 获取模型下载任务详情，已完成任务包含实际关联资源的 resourceId（资源存在时）",
                 "consumes": [
                     "application/json"
                 ],
@@ -13327,6 +13327,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
                     }
+                },
+                "resourceId": {
+                    "description": "Linked resource, when available in a Ready download detail.",
+                    "type": "integer"
                 },
                 "revision": {
                     "type": "string"
