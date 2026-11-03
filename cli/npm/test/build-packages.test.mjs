@@ -60,6 +60,28 @@ test("builds platform packages before the root package", async () => {
     "utf8",
   );
   assert.equal(windowsBinary, "crater-windows-amd64\n");
+
+  const sourceReadme = await readFile(new URL("../README.md", import.meta.url), "utf8");
+  const rootReadme = await readFile(
+    path.join(manifest.rootPackage.directory, "README.md"),
+    "utf8",
+  );
+  assert.equal(rootReadme, sourceReadme);
+
+  for (const entry of manifest.platformPackages) {
+    const packageJSON = JSON.parse(
+      await readFile(path.join(entry.directory, "package.json"), "utf8"),
+    );
+    const readme = await readFile(path.join(entry.directory, "README.md"), "utf8");
+    assert.ok(readme.includes(entry.name));
+    assert.ok(readme.includes(`${packageJSON.os[0]}/${packageJSON.cpu[0]}`));
+    assert.ok(readme.includes("https://www.npmjs.com/package/@raids-lab/crater-cli"));
+    assert.ok(readme.includes("npm install --global @raids-lab/crater-cli"));
+    assert.ok(readme.length < rootReadme.length);
+    if (packageJSON.os[0] === "win32") {
+      assert.match(readme, /Windows support is currently experimental/);
+    }
+  }
 });
 
 test("rejects non-release versions", async () => {

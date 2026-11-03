@@ -2,7 +2,8 @@
   "Links": {  
     "userGuide": "User Guide",
     "adminGuide": "Admin Guide",
-    "getStarted": "Get Started"
+    "getStarted": "Get Started",
+    "latestOnlineDocs": "Click here to view the latest online documentation"
   },
   "Fumadocs": {
     "search": "Search",
@@ -14,7 +15,8 @@
     "nextPage": "Next page",
     "previousPage": "Previous page",
     "chooseTheme": "Choose theme",
-    "editOnGithub": "Edit on GitHub"
+    "editOnGithub": "Edit on GitHub",
+    "viewLatestDocs": "View latest documentation"
   },
   "HeroSection": {
     "title": "Crater - Cloud-Native AI Platform",
@@ -250,5 +252,9 @@
     "message": "This version number is the Helm Chart configuration version, extracted from <link>Chart.yaml</link>, and must correspond to the Crater component image versions for the system to function correctly.",
     "version": " (Current version: {version})",
     "fallback": "Unable to obtain the version automatically. Please check <link>Chart.yaml</link> to ensure version consistency."
+  },
+  "EmbeddedDocsNotice": {
+    "description": "This documentation is deployed with the current system. The latest online documentation may contain updates but may differ from the current system version.",
+    "viewLatest": "View latest online documentation"
   }
 }

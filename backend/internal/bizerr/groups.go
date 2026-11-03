@@ -57,6 +57,8 @@ type notFoundGroup struct {
 	ServiceSshdNotFound BizCode `code:"40402"`
 	// K8sResourceNotFound: 集群中找不到指定的 Pod, Deployment 或 Namespace
 	K8sResourceNotFound BizCode `code:"40403"`
+	// StorageResourceNotFound: 存储空间中找不到指定的文件或目录
+	StorageResourceNotFound BizCode `code:"40404"`
 }
 
 // methodNotAllowedGroup 405xx - 方法不允许
@@ -79,6 +81,8 @@ type conflictGroup struct {
 	DuplicateOperation BizCode `code:"40903"`
 	// DependencyConflict: 级联删除限制（如：该角色下还有用户，不能删除该角色）
 	DependencyConflict BizCode `code:"40904"`
+	// JobAdmissionFailed: 没有符合调度条件的节点组合能够满足作业的资源申请
+	JobAdmissionFailed BizCode `code:"40905"`
 }
 
 // payloadTooLargeGroup 413xx - 数据过大

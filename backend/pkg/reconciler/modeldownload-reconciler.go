@@ -111,6 +111,7 @@ var (
 var (
 	errFinalLogsUnavailable      = errors.New("final download logs are unavailable")
 	errRepositoryPayloadMissing  = errors.New("repository metadata payload is missing")
+	errDownloadStateChanged      = errors.New("download state changed during reconciliation")
 	repositoryMetadataFieldNames = map[string]struct{}{
 		"display_name": {}, "description": {}, "readme": {}, "license": {},
 		"task": {}, "library": {}, "model_type": {}, "parameter_count": {},
@@ -201,7 +202,13 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 	if download.Status == model.ModelDownloadStatusPaused {
 		return r.ensurePausedJobDeleted(ctx, job, logger)
 	}
-	return r.syncActiveDownloadWithJob(ctx, job, download, logger)
+	result, err := r.syncActiveDownloadWithJob(ctx, job, download, logger)
+	if errors.Is(err, errDownloadStateChanged) {
+		// Re-read the desired state on the next reconcile before processing this
+		// Job again. A pause or a new attempt may have won the conditional update.
+		return ctrl.Result{RequeueAfter: progressRequeueInterval}, nil
+	}
+	return result, err
 }
 
 func (r *ModelDownloadReconciler) syncActiveDownloadWithJob(
@@ -212,6 +219,9 @@ func (r *ModelDownloadReconciler) syncActiveDownloadWithJob(
 
 	if newStatus == model.ModelDownloadStatusDownloading {
 		if err := r.updateProgress(ctx, job, download); err != nil {
+			if errors.Is(err, errDownloadStateChanged) {
+				return ctrl.Result{}, err
+			}
 			logger.Error(err, "failed to update progress")
 		}
 	}
@@ -226,6 +236,9 @@ func (r *ModelDownloadReconciler) syncActiveDownloadWithJob(
 	// see why (gated repo, auth, network, OOM, ...) instead of an empty message.
 	if newStatus == model.ModelDownloadStatusFailed && download.Status != model.ModelDownloadStatusFailed {
 		if _, err := r.persistFinalLogs(ctx, job, download); err != nil {
+			if errors.Is(err, errDownloadStateChanged) {
+				return ctrl.Result{}, err
+			}
 			logger.Error(err, "failed to persist failed download logs")
 		}
 		if err := r.extractFailureReason(ctx, job, download); err != nil {
@@ -237,8 +250,7 @@ func (r *ModelDownloadReconciler) syncActiveDownloadWithJob(
 
 	if newStatus != oldStatus {
 		if err := r.updateDownloadStatus(ctx, download, newStatus); err != nil {
-			logger.Error(err, "failed to update download status")
-			return ctrl.Result{Requeue: true}, err
+			return ctrl.Result{Requeue: true}, fmt.Errorf("update download status: %w", err)
 		}
 		logger.Info(fmt.Sprintf("model download: %s, status: %s -> %s", job.Name, oldStatus, newStatus))
 	}
@@ -410,6 +422,15 @@ func persistRepositoryMetadataWithDB(
 	)
 
 	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var current model.ModelDownload
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND status = ? AND job_name = ?", download.ID, download.Status, download.JobName).
+			First(&current).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errDownloadStateChanged
+			}
+			return err
+		}
 		source := model.ModelDatasetSource{
 			Provider:      model.ModelDatasetProvider(download.Source),
 			ResourceType:  model.DataType(download.Category),
@@ -586,7 +607,7 @@ func (r *ModelDownloadReconciler) failMissingJobIfActive(
 ) (model.ModelDownloadStatus, bool, error) {
 	var download model.ModelDownload
 	transitioned := false
-	db := query.ModelDownload.WithContext(ctx).UnderlyingDB().Session(&gorm.Session{NewDB: true})
+	db := r.database()
 	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("job_name = ?", jobName).
@@ -654,16 +675,10 @@ func (r *ModelDownloadReconciler) getJobStatus(job *batchv1.Job) model.ModelDown
 func (r *ModelDownloadReconciler) updateDownloadStatus(
 	ctx context.Context, download *model.ModelDownload, status model.ModelDownloadStatus,
 ) error {
-	db := query.ModelDownload.WithContext(ctx).UnderlyingDB().Session(&gorm.Session{NewDB: true})
+	db := r.database()
 	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		result := tx.Model(&model.ModelDownload{}).
-			Where("id = ? AND status = ? AND job_name = ?", download.ID, download.Status, download.JobName).
-			Update("status", status)
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
-			return nil
+		if err := updateDownloadAttempt(ctx, tx, download, map[string]any{"status": status}); err != nil {
+			return err
 		}
 
 		switch status {
@@ -675,6 +690,21 @@ func (r *ModelDownloadReconciler) updateDownloadStatus(
 			return nil
 		}
 	})
+}
+
+// updateDownloadAttempt rejects writes from a snapshot superseded by a pause,
+// retry, or resume, including writes that only change progress or log fields.
+func updateDownloadAttempt(ctx context.Context, db *gorm.DB, download *model.ModelDownload, updates map[string]any) error {
+	result := db.WithContext(ctx).Model(&model.ModelDownload{}).
+		Where("id = ? AND status = ? AND job_name = ?", download.ID, download.Status, download.JobName).
+		Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errDownloadStateChanged
+	}
+	return nil
 }
 
 func (r *ModelDownloadReconciler) latestPodForJob(ctx context.Context, job *batchv1.Job) (*v1.Pod, error) {
@@ -751,10 +781,7 @@ func (r *ModelDownloadReconciler) updateProgress(ctx context.Context, job *batch
 		}
 	}
 
-	q := query.ModelDownload
-	_, err = q.WithContext(ctx).Where(q.ID.Eq(download.ID), q.Status.Eq(string(download.Status)),
-		q.JobName.Eq(download.JobName)).Updates(updates)
-	return err
+	return updateDownloadAttempt(ctx, r.database(), download, updates)
 }
 
 func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
@@ -774,7 +801,6 @@ func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *b
 		download.SizeBytes = sizeBytes
 		download.DownloadedBytes = sizeBytes
 
-		q := query.ModelDownload
 		updates := map[string]any{
 			"size_bytes":       sizeBytes,
 			"downloaded_bytes": sizeBytes,
@@ -786,9 +812,7 @@ func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *b
 			updates["download_speed"] = download.DownloadSpeed
 		}
 
-		_, err = q.WithContext(ctx).Where(q.ID.Eq(download.ID), q.Status.Eq(string(download.Status)),
-			q.JobName.Eq(download.JobName)).Updates(updates)
-		return err
+		return updateDownloadAttempt(ctx, r.database(), download, updates)
 	}
 
 	return nil
@@ -843,10 +867,10 @@ func (r *ModelDownloadReconciler) persistFinalLogs(
 
 	storedLogs := truncateLogTail(logsWithoutCapturedReadme(logs), maxStoredLogBytes)
 	now := time.Now()
-	if err := r.database().WithContext(ctx).Model(&model.ModelDownload{}).Where("id = ?", download.ID).Updates(map[string]any{
+	if err := updateDownloadAttempt(ctx, r.database(), download, map[string]any{
 		"logs":          storedLogs,
 		"logs_saved_at": now,
-	}).Error; err != nil {
+	}); err != nil {
 		return "", fmt.Errorf("update stored download logs: %w", err)
 	}
 	download.Logs = storedLogs
@@ -1008,7 +1032,7 @@ func logsWithoutCapturedReadme(logs string) string {
 // stores a concise, human-readable reason on the download record so users can
 // understand why a download failed instead of seeing an empty message.
 func (r *ModelDownloadReconciler) extractFailureReason(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
-	q := query.ModelDownload
+	q := query.Use(r.database()).ModelDownload
 
 	pod, err := r.latestPodForJob(ctx, job)
 	if err != nil || pod == nil {
@@ -1061,7 +1085,9 @@ var downloadFailureRules = []downloadFailureRule{
 	},
 	{
 		keywords: []string{"404", "not found", "repository not found", "does not exist"},
-		reason:   "Download failed: repository or revision not found (404). Check the name and revision.",
+		reason: "Download failed: repository or revision not found (404). " +
+			"Check the selected source, repository name, and revision. " +
+			"If the resource is available from another source, switch source and try again.",
 	},
 	{
 		keywords: []string{"no space left"},
@@ -1193,7 +1219,7 @@ func datasetExtraForDownload(
 func (r *ModelDownloadReconciler) createDatasetForModel(
 	ctx context.Context, download *model.ModelDownload, readmeDesc string, repositoryTags []string,
 ) error {
-	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return r.database().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txQuery := query.Use(tx)
 
 		// More than one backend instance may reconcile the same completed Job. Lock
@@ -1201,15 +1227,20 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 		// serialize on the same lock before checking whether the Dataset exists.
 		// Locking only the current download row would not protect concurrent
 		// HuggingFace and ModelScope downloads of the same repository name.
-		if _, err := txQuery.ModelDownload.WithContext(ctx).
+		locked, err := txQuery.ModelDownload.WithContext(ctx).
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where(txQuery.ModelDownload.Name.Eq(download.Name)).
 			Order(txQuery.ModelDownload.ID).
-			Find(); err != nil {
+			Find()
+		if err != nil {
 			return fmt.Errorf("failed to lock model downloads for %s: %w", download.Name, err)
 		}
-
-		return r.createDatasetForModelTx(ctx, txQuery, download, readmeDesc, repositoryTags)
+		for _, current := range locked {
+			if current.ID == download.ID && current.Status == download.Status && current.JobName == download.JobName {
+				return r.createDatasetForModelTx(ctx, txQuery, download, readmeDesc, repositoryTags)
+			}
+		}
+		return errDownloadStateChanged
 	})
 }
 

@@ -11,3 +11,19 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 8088
+{{- if .Values.backendConfig.schedulerExtenderPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: crater-volcano-extender-svc
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: crater-backend
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: {{ trimPrefix ":" .Values.backendConfig.schedulerExtenderPort | int }}
+      targetPort: {{ trimPrefix ":" .Values.backendConfig.schedulerExtenderPort | int }}
+{{- end }}

@@ -45,29 +45,8 @@ jobs:
         id: version
         run: bash hack/set-build-version.sh
 
-  check-cli:
-    name: Check CLI
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: "cli/go.mod"
-          cache-dependency-path: cli/go.sum
-
-      - name: Download Go dependencies
-        working-directory: cli
-        run: go mod download
-
-      - name: Run CLI tests
-        working-directory: cli
-        run: make test
-
-  test-npm-scripts:
-    name: Test npm packaging scripts
+  check:
+    name: Check CLI and npm scripts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -79,13 +58,23 @@ jobs:
           node-version: "24"
           package-manager-cache: false
 
-      - name: Test npm packaging scripts
-        working-directory: cli/npm
-        run: npm test
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: "cli/go.mod"
+          cache-dependency-path: cli/go.sum
+
+      - name: Download Go dependencies
+        working-directory: cli
+        run: go mod download
+
+      - name: Run pre-commit checks
+        working-directory: cli
+        run: make pre-commit-check
 
   cross-build:
     name: Cross-build ${{ matrix.target.goos }}/${{ matrix.target.goarch }}
-    needs: resolve-version
+    needs: [resolve-version, check]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -139,14 +128,13 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  publish-npm:
-    name: Publish npm packages
-    needs: [resolve-version, check-cli, test-npm-scripts, cross-build]
+  prepare-npm:
+    name: Prepare npm packages
+    needs: [resolve-version, cross-build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
-      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -173,9 +161,6 @@ jobs:
           registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
 
-      - name: Install OIDC-capable npm CLI
-        run: npm install --global npm@11.19.1
-
       - name: Build npm packages
         run: >-
           node cli/npm/scripts/build-packages.mjs
@@ -194,15 +179,23 @@ jobs:
             npm pack "$package_dir" --dry-run --json >/dev/null
           done
 
+      - name: Pack npm packages
+        run: |
+          mkdir -p "${RUNNER_TEMP}/npm-tarballs"
+          node -e '
+            const manifest = require(process.env.RUNNER_TEMP + "/npm-packages/publish-manifest.json");
+            for (const entry of [...manifest.platformPackages, manifest.rootPackage]) {
+              process.stdout.write(entry.directory + "\n");
+            }
+          ' | while IFS= read -r package_dir; do
+            npm pack "$package_dir" \
+              --pack-destination "${RUNNER_TEMP}/npm-tarballs" >/dev/null
+          done
+
       - name: Test installed npm entry package
         env:
           APP_VERSION: ${{ needs.resolve-version.outputs.app_version }}
         run: |
-          mkdir -p "${RUNNER_TEMP}/npm-tarballs"
-          npm pack "${RUNNER_TEMP}/npm-packages/crater-cli" \
-            --pack-destination "${RUNNER_TEMP}/npm-tarballs" >/dev/null
-          npm pack "${RUNNER_TEMP}/npm-packages/crater-cli-linux-x64" \
-            --pack-destination "${RUNNER_TEMP}/npm-tarballs" >/dev/null
           npm install \
             --prefix "${RUNNER_TEMP}/npm-install" \
             "${RUNNER_TEMP}/npm-tarballs/raids-lab-crater-cli-${APP_VERSION}.tgz" \
@@ -220,19 +213,103 @@ jobs:
             "${{ needs.resolve-version.outputs.app_version }}" \
             "${{ needs.resolve-version.outputs.build_time }}"
 
-      - name: Validate temporary npm bootstrap token
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [[ -z "$NODE_AUTH_TOKEN" ]]; then
-            echo "NPM_TOKEN is required until all Crater CLI packages have completed their first publication." >&2
-            exit 1
-          fi
-          npm whoami --registry https://registry.npmjs.org >/dev/null
+      - name: Upload tested npm tarballs
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-cli-tarballs
+          path: ${{ runner.temp }}/npm-tarballs/*.tgz
+          if-no-files-found: error
+          retention-days: 14
 
-      - name: Publish platform packages and CLI entry package
+  stage-platform:
+    name: Stage npm ${{ matrix.suffix }}
+    needs: [resolve-version, prepare-npm]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        suffix:
+          - darwin-arm64
+          - darwin-x64
+          - linux-arm64
+          - linux-x64
+          - win32-arm64
+          - win32-x64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download tested npm tarballs
+        uses: actions/download-artifact@v5
+        with:
+          name: npm-cli-tarballs
+          path: ${{ runner.temp }}/npm-tarballs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Install npm CLI with staged publishing
+        run: npm install --global npm@11.19.1
+
+      - name: Stage platform package for npm approval
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          APP_VERSION: ${{ needs.resolve-version.outputs.app_version }}
+          PACKAGE_SUFFIX: ${{ matrix.suffix }}
         run: >-
-          node cli/npm/scripts/publish-packages.mjs
-          "${RUNNER_TEMP}/npm-packages/publish-manifest.json"
+          npm stage publish
+          "${RUNNER_TEMP}/npm-tarballs/raids-lab-crater-cli-${PACKAGE_SUFFIX}-${APP_VERSION}.tgz"
+          --access public
+          --registry https://registry.npmjs.org
+
+  stage-entry:
+    name: Stage npm entry package
+    needs: [resolve-version, prepare-npm, stage-platform]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download tested npm tarballs
+        uses: actions/download-artifact@v5
+        with:
+          name: npm-cli-tarballs
+          path: ${{ runner.temp }}/npm-tarballs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Install npm CLI with staged publishing
+        run: npm install --global npm@11.19.1
+
+      - name: Stage entry package for npm approval
+        env:
+          APP_VERSION: ${{ needs.resolve-version.outputs.app_version }}
+        run: >-
+          npm stage publish
+          "${RUNNER_TEMP}/npm-tarballs/raids-lab-crater-cli-${APP_VERSION}.tgz"
+          --access public
+          --registry https://registry.npmjs.org
+
+      - name: Summarize npm approval
+        run: |
+          {
+            echo "## Crater CLI npm packages staged"
+            echo "Six platform packages and the entry package await approval on npm."
+            echo "Approve the six platform packages before @raids-lab/crater-cli."
+          } >> "$GITHUB_STEP_SUMMARY"

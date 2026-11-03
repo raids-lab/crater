@@ -417,6 +417,9 @@ func submitDownload(cmd *cobra.Command, in downloadCreateInput) error {
 		return err
 	}
 
+	if !outputJSON {
+		fmt.Println(i18n.T("download_shared_resource_notice"))
+	}
 	download, msg, err := client.CreateDownload(api.CreateModelDownloadReq{
 		Name:     in.name,
 		Revision: in.revision,
@@ -429,26 +432,19 @@ func submitDownload(cmd *cobra.Command, in downloadCreateInput) error {
 	}
 
 	wait, _ := cmd.Flags().GetBool("wait")
+	result := downloadCreateResult{
+		source: normalizeDownloadSource(in.source), revision: in.revision, message: msg,
+	}
 	if outputJSON && wait {
-		return waitForDownload(cmd, client, download.ID)
+		return waitForDownload(cmd, client, download.ID, result)
 	}
-	if outputJSON {
-		env := output.SuccessEnvelope(map[string]interface{}{
-			"download": download,
-		})
-		if msg != "" {
-			env["message"] = msg
-		}
-		return output.WriteSuccessJSON(os.Stdout, env)
+	if err := result.write(download); err != nil {
+		return err
 	}
-
-	if msg != "" {
-		fmt.Printf("%s\n", msg)
-	}
-	printDownload(download)
 
 	if wait {
-		return waitForDownload(cmd, client, download.ID)
+		result.message = ""
+		return waitForDownload(cmd, client, download.ID, result)
 	}
 	return nil
 }
@@ -787,7 +783,7 @@ func printDownloadTable(downloads []api.ModelDownloadResp) {
 	}
 }
 
-func waitForDownload(cmd *cobra.Command, client api.ModelDownloadClient, id uint) error {
+func waitForDownload(cmd *cobra.Command, client api.ModelDownloadClient, id uint, result downloadCreateResult) error {
 	interval, _ := cmd.Flags().GetDuration("poll-interval")
 	timeout, _ := cmd.Flags().GetDuration("timeout")
 	if interval <= 0 {
@@ -803,14 +799,10 @@ func waitForDownload(cmd *cobra.Command, client api.ModelDownloadClient, id uint
 			return cliErrFromAPI(err)
 		}
 		if d.Status == downloadStatusReady || d.Status == downloadStatusFailed || d.Status == downloadStatusPaused {
-			if outputJSON {
-				return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
-					"download": d,
-				}))
+			if !outputJSON {
+				fmt.Printf("%s\n", i18n.T("download_wait_done", d.Status))
 			}
-			fmt.Printf("%s\n", i18n.T("download_wait_done", d.Status))
-			printDownload(d)
-			return nil
+			return result.write(d)
 		}
 		if !outputJSON {
 			fmt.Printf("%s\n", i18n.T("download_wait_status", d.Status))
@@ -911,8 +903,8 @@ func addDownloadCreateFlags(cmd *cobra.Command, includeCategory bool) {
 	if includeCategory {
 		cmd.Flags().String("name", "", "Resource name in owner/name format")
 	}
-	cmd.Flags().String("source", downloadSourceDefault, "Download source (modelscope | ms | huggingface | hf)")
-	cmd.Flags().String("revision", "", "Optional branch, tag, or revision")
+	cmd.Flags().String("source", downloadSourceDefault, i18n.T("flag_source"))
+	cmd.Flags().String("revision", "", i18n.T("flag_revision"))
 	cmd.Flags().String("token", "", "Optional access token for gated or private repositories")
 	cmd.Flags().String("token-env", "", "Read the optional repository access token from an environment variable")
 	cmd.Flags().Bool("token-stdin", false, "Read the optional repository access token from stdin")

@@ -351,11 +351,8 @@ func (s *BillingService) ValidateActivationReady(ctx context.Context) error {
 	return nil
 }
 
-func (s *BillingService) OnJobCreateCheck(ctx context.Context, userID, accountID uint, scheduleType *model.ScheduleType) error {
+func (s *BillingService) OnJobCreateCheck(ctx context.Context, userID, accountID uint) error {
 	if !s.IsFeatureEnabled(ctx) || !s.IsActive(ctx) {
-		return nil
-	}
-	if shouldSkipJobCreateBillingCheck(scheduleType) {
 		return nil
 	}
 	var (
@@ -531,7 +528,7 @@ func (s *BillingService) IssueAccountNow(ctx context.Context, accountID uint) er
 
 func (s *BillingService) IssueUserAccountNow(ctx context.Context, userID, accountID uint) error {
 	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		return s.issueUserAccountNowTx(ctx, tx, userID, accountID)
+		return s.issueUserAccountNowTx(ctx, query.Use(tx), userID, accountID)
 	})
 }
 
@@ -541,7 +538,7 @@ func (s *BillingService) IssueUserAccountNowInTransaction(
 	tx *query.Query,
 	userID, accountID uint,
 ) error {
-	return s.issueUserAccountNowTx(ctx, tx.UserAccount.WithContext(ctx).UnderlyingDB(), userID, accountID)
+	return s.issueUserAccountNowTx(ctx, tx, userID, accountID)
 }
 
 func (s *BillingService) bootstrapIssueConfigOnFeatureEnableTx(ctx context.Context, tx *gorm.DB) error {
@@ -630,9 +627,8 @@ func (s *BillingService) issueAccountNowTx(
 	return len(userAccounts), nil
 }
 
-func (s *BillingService) issueUserAccountNowTx(ctx context.Context, tx *gorm.DB, userID, accountID uint) error {
-	txQuery := query.Use(tx)
-	accountQuery := txQuery.Account
+func (s *BillingService) issueUserAccountNowTx(ctx context.Context, tx *query.Query, userID, accountID uint) error {
+	accountQuery := tx.Account
 	account, err := accountQuery.WithContext(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where(accountQuery.ID.Eq(accountID), accountQuery.DeletedAt.IsNull()).
@@ -640,10 +636,10 @@ func (s *BillingService) issueUserAccountNowTx(ctx context.Context, tx *gorm.DB,
 	if err != nil {
 		return err
 	}
-	issueConfig := loadBillingIssueConfigTx(ctx, tx)
+	issueConfig := loadBillingIssueConfigTx(ctx, tx.SystemConfig.WithContext(ctx).UnderlyingDB())
 	issueAmount, _ := issueConfig.resolveForAccount(account)
 
-	uaQuery := txQuery.UserAccount
+	uaQuery := tx.UserAccount
 	ua, err := uaQuery.WithContext(ctx).
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where(uaQuery.UserID.Eq(userID), uaQuery.AccountID.Eq(accountID), uaQuery.DeletedAt.IsNull()).
@@ -1047,7 +1043,7 @@ func computeSettlementWindow(
 }
 
 func calcSettlementCharge(job *model.Job, priceMap map[string]int64, billableDuration time.Duration) (newTotalMicro, jobCost int64) {
-	windowCostMicro := calcJobCostMicroPoints(job.Resources.Data(), priceMap, billableDuration, billingMultiplierForJob(job))
+	windowCostMicro := calcJobCostMicroPoints(job.Resources.Data(), priceMap, billableDuration)
 	if windowCostMicro < 0 {
 		windowCostMicro = 0
 	}
@@ -1192,10 +1188,8 @@ func calcJobCostMicroPoints(
 	resources v1.ResourceList,
 	priceMap map[string]int64,
 	billableDuration time.Duration,
-	billingMultiplier *big.Rat,
 ) int64 {
-	if billableDuration <= 0 || len(resources) == 0 || len(priceMap) == 0 ||
-		billingMultiplier == nil || billingMultiplier.Sign() <= 0 {
+	if billableDuration <= 0 || len(resources) == 0 || len(priceMap) == 0 {
 		return 0
 	}
 	total := new(big.Rat)
@@ -1211,31 +1205,12 @@ func calcJobCostMicroPoints(
 		}
 		line := new(big.Rat).Mul(amountRat, big.NewRat(price, 1))
 		line.Mul(line, durationRat)
-		line.Mul(line, billingMultiplier)
 		total.Add(total, line)
 	}
 	if total.Sign() <= 0 {
 		return 0
 	}
 	return ratFloorToInt64(total)
-}
-
-func billingMultiplierForJob(job *model.Job) *big.Rat {
-	if job == nil {
-		return big.NewRat(1, 1)
-	}
-	return billingMultiplierForScheduleType(job.ScheduleType)
-}
-
-func billingMultiplierForScheduleType(scheduleType *model.ScheduleType) *big.Rat {
-	if scheduleType != nil && *scheduleType == model.ScheduleTypeBackfill {
-		return big.NewRat(0, 1)
-	}
-	return big.NewRat(1, 1)
-}
-
-func shouldSkipJobCreateBillingCheck(scheduleType *model.ScheduleType) bool {
-	return billingMultiplierForScheduleType(scheduleType).Sign() == 0
 }
 
 func resolveEffectiveIssueConfig(

@@ -101,6 +101,13 @@ src/
 - Do not add new Chinese translation keys. Some existing locale files still contain Chinese keys as historical debt; leave broad migration to a dedicated task unless the current change explicitly touches those strings.
 - When adding or changing translatable text, update every locale `translation.json` in the same change. Keep translations accurate and keep project-specific terminology consistent across languages.
 
+## What's New
+
+- Write a short version heading, an introduction summarizing progress since the previous release, and a few thematic highlights. Explain concrete user-visible changes and benefits; do not dump commits, internal implementation details, or unsupported claims. Derive the facts from changes included in the release; clearly distinguish any future work from available features.
+- Update `CURRENT_VERSION` in `src/components/layout/what-is-new.tsx` together with `whatsNew.content` in every locale. Keep the `{{version}}` interpolation and equivalent meaning across languages. This version controls whether users have acknowledged the dialog; it is not the application build version or an API compatibility counter.
+- Apply the existing frontend verification rules: check the rendered Markdown and translations in the actual browser, verify that a new version opens for a user who acknowledged the previous version, and that confirming it prevents repeated automatic opening for that version. Record automated checks and developer checks separately.
+- The in-app text may end with a brief invitation to share feedback. When reusing it for GitHub Release, follow the root [Release Notes](../CONTRIBUTING.md#release-notes) rules instead of copying the dialog verbatim.
+
 ## Experience and Consistency
 
 - Keep new pages consistent with existing pages in layout, style, and colors (reference existing page layouts).
@@ -112,7 +119,7 @@ src/
 
 Follow the Commit convention in the root CONTRIBUTING (`type(scope): subject`, scope e.g. `portal`, `admin`, `ui`, `api`). When reporting bugs, include reproduction steps, expected vs actual behavior, screenshots (if any), and browser/OS version.
 
-When a change touches frontend UI, include screenshots of the affected interface state(s) in the PR. Screenshots are part of the developer's manual verification and should match the pages, roles, and operations described in the PR testing section.
+For frontend / UI changes, provide actual screenshots of the affected pages, roles, and states in the PR description or a comment, following the root CONTRIBUTING screenshot rules; explain when there is no meaningful visible change or capture is unavailable. Screenshots from an Agent's real execution belong under AI checks, not developer manual verification; AI-generated or simulated images are not evidence. Missing or incomplete screenshots warrant only a brief review-overview reminder, not a code finding or a merge-blocking recommendation solely on that basis.
 
 Before opening or updating a PR:
 
@@ -121,7 +128,7 @@ Before opening or updating a PR:
 - Confirm all visible text uses i18n and all locale `translation.json` files are synchronized.
 - Confirm new or changed translation keys are English semantic keys in the right domain.
 - Confirm affected pages were manually checked by the developer, with role, page, action, and observed result recorded for the PR.
-- Attach screenshots for frontend / UI changes.
+- Provide frontend / UI screenshots or explain why they are unavailable, as described above.
 
 ## Known Issues
 

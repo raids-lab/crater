@@ -51,6 +51,52 @@ Crater 核心 Chart 默认通过名为 `nfs` 的存储类创建共享卷，并�
 
 这里的 `nfs` 只是默认的 `StorageClass` 名称，并不表示 Crater 会部署 NFS。如果集群使用 CephFS，可以把这两处配置改为实际的 CephFS `StorageClass`，Crater 的使用方式不变。
 
+#### 启用 CephFS 用户配额
+
+Crater 的用户空间用量与配额管理仅适用于 CephFS，默认关闭。不要在 NFS、RBD 或本地盘上启用。该功能使用独立的 quota-agent 读取目录用量并写入 `ceph.quota.max_bytes`；普通 storage-server 和用户工作负载不需要获得修改配额的权限。
+
+启用前确认：
+
+- `storage.pvcName` 对应的共享 PVC 由 Rook CephFS CSI 提供，并包含 `fsName` 和 `subvolumePath`。
+- Rook Operator 已安装，管理员可以创建 `CephClient`、Secret、静态 PV 和 PVC。
+- quota-agent 使用独立 CephX 身份，其 MDS capability 只对该共享 PVC 的子卷路径授予 `p` 权限。
+
+从与待部署 Chart 相同版本的源码目录运行初始化脚本。它会为原 CephFS 子卷创建路径受限的 CephClient 和专用静态 PVC；文件不会被复制。脚本还会把原 PV 的回收策略改为 `Retain`，执行前必须确认这符合集群的数据生命周期策略。
+
+```bash
+APP_NAMESPACE=crater-workspace \
+ROOK_NAMESPACE=rook-ceph \
+SOURCE_PVC=crater-rw-storage \
+bash backend/hack/bootstrap-cephfs-quota-agent.sh
+```
+
+在集群 values 中启用组件。启用后 Chart 会把 backend provider 固定为内部 `storageServer` 服务；不要另外把 quota-agent 暴露到 Ingress。
+
+```yaml
+quotaAgent:
+  enabled: true
+  existingClaim: crater-quota-storage
+
+backendConfig:
+  storage:
+    quota:
+      rookNamespace: rook-ceph
+      cephFSCSIDriver: rook-ceph.cephfs.csi.ceph.com
+      cephFSName: cephfs
+```
+
+<CraterChartVersionNotice />
+
+```bash
+helm upgrade crater oci://ghcr.io/raids-lab/crater \
+  --version <chart-version> \
+  --values values.yaml
+```
+
+升级后确认专用 PVC 为 `Bound`、`deployment/crater-quota-agent` rollout 成功，管理员能力接口返回预期的 `usage_readable`、`quota_readable` 和 `quota_writable`，且存储管理页面可以正常加载。上线前用测试用户完成“保存原配额 → 设置临时配额 → 读回 → 验证超限写入 → 恢复原配额”。
+
+回滚时先把需要取消限制的用户配额设为无限制，再将 `quotaAgent.enabled` 和 `backendConfig.storage.quota.enabled` 设为 `false` 后升级。停用组件不会删除文件，也不会自动清除已有 CephFS 目录配额。永久清理时依次删除专用 quota-agent PVC、静态 PV、CSI Secret 和 CephClient；不要删除原共享 PVC 或底层 CephFS 子卷。
+
 ### 分布式块存储
 
 [Ceph RBD](https://rook.io/docs/rook/latest/ceph-block.html) 从 Ceph 集群提供虚拟块设备，Kubernetes 在节点上将其格式化并挂载给 Pod。和 CephFS 一样，Ceph 集群、Rook 与 RBD CSI 需要由管理员预先部署，Crater 不会自动安装它们。

@@ -20,7 +20,6 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
-	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/cronjob"
 	"github.com/raids-lab/crater/pkg/crypto"
 	"github.com/raids-lab/crater/pkg/patrol"
@@ -91,9 +90,6 @@ func NewConfigService(q *query.Query) *ConfigService {
 	if err := s.initDefaultConfigs(ctx); err != nil {
 		klog.Errorf("[ConfigService] Failed to seed default system configs: %v", err)
 	}
-	if err := s.initPrequeueConfig(ctx); err != nil {
-		klog.Errorf("[ConfigService] Failed to seed default prequeue config: %v", err)
-	}
 	return s
 }
 
@@ -109,7 +105,9 @@ func defaultSystemConfigValue(key string) string {
 		model.ConfigKeyEnableRunningSettlement,
 		model.ConfigKeyBillingAccountIssueAmountOverrideEnabled,
 		model.ConfigKeyBillingAccountIssuePeriodOverrideEnabled,
-		model.ConfigKeyPodBandwidthEnabled:
+		model.ConfigKeyPodBandwidthEnabled,
+		model.ConfigKeySchedulerExtenderEnabled,
+		model.ConfigKeyQueueQuotaEnabled:
 		return "false"
 	case model.ConfigKeyModelDownloadLimitEnabled:
 		return strconv.FormatBool(true)
@@ -131,6 +129,8 @@ func defaultSystemConfigValue(key string) string {
 		return FormatBillingAmountConfigValue(defaultBillingIssueAmount)
 	case model.ConfigKeyBillingDefaultIssuePeriodMinute:
 		return "43200"
+	case model.ConfigKeyJobWaitingToleranceSeconds:
+		return strconv.FormatInt(model.DefaultJobWaitingToleranceSeconds, 10)
 	default:
 		return ""
 	}
@@ -533,60 +533,43 @@ func (s *ConfigService) getConfigs(ctx context.Context, keys ...string) (map[str
 	return configMap, nil
 }
 
-func (s *ConfigService) initPrequeueConfig(ctx context.Context) error {
-	return s.q.Transaction(func(tx *query.Query) error {
-		return s.shouldExistsPrequeueConfig(ctx, tx)
-	})
-}
-
-func (s *ConfigService) shouldExistsPrequeueConfig(ctx context.Context, tx *query.Query) error {
-	all := model.PrequeueAllConfigs()
-	for _, cfg := range all {
-		err := tx.PrequeueConfig.WithContext(ctx).UnderlyingDB().
-			Model(&model.PrequeueConfig{}).
-			Where("key = ?", cfg.Key).
-			First(cfg).Error
-		if err == nil {
-			continue
-		}
-
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-
-		klog.Infof("[ConfigService] missing prequeue config key: %s", cfg.Key)
-		if createErr := tx.PrequeueConfig.WithContext(ctx).Create(&model.PrequeueConfig{
-			Key:   cfg.Key,
-			Value: cfg.Value,
-		}); createErr != nil {
-			return createErr
-		}
-	}
-	return nil
-}
-
-func (s *ConfigService) GetPrequeueConfig(ctx context.Context) (*model.PrequeueRuntimeConfig, error) {
-	if err := s.initPrequeueConfig(ctx); err != nil {
-		return nil, err
-	}
-	records := make([]*model.PrequeueConfig, 0)
-	err := s.q.PrequeueConfig.WithContext(ctx).UnderlyingDB().
-		Model(&model.PrequeueConfig{}).
-		Where("expire_at is null OR expire_at > ?", time.Now()).
-		Find(&records).Error
+func (s *ConfigService) GetSchedulerExtenderConfig(ctx context.Context) (*model.SchedulerExtenderConfig, error) {
+	values, err := s.getConfigs(ctx,
+		model.ConfigKeySchedulerExtenderEnabled,
+		model.ConfigKeyQueueQuotaEnabled,
+		model.ConfigKeyJobWaitingToleranceSeconds,
+	)
 	if err != nil {
 		return nil, err
 	}
-	recordMap := lo.SliceToMap(records, func(r *model.PrequeueConfig) (string, string) {
-		return r.Key, r.Value
-	})
-	return parsePrequeueRuntimeConfig(recordMap)
+	return parseSchedulerExtenderConfig(values)
 }
 
-func parsePrequeueRuntimeConfig(recordMap map[string]string) (*model.PrequeueRuntimeConfig, error) {
-	cfg := model.NewPrequeueRuntimeConfig()
-	if err := util.MapToStruct(recordMap, cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse prequeue config from database: %w", err)
+// parseSchedulerExtenderConfig keeps the seeded default for any key the table does not carry yet.
+func parseSchedulerExtenderConfig(values map[string]string) (*model.SchedulerExtenderConfig, error) {
+	cfg := model.NewSchedulerExtenderConfig()
+	boolTargets := map[string]*bool{
+		model.ConfigKeySchedulerExtenderEnabled: &cfg.SchedulerExtenderEnabled,
+		model.ConfigKeyQueueQuotaEnabled:        &cfg.QueueQuotaEnabled,
+	}
+	for key, target := range boolTargets {
+		raw, ok := values[key]
+		if !ok || raw == "" {
+			continue
+		}
+		parsed, err := strconv.ParseBool(raw)
+		if err != nil {
+			return nil, bizerr.Internal.DatabaseError.Wrap(err, "invalid scheduler extender config "+key)
+		}
+		*target = parsed
+	}
+	if raw, ok := values[model.ConfigKeyJobWaitingToleranceSeconds]; ok && raw != "" {
+		seconds, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return nil, bizerr.Internal.DatabaseError.Wrap(err,
+				"invalid scheduler extender config "+model.ConfigKeyJobWaitingToleranceSeconds)
+		}
+		cfg.JobWaitingToleranceSeconds = seconds
 	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -594,83 +577,47 @@ func parsePrequeueRuntimeConfig(recordMap map[string]string) (*model.PrequeueRun
 	return cfg, nil
 }
 
-type UpdatePrequeueConfigReq struct {
-	BackfillEnabled                  *bool  `json:"backfill_enabled,omitempty"`
-	QueueQuotaEnabled                *bool  `json:"queue_quota_enabled,omitempty"`
-	NormalJobWaitingToleranceSeconds *int64 `json:"normal_job_waiting_tolerance_seconds,omitempty"`
-	ActivateTickerIntervalSeconds    *int64 `json:"activate_ticker_interval_seconds,omitempty"`
-	MaxTotalActivationsPerRound      *int64 `json:"max_total_activations_per_round,omitempty"`
-	PrequeueCandidateSize            *int64 `json:"prequeue_candidate_size,omitempty"`
+type UpdateSchedulerExtenderConfigReq struct {
+	SchedulerExtenderEnabled   *bool
+	QueueQuotaEnabled          *bool
+	JobWaitingToleranceSeconds *int64
 }
 
-func (r *UpdatePrequeueConfigReq) Validate() error {
+func (r *UpdateSchedulerExtenderConfigReq) Validate() error {
 	if r == nil {
-		return fmt.Errorf("prequeue config update is required")
+		return bizerr.BadRequest.ParameterError.New("scheduler extender config update is required")
 	}
-	positiveValues := map[string]*int64{
-		model.PrequeueNormalJobWaitingToleranceSecondsKey: r.NormalJobWaitingToleranceSeconds,
-		model.PrequeueActivateTickerIntervalSecondsKey:    r.ActivateTickerIntervalSeconds,
-		model.PrequeueMaxTotalActivationsPerRoundKey:      r.MaxTotalActivationsPerRound,
-		model.PrequeueCandidateSizeKey:                    r.PrequeueCandidateSize,
-	}
-	for key, value := range positiveValues {
-		if value != nil && *value <= 0 {
-			return fmt.Errorf("%s must be greater than 0", key)
-		}
+	if r.JobWaitingToleranceSeconds != nil && *r.JobWaitingToleranceSeconds <= 0 {
+		return bizerr.BadRequest.ParameterError.New(
+			model.ConfigKeyJobWaitingToleranceSeconds + " must be greater than 0")
 	}
 	return nil
 }
 
-func (r *UpdatePrequeueConfigReq) ToValueMap() map[string]string {
+func (r *UpdateSchedulerExtenderConfigReq) toValueMap() map[string]string {
 	valueMap := make(map[string]string)
-	if r.BackfillEnabled != nil {
-		valueMap[model.PrequeueBackfillEnabledKey] = strconv.FormatBool(*r.BackfillEnabled)
+	if r.SchedulerExtenderEnabled != nil {
+		valueMap[model.ConfigKeySchedulerExtenderEnabled] = strconv.FormatBool(*r.SchedulerExtenderEnabled)
 	}
 	if r.QueueQuotaEnabled != nil {
-		valueMap[model.PrequeueQueueQuotaEnabledKey] = strconv.FormatBool(*r.QueueQuotaEnabled)
+		valueMap[model.ConfigKeyQueueQuotaEnabled] = strconv.FormatBool(*r.QueueQuotaEnabled)
 	}
-	if r.NormalJobWaitingToleranceSeconds != nil {
-		valueMap[model.PrequeueNormalJobWaitingToleranceSecondsKey] = strconv.FormatInt(*r.NormalJobWaitingToleranceSeconds, 10)
-	}
-	if r.ActivateTickerIntervalSeconds != nil {
-		valueMap[model.PrequeueActivateTickerIntervalSecondsKey] = strconv.FormatInt(*r.ActivateTickerIntervalSeconds, 10)
-	}
-	if r.MaxTotalActivationsPerRound != nil {
-		valueMap[model.PrequeueMaxTotalActivationsPerRoundKey] = strconv.FormatInt(*r.MaxTotalActivationsPerRound, 10)
-	}
-	if r.PrequeueCandidateSize != nil {
-		valueMap[model.PrequeueCandidateSizeKey] = strconv.FormatInt(*r.PrequeueCandidateSize, 10)
+	if r.JobWaitingToleranceSeconds != nil {
+		valueMap[model.ConfigKeyJobWaitingToleranceSeconds] = strconv.FormatInt(*r.JobWaitingToleranceSeconds, 10)
 	}
 	return valueMap
 }
 
-func (s *ConfigService) UpdatePrequeueConfig(
+func (s *ConfigService) UpdateSchedulerExtenderConfig(
 	ctx context.Context,
-	req *UpdatePrequeueConfigReq,
+	req *UpdateSchedulerExtenderConfigReq,
 ) error {
 	if err := req.Validate(); err != nil {
 		return err
 	}
-	return s.q.Transaction(func(tx *query.Query) error {
-		err := s.shouldExistsPrequeueConfig(ctx, tx)
-		if err != nil {
-			return err
-		}
-		for key, value := range req.ToValueMap() {
-			result := tx.PrequeueConfig.WithContext(ctx).UnderlyingDB().
-				Model(&model.PrequeueConfig{}).
-				Where("key = ?", key).
-				UpdateColumns(map[string]any{
-					"value":     value,
-					"expire_at": nil,
-				})
-			if result.Error != nil {
-				return result.Error
-			}
-			if result.RowsAffected == 0 {
-				return fmt.Errorf("failed to update prequeue config key %s", key)
-			}
-		}
+	updates := req.toValueMap()
+	if len(updates) == 0 {
 		return nil
-	})
+	}
+	return s.updateConfigs(ctx, updates)
 }

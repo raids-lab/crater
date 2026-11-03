@@ -28,7 +28,6 @@ import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
-import ScheduleTypeLabel from '@/components/badge/schedule-type-badge'
 import DocsButton from '@/components/button/docs-button'
 import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
@@ -49,7 +48,6 @@ import {
   IJobInfo,
   JobPhase,
   JobType,
-  ScheduleType,
   apiJobDelete,
   apiJobInteractiveFacets,
   apiJobInteractiveList,
@@ -141,17 +139,6 @@ function RouteComponent() {
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
       },
       {
-        accessorFn: (row) => String(row.scheduleType ?? ScheduleType.Normal),
-        id: 'scheduleType',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={getHeader('scheduleType')} />
-        ),
-        cell: ({ row }) => <ScheduleTypeLabel scheduleType={row.original.scheduleType} />,
-        filterFn: (row, id, value) => {
-          return (value as string[]).includes(row.getValue(id))
-        },
-      },
-      {
         accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
         cell: ({ row }) => <JobNameCell jobInfo={row.original} />,
@@ -163,7 +150,12 @@ function RouteComponent() {
           <DataTableColumnHeader column={column} title={getHeader('status')} />
         ),
         cell: ({ row }) => {
-          return <JobPhaseLabel jobPhase={row.getValue<JobPhase>('status')} />
+          return (
+            <JobPhaseLabel
+              jobPhase={row.getValue<JobPhase>('status')}
+              podGroupPhase={row.original.podGroupPhase}
+            />
+          )
         },
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id))

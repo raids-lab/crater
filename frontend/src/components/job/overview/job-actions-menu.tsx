@@ -16,6 +16,7 @@
 import { DurationDialog } from '@/routes/admin/jobs/-components/duration-dialog'
 import { Link, linkOptions } from '@tanstack/react-router'
 import {
+  ChartLineIcon,
   EllipsisVerticalIcon as DotsHorizontalIcon,
   InfoIcon,
   LockIcon,
@@ -122,7 +123,6 @@ export const JobActionsMenu = ({
           isOpen={isLockSheetOpen}
           onOpenChange={setIsLockSheetOpen}
           jobName={jobInfo.jobName}
-          scheduleType={jobInfo.scheduleType}
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -149,6 +149,12 @@ export const JobActionsMenu = ({
                   <Link {...option} search={{ fromJob: jobInfo.jobName }}>
                     <RedoDotIcon className="text-highlight-purple size-4" />
                     {t('jobs.actions.dropdown.clone')}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/portal/jobs/new/tensorboard" search={{ sourceJob: jobInfo.jobName }}>
+                    <ChartLineIcon className="text-highlight-blue size-4" />
+                    {t('tensorboard.jobAction.createPanel')}
                   </Link>
                 </DropdownMenuItem>
                 {canExtend && jobStatus === JobStatus.Running && (

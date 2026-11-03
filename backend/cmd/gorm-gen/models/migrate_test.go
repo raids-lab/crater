@@ -126,3 +126,47 @@ func TestModelDownloadSubmissionMigrationAndRollback(t *testing.T) {
 		t.Fatal("model download submission table remains after rollback")
 	}
 }
+
+func TestStorageQuotaMigrationAndRollback(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:storage_quota_migration?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE users (
+		id integer primary key,
+		created_at datetime,
+		updated_at datetime,
+		deleted_at datetime,
+		name text,
+		space text
+	)`).Error; err != nil {
+		t.Fatalf("create legacy users table: %v", err)
+	}
+
+	migration := storageQuotaMigration()
+	if err := migration.Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := migration.Migrate(db); err != nil {
+		t.Fatalf("idempotent migrate: %v", err)
+	}
+	if !db.Table("users").Migrator().HasColumn(&model.User{}, "SpaceQuota") {
+		t.Fatal("users.space_quota was not created")
+	}
+	if !db.Migrator().HasTable(&model.UserSpaceSize{}) {
+		t.Fatal("user_space_sizes was not created")
+	}
+
+	if err := migration.Rollback(db); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if err := migration.Rollback(db); err != nil {
+		t.Fatalf("idempotent rollback: %v", err)
+	}
+	if db.Table("users").Migrator().HasColumn(&model.User{}, "SpaceQuota") {
+		t.Fatal("users.space_quota remains after rollback")
+	}
+	if db.Migrator().HasTable(&model.UserSpaceSize{}) {
+		t.Fatal("user_space_sizes remains after rollback")
+	}
+}

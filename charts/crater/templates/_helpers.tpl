@@ -64,6 +64,16 @@ Generate backend config with images from top-level images section
 */}}
 {{- define "crater.backendConfig" -}}
 {{- $config := deepCopy .Values.backendConfig -}}
+{{- $_ := set $config "tensorboard" (dict
+  "image" (printf "%s:%s" .Values.images.tensorboard.repository .Values.images.tensorboard.tag)
+  "imagePullPolicy" .Values.imagePullPolicy
+  "imagePullSecrets" .Values.imagePullSecrets
+  "ingressAuthEnabled" .Values.tensorboard.ingressAuthEnabled
+  "idleTimeoutSeconds" .Values.tensorboard.idleTimeoutSeconds
+  "nodeSelector" .Values.tensorboard.nodeSelector
+  "tolerations" .Values.tensorboard.tolerations
+  "affinity" .Values.tensorboard.affinity
+) -}}
 {{- if $config.registry.enable -}}
   {{- $buildTools := $config.registry.buildTools -}}
   {{- $_ := set $buildTools "images" (dict 
@@ -72,6 +82,15 @@ Generate backend config with images from top-level images section
     "envd" (printf "%s:%s" .Values.images.envd.repository .Values.images.envd.tag)
   ) -}}
   {{- $_ := set $config.registry "buildTools" $buildTools -}}
+{{- end -}}
+{{- if .Values.quotaAgent.enabled -}}
+  {{- $storage := get $config "storage" -}}
+  {{- $quota := default (dict) (get $storage "quota") -}}
+  {{- $_ := set $quota "enabled" true -}}
+  {{- $_ := set $quota "provider" "storageServer" -}}
+  {{- $_ := set $quota "storageServerURL" (printf "http://crater-quota-agent.%s.svc:7320" .Values.namespaces.job) -}}
+  {{- $_ := set $storage "quota" $quota -}}
+  {{- $_ := set $config "storage" $storage -}}
 {{- end -}}
 {{- $_ := set $config "host" .Values.host -}}
 {{- $_ := set $config "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image) -}}
@@ -84,12 +103,18 @@ Avoid rendering full backend config into ss-config.
 */}}
 {{- define "crater.storageServerConfig" -}}
 {{- $backend := .Values.backendConfig -}}
+{{- $storage := deepCopy $backend.storage -}}
+{{- if .Values.quotaAgent.enabled -}}
+  {{- $quota := default (dict) (get $storage "quota") -}}
+  {{- $_ := set $quota "enabled" true -}}
+  {{- $_ := set $storage "quota" $quota -}}
+{{- end -}}
 {{- $config := dict
   "host" .Values.host
   "port" $backend.port
   "namespaces" (dict "job" .Values.namespaces.job "image" .Values.namespaces.image)
   "postgres" $backend.postgres
-  "storage" $backend.storage
+  "storage" $storage
   "secrets" $backend.secrets
   "auth" (dict
     "token" $backend.auth.token
@@ -101,4 +126,3 @@ Avoid rendering full backend config into ss-config.
 -}}
 {{- $config | toYaml -}}
 {{- end -}}
-

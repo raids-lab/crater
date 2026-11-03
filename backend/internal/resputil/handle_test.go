@@ -54,3 +54,16 @@ func TestSuccessKeepsEmptyMessage(t *testing.T) {
 		t.Fatalf("expected empty message, got %q", response.Message)
 	}
 }
+
+func TestHandleJobAdmissionError(t *testing.T) {
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	HandleError(ctx, bizerr.Conflict.JobAdmissionFailed.New("cannot place replica 1/1"))
+	var response Response[any]
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if recorder.Code != http.StatusConflict || response.Code != 40905 || response.Message != "cannot place replica 1/1" {
+		t.Fatalf("got HTTP %d, response %+v", recorder.Code, response)
+	}
+}

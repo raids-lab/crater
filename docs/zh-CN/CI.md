@@ -32,7 +32,7 @@ Crater 的 CI 流程根据构建目标的不同，划分为五个主要类别，
 
 - **前端与后端** 是 CI 流程的核心，负责应用服务（Backend、Frontend、Storage）的代码质量检查和镜像构建发布。采用两阶段设计：PR 检查阶段进行代码风格检查（Lint）和构建验证，确保代码质量；构建发布阶段在代码合并后构建多平台镜像并推送到 GHCR，同时通过自动清理策略管理存储空间。
 
-- **CLI** 负责独立分发的命令行客户端检查和 npm 发布。PR 检查阶段运行 `make test`，再验证 npm 发布辅助脚本、六目标交叉编译与 npm 打包；正式发布只接受精确的 `vX.Y.Z` tag，把原生二进制打成 npm 包推送到 npm registry。`main` 更新不会发布 CLI 产物。
+- **CLI** 负责独立分发的命令行客户端检查和 npm 发布。PR 阶段运行 `make pre-commit-check`、交叉编译六个目标并验证全部七个 npm 包，但不向 npm 提交；精确的 `vX.Y.Z` tag 会启动正式 workflow，通过 npm Trusted Publishing 暂存包，等待维护者批准。`main` 更新不会发布 CLI 产物。
 
 - **依赖镜像** 负责构建和推送构建工具相关的 Docker 镜像（buildx-client、envd-client、nerdctl-client），为应用构建提供必要的运行时环境。这些镜像同样支持多平台构建，并通过 GHCR 统一管理。
 
@@ -624,11 +624,11 @@ Chart 发布时，版本号会作为标签推送到 GHCR，用户可以通过版
 
 ## CLI
 
-CLI 面向自行安装、独立升级的命令行客户端，不随平台一起部署。它的 CI 与前端、后端、Storage 的镜像发布不同：`main` 上的 CLI 改动只做检查，不发布产物；只有精确的 `vX.Y.Z` 正式发布 tag 才会把二进制发布到 npm。仓库级触发约定见根文档 [发布 Workflow](CONTRIBUTING.md#发布-workflow)。
+CLI 面向自行安装、独立升级的命令行客户端，不随平台一起部署。它的 CI 与前端、后端、Storage 的镜像发布不同：面向 `main` 的 CLI PR 会运行检查，推送到 `main` 本身不触发 CLI 专属 workflow；只有精确的 `vX.Y.Z` 正式发布 tag 才会启动 npm 暂存，包经维护者批准后才公开。仓库级触发约定见根文档 [发布 Workflow](CONTRIBUTING.md#发布-workflow)。
 
 ### 概述
 
-CLI 的 CI 采用两阶段设计：PR 检查由 `.github/workflows/cli-pr.yml` 执行，发布由 `.github/workflows/cli-release.yml` 执行。输入为 `cli/` 源码、`cli/npm/` 打包脚本和根目录 `hack/set-build-version.sh`；输出为 npm 上的 `@raids-lab/crater-cli` 入口包以及六个平台包：
+CLI 的 CI 采用两阶段设计：PR 检查由 `.github/workflows/cli-pr.yml` 执行，发布暂存由 `.github/workflows/cli-release.yml` 执行。输入为 `cli/` 源码、`cli/npm/` 打包脚本和根目录 `hack/set-build-version.sh`；审批完成后，npm 分发包含 `@raids-lab/crater-cli` 入口包以及六个平台包：
 
 - `@raids-lab/crater-cli-darwin-arm64`
 - `@raids-lab/crater-cli-darwin-x64`
@@ -643,12 +643,13 @@ CLI 的 CI 采用两阶段设计：PR 检查由 `.github/workflows/cli-pr.yml` �
 
 ### PR Check
 
-CLI PR Check 在面向 `main` 的 Pull Request 中触发，路径过滤包括 `cli/**`、`hack/set-build-version.sh` 以及两个 CLI workflow 文件本身。检查串行执行两个 job：
+CLI PR Check 在面向 `main` 的 Pull Request 中触发，路径过滤包括 `cli/**`、`hack/set-build-version.sh` 以及两个 CLI workflow 文件本身。检查沿着与正式发布相同的构建和打包路径执行：
 
-1. **Check CLI**：在 `cli/` 下运行 `make test`（单元测试加快照校验）。
-2. **Check npm packaging**：先跑 `cli/npm` 的打包脚本测试，再以 `CGO_ENABLED=0` 交叉编译 Linux、macOS、Windows 的 `amd64` / `arm64` 六个目标，生成 npm 包并 `npm pack`。最后在 Linux runner 上离线安装入口包和 `linux-x64` 平台包，执行 `crater -v`、`crater --version`、`crater version --json` 与 `crater --help`。这只能证明打包链路和 Linux 启动器可用，不等于所有平台功能都已完整验证。
+1. **基础检查与版本解析**：两个独立 job 并行运行。`check` 在 `cli/` 下执行 `make pre-commit-check`，包含单元测试、快照校验和 npm 打包脚本测试；`resolve-version` 使用 `hack/set-build-version.sh` 取得开发版构建信息。
+2. **交叉编译**：前两项成功后，六个独立矩阵 job 使用 `cli/hack/build-release-artifact.sh`，以 `CGO_ENABLED=0` 构建 Linux、macOS、Windows 的 `amd64` / `arm64` 二进制，并上传构建产物。
+3. **准备 npm 包**：下载全部六份构建产物，以占位 npm 版本 `0.0.0` 生成七个包目录，逐一执行 `npm pack --dry-run`，再实际打出全部七个 tarball。在 Linux runner 上离线安装入口包与 `linux-x64` 包，并检查 `crater -v`、`crater --version`、`crater version --json` 和 `crater --help`；测试过的 tarball 保留为 workflow artifact。
 
-PR 打包使用占位版本 `0.0.0`，不会向 npm 发布。与前端后端一样，未被路径触发的 CLI PR Check 会保持 Pending，因此不能把它配置成 GitHub 分支保护中的必过状态检查。
+PR workflow 不会向 npm 暂存或公开发布。冒烟测试只证明打包链路和 Linux x64 启动器可用，不代表六个平台的二进制都已执行验证。由于 workflow 使用路径过滤，未触发它的 PR 需要在分支保护规则中另行考虑，不能直接将它设为所有 PR 的必过检查。
 
 ### 正式发布
 
@@ -661,8 +662,10 @@ on:
       - "v*.*.*"
 ```
 
-它不在 `main` 上运行。同一精确 tag 还会启动现有的前端、后端、Storage 和 Helm 发布 workflow。维护者应只推送一次 tag，等该次正式发布结束后再推下一个，也不要移动已经用于正式发布的 tag。
+它不在 `main` 上运行。同一精确 tag 还会启动现有的前端、后端、Storage 和 Helm 发布 workflow，后者会立即发布。维护者应只推送一次 tag，等待 CLI 暂存和审批完成后再推下一个，也不要移动已经用于正式发布的 tag。
 
-发布流程先解析版本并再次运行 CLI 检查与 npm 脚本测试，再按矩阵交叉编译六个目标。发布前会确认远端 tag 仍指向构建时的 commit。随后按「平台包先于入口包」的顺序发布：先让六个平台包在 registry 上可见，再发布入口包。已经公开的相同 `name@version` 会跳过，以便从部分完成的首次发布中恢复；npm 一旦接受某个版本，该版本不可复用。
+tag glob 只筛选候选事件，`hack/set-build-version.sh` 会拒绝不符合精确 `vX.Y.Z` 格式的 tag。发布 workflow 运行与 PR 相同的 `make pre-commit-check` 入口及六目标编译矩阵。npm 准备 job 会下载全部六份构建产物，确认远端 tag 仍指向构建的 commit，用 tag 版本打出七个包，并对 Linux x64 离线安装进行冒烟测试；七个验证过的 tarball 会上传为 workflow artifact。
 
-首次发布时七个包尚未存在，无法配置 npm trusted publishing / staged publishing，因此 bootstrap 版本的 `cli-release.yml` 使用仓库 Actions secret `NPM_TOKEN` 直接发布。token 不得写入文件、日志、Issue、PR 或 workflow input。七个包完成首次发布后，应另开变更切到 staged trusted publishing，并删除临时 token。细节见 `cli/CONTRIBUTING.md`。
+随后六个平台包由独立 job 使用 GitHub OIDC 和各包配置的 npm Trusted Publisher 执行 `npm stage publish`。全部六个成功后，入口包 job 才暂存 `@raids-lab/crater-cli`。暂存 job 使用 Node 24 和 npm 11.19.1；不使用 `NPM_TOKEN`，也不等待暂存包在公开 registry 上可见。workflow 成功只表示包**已经暂存，尚不可公开安装**。维护者应在 npm 查看包内容，通过 2FA 先逐一批准六个平台包，最后批准入口包；审批以单个包为单位，不是原子发布。
+
+如果暂存 job 失败但 npm 可能已经接收包，重跑前先查看 npm 的 Staged Packages 页面。重复提交同一包版本可能发生冲突。配置与旧 token 清理细节见 [CLI 发布维护](../../cli/CONTRIBUTING.zh-CN.md#4-发布维护)。

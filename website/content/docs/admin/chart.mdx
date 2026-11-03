@@ -125,9 +125,9 @@ Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GP
 | backendConfig.registry.harbor.server | string | `"..."` | Harbor 服务访问地址 |
 | backendConfig.registry.harbor.user | string | `"admin"` | Harbor 管理员账号 |
 | backendConfig.registry.harbor.password | string | `"..."` | Harbor 管理员密码 |
-| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `null` | 镜像构建时的 HTTP 代理 |
-| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `null` | 镜像构建时的 HTTPS 代理 |
-| backendConfig.registry.buildTools.proxyConfig.noProxy | string | `null` | 不走代理的域名列表（逗号分隔） |
+| backendConfig.registry.buildTools.proxyConfig.httpProxy | string | `null` | 镜像构建和 Hugging Face 下载 Job 使用的 HTTP 出站代理 |
+| backendConfig.registry.buildTools.proxyConfig.httpsProxy | string | `null` | 镜像构建和 Hugging Face 下载 Job 使用的 HTTPS 出站代理 |
+| backendConfig.registry.buildTools.proxyConfig.noProxy | string | `null` | 镜像构建和 Hugging Face 下载 Job 不走代理的地址列表（逗号分隔） |
 
 ### 邮件服务配置 (backendConfig.smtp)
 

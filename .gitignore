@@ -82,3 +82,8 @@ kubeconfig*
 
 # Claude Code
 .claude/
+# Local backend build artifacts
+backend/.gocache/
+
+# Local development images
+/dev-images/

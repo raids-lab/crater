@@ -46,7 +46,8 @@ func applyHTTPSim(rc *req.Client) {
 	case "passthrough":
 		wrapLoopbackPassthrough(rc)
 	case "compatibility-compatible":
-		wrapSimCompatibility(rc, internalversion.APIVersion, internalversion.APIVersion)
+		// The fixture backend keeps support for CLI contract v3 when the current contract advances.
+		wrapSimCompatibility(rc, internalversion.APIVersion, 3)
 	case "compatibility-cli-too-old":
 		wrapSimCompatibility(rc, internalversion.APIVersion, internalversion.APIVersion+1)
 	case "compatibility-backend-zero":

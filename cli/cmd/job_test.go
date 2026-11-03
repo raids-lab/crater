@@ -10,26 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestValidateDistributedRequestRejectsBackfill(t *testing.T) {
-	backfill := scheduleBackfill
-	req := api.CreateDistributedJobRequest{
-		JobCommonRequest: api.JobCommonRequest{
-			Name:         "demo",
-			ScheduleType: &backfill,
-		},
-		Tasks: []api.TaskRequest{{
-			Name:     "worker",
-			Replicas: 1,
-			Resource: api.ResourceList{"cpu": "1", "memory": "1Gi"},
-			Image:    api.ImageBaseInfo{ImageLink: "example/image:latest"},
-		}},
-	}
-	err := validateDistributedRequest(req)
-	if err == nil || !strings.Contains(err.Error(), "backfill") {
-		t.Fatalf("error = %v, want backfill validation error", err)
-	}
-}
-
 func TestValidateInteractiveRequestAcceptsBackendMountDTO(t *testing.T) {
 	req := api.CreateInteractiveJobRequest{
 		JobCommonRequest: api.JobCommonRequest{
@@ -93,7 +73,6 @@ func TestJobListFilterIssuesAggregate(t *testing.T) {
 	cmd.Flags().Int("days", 0, "")
 	cmd.Flags().StringSlice("status", nil, "")
 	cmd.Flags().StringSlice("type", nil, "")
-	cmd.Flags().StringSlice("schedule", nil, "")
 	cmd.Flags().Bool("interactive", false, "")
 	cmd.Flags().Bool("batch", false, "")
 	cmd.Flags().String("from", "", "")
@@ -102,7 +81,6 @@ func TestJobListFilterIssuesAggregate(t *testing.T) {
 		"days":        "-2",
 		"status":      "invalid,also-invalid",
 		"type":        "invalid",
-		"schedule":    "invalid",
 		"interactive": "true",
 		"batch":       "true",
 		"from":        "2026-07-12",
@@ -113,8 +91,8 @@ func TestJobListFilterIssuesAggregate(t *testing.T) {
 		}
 	}
 	issues := jobListFilterIssues(cmd)
-	if len(issues) != 7 {
-		t.Fatalf("issues = %#v, want 7 aggregated issues", issues)
+	if len(issues) != 6 {
+		t.Fatalf("issues = %#v, want 6 aggregated issues", issues)
 	}
 }
 
@@ -160,7 +138,6 @@ func TestJobListFilterIssuesEnforcesBackendLimits(t *testing.T) {
 	cmd.Flags().String("search", "", "")
 	cmd.Flags().StringSlice("status", nil, "")
 	cmd.Flags().StringSlice("type", nil, "")
-	cmd.Flags().StringSlice("schedule", nil, "")
 	cmd.Flags().Bool("interactive", false, "")
 	cmd.Flags().Bool("batch", false, "")
 	cmd.Flags().String("from", "", "")
@@ -176,26 +153,9 @@ func TestJobListFilterIssuesEnforcesBackendLimits(t *testing.T) {
 	if err := cmd.Flags().Set("search", strings.Repeat("界", 129)); err != nil {
 		t.Fatal(err)
 	}
-	if err := cmd.Flags().Set("schedule", "0"); err != nil {
-		t.Fatal(err)
-	}
 
 	issues := jobListFilterIssues(cmd)
-	if len(issues) != 3 {
-		t.Fatalf("issues = %#v, want search, status count, and schedule errors", issues)
-	}
-}
-
-func TestParseJobListScheduleTypeUsesNamesOnly(t *testing.T) {
-	for input, want := range map[string]int{"normal": scheduleNormal, "Backfill": scheduleBackfill} {
-		got, ok := parseJobListScheduleType(input)
-		if !ok || got != want {
-			t.Fatalf("parseJobListScheduleType(%q) = (%d, %t), want (%d, true)", input, got, ok, want)
-		}
-	}
-	for _, input := range []string{"", "0", "1", "invalid"} {
-		if _, ok := parseJobListScheduleType(input); ok {
-			t.Fatalf("parseJobListScheduleType(%q) unexpectedly succeeded", input)
-		}
+	if len(issues) != 2 {
+		t.Fatalf("issues = %#v, want search and status count errors", issues)
 	}
 }

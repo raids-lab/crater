@@ -13,12 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
+import { GithubIcon, GlobeIcon, HistoryIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+
+import { GitHubStarCard } from '@/components/layout/github-star-card'
 
 import { atomBackendVersion } from '@/utils/store'
+import { configUrlWebsiteBaseAtom } from '@/utils/store/config'
 
 import { VersionValue } from './VersionValue'
 
@@ -31,6 +36,7 @@ import { VersionValue } from './VersionValue'
 export default function VersionPage() {
   const { t } = useTranslation()
   const [backendVersion] = useAtom(atomBackendVersion)
+  const website = useAtomValue(configUrlWebsiteBaseAtom)
 
   // Get frontend environment variables
   const currentYear = new Date().getFullYear()
@@ -47,7 +53,7 @@ export default function VersionPage() {
         <p className="text-muted-foreground">{t('about.description')}</p>
       </div>
 
-      {/* Main content area - four sections with independent spacing */}
+      {/* Main content area - sections with independent spacing */}
       <div className="flex min-h-[70vh] flex-col items-center justify-start pt-4 md:justify-center md:pt-0">
         {/* First section: Logo */}
         <div className="mb-8 flex justify-center md:mb-16">
@@ -69,7 +75,7 @@ export default function VersionPage() {
         </div>
 
         {/* Third section: Version information */}
-        <div className="mb-12 flex flex-col items-center justify-center gap-4 text-base md:mb-16 md:text-lg">
+        <div className="mb-6 flex flex-col items-center justify-center gap-4 text-base md:text-lg">
           {/* Frontend version row */}
           <div className="flex flex-col items-center gap-2 md:flex-row md:gap-8">
             {/* Frontend version */}
@@ -193,7 +199,36 @@ export default function VersionPage() {
           </div>
         </div>
 
-        {/* Fourth section: Copyright information */}
+        <div className="mb-4 flex flex-wrap justify-center gap-2">
+          {website && (
+            <Button variant="ghost" size="sm" asChild>
+              <a href={website} target="_blank" rel="noopener noreferrer">
+                <GlobeIcon aria-hidden="true" />
+                {t('about.website')}
+              </a>
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" asChild>
+            <a
+              href="https://github.com/raids-lab/crater/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <HistoryIcon aria-hidden="true" />
+              {t('about.releaseNotes')}
+            </a>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <a href="https://github.com/raids-lab/crater" target="_blank" rel="noopener noreferrer">
+              <GithubIcon aria-hidden="true" />
+              {t('about.sourceCode')}
+            </a>
+          </Button>
+        </div>
+
+        <GitHubStarCard />
+
+        {/* Copyright information */}
         <div className="space-y-2 text-center">
           <div className="text-muted-foreground flex items-center justify-center gap-4 text-sm">
             <span>{t('about.copyright', { year: currentYear })}</span>
