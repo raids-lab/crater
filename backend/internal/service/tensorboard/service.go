@@ -313,14 +313,14 @@ func buildRunMount(jobDB *model.Job, jobName string, index int, requestedLogDir 
 
 	volumeName := fmt.Sprintf("tb-run-%d", index)
 	return corev1.Volume{
-			Name:         volumeName,
-			VolumeSource: sourceVolume.VolumeSource,
-		}, corev1.VolumeMount{
-			Name:      volumeName,
-			MountPath: path.Join(multiSourceLogRoot, jobName),
-			SubPath:   subPath,
-			ReadOnly:  true,
-		}, nil
+		Name:         volumeName,
+		VolumeSource: sourceVolume.VolumeSource,
+	}, corev1.VolumeMount{
+		Name:      volumeName,
+		MountPath: path.Join(multiSourceLogRoot, jobName),
+		SubPath:   subPath,
+		ReadOnly:  true,
+	}, nil
 }
 
 func (svc *TensorboardService) GetSourceConfig(

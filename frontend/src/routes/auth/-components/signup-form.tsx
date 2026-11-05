@@ -35,18 +35,13 @@ import { apiSignup } from '@/services/api/auth'
 import { getAuthErrorMessage } from '@/services/auth-errors'
 import { authMutationOptions } from '@/services/auth-mutation'
 import { authText } from '@/services/auth-text'
+import { usernameSchema } from '@/services/auth-username'
 import { getApiErrorData, markApiErrorHandled } from '@/services/client'
 import { ERROR_RESOURCE_ALREADY_EXISTS } from '@/services/error_code'
 
 const formSchema = z
   .object({
-    username: z
-      .string()
-      .min(1, {
-        message: '用户名不能为空',
-      })
-      .max(64, { message: authText('usernameTooLong') })
-      .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/, { message: authText('usernameFormat') }),
+    username: usernameSchema,
     password: z
       .string()
       .min(1, {

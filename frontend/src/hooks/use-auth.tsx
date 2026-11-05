@@ -82,16 +82,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const login = async (auth: ILogin) => {
-    return apiLogin(auth).then((res) => {
-      const { accessToken, refreshToken, ...data } = res.data
-      localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    const res = await apiLogin(auth)
+    const { accessToken, refreshToken } = res.data
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+
+    try {
+      // Fetch session metadata through the existing check API after saving the tokens.
+      const { data } = await apiCheckToken()
+      if (data == null) {
+        throw new Error('No authenticated session returned by auth/check')
+      }
       setUser({ ...data.user, space: data.context.space })
       setContext(data.context)
       setBackendVersion(data.version)
       setIsAuthenticated(true)
-      return res
-    })
+      return { ...res, data: { ...res.data, user: data.user, context: data.context } }
+    } catch (error) {
+      localStorage.removeItem(ACCESS_TOKEN_KEY)
+      localStorage.removeItem(REFRESH_TOKEN_KEY)
+      setUser(undefined)
+      setContext(undefined)
+      setBackendVersion(undefined)
+      setIsAuthenticated(false)
+      throw error
+    }
   }
 
   const logout = () => {

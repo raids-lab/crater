@@ -46,6 +46,7 @@ import LoadableButton from '@/components/button/loadable-button'
 import { AuthMode, IAuthResponse, ILogin, Role } from '@/services/api/auth'
 import { getAuthErrorMessage } from '@/services/auth-errors'
 import { authMutationOptions } from '@/services/auth-mutation'
+import { usernameSchema } from '@/services/auth-username'
 import { getApiErrorData, markApiErrorHandled } from '@/services/client'
 import {
   ERROR_INVALID_CREDENTIALS,
@@ -67,8 +68,7 @@ export type LoginSearch = {
 }
 
 const formSchema = z.object({
-  // LDAP accounts and passwords follow the directory's rules, not local signup restrictions.
-  username: z.string().min(1, { message: '用户名不能为空' }),
+  username: usernameSchema,
   password: z.string().min(1, { message: '密码不能为空' }),
   // 必须勾选隐私政策,否则无法通过校验
   acceptPrivacy: z.boolean().refine((val) => val === true, {
