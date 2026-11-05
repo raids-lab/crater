@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 
@@ -16,19 +16,11 @@ import (
 
 func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var authToken string
-		// if request type is websocket, read token from string
-		if c.Request.Header.Get("Upgrade") == "websocket" {
-			authToken = c.Query("token")
-		} else {
-			authHeader := c.Request.Header.Get("Authorization")
-			t := strings.Split(authHeader, " ")
-			if len(t) < 2 || t[0] != "Bearer" {
-				resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.TokenInvalid)
-				c.Abort()
-				return
-			}
-			authToken = t[1]
+		authToken, err := protectedRequestToken(c)
+		if err != nil {
+			resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("Invalid token"))
+			c.Abort()
+			return
 		}
 		token, err := util.GetTokenMgr().CheckToken(authToken)
 		if err != nil {
@@ -49,7 +41,7 @@ func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 		}
 
 		// If query method is not GET (e.g. POST, PUT, DELETE), validate permissions from database
-		if c.Request.Method != "GET" {
+		if requiresFreshPermissions(c) {
 			u := query.User
 
 			// Check platform role

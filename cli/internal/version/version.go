@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	// v5 resolves the job-name placeholder in TENSORBOARD_LOGDIR during job creation.
-	APIVersion = 5
+	// v6 adds optional task-user SSH sessions and container command execution.
+	APIVersion = 6
 	// v3 first exposes /admin/system-config/scheduler-extender, which this CLI calls with no fallback.
 	MinSupportedBackendAPIVersion    = 3
 	APIVersionHeader                 = "X-Crater-API-Version"

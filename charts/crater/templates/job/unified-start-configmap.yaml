@@ -56,6 +56,15 @@ data:
 
     # Detect available shell (priority: zsh > bash > sh)
     detect_shell() {
+        account_shell=$(getent passwd "${NB_USER}" | cut -d: -f7) || account_shell=
+        if [ -n "$account_shell" ] && [ -x "$account_shell" ]; then
+            echo "$account_shell"
+            return 0
+        fi
+        if [ -n "${SHELL:-}" ] && [ -x "$SHELL" ]; then
+            echo "$SHELL"
+            return 0
+        fi
         if command -v zsh >/dev/null 2>&1 && [ -f "/bin/zsh" ]; then
             echo "/bin/zsh"
         elif command -v bash >/dev/null 2>&1 && [ -f "/bin/bash" ]; then
@@ -82,15 +91,19 @@ data:
         fi
         
         # Ensure home directory exists and has correct ownership
-        if [ ! -d "/home/${NB_USER}" ]; then
-            mkdir -p "/home/${NB_USER}"
-        fi
-        chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}"
+        USER_HOME=$(getent passwd "$NB_USER" | cut -d: -f6)
+        USER_UID=$(id -u "$NB_USER")
+        USER_GID=$(id -g "$NB_USER")
+        # Keep the platform working/notebook directory alongside the image HOME.
+        for user_dir in "$USER_HOME" "/home/${NB_USER}"; do
+            mkdir -p "$user_dir"
+            chown "${USER_UID}:${USER_GID}" "$user_dir"
+        done
         
         # Create .zshrc if shell is zsh and file doesn't exist
-        if [ "${DEFAULT_SHELL}" = "/bin/zsh" ] && [ ! -f "/home/${NB_USER}/.zshrc" ]; then
-            touch "/home/${NB_USER}/.zshrc"
-            chown "${NB_UID}:${NB_GID}" "/home/${NB_USER}/.zshrc"
+        if [ "${DEFAULT_SHELL}" = "/bin/zsh" ] && [ ! -f "$USER_HOME/.zshrc" ]; then
+            touch "$USER_HOME/.zshrc"
+            chown "${USER_UID}:${USER_GID}" "$USER_HOME/.zshrc"
         fi
     }
 
@@ -115,6 +128,7 @@ data:
     # Execute setup
     setup_user
     setup_sudo
+{{ include "crater.jobSessionEnvironment" . | indent 4 }}
 
     _log "→ Starting as ${NB_USER}"
 
