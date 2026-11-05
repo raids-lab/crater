@@ -337,3 +337,33 @@ func configureLocalLoginBan(db *gorm.DB, user *model.User, state string) error {
 	}
 	return db.Model(user).Updates(map[string]any{"banned_timestamp": until, "ban_restrictions": datatypes.NewJSONType(restrictions)}).Error
 }
+
+func TestAuthenticationLoginKeepsVersionOnCheckEndpoint(t *testing.T) {
+	mgr, _ := newFirstLoginHarness(t, false, false)
+	result := requestFirstLDAPLogin(t, mgr, firstLoginPassword)
+	requireAuthResponse(t, result, 200, 0)
+	var response resputil.Response[map[string]json.RawMessage]
+	if err := json.Unmarshal(result.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if len(response.Data) != 4 {
+		t.Fatalf("unexpected login response fields: %s", result.Body.String())
+	}
+	for _, field := range []string{"accessToken", "refreshToken", "context", "user"} {
+		if _, ok := response.Data[field]; !ok {
+			t.Fatalf("login response missing %s", field)
+		}
+	}
+	var token string
+	if err := json.Unmarshal(response.Data["accessToken"], &token); err != nil {
+		t.Fatal(err)
+	}
+	checked := authRequest(t, mgr, "check", "", token)
+	requireAuthResponse(t, checked, 200, 0)
+	if err := json.Unmarshal(checked.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := response.Data["version"]; !ok {
+		t.Fatal("auth/check must return backend version metadata")
+	}
+}

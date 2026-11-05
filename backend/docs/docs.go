@@ -13625,9 +13625,6 @@ const docTemplate = `{
                 },
                 "user": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute"
-                },
-                "version": {
-                    "$ref": "#/definitions/internal_handler.VersionInfo"
                 }
             }
         },

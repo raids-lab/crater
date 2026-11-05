@@ -29,8 +29,9 @@ const fallback = {
   resetPassword: '请联系管理员重置密码',
   loginServiceUnavailable: '登录服务暂不可用，请稍后重试',
   loginDisabled: '暂未开放登录，请联系管理员',
-  usernameTooLong: '用户名最多 64 个字符',
-  usernameFormat: '字母或数字开头，可含 ._- ',
+  usernameRequired: '用户名不能为空',
+  usernameTooLong: '用户名最多 20 个字符',
+  usernameFormat: '只能包含小写字母和数字，中划线可作为连接符',
   passwordTooLong: '密码过长，请缩短后重试',
 } as const
 

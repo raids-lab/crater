@@ -70,7 +70,6 @@ export interface IAuthResponse {
   refreshToken: string
   user: IUserAttributes
   context: IUserContext
-  version: IBackendVersionInfo
 }
 
 // 定义认证模式枚举

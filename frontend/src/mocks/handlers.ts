@@ -53,12 +53,6 @@ export const handlers = [
             name: '',
             nickname: '',
           },
-          version: {
-            appVersion: 'mock-version',
-            commitSHA: 'mock-commit-sha',
-            buildType: 'development',
-            buildTime: '2025-01-01T00:00:00Z',
-          },
         },
         code: 0,
         msg: '',
