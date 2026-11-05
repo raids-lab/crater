@@ -99,6 +99,7 @@ const JupyterMarkdown = `Jupyter 为用户提供交互式的 Web 实验环境，
 `
 
 const formSchema = z.object({
+  sysAdminEnabled: z.boolean().default(false),
   jobName: jobNameSchema,
   task: taskSchema,
   envs: envsSchema,
@@ -150,6 +151,7 @@ function RouteComponent() {
     mutationFn: (values: FormSchema) => {
       return apiJupyterCreate({
         name: values.jobName,
+        sysAdminEnabled: values.sysAdminEnabled,
         resource: convertToResourceList(values.task.resource),
         image: values.task.image,
         volumeMounts: values.volumeMounts,
@@ -213,6 +215,7 @@ function RouteComponent() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       jobName: '',
+      sysAdminEnabled: false,
       task: {
         taskName: 'training',
         replicas: 1,
@@ -350,6 +353,7 @@ function RouteComponent() {
             <ForwardFormCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
+              sysAdminEnabledPath="sysAdminEnabled"
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"

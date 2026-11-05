@@ -104,6 +104,7 @@ const markdown = `## 运行规则
 
 const formSchema = z.object({
   jobName: jobNameSchema,
+  sysAdminEnabled: z.boolean().default(false),
   task: taskSchema,
   // Keep this additive field optional so existing custom-job templates remain valid.
   tensorboardLogDir: z
@@ -167,6 +168,7 @@ function RouteComponent() {
 
       return apiTrainingCreate({
         name: values.jobName,
+        sysAdminEnabled: values.sysAdminEnabled,
         resource: convertToResourceList(values.task.resource),
         image: values.task.image,
         shell: values.task.shell,
@@ -203,6 +205,7 @@ function RouteComponent() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       jobName: '',
+      sysAdminEnabled: false,
       task: {
         taskName: 'training',
         replicas: 1,
@@ -460,6 +463,7 @@ conda activate base;
             <ForwardFormCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
+              sysAdminEnabledPath="sysAdminEnabled"
               form={form}
               alertEnabledPath="alertEnabled"
               cpuPinningEnabledPath="cpuPinningEnabled"

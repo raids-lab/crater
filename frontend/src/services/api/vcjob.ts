@@ -492,6 +492,7 @@ export interface IJupyterCreate {
   selectors?: NodeSelectorRequirement[]
   template: string
   alertEnabled: boolean
+  sysAdminEnabled?: boolean
   cpuPinningEnabled?: boolean
   forwards: Forward[]
 }
@@ -514,6 +515,7 @@ export interface ISparseCreate extends ITrainingCreate {
 }
 
 export interface ITensorflowCreate {
+  sysAdminEnabled?: boolean
   name: string
   tasks: {
     name: string
