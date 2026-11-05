@@ -20,7 +20,9 @@ import (
 
 	. "github.com/bytedance/mockey"
 	. "github.com/smartystreets/goconvey/convey"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -49,6 +51,13 @@ func TestNewJobView(t *testing.T) {
 		So(view.podGroupPhase, ShouldEqual, scheduling.PodGroupPhase(""))
 		So(view.createdAt, ShouldEqual, fixedNow.Add(-10*time.Minute))
 		So(view.tolerance, ShouldEqual, 5*time.Minute)
+		So(view.reference(), ShouldResemble, &v1.ObjectReference{
+			Kind:       "Job",
+			APIVersion: "batch.volcano.sh/v1alpha1",
+			Namespace:  testNamespace,
+			Name:       jobA,
+			UID:        types.UID(jobA + "-uid"),
+		})
 	})
 
 	PatchConvey("pod group supplies the admission phase and the minimum demand", t, func() {
@@ -156,7 +165,9 @@ func TestBuildSnapshot(t *testing.T) {
 		Mock(config.GetConfig).Return(cfg).Build()
 		Mock(utils.GetLocalTime).Return(fixedNow).Build()
 
-		admittedJob := newVCJob(jobAdmitted, testNamespace, rl("cpu", "2"))
+		admittedJob := newVCJob(jobAdmitted, testNamespace, rl("cpu", "2"), func(job *batch.Job) {
+			job.CreationTimestamp = metav1.NewTime(fixedNow.Add(-50 * time.Second))
+		})
 		// Created 100s ago with a 300s tolerance: only the frozen clock keeps it from timing out.
 		pendingJob := newVCJob(jobPending, testNamespace, rl("cpu", "1"), func(job *batch.Job) {
 			job.CreationTimestamp = metav1.NewTime(fixedNow.Add(-100 * time.Second))
@@ -172,6 +183,8 @@ func TestBuildSnapshot(t *testing.T) {
 		snap, err := (&Server{reader: reader}).buildSnapshot(t.Context(), &settings{})
 		So(err, ShouldBeNil)
 		So(len(snap.views), ShouldEqual, 2)
+		// Oldest first, not name order.
+		So([]string{snap.views[0].name, snap.views[1].name}, ShouldResemble, []string{jobPending, jobAdmitted})
 		So(snap.byName, ShouldNotContainKey, "job-foreign")
 		So(snap.now, ShouldEqual, fixedNow)
 		So(snap.byName[jobAdmitted].podGroupPhase, ShouldEqual, scheduling.PodGroupInqueue)
