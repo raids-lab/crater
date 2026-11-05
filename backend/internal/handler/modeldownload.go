@@ -116,6 +116,7 @@ type DownloadActionReq struct {
 
 type ModelDownloadResp struct {
 	ID              uint             `json:"id"`
+	ResourceID      *uint            `json:"resourceId,omitempty"` // Linked resource, when available in a Ready download detail.
 	Name            string           `json:"name"`
 	Source          string           `json:"source"`
 	Category        string           `json:"category"`
@@ -785,7 +786,7 @@ func (mgr *ModelDownloadMgr) downloadStatusSummary(c *gin.Context, category stri
 // GetDownload godoc
 //
 //	@Summary		获取单个模型下载任务详情
-//	@Description	根据 ID 获取模型下载任务详情
+//	@Description	根据 ID 获取模型下载任务详情，已完成任务包含实际关联资源的 resourceId（资源存在时）
 //	@Tags			ModelDownload
 //	@Accept			json
 //	@Produce		json
@@ -821,8 +822,35 @@ func (mgr *ModelDownloadMgr) GetDownload(c *gin.Context) {
 		return
 	}
 	resp = responses[0]
+	resp.ResourceID, err = mgr.findDownloadResourceID(c, query.Q, download)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get linked download resource failed"))
+		return
+	}
 
 	resputil.Success(c, resp)
+}
+
+// findDownloadResourceID uses the same storage-path/type identity as resource
+// publication. Resolving it on read also covers existing downloads and avoids
+// returning a stale link after the resource is deleted or renamed.
+func (mgr *ModelDownloadMgr) findDownloadResourceID(
+	ctx context.Context, db *query.Query, download *model.ModelDownload,
+) (*uint, error) {
+	if download.Status != model.ModelDownloadStatusReady || download.Path == "" {
+		return nil, nil
+	}
+	q := db.Dataset
+	linkedDataset, err := q.WithContext(ctx).Select(q.ID).
+		Where(q.URL.Eq(mgr.convertToPhysicalPath(download.Path)), q.Type.Eq(string(download.Category))).
+		First()
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &linkedDataset.ID, nil
 }
 
 // requireManagePermission allows only the creator or a platform administrator
