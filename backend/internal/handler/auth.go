@@ -84,7 +84,6 @@ type (
 		RefreshToken string              `json:"refreshToken"`
 		Context      AccountContext      `json:"context"`
 		User         model.UserAttribute `json:"user"`
-		Version      VersionInfo         `json:"version"`
 	}
 
 	CheckResp struct {
@@ -352,7 +351,7 @@ func (mgr *AuthMgr) respondLogin(c *gin.Context, user *model.User, projectID uin
 	attributes.ID, attributes.Name = user.ID, user.Name
 	resputil.Success(c, LoginResp{
 		AccessToken: access, RefreshToken: refresh, Context: accountContext,
-		User: attributes, Version: GetVersionInfo(),
+		User: attributes,
 	})
 }
 
