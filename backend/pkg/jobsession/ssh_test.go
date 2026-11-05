@@ -27,7 +27,7 @@ func TestSSHAndExecShareAccountShellAndContainerEnvironment(t *testing.T) {
 	}
 	// Exercise the production launcher serializer, including quotes/newlines.
 	var launcher bytes.Buffer
-	argv := []string{"/bin/sh", "-c", writeSSHLauncher + `crater_write_launcher "$(export -p)" "$1"`, "fixture", shellCommand(command("shell"))}
+	argv := []string{"/bin/sh", "-c", writeSSHLauncher + `crater_write_launcher "$(export -p)" "$1"`, "fixture", InstallSSHCommand()[4]}
 	if err = run(t.Context(), argv, &launcher, io.Discard); err != nil {
 		t.Fatal(err)
 	}

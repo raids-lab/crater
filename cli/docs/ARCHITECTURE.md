@@ -123,9 +123,9 @@ WebSocket 子协议为 `crater.exec.v1`。目标选择通过 `pod`、`container`
 | 后端 → CLI | `stdout`、`stderr` | `data` 为 Base64 字节，保留二进制内容与跨帧 UTF-8；TTY 模式输出合并。 |
 | 后端 → CLI | `exit`、`error` | `exit.exit_code` 为命令状态，包含零；`error.message` 为平台执行错误。关闭连接不等于成功。 |
 
-后端定期发送 ping 保持空闲会话，写操作有超时。断连与取消会关闭 socket、stdin pipe 和尺寸队列，取消 Kubernetes exec；CLI 完成后取消输入读取并恢复终端。JSON 捕获限制在命令层实施，普通模式流式输出。
+后端定期发送 ping 保持空闲会话，写操作有超时。CLI 的 stdin/尺寸同步网络写入失败会停止相应发送协程，接收侧继续读取输出和最终退出帧；本地 stdin 读取失败或用户取消仍关闭会话。断连与取消会关闭 socket、stdin pipe 和尺寸队列，取消 Kubernetes exec；CLI 完成后取消输入读取并恢复终端。JSON 捕获限制在命令层实施，普通模式流式输出。
 
-本次版本决策：后端与 CLI 的 `APIVersion` 从 4 增至 5（新增含用户会话处理的 exec 接口、SSH 可选会话字段和 WebSocket Bearer 鉴权）；`MinSupportedBackendAPIVersion`、`MinSupportedCLIAPIVersion` 均保持 3。exec 是新增可选能力，旧后端仍能服务原有命令；旧 CLI 的 SSH 和浏览器 query-token 鉴权保持可用。新命令在旧后端上保留正常 404，不自动握手、不回退到网页 shell 或 SSH。
+本次版本决策：后端与 CLI 的 `APIVersion` 从 5 增至 6（新增含用户会话处理的 exec 接口、SSH 可选会话字段和 WebSocket Bearer 鉴权）；`MinSupportedBackendAPIVersion`、`MinSupportedCLIAPIVersion` 均保持 3。exec 是新增可选能力，旧后端仍能服务原有命令；旧 CLI 的 SSH 和浏览器 query-token 鉴权保持可用。新命令在旧后端上保留正常 404，不自动握手、不回退到网页 shell 或 SSH。
 
 ## 列表分页
 

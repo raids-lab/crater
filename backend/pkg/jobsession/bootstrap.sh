@@ -7,7 +7,13 @@ if [ "$(id -u)" = 0 ] && [ ! -L /run/crater ] && [ -f /run/crater/environment.sh
     . /run/crater/environment.sh
 fi
 crater_user_script=__USER_SCRIPT__
-crater_target=${NB_USER:-$(id -un)}
+case "$1" in
+    ssh-shell)
+        # SSH identity comes from authentication, independently of the snapshot.
+        crater_target=$(id -un)
+        export NB_USER="$crater_target";;
+    *) crater_target=${NB_USER:-$(id -un)};;
+esac
 if command -v getent >/dev/null 2>&1; then
     crater_entry=$(getent passwd "$crater_target") || {
         echo 'crater: task user is missing from the container account database' >&2; exit 126;

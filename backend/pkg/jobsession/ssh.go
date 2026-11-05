@@ -12,7 +12,7 @@ const SSHCommand = "/bin/sh /run/crater/session.sh"
 // username on stdout. The private container snapshot is only embedded in this
 // user-owned launcher, never returned by the API or written to server logs.
 func InstallSSHCommand() []string {
-	args := []string{"/bin/sh", "-c", installSSH, "crater-ssh-install", shellCommand(command("shell"))}
+	args := []string{"/bin/sh", "-c", installSSH, "crater-ssh-install", shellCommand(command("ssh-shell"))}
 	return append(args, command("identity")...)
 }
 
@@ -29,7 +29,7 @@ crater_quote() { printf "'"; printf '%s' "$1" | sed "s/'/'\\\\''/g"; printf "'";
 crater_write_launcher() {
     printf '#!/bin/sh\neval '
     crater_quote "$1"
-    printf '\nexport NB_USER="$(id -un)"\nexec %s\n' "$2"
+    printf '\nexec %s\n' "$2"
 }
 `
 

@@ -3,7 +3,7 @@ title: Connect and Execute Commands with the CLI
 description: Open a job shell, connect over SSH, or run automated commands using Crater CLI.
 ---
 
-After signing in to Crater CLI, use `crater job ls` to find the platform job name, then connect to your running job. Replace `JOB` below with that name. These commands support CPU-only nodes, domestic accelerators and other supported nodes. `job exec` requires a backend providing the feature (API v5), with no local kubectl, kubeconfig or container SSH service needed.
+After signing in to Crater CLI, use `crater job ls` to find the platform job name, then connect to your running job. Replace `JOB` below with that name. These commands support CPU-only nodes, domestic accelerators and other supported nodes. `job exec` requires a backend providing the feature (API v6), with no local kubectl, kubeconfig or container SSH service needed.
 
 ## Open Your Shell
 
@@ -31,7 +31,7 @@ Ordinary mode streams stdout and stderr separately; TTY mode merges them. Succes
 
 ## User Environment
 
-SSH connections and exec share user environment handling, so you do not need to invoke `/crater-start.sh`. The container's `NB_USER` selects the task user; otherwise the current container user is used. HOME and shell come from the container's user database. Each shell follows its own startup rules; a Bash login profile determines whether `.bashrc` is sourced.
+SSH connections and exec share user environment handling, so you do not need to invoke `/crater-start.sh`. Exec uses the container's `NB_USER` to select the task user, falling back to the current container user. SSH uses the authenticated account, including an explicit `--user root`; loading the startup environment preserves that identity. HOME and shell come from the container's user database. Each shell follows its own startup rules; a Bash login profile determines whether `.bashrc` is sourced.
 
 Platform startup scripts save exported initialization settings, and new sessions load user configuration. If saving fails, startup logs report `could not save startup environment` and the job continues starting. New sessions then use container settings and user configuration; fix snapshot saving and recreate the job when startup-only generated values are needed. Temporary exports or Conda activation in another terminal are not copied. Commands retain the container working directory when accessible, otherwise HOME; interactive shells start in HOME.
 

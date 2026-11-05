@@ -2,7 +2,7 @@
 
 `jobsession` owns user environment handling shared by Kubernetes exec and the CLI's SSH connection. Its embedded POSIX scripts run in Linux containers on CPU or accelerator nodes without downloading architecture-specific helpers.
 
-- The container's `NB_USER` selects the task account; without it, the current container account is used. The account database supplies HOME and the preferred shell. An absent account or failed user switch stops execution.
+- For exec, the container's `NB_USER` selects the task account; without it, the current container account is used. SSH retains the authenticated account even when the startup snapshot has a different `NB_USER`, including an explicit root login. The account database supplies HOME and the preferred shell. An absent account or failed user switch stops execution.
 - `bootstrap.sh` reads the root-managed startup snapshot, captures the container environment, and switches to the account using runuser, sudo, or su when necessary. The unprivileged stage restores exported variables after switching so PATH and loader/toolchain variables survive privilege helpers.
 - An interactive session starts that account's shell with `-il` in HOME. Each shell controls its startup files; Bash login profiles decide whether to source `.bashrc`.
 - Explicit TTY commands run through the account login/interactive shell using safely quoted argv. They send no private environment prefix through the PTY, whose echo/canonical settings could otherwise disclose or alter environment data. Shell startup output remains part of that interactive terminal.

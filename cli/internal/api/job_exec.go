@@ -161,6 +161,10 @@ func (c *Client) StreamJobExec(ctx context.Context, name string, options JobExec
 		}
 		return JobExecResult{}, err
 	}
+	return streamJobExec(ctx, conn, options, stdout, stderr)
+}
+
+func streamJobExec(ctx context.Context, conn *websocket.Conn, options JobExecOptions, stdout, stderr io.Writer) (JobExecResult, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	socket := &execSocket{conn: conn}
 	var workers sync.WaitGroup
@@ -181,7 +185,12 @@ func (c *Client) StreamJobExec(ctx context.Context, name string, options JobExec
 		workers.Go(func() {
 			if err := forwardExecInput(socket, options.Input); err != nil {
 				inputErrors <- err
-				cancel()
+				// A failed write can race the server's final output and exit.
+				// Keep receiving on transport failure; local read failures abort.
+				var streamErr *ExecStreamError
+				if errors.As(err, &streamErr) && streamErr.Local {
+					cancel()
+				}
 			}
 		})
 	}
@@ -194,7 +203,7 @@ func (c *Client) StreamJobExec(ctx context.Context, name string, options JobExec
 						return
 					}
 					if err := socket.send(execFrame{Type: "resize", TerminalSize: size}); err != nil {
-						cancel()
+						// Resize shares stdin's write half; let the receiver drain.
 						return
 					}
 				case <-ctx.Done():
@@ -206,8 +215,10 @@ func (c *Client) StreamJobExec(ctx context.Context, name string, options JobExec
 	result, err := receiveExec(conn, stdout, stderr)
 	// A command can finish without consuming stdin. Its explicit exit frame
 	// remains authoritative even if an in-flight input write then sees closure.
-	if err == nil {
-		return result, nil
+	// Preserve a local output failure rather than masking it with that closure.
+	var streamErr *ExecStreamError
+	if err == nil || (errors.As(err, &streamErr) && streamErr.Local) {
+		return result, err
 	}
 	select {
 	case inputErr := <-inputErrors:

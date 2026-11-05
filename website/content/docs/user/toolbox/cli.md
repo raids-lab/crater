@@ -3,7 +3,7 @@ title: 通过 CLI 连接作业与执行命令
 description: 使用 Crater CLI 进入作业 shell、连接 SSH 或运行自动化命令。
 ---
 
-登录 Crater CLI 后，先用 `crater job ls` 确认平台作业名，再连接自己的运行中作业。以下命令中的 `JOB` 为平台作业名。命令适用于纯 CPU、国产加速卡和其他平台支持的节点；`job exec` 需要支持该功能的后端（API v5），无需本机 kubectl、kubeconfig 或容器 SSH 服务。
+登录 Crater CLI 后，先用 `crater job ls` 确认平台作业名，再连接自己的运行中作业。以下命令中的 `JOB` 为平台作业名。命令适用于纯 CPU、国产加速卡和其他平台支持的节点；`job exec` 需要支持该功能的后端（API v6），无需本机 kubectl、kubeconfig 或容器 SSH 服务。
 
 ## 进入用户 shell
 
@@ -31,7 +31,7 @@ crater job exec JOB --json --no-interactive -- python -V
 
 ## 用户环境
 
-SSH 连接和 exec 共用用户环境处理，无需手动执行 `/crater-start.sh`。默认优先使用容器的 `NB_USER`，未设置时使用容器当前用户；HOME 和 shell 取自容器用户信息。shell 按自身规则读取配置，例如 Bash 是否读取 `.bashrc` 由登录配置决定。
+SSH 连接和 exec 共用用户环境处理，无需手动执行 `/crater-start.sh`。exec 优先使用容器的 `NB_USER`，未设置时使用容器当前用户；SSH 使用实际认证账户，显式 `--user root` 登录后保持 root 身份，加载启动环境不会改变该身份。HOME 和 shell 取自容器用户信息。shell 按自身规则读取配置，例如 Bash 是否读取 `.bashrc` 由登录配置决定。
 
 平台启动脚本会保存初始化后导出的环境，新会话再加载用户配置。若无法保存快照，启动日志会提示 `could not save startup environment`，作业继续启动；此时新会话使用容器环境和用户配置，启动阶段临时生成的变量需先修复快照保存问题再重建作业。已有终端内临时 export 的变量或 Conda 激活状态不会自动传入新会话。普通命令保留容器工作目录，不可访问时回到 HOME；交互 shell 从 HOME 开始。
 
