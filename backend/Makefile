@@ -177,7 +177,7 @@ run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host
 	GIN_MODE="$(GIN_MODE)" KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
-pre-commit-check: lint docs test-tensorboard-launcher test-job-sessions ## Run lint, docs, launcher and isolated job session tests.
+pre-commit-check: lint docs test-tensorboard-launcher test-job-sessions test-job-phases ## Run lint, docs, launcher, session and phase tests.
 
 .PHONY: test-tensorboard-launcher
 test-tensorboard-launcher: ## Test the embedded launcher with Python 3 (standard library only).
@@ -253,3 +253,7 @@ build-storage: fmt lint ## Build storage server binary.
 	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/storage-server cmd/storage-server/main.go
 	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/model-dataset-governance cmd/model-dataset-governance/main.go
 	@echo "$(GREEN)Storage server binary built successfully: bin/storage-server$(RESET)"
+
+.PHONY: test-job-phases
+test-job-phases: ## Verify UI-phase filters and counts without external services.
+	cd internal/handler/vcjob && go test list.go phase.go phase_test.go -count=1

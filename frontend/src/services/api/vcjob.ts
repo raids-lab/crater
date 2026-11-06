@@ -169,13 +169,19 @@ export enum PodGroupPhase {
   Completed = 'Completed',
 }
 
-// Display-only stages, kept out of JobPhase so they can never reach filters or requests.
+// UI stages use the phase query parameter, never the original status parameter.
 export enum JobDisplayPhase {
   Inqueue = 'Inqueue',
   Starting = 'Starting',
 }
 
 export type JobDisplayPhaseValue = JobPhase | JobDisplayPhase
+
+// Init is a wire encoding only: the persisted job state remains empty.
+export function encodeJobFilterPhase(phase: JobDisplayPhaseValue): string {
+  if (phase === JobPhase.Init) return 'Init'
+  return phase === JobPhase.Prequeue ? JobPhase.Pending : phase
+}
 
 export enum JobStatus {
   NotStarted = 'NotStarted',
@@ -282,12 +288,21 @@ function withJobTypes(params: RemoteTableParams, allowed: JobType[]): RemoteTabl
 }
 
 export function toJobProtocol(params: RemoteTableParams): RemoteTableParams {
-  const { jobType, ...filters } = params.filters
+  const { jobType, status, ...filters } = params.filters
   return {
     ...params,
     filters: {
       ...filters,
       ...(jobType ? { job_type: jobType } : {}),
+      ...(status
+        ? {
+            phase: [
+              ...new Set(
+                status.map((value) => encodeJobFilterPhase(value as JobDisplayPhaseValue))
+              ),
+            ],
+          }
+        : {}),
     },
   }
 }

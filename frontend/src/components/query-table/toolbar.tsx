@@ -31,6 +31,7 @@ export type DataTableToolbarConfig = {
     option?: DataTableFacetedFilterOption[]
     defaultValues?: string[]
     remoteFacets?: boolean
+    showZeroCountOptions?: boolean
   }[]
   getHeader: (key: string) => string
 } & (
@@ -100,6 +101,7 @@ export function DataTableToolbar<TData>({
                 options={filterOption.option}
                 defaultValues={filterOption.defaultValues}
                 remoteFacets={filterOption.remoteFacets}
+                showZeroCountOptions={filterOption.showZeroCountOptions}
               />
             )
         )}
