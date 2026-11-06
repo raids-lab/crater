@@ -10161,6 +10161,16 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "name": "phase",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node name",
                         "name": "node",
@@ -10260,6 +10270,16 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "name": "phase",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node name",
                         "name": "node",
@@ -10336,6 +10356,16 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "name": "phase",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node name",
                         "name": "node",
@@ -10397,6 +10427,16 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -10722,6 +10762,16 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "name": "phase",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node name",
                         "name": "node",
@@ -10814,6 +10864,16 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "name": "phase",
                         "in": "query"
                     },
                     {

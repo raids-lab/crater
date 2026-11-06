@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
 
 import {
   JobDisplayPhase,
   JobDisplayPhaseValue,
   JobPhase,
   PodGroupPhase,
+  encodeJobFilterPhase,
   getJobDisplayPhase,
 } from '@/services/api/vcjob'
 
@@ -28,76 +30,82 @@ import { PhaseBadge, PhaseBadgeData } from './phase-badge'
 export const jobPhases = [
   {
     value: 'Prequeue',
-    label: t('jobs.statuses.prequeue.label'),
     color: '#8b5cf6',
   },
   {
     value: 'Pending',
-    label: t('jobs.statuses.pending.label'),
     color: '#a855f7',
   },
   {
     value: 'Aborting',
-    label: '即将中止',
     color: '#ec4899',
   },
   {
     value: 'Aborted',
-    label: '已中止',
     color: '#ec4899',
   },
   {
     value: 'Running',
-    label: '运行中',
     color: '#3b82f6',
   },
   {
     value: 'Restarting',
-    label: '重启中',
     color: '#f43f5e',
   },
   {
     value: 'Completing',
-    label: '即将完成',
     color: '#10b981',
   },
   {
     value: 'Completed',
-    label: '已完成',
     color: '#10b981',
   },
   {
     value: 'Terminating',
-    label: '即将终止',
     color: '#f97316',
   },
   {
     value: 'Terminated',
-    label: '已终止',
     color: '#f97316',
   },
   {
     value: 'Deleted',
-    label: '已停止',
     color: '#f97316',
   },
   {
     value: 'Freed',
-    label: '已释放',
     color: '#f97316',
   },
   {
     value: 'Failed',
-    label: '失败',
     color: '#ef4444',
   },
-]
+].map((phase) => ({
+  ...phase,
+  get label() {
+    return getJobPhaseLabel(phase.value as JobPhase).label
+  },
+}))
 
-export const getJobPhaseLabel = (phase: JobDisplayPhaseValue): PhaseBadgeData => {
+// Candidate sets differ by job implementation; all display text comes from the existing resolver.
+export function getJobFilterOptions() {
+  const phases: JobDisplayPhaseValue[] = [JobPhase.Init]
+  for (const { value } of jobPhases) {
+    if (value === JobPhase.Prequeue) continue
+    phases.push(value as JobPhase)
+    if (value === JobPhase.Pending) phases.push(JobDisplayPhase.Inqueue, JobDisplayPhase.Starting)
+  }
+  return phases.map((phase) => ({
+    value: encodeJobFilterPhase(phase),
+    label: getJobPhaseLabel(phase).label,
+  }))
+}
+
+export function getJobPhaseLabel(phase: JobDisplayPhaseValue): PhaseBadgeData {
   switch (phase) {
     case JobPhase.Prequeue:
       return {
-        label: t('jobs.statuses.prequeue.label'),
+        label: getJobPhaseLabel(JobPhase.Pending).label,
         color: 'text-highlight-violet bg-highlight-violet/20',
         description: t('jobs.statuses.prequeue.description'),
       }
@@ -121,81 +129,81 @@ export const getJobPhaseLabel = (phase: JobDisplayPhaseValue): PhaseBadgeData =>
       }
     case JobPhase.Init:
       return {
-        label: '已创建',
+        label: t('jobs.statuses.created.label'),
         color: 'text-highlight-slate bg-highlight-slate/20',
-        description: '作业已提交到集群，等待信息同步',
+        description: t('jobs.statuses.created.description'),
       }
     case JobPhase.Aborting:
       return {
-        label: '即将中止',
+        label: t('jobs.statuses.aborting.label'),
         color: 'text-highlight-pink bg-highlight-pink/20',
-        description: '作业即将被中止',
+        description: t('jobs.statuses.aborting.description'),
       }
     case JobPhase.Aborted:
       return {
-        label: '已中止',
+        label: t('jobs.statuses.aborted.label'),
         color: 'text-highlight-pink bg-highlight-pink/20',
-        description: '作业已被中止',
+        description: t('jobs.statuses.aborted.description'),
       }
     case JobPhase.Running:
       return {
-        label: '运行中',
+        label: t('jobs.statuses.running.label'),
         color: 'text-highlight-blue bg-highlight-blue/20',
-        description: '作业正在运行',
+        description: t('jobs.statuses.running.description'),
       }
     case JobPhase.Restarting:
       return {
-        label: '重启中',
+        label: t('jobs.statuses.restarting.label'),
         color: 'text-highlight-rose bg-highlight-rose/20',
-        description: '作业正在重启',
+        description: t('jobs.statuses.restarting.description'),
       }
     case JobPhase.Completing:
       return {
-        label: '即将完成',
+        label: t('jobs.statuses.completing.label'),
         color: 'text-highlight-emerald bg-highlight-emerald/20',
-        description: '作业即将完成',
+        description: t('jobs.statuses.completing.description'),
       }
     case JobPhase.Completed:
       return {
-        label: '已完成',
+        label: t('jobs.statuses.completed.label'),
         color: 'text-highlight-emerald bg-highlight-emerald/20',
-        description: '作业已完成',
+        description: t('jobs.statuses.completed.description'),
       }
     case JobPhase.Terminating:
       return {
-        label: '即将终止',
+        label: t('jobs.statuses.terminating.label'),
         color: 'text-highlight-orange bg-highlight-orange/20',
-        description: '作业即将终止',
+        description: t('jobs.statuses.terminating.description'),
       }
     case JobPhase.Terminated:
       return {
-        label: '已终止',
+        label: t('jobs.statuses.terminated.label'),
         color: 'text-highlight-orange bg-highlight-orange/20',
-        description: '作业已终止',
+        description: t('jobs.statuses.terminated.description'),
       }
     case JobPhase.Failed:
       return {
-        label: '失败',
+        label: t('jobs.statuses.failed.label'),
         color: 'text-highlight-red bg-highlight-red/20',
-        description: '作业失败',
+        description: t('jobs.statuses.failed.description'),
       }
     case JobPhase.Deleted:
       return {
-        label: '已停止',
+        label: t('jobs.statuses.deleted.label'),
         color: 'text-highlight-orange bg-highlight-orange/20',
-        description: '作业被手动停止，计算资源已释放，作业元数据仍保留',
+        description: t('jobs.statuses.deleted.description'),
       }
     case JobPhase.Freed:
       return {
-        label: '已释放',
+        label: t('jobs.statuses.freed.label'),
         color: 'text-highlight-orange bg-highlight-orange/20',
-        description: '作业长期占用计算资源但未使用，已自动释放',
+        description: t('jobs.statuses.freed.description'),
       }
     default:
       return {
-        label: '未知',
+        label: t('jobs.statuses.unknown.label'),
         color: 'text-highlight-slate bg-highlight-slate/20',
-        description: '作业状态未知',
+        description: t('jobs.statuses.unknown.description'),
       }
   }
 }
@@ -207,6 +215,7 @@ const JobPhaseLabel = ({
   jobPhase: JobPhase
   podGroupPhase?: PodGroupPhase
 }) => {
+  useTranslation()
   return (
     <PhaseBadge
       phase={getJobDisplayPhase(jobPhase, podGroupPhase)}

@@ -2,6 +2,8 @@ package vcjob
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +40,7 @@ type jobListQuery struct {
 	Days     *int     `form:"days" binding:"omitempty,eq=-1|gt=0"`
 	JobTypes []string `form:"job_type" binding:"max=20,dive,required"`
 	Statuses []string `form:"status" binding:"max=20,dive,required"`
+	Phases   []string `form:"phase" binding:"max=20,dive,required"`
 	Node     *string  `form:"node"`
 	sorts    []jobSort
 }
@@ -120,7 +123,6 @@ func parseJobSort(raw string) ([]jobSort, error) {
 	return sorts, nil
 }
 
-//nolint:misspell // Volcano exposes this phase as "Cancelled".
 func validateJobListEnums(request *jobListQuery) error {
 	for _, value := range request.JobTypes {
 		switch value {
@@ -130,11 +132,13 @@ func validateJobListEnums(request *jobListQuery) error {
 		}
 	}
 	for _, value := range request.Statuses {
-		switch value {
-		case "Prequeue", "Pending", "Aborting", "Aborted", "Running", "Restarting", "Completing",
-			"Completed", "Terminating", "Terminated", "Failed", "Deleted", "Freed", "Cancelled":
-		default:
+		if !validRawJobStatus(value) {
 			return bizerr.BadRequest.ParameterError.New("unsupported status " + strconv.Quote(value))
+		}
+	}
+	for _, value := range request.Phases {
+		if !validJobFilterPhase(value) {
+			return bizerr.BadRequest.ParameterError.New("unsupported phase " + strconv.Quote(value))
 		}
 	}
 	return nil
@@ -191,6 +195,13 @@ func applyJobFilters(
 	if len(request.Statuses) > 0 {
 		q = q.Where(j.Status.In(request.Statuses...))
 	}
+	if len(request.Phases) > 0 {
+		values := make([]driver.Valuer, len(request.Phases))
+		for i, phase := range request.Phases {
+			values[i] = sql.NullString{String: phase, Valid: true}
+		}
+		q = q.Where(jobFilterPhaseExpr().In(values...))
+	}
 	if request.Node != nil {
 		q = q.Where(gen.Cond(datatypes.JSONArrayQuery("nodes").Contains(*request.Node))...)
 	}
@@ -243,15 +254,22 @@ func findJobFacets(
 	if err != nil {
 		return nil, err
 	}
+	phaseRequest := jobFacetQuery(request, "phase")
+	phases, err := scanJobPhaseFacet(ctx, scope, &phaseRequest, defaultDays)
+	if err != nil {
+		return nil, err
+	}
 	result := map[string][]resputil.FacetItem{
 		"job_type": types,
 		"status":   statuses,
+		"phase":    phases,
 	}
 	if !includeOverview {
 		return result, nil
 	}
 	runningRequest := *request
 	runningRequest.Statuses = []string{"Running"}
+	runningRequest.Phases = nil
 	result["owner"], err = scanJobStringFacet(
 		ctx, scope, &runningRequest, defaultDays, &query.User.Nickname,
 	)
@@ -267,8 +285,9 @@ func jobFacetQuery(source *jobListQuery, facet string) jobListQuery {
 	switch facet {
 	case "job_type":
 		request.JobTypes = nil
-	case "status":
+	case "status", "phase":
 		request.Statuses = nil
+		request.Phases = nil
 	}
 	return request
 }

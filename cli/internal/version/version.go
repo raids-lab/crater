@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	// v6 adds per-user SYS_ADMIN eligibility and explicit, default-off per-job opt-in.
-	APIVersion = 6
+	// v7 adds optional UI phase job filtering while preserving raw status queries.
+	APIVersion = 7
 	// v3 first exposes /admin/system-config/scheduler-extender, which this CLI calls with no fallback.
 	MinSupportedBackendAPIVersion    = 3
 	APIVersionHeader                 = "X-Crater-API-Version"
