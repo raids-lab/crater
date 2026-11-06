@@ -18,6 +18,7 @@ on:
   pull_request:
     paths:
       - "charts/**"
+      - ".github/workflows/helm-chart-validate.yml"
 
 jobs:
   validate-chart:
@@ -27,6 +28,27 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Verify PR merge baseline
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          CHECKOUT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          echo "Checked-out SHA: $ACTUAL_SHA"
+          echo "Expected checkout SHA: $CHECKOUT_SHA"
+          echo "Fixed base SHA: $BASE_SHA"
+          read -r -a PARENTS <<< "$(git rev-list --parents -n 1 HEAD)"
+          if [[ "$ACTUAL_SHA" != "$CHECKOUT_SHA" || "${#PARENTS[@]}" -ne 3 ]]; then
+            echo "::error::Expected the PR synthetic merge commit at $CHECKOUT_SHA; got $ACTUAL_SHA with $((${#PARENTS[@]} - 1)) parents."
+            exit 1
+          fi
+          echo "Merge first parent: ${PARENTS[1]}"
+          if [[ "${PARENTS[1]}" != "$BASE_SHA" ]]; then
+            echo "::error::PR base SHA $BASE_SHA does not match merge first parent ${PARENTS[1]} at $ACTUAL_SHA."
+            exit 1
+          fi
 
       - name: Install Helm
         uses: azure/setup-helm@v4
@@ -40,11 +62,11 @@ jobs:
           helm template crater crater/ --dry-run
 
       - name: Check Chart Version Update
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
-          echo "Base branch: $BASE_BRANCH"
-          git fetch origin "$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH"
-          bash charts/hack/check-chart-version.sh --base "origin/$BASE_BRANCH"
+          set -euo pipefail
+          bash charts/hack/check-chart-version.sh --base "$BASE_SHA"
 
       - name: Package Chart (Test)
         run: |
