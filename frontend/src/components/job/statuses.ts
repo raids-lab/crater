@@ -15,7 +15,7 @@
  */
 import { t } from 'i18next'
 
-import { jobPhases } from '@/components/badge/job-phase-badge'
+import { getJobFilterOptions, jobPhases } from '@/components/badge/job-phase-badge'
 import { jobTypes } from '@/components/badge/job-type-badge'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
@@ -56,18 +56,24 @@ export const getHeader = (key: string): string => {
 
 export const jobToolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: t('jobs.toolbar.searchPlaceholder'),
+    get placeholder() {
+      return t('jobs.toolbar.searchPlaceholder')
+    },
     key: 'name',
   },
   filterOptions: [
     {
       key: 'jobType',
-      title: t('jobs.filters.jobType'),
+      get title() {
+        return t('jobs.filters.jobType')
+      },
       option: jobTypes,
     },
     {
       key: 'status',
-      title: t('jobs.filters.status'),
+      get title() {
+        return t('jobs.filters.status')
+      },
       option: jobPhases,
     },
   ],
@@ -80,14 +86,15 @@ export function getRemoteJobToolbarConfig(
 ): DataTableToolbarConfig {
   const facetKeys: Record<string, string> = {
     jobType: 'job_type',
-    status: 'status',
+    status: 'phase',
   }
   return {
     globalSearch: { enabled: true, placeholder: t('jobs.toolbar.searchPlaceholder') },
     filterOptions: jobToolbarConfig.filterOptions.map((filter) => ({
       ...filter,
       remoteFacets: true,
-      option: filter.option
+      showZeroCountOptions: filter.key === 'status',
+      option: (filter.key === 'status' ? getJobFilterOptions() : filter.option)
         ?.filter(
           (option) =>
             filter.key !== 'jobType' ||

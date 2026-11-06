@@ -63,7 +63,7 @@ import {
 import { queryNodes } from '@/services/query/node'
 import { queryResources } from '@/services/query/resource'
 
-import useRemoteTableState from '@/hooks/use-remote-table-state'
+import useJobTableState from '@/hooks/use-job-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { getUserPseudonym } from '@/utils/pseudonym'
@@ -93,11 +93,11 @@ function Overview() {
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
-  const tableState = useRemoteTableState('overview_joblist', {
+  const tableState = useJobTableState('overview_joblist', {
     sorting: [{ id: 'createdAt', desc: true }],
     columnFilters: [
       { id: 'days', value: ['7'] },
-      { id: 'status', value: ['Running', 'Pending'] },
+      { id: 'status', value: ['Running', 'Pending', 'Inqueue', 'Starting'] },
     ],
   })
 
@@ -252,16 +252,18 @@ function Overview() {
     queryFn: async ({ signal }) => (await apiJobAllFacets(overviewSummaryParams, signal)).data,
     refetchInterval: REFETCH_INTERVAL,
   })
-  const toolbarConfig = useMemo(() => {
+  const toolbarConfig = (() => {
     const config = getRemoteJobToolbarConfig(jobFacetsQuery.data)
     return {
       ...config,
       getHeader,
       filterOptions: config.filterOptions.map((filter) =>
-        filter.key === 'status' ? { ...filter, defaultValues: ['Running', 'Pending'] } : filter
+        filter.key === 'status'
+          ? { ...filter, defaultValues: ['Running', 'Pending', 'Inqueue', 'Starting'] }
+          : filter
       ),
     }
-  }, [jobFacetsQuery.data])
+  })()
 
   const resourcesQuery = useQuery(
     queryResources(true, (resource) => {

@@ -10158,6 +10158,13 @@ paths:
           type: string
         name: status
         type: array
+      - collectionFormat: multi
+        description: UI phases; AND with status; Init encodes an empty phase
+        in: query
+        items:
+          type: string
+        name: phase
+        type: array
       - description: Node name
         in: query
         name: node
@@ -10618,6 +10625,13 @@ paths:
           type: string
         name: status
         type: array
+      - collectionFormat: multi
+        description: UI phases; AND with status; Init encodes an empty phase
+        in: query
+        items:
+          type: string
+        name: phase
+        type: array
       - description: Node name
         in: query
         name: node
@@ -10667,6 +10681,13 @@ paths:
           type: string
         name: status
         type: array
+      - collectionFormat: multi
+        description: UI phases; AND with status; Init encodes an empty phase
+        in: query
+        items:
+          type: string
+        name: phase
+        type: array
       - description: Node name
         in: query
         name: node
@@ -10707,6 +10728,13 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases; AND with status; Init encodes an empty phase
+        in: query
+        items:
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -10919,6 +10947,13 @@ paths:
           type: string
         name: status
         type: array
+      - collectionFormat: multi
+        description: UI phases; AND with status; Init encodes an empty phase
+        in: query
+        items:
+          type: string
+        name: phase
+        type: array
       - description: Node name
         in: query
         name: node
@@ -10980,6 +11015,13 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases; AND with status; Init encodes an empty phase
+        in: query
+        items:
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
