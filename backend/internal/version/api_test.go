@@ -17,7 +17,7 @@ package version
 import "testing"
 
 func TestTensorboardLogDirContractVersion(t *testing.T) {
-	if APIVersion != 5 || MinSupportedCLIAPIVersion != 3 {
+	if APIVersion != 6 || MinSupportedCLIAPIVersion != 3 {
 		t.Fatalf("TensorBoard log directory contract = %d, minimum CLI = %d, want 5/3",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}

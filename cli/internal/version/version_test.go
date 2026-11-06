@@ -154,7 +154,7 @@ func TestFileContractCompatibility(t *testing.T) {
 }
 
 func TestTensorboardLogDirContractCompatibility(t *testing.T) {
-	if APIVersion != 5 || MinSupportedBackendAPIVersion != 3 {
+	if APIVersion != 6 || MinSupportedBackendAPIVersion != 3 {
 		t.Fatalf("TensorBoard log directory contract = %d, minimum backend = %d, want 5/3",
 			APIVersion, MinSupportedBackendAPIVersion)
 	}
