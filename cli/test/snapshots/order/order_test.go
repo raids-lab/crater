@@ -114,6 +114,13 @@ func TestOrderReadWithResourceDetails(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
+		case "/api/v1/approvalorder/13":
+			_, _ = io.WriteString(w, `{"code":0,"data":{
+				"id":13,"name":"my-job","type":"job","status":"Approved","createdAt":"2026-11-08T01:00:00Z",
+				"content":{"approvalorderExtensionHours":6,"approvalorderReason":"need more time","approvedLock":{"durationMinutes":210}},
+				"reviewer":{"username":"reviewer","nickname":"Review Admin"},"reviewNotes":"confirmed",
+				"extraField":"preserve in JSON"
+			}}`)
 		case "/api/v1/approvalorder/17":
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = io.WriteString(w, `{"code":40301,"msg":"permission denied to view this approval order"}`)
@@ -156,6 +163,13 @@ func TestOrderReadWithResourceDetails(t *testing.T) {
 		failed bool
 		want   []string
 	}{
+		{"personal order detail is readable", []string{"order", "get", "13"}, false,
+			[]string{"ID: 13\n", "NAME: my-job\n", "STATUS: Approved\n", "approval reason: need more time\n",
+				"Requested extension (hours): 6\n", "Approved lock: 3 h 30 min\n", "Reviewer: reviewer\n", "Review notes: confirmed\n"}},
+		{"personal JSON preserves the API fields", []string{"order", "get", "13", "--json"}, false,
+			[]string{`"order": {`, `"id": 13`, `"durationMinutes": 210`, `"nickname": "Review Admin"`, `"extraField": "preserve in JSON"`}},
+		{"personal text includes the administrator hint", []string{"order", "get", "17"}, true,
+			[]string{"HTTP 403", "To view this order as an administrator, run crater admin order get 17."}},
 		{"administrator hint preserves forbidden code", []string{"order", "get", "17", "--json"}, true,
 			[]string{`"code": "ERR_FORBIDDEN_403"`, `"suggested_command": "crater admin order get 17"`}},
 		{"readable job resources", []string{"admin", "order", "get", "17"}, false,

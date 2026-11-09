@@ -182,7 +182,24 @@ func runOrderGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = runRawRead(cmd, rawReadSpec{PayloadKey: "order", Path: fmt.Sprintf("%s/%s", api.ApprovalOrderPrefix, api.UintPath(id)), Params: noParams, Table: printRawObject})
+	if outputJSON {
+		err = runRawRead(cmd, rawReadSpec{
+			PayloadKey: "order",
+			Path:       api.ApprovalOrderPrefix + "/" + api.UintPath(id),
+			Params:     noParams,
+		})
+	} else {
+		client, clientErr := activeAPIClient()
+		if clientErr != nil {
+			return clientErr
+		}
+		order, getErr := client.GetApprovalOrder(id, false)
+		if getErr == nil {
+			printOrderDetail(order)
+			return nil
+		}
+		err = cliErrFromAPI(getErr)
+	}
 	var cliErr *clierror.Error
 	if errors.As(err, &cliErr) && cliErr.Code == errorcodes.ErrForbidden403 &&
 		cliErr.Context["crater_code"] == api.CodePermissionDenied {
@@ -245,7 +262,7 @@ func runAdminOrderGet(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func printAdminOrderDetail(order *api.ApprovalOrder, job *api.JobDetail, jobErr *clierror.Error) {
+func printOrderDetail(order *api.ApprovalOrder) {
 	fmt.Printf("%s: %d\n", i18n.T("table_id"), order.ID)
 	fmt.Printf("%s: %s\n", i18n.T("table_name"), order.Name)
 	fmt.Printf("%s: %s\n", i18n.T("table_type"), order.Type)
@@ -259,6 +276,10 @@ func printAdminOrderDetail(order *api.ApprovalOrder, job *api.JobDetail, jobErr 
 	}
 	fmt.Printf("%s: %s\n", i18n.T("order_label_reviewer"), emptyDash(order.Reviewer.Username))
 	fmt.Printf("%s: %s\n", i18n.T("order_label_review_notes"), emptyDash(order.ReviewNotes))
+}
+
+func printAdminOrderDetail(order *api.ApprovalOrder, job *api.JobDetail, jobErr *clierror.Error) {
+	printOrderDetail(order)
 	if job != nil {
 		fmt.Printf("\n%s: %s\n", i18n.T("table_job_name"), job.JobName)
 		fmt.Printf("%s: %s\n", i18n.T("order_label_job_status"), job.Status)
