@@ -152,7 +152,7 @@ func newJobView(job *batch.Job, group *scheduling.PodGroup) *jobView {
 	return view
 }
 
-// reference addresses events at the vcjob without fetching it from the cache again.
+// reference points an event at the vcjob.
 func (view *jobView) reference() *v1.ObjectReference {
 	return &v1.ObjectReference{
 		Kind:       vcJobKind,

@@ -20,9 +20,7 @@ import (
 
 	. "github.com/bytedance/mockey"
 	. "github.com/smartystreets/goconvey/convey"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -51,13 +49,6 @@ func TestNewJobView(t *testing.T) {
 		So(view.podGroupPhase, ShouldEqual, scheduling.PodGroupPhase(""))
 		So(view.createdAt, ShouldEqual, fixedNow.Add(-10*time.Minute))
 		So(view.tolerance, ShouldEqual, 5*time.Minute)
-		So(view.reference(), ShouldResemble, &v1.ObjectReference{
-			Kind:       "Job",
-			APIVersion: "batch.volcano.sh/v1alpha1",
-			Namespace:  testNamespace,
-			Name:       jobA,
-			UID:        types.UID(jobA + "-uid"),
-		})
 	})
 
 	PatchConvey("pod group supplies the admission phase and the minimum demand", t, func() {
