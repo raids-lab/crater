@@ -153,12 +153,12 @@ func TestFileContractCompatibility(t *testing.T) {
 	}
 }
 
-func TestModelDownloadReuseContractCompatibility(t *testing.T) {
-	if APIVersion != 4 || MinSupportedBackendAPIVersion != 3 {
-		t.Fatalf("download reuse contract = %d, minimum backend = %d, want 4/3",
+func TestTensorboardLogDirContractCompatibility(t *testing.T) {
+	if APIVersion != 5 || MinSupportedBackendAPIVersion != 3 {
+		t.Fatalf("TensorBoard log directory contract = %d, minimum backend = %d, want 5/3",
 			APIVersion, MinSupportedBackendAPIVersion)
 	}
-	for _, backendVersion := range []int{3, 4} {
+	for _, backendVersion := range []int{3, 4, 5} {
 		if got := EvaluateCompatibility(backendVersion, 3); got != CompatibilityCompatible {
 			t.Fatalf("backend API %d with minimum CLI 3: got %s, want compatible", backendVersion, got)
 		}

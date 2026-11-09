@@ -78,7 +78,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 4,
+      "api_version": 5,
       "min_supported_backend_api_version": 3
     }
   }

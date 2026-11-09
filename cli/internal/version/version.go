@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	// v4 allows model/dataset downloads to reuse another source or revision.
-	APIVersion = 4
+	// v5 resolves the job-name placeholder in TENSORBOARD_LOGDIR during job creation.
+	APIVersion = 5
 	// v3 first exposes /admin/system-config/scheduler-extender, which this CLI calls with no fallback.
 	MinSupportedBackendAPIVersion    = 3
 	APIVersionHeader                 = "X-Crater-API-Version"
