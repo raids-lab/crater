@@ -153,9 +153,19 @@ func TestFileContractCompatibility(t *testing.T) {
 	}
 }
 
+func TestJobExecContractCompatibility(t *testing.T) {
+	if APIVersion != 7 || MinSupportedBackendAPIVersion != 3 {
+		t.Fatalf("job exec contract = %d, minimum backend = %d, want 7/3",
+			APIVersion, MinSupportedBackendAPIVersion)
+	}
+	if got := EvaluateCompatibility(6, 3); got != CompatibilityCompatible {
+		t.Fatalf("backend API 6 with minimum CLI 3: got %s, want compatible", got)
+	}
+}
+
 func TestUserContainerPermissionContractCompatibility(t *testing.T) {
-	if APIVersion != 6 || MinSupportedBackendAPIVersion != 3 {
-		t.Fatalf("user container permission contract = %d, minimum backend = %d, want 6/3",
+	if APIVersion < 6 || MinSupportedBackendAPIVersion != 3 {
+		t.Fatalf("user container permission contract = %d, minimum backend = %d, want >=6/3",
 			APIVersion, MinSupportedBackendAPIVersion)
 	}
 	for _, backendVersion := range []int{3, 4, 5} {

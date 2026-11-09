@@ -11,8 +11,7 @@ export HOME="$crater_home" USER="$crater_name" LOGNAME="$crater_name" SHELL="$cr
     echo 'crater: task HOME is not accessible' >&2; exit 126;
 }
 case "$crater_mode" in
-    identity) printf '%s' "$crater_name"; exit 0;;
-    shell|ssh-shell)
+    shell)
         cd "$HOME" || { echo 'crater: task HOME is not accessible' >&2; exit 126; }
         [ -x "$SHELL" ] || { echo 'crater: task login shell is not executable' >&2; exit 126; }
         exec "$SHELL" -il;;

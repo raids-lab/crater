@@ -905,10 +905,8 @@ type (
 
 	// SSHInfo 定义 SSH 信息的结构体
 	SSHInfo struct {
-		IP             string `json:"ip"`
-		Port           string `json:"port"`
-		User           string `json:"user,omitempty"`
-		SessionCommand string `json:"session_command,omitempty"`
+		IP   string `json:"ip"`
+		Port string `json:"port"`
 	}
 
 	// SSHResp 定义返回的 SSH 信息的结构体

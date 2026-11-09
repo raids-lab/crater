@@ -54,7 +54,7 @@ func runJobSSH(cmd *cobra.Command, args []string) (runErr error) {
 	if err != nil {
 		return err
 	}
-	ssh, err := client.OpenJobSSH(name, connect)
+	ssh, err := client.OpenJobSSH(name)
 	if err != nil {
 		return cliErrFromAPI(err)
 	}
@@ -66,10 +66,7 @@ func runJobSSH(cmd *cobra.Command, args []string) (runErr error) {
 		return nil
 	}
 	if user == "" {
-		user = ssh.User
-		if user == "" {
-			user = active.Username
-		}
+		user = active.Username
 	}
 	if strings.TrimSpace(user) == "" || strings.ContainsAny(user, "\x00\r\n") {
 		return errUsageFromIssues([]usageIssue{invalidIssue("user", i18n.T("err_job_ssh_option", "user"))})
@@ -116,20 +113,10 @@ func jobSSHArgs(ssh *api.SSHInfo, user, identity string) ([]string, error) {
 		return nil, &api.ExecStreamError{Cause: errors.New(i18n.T("err_job_ssh_address"))}
 	}
 	args := []string{"-p", strconv.Itoa(port), "-l", user}
-	if ssh.SessionCommand != "" {
-		if strings.ContainsRune(ssh.SessionCommand, 0) {
-			return nil, &api.ExecStreamError{Cause: errors.New(i18n.T("err_job_ssh_address"))}
-		}
-		args = append(args, "-tt")
-	}
 	if identity != "" {
 		args = append(args, "-i", identity)
 	}
-	args = append(args, "--", ssh.IP)
-	if ssh.SessionCommand != "" {
-		args = append(args, ssh.SessionCommand)
-	}
-	return args, nil
+	return append(args, "--", ssh.IP), nil
 }
 
 func init() {

@@ -190,7 +190,7 @@ Usage:
 Flags:
       --connect                立即使用本机 OpenSSH 连接
   -i, --identity-file string   用于 --connect 的私钥文件
-      --user string            SSH 用户名（默认使用任务容器用户）
+      --user string            SSH 用户名（默认使用当前平台登录用户名）
 
 Global Flags:
   -h, --help             显示帮助信息

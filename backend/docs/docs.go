@@ -10597,7 +10597,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.\nEmpty command opens a user login shell with stdin/tty.\nenv_mode=user (default) loads user shell configuration; container skips probing.\nNon-TTY commands use a bounded environment probe; TTY commands use the user login shell.\nSSH and exec share account HOME/shell handling; byte payloads are Base64 JSON strings. No GPU or SSH dependency for exec.",
+                "description": "Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.\nEmpty command opens a user login shell with stdin/tty.\nenv_mode=user (default) loads user shell configuration; container skips probing.\nNon-TTY commands use a bounded environment probe; TTY commands use the user login shell.\nExec resolves HOME and shell from the task account. Byte payloads use Base64 JSON strings.",
                 "tags": [
                     "VolcanoJob"
                 ],
@@ -10817,14 +10817,14 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns ip and port. session=user additionally prepares and returns user and session_command.\nDefault clients retain native sshd sessions without shared launcher installation.\nPlatform administrators retain access to other users' jobs; ordinary users require ownership in the current project.",
+                "description": "Returns the address and port for native sshd login.\nPlatform administrators retain access to other users' jobs; ordinary users require ownership in the current project.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "VolcanoJob"
                 ],
-                "summary": "Enable SSH access, optionally preparing the task user's environment",
+                "summary": "Enable SSH access",
                 "parameters": [
                     {
                         "type": "string",
@@ -10832,25 +10832,13 @@ const docTemplate = `{
                         "name": "name",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Set user to prepare the shared HOME/shell environment",
-                        "name": "session",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "SSH endpoint and shared session",
+                        "description": "SSH endpoint",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo"
-                        }
-                    },
-                    "400": {
-                        "description": "Unsupported session mode",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "403": {
@@ -15749,6 +15737,17 @@ const docTemplate = `{
                 },
                 "port": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler_vcjob.SSHInfo": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
                 }
             }
         },

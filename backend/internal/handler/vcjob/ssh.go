@@ -3,7 +3,6 @@
 package vcjob
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -23,33 +22,24 @@ import (
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
-	"github.com/raids-lab/crater/pkg/jobsession"
 )
 
 // UserOpenSSH godoc
 //
-// @Summary Enable SSH access, optionally preparing the task user's environment
-// @Description Returns ip and port. session=user additionally prepares and returns user and session_command.
-// @Description Default clients retain native sshd sessions without shared launcher installation.
+// @Summary Enable SSH access
+// @Description Returns the address and port for native sshd login.
 // @Description Platform administrators retain access to other users' jobs; ordinary users require ownership in the current project.
 // @Tags VolcanoJob
 // @Produce json
 // @Security Bearer
 // @Param name path string true "Platform job name"
-// @Param session query string false "Set user to prepare the shared HOME/shell environment"
-// @Success 200 {object} resputil.Response[SSHInfo] "SSH endpoint and shared session"
-// @Failure 400 {object} resputil.Response[any] "Unsupported session mode"
+// @Success 200 {object} resputil.Response[SSHInfo] "SSH endpoint"
 // @Failure 403 {object} resputil.Response[any] "Job is outside the current user/project"
 // @Failure 404 {object} resputil.Response[any] "Job, pod or SSH service not found"
 // @Failure 409 {object} resputil.Response[any] "Job or container is not running"
 // @Failure 500 {object} resputil.Response[any] "SSH service or session setup failed"
 // @Router /v1/vcjobs/{name}/ssh [post]
 func (mgr *VolcanojobMgr) UserOpenSSH(c *gin.Context) {
-	mode := c.Query("session")
-	if mode != "" && mode != "user" {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("session must be user or omitted"))
-		return
-	}
 	job, live, err := mgr.liveSessionJob(c, vcjobservice.SSHSession)
 	if err != nil {
 		resputil.HandleError(c, err)
@@ -71,20 +61,7 @@ func (mgr *VolcanojobMgr) UserOpenSSH(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
-	const setupTimeout = 10 * time.Second
-	ctx, cancel := context.WithTimeout(c.Request.Context(), setupTimeout)
-	defer cancel()
-	run := mgr.sessionRunner(pod, container)
 	info := SSHInfo{}
-	if mode == "user" {
-		var username bytes.Buffer
-		if err = run(ctx, jobsession.InstallSSHCommand(), &username, io.Discard); err != nil {
-			resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err,
-				"could not prepare SSH environment; check the task account and writable /run/crater directory"))
-			return
-		}
-		info.User, info.SessionCommand = username.String(), jobsession.SSHCommand
-	}
 	if cached := pod.Annotations[AnnotationKeySSHEnabled]; cached != "" {
 		info.IP, info.Port, err = net.SplitHostPort(cached)
 		if err != nil {
@@ -94,6 +71,10 @@ func (mgr *VolcanojobMgr) UserOpenSSH(c *gin.Context) {
 		resputil.Success(c, info)
 		return
 	}
+	const setupTimeout = 10 * time.Second
+	ctx, cancel := context.WithTimeout(c.Request.Context(), setupTimeout)
+	defer cancel()
+	run := mgr.sessionRunner(pod, container)
 	if err = run(ctx, []string{"/bin/sh", "-c", startSSHD}, io.Discard, io.Discard); err != nil {
 		resputil.HandleError(c, bizerr.NotFound.ServiceSshdNotFound.Wrap(err,
 			"could not start SSH; use job exec or configure sshd in the image"))

@@ -35,7 +35,7 @@ import (
 // @Description Empty command opens a user login shell with stdin/tty.
 // @Description env_mode=user (default) loads user shell configuration; container skips probing.
 // @Description Non-TTY commands use a bounded environment probe; TTY commands use the user login shell.
-// @Description SSH and exec share account HOME/shell handling; byte payloads are Base64 JSON strings. No GPU or SSH dependency for exec.
+// @Description Exec resolves HOME and shell from the task account. Byte payloads use Base64 JSON strings.
 // @Tags VolcanoJob
 // @Security Bearer
 // @Param name path string true "Platform job name"

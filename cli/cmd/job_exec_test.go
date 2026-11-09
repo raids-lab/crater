@@ -57,15 +57,6 @@ func TestJobSSHArgsPreserveBoundaries(t *testing.T) {
 	}
 }
 
-func TestJobSSHUsesSharedRemoteSession(t *testing.T) {
-	info := &api.SSHInfo{IP: "cpu.example.test", Port: "30222", User: "task-user", SessionCommand: "/bin/sh /run/crater/session.sh"}
-	args, err := jobSSHArgs(info, info.User, "")
-	want := []string{"-p", "30222", "-l", "task-user", "-tt", "--", "cpu.example.test", info.SessionCommand}
-	if err != nil || !reflect.DeepEqual(args, want) {
-		t.Fatalf("args=%q error=%v, want %q", args, err, want)
-	}
-}
-
 func TestExecJSONCaptureBoundsCombinedStreams(t *testing.T) {
 	remaining := 3
 	var out, errOut bytes.Buffer

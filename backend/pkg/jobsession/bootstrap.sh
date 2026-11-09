@@ -2,18 +2,8 @@
 # Copyright 2026 The Crater Project Team, RAIDS-Lab
 # Resolve the account before entering the shared, unprivileged session stage.
 set -eu
-# Only the root-managed startup snapshot is read before dropping privileges.
-if [ "$(id -u)" = 0 ] && [ ! -L /run/crater ] && [ -f /run/crater/environment.sh ] && [ ! -L /run/crater/environment.sh ]; then
-    . /run/crater/environment.sh
-fi
 crater_user_script=__USER_SCRIPT__
-case "$1" in
-    ssh-shell)
-        # SSH identity comes from authentication, independently of the snapshot.
-        crater_target=$(id -un)
-        export NB_USER="$crater_target";;
-    *) crater_target=${NB_USER:-$(id -un)};;
-esac
+crater_target=${NB_USER:-$(id -un)}
 if command -v getent >/dev/null 2>&1; then
     crater_entry=$(getent passwd "$crater_target") || {
         echo 'crater: task user is missing from the container account database' >&2; exit 126;
@@ -28,6 +18,10 @@ case "$crater_uid" in ''|*[!0-9]*) echo 'crater: task user has no valid uid' >&2
 case "$crater_home" in /*) ;; *) echo 'crater: task user has no absolute HOME' >&2; exit 126;; esac
 if [ -z "$crater_shell" ]; then
     crater_shell=/bin/sh
+fi
+# Keep the wrapper's Bash options out of child shells and the export replay.
+if [ -n "${BASH_VERSION:-}" ]; then
+    export -n SHELLOPTS BASHOPTS
 fi
 crater_snapshot=$(export -p)
 set -- /bin/sh -c "$crater_user_script" crater-session "$crater_snapshot" \

@@ -190,7 +190,7 @@ Usage:
 Flags:
       --connect                Connect immediately using local OpenSSH
   -i, --identity-file string   Private key file for --connect
-      --user string            SSH username (default: task container user)
+      --user string            SSH username (default: current platform username)
 
 Global Flags:
   -h, --help             Help for crater

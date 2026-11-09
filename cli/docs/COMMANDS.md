@@ -551,23 +551,23 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 
 - **描述**：在已有作业的运行中容器内执行命令，通过平台 WebSocket 转发到 Kubernetes exec，不依赖节点 CPU 架构、加速卡厂商、GPU 数量、SSH 服务或本地 kubectl。
 - 省略命令时自动转发 stdin、分配 TTY，进入任务用户的交互式登录 shell；要求本地输入输出为终端，与 `--json`、`--no-interactive` 互斥。显式命令必须放在 `--` 后；保留 argv 边界，不解释管道、变量或重定向。需要 shell 表达式时显式使用 `-- sh -c '...'`。
-- SSH 与 exec 共用后端用户会话层。优先使用容器的 `NB_USER`，未配置时使用容器当前用户；HOME 与首选 shell 取自容器账户信息。用户不存在、切换身份失败或 HOME 不可用时明确报错，不回退到 root。连接时不要求用户调用 `/crater-start.sh`，不修改用户 rc 文件。绕过平台初始化的自定义镜像需在镜像或作业启动阶段准备好任务账户。
+- Exec 优先使用容器的 `NB_USER`，未配置时使用容器当前用户。HOME 与首选 shell 来自容器账户信息。用户不存在、切换身份失败或 HOME 不可用时返回错误。自定义镜像需要准备任务用户。
 - `--env-mode user` 为默认：交互会话由用户登录 shell 加载配置；显式 TTY 命令由该 shell 加载配置后执行安全引用的 argv，不传输环境前缀；非 TTY 命令先通过用户的登录交互 shell 获取导出的环境（最多 10 秒、1 MiB），再执行原始 argv。探测启动输出不进入命令 stdout/stderr；超时或失败时明确报错，可用 `--env-mode container` 跳过用户配置探测，仍保留任务用户与 HOME。别名、shell 函数不是普通命令可继承的环境。
-- 平台启动脚本保存初始化后导出的环境；会话合并该环境和容器初始环境，再应用用户配置。新会话不复制另一个终端临时设置的变量或 Conda 状态。交互 shell 从 HOME 开始；普通命令使用容器工作目录，不可访问时回到 HOME。仅依赖 Linux 镜像内的 POSIX sh、env、dd/wc 等基础工具和账户查询工具；跨用户执行需要已有 sudo、runuser 或 su。
+- Exec 从 Pod 初始环境开始，默认加载用户 shell 配置。仅由作业入口进程或其他终端导出的变量需要在新会话中重新设置。交互 shell 从 HOME 开始，普通命令使用容器工作目录，不可访问时回到 HOME。跨用户执行使用镜像中的 runuser、sudo 或 su。
 - `--pod`、`--container` / `-c` 指定目标。只有一个 Pod、一个普通容器时自动选择；多候选必须显式选择。默认不选择 init container，显式指定时只允许运行中的容器。后端再次检查当前用户、项目、作业与 Pod 的归属。
 - `--stdin` / `-i` 转发标准输入，显式命令时默认关闭；输入 EOF 只关闭远端 stdin，继续读取输出与退出状态。命令提前结束导致 stdin 或尺寸同步写入失败时，仍读完远端输出，并以最终退出帧为准；本地 stdin 读取失败仍及时终止会话。
 - `--tty` / `-t` 分配终端，必须同时指定 `-i` 且本地输入输出为终端；与 `--json`、`--no-interactive` 互斥。TTY 模式合并远端 stderr 到 stdout，并同步终端尺寸。结束、出错或取消时恢复本地终端。
 - 普通模式将远端 stdout、stderr 原样流式写入对应的本地流。Ctrl+C 取消返回 `cancelled`（退出码 3）；TTY 内 Ctrl+C 由远端终端处理。
 - `--json` 仅支持不带 `-t` 的执行；完成后输出一次成功信封，`data.exec` 包含 `namespace`、`pod`、`container`、`stdout`、`stderr`、`exit_code`。捕获文本输出总计最多 16 MiB，超限关闭连接并返回 `system_error`。二进制结果使用普通模式重定向保存。
 - 远端命令非零退出返回 `api_error` / `ERR_REMOTE_COMMAND_FAILED`（CLI 退出码 4），`context` 保留 `exit_code` 和目标；JSON 模式还保留已捕获的 `stdout`、`stderr`。连接中断或缺少最终退出帧均视为失败，不能推断执行成功。
-- 后端接口：`GET /api/v1/vcjobs/{name}/exec`，Bearer Header 鉴权；升级前按普通 API 返回 HTTP 错误。API v6 新增该能力，旧后端上的其它命令仍可使用，exec 的 404 保留正常 API 错误。
+- 后端接口：`GET /api/v1/vcjobs/{name}/exec`，Bearer Header 鉴权；升级前按普通 API 返回 HTTP 错误。API v7 新增该能力，旧后端上的其它命令仍可使用，exec 的 404 保留正常 API 错误。
 
 ### `crater job ssh <name> [--connect] [--user USER] [--identity-file FILE]`
 
-- 默认保持原有行为：调用平台 SSH 接口，输出 `host:port`；`--json` 的 `data.ssh` 包含 `ip`、`port`。不指定 `--connect` 时不请求共享会话安装，兼容网页 SSH 和旧客户端。
+- `job ssh` 调用现有 SSH 接口并输出 `host:port`。`--json` 的 `data.ssh` 包含 `ip`、`port`。
 - `--connect` 在开启 SSH 后直接调用本机 OpenSSH 并进入交互会话，复用本机 SSH 配置、密钥及主机校验；与 `--json`、`--no-interactive` 互斥，要求本地输入输出为终端。
-- `--user` 默认使用后端确认的任务容器用户名；旧后端未返回时使用当前登录身份的用户名。`--connect` 通过 `session=user` 显式请求新版后端安装共享会话入口，响应增加可选的 `user` 与 `session_command`，CLI 自动执行该入口并分配 TTY；SSH 登录账户的 HOME、shell 和配置由共享会话层处理，容器任务环境也会传入；`--identity-file` / `-i` 指定私钥文件。两者只用于 `--connect`，单独使用返回用法错误。
-- 共享 SSH 会话保持实际认证账户；`--user root` 登录后仍使用 root 的 UID、HOME 和 shell，启动环境中的 `NB_USER` 不会将其切换为任务账户。该账户需能读取共享会话入口，默认权限允许任务账户和 root 读取。
+- `--user` 默认使用当前平台登录用户名。`--identity-file` / `-i` 指定私钥。两者只用于 `--connect`，单独使用返回用法错误。SSH 登录环境由容器的 sshd 和所选用户的 shell 配置决定。
+
 - SSH 保留平台管理员访问作业的既有权限，普通用户仍限当前账户中自己的作业；exec 始终要求当前账户中本人拥有。SSH 使用首个作业 task 模板的主容器名，注入 sidecar 不改变目标；exec 多容器时仍需显式选择。
 - 本地参数和 SSH 可执行文件在平台请求前检查；后端返回的主机、端口在启动 OpenSSH 前校验，以独立 argv 调用，不经本地 shell。
 - SSH 适用于平台可连接的各种节点，容器需已安装平台 SSH 接口要求的 sshd。无 sshd 的镜像可使用 `job exec`。取消返回退出码 3，OpenSSH 非零退出返回 `system_error`，`context.exit_code` 保留其退出状态。

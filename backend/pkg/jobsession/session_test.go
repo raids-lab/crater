@@ -190,7 +190,7 @@ func TestShellQuoteAndEnvironmentNames(t *testing.T) {
 		})
 	}
 	for _, name := range []string{"HOME", "SHELL", "crater_home", "PWD"} {
-		if !identityVariable(name) {
+		if !skipEnvironmentVariable(name) {
 			t.Errorf("identity variable %q was accepted", name)
 		}
 	}
@@ -288,50 +288,6 @@ exit 1
 	}
 }
 
-func TestSymlinkSnapshotDirectoryIsNeverSourced(t *testing.T) {
-	_, home, env := localSession(t, "/bin/sh")
-	bin := filepath.Join(home, "bin")
-	writeScript(t, filepath.Join(bin, "id"), "#!/bin/sh\necho 0\n")
-	writeScript(t, filepath.Join(bin, "getent"), "#!/bin/sh\nprintf '%s\\n' "+quote("alice:x:0:0::"+home+":/bin/sh")+"\n")
-	target := filepath.Join(home, "untrusted")
-	if err := os.Mkdir(target, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	link := filepath.Join(home, "session")
-	if err := os.Symlink(target, link); err != nil {
-		t.Fatal(err)
-	}
-	marker := filepath.Join(home, "snapshot-was-sourced")
-	writeScript(t, filepath.Join(target, "environment.sh"), "printf unsafe > "+quote(marker)+"\nexport UNTRUSTED_VALUE=unsafe\n")
-	prepared, err := Command(t.Context(), nil, []string{"/bin/sh", "-c", `printf '%s' "${UNTRUSTED_VALUE:-clean}"`}, ContainerEnvironment, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, tt := range []struct {
-		name string
-		argv []string
-		fail bool
-	}{
-		{"exec ignores snapshot", prepared.Argv, false},
-		{"SSH setup rejects before reading", InstallSSHCommand(), true},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			argv := append([]string(nil), tt.argv...)
-			for i := range argv {
-				argv[i] = strings.ReplaceAll(argv[i], "/run/crater", link)
-			}
-			var output, stderr bytes.Buffer
-			err := environmentRunner(env, home)(t.Context(), argv, &output, &stderr)
-			if (err != nil) != tt.fail || (!tt.fail && output.String() != "clean") {
-				t.Fatalf("output=%q stderr=%q error=%v, want failure=%v", output.String(), stderr.String(), err, tt.fail)
-			}
-			if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
-				t.Fatalf("untrusted snapshot was sourced: marker error=%v", err)
-			}
-		})
-	}
-}
-
 func TestTTYCommandLoadsUserConfigurationWithoutPrivateInput(t *testing.T) {
 	run, home, env := localSession(t, "/bin/sh")
 	profile := filepath.Join(home, "profile")
@@ -353,5 +309,24 @@ func TestTTYCommandLoadsUserConfigurationWithoutPrivateInput(t *testing.T) {
 	want := "startup-noise\nloaded|a'b\n$(false)"
 	if output.String() != want {
 		t.Fatalf("output=%q, want %q", output.String(), want)
+	}
+}
+
+func TestCommandsPreserveRemoteExitStatus(t *testing.T) {
+	run, home, env := localSession(t, "/bin/sh")
+	prepared, err := Command(t.Context(), run, []string{"/bin/sh", "-c", "exit 23"}, ContainerEnvironment, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = runPrepared(t.Context(), prepared, env, home, io.Discard, io.Discard)
+	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 23 {
+		t.Fatalf("error=%v, want exit 23", err)
+	}
+}
+
+func TestExplicitInvalidEnvironmentMode(t *testing.T) {
+	_, err := Command(t.Context(), nil, []string{"true"}, "invalid", false)
+	if err == nil {
+		t.Fatal("accepted an invalid environment mode")
 	}
 }

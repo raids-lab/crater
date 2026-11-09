@@ -1,6 +1,6 @@
 // Copyright 2026 The Crater Project Team, RAIDS-Lab
 
-// Package jobsession prepares the same Linux user environment for exec and SSH.
+// Package jobsession prepares the Linux task user's environment for exec.
 package jobsession
 
 import (
@@ -126,7 +126,7 @@ func readEnvironment(output []byte, marker string) (map[string]string, error) {
 	env := map[string]string{}
 	for _, entry := range bytes.Split(output[start+len(marker):end], []byte{0}) {
 		name, value, ok := strings.Cut(string(entry), "=")
-		if ok && validName(name) && !identityVariable(name) {
+		if ok && validName(name) && !skipEnvironmentVariable(name) {
 			env[name] = value
 		}
 	}
@@ -135,9 +135,17 @@ func readEnvironment(output []byte, marker string) (map[string]string, error) {
 
 func quote(value string) string { return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'" }
 
-func identityVariable(name string) bool {
+func shellCommand(argv []string) string {
+	quoted := make([]string, len(argv))
+	for i, arg := range argv {
+		quoted[i] = quote(arg)
+	}
+	return strings.Join(quoted, " ")
+}
+
+func skipEnvironmentVariable(name string) bool {
 	switch name {
-	case "HOME", "USER", "LOGNAME", "SHELL", "PWD", "OLDPWD", "SHLVL", "_":
+	case "HOME", "USER", "LOGNAME", "SHELL", "PWD", "OLDPWD", "SHLVL", "_", "SHELLOPTS", "BASHOPTS":
 		return true
 	}
 	return strings.HasPrefix(name, "crater_")

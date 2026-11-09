@@ -3,7 +3,7 @@ title: 通过 CLI 连接作业与执行命令
 description: 使用 Crater CLI 进入作业 shell、连接 SSH 或运行自动化命令。
 ---
 
-登录 Crater CLI 后，先用 `crater job ls` 确认平台作业名，再连接自己的运行中作业。以下命令中的 `JOB` 为平台作业名。命令适用于纯 CPU、国产加速卡和其他平台支持的节点；`job exec` 需要支持该功能的后端（API v6），无需本机 kubectl、kubeconfig 或容器 SSH 服务。
+登录 Crater CLI 后，先用 `crater job ls` 确认平台作业名，再连接自己的运行中作业。以下命令中的 `JOB` 为平台作业名。命令适用于纯 CPU、国产加速卡和其他平台支持的节点；`job exec` 需要支持该功能的后端（API v7），无需本机 kubectl、kubeconfig 或容器 SSH 服务。
 
 ## 进入用户 shell
 
@@ -31,9 +31,9 @@ crater job exec JOB --json --no-interactive -- python -V
 
 ## 用户环境
 
-SSH 连接和 exec 共用用户环境处理，无需手动执行 `/crater-start.sh`。exec 优先使用容器的 `NB_USER`，未设置时使用容器当前用户；SSH 使用实际认证账户，显式 `--user root` 登录后保持 root 身份，加载启动环境不会改变该身份。HOME 和 shell 取自容器用户信息。shell 按自身规则读取配置，例如 Bash 是否读取 `.bashrc` 由登录配置决定。
+Exec 优先使用容器的 `NB_USER`，未设置时使用容器当前用户。HOME 和 shell 来自容器账户信息，启动配置按所选 shell 的规则加载。
 
-平台启动脚本会保存初始化后导出的环境，新会话再加载用户配置。若无法保存快照，启动日志会提示 `could not save startup environment`，作业继续启动；此时新会话使用容器环境和用户配置，启动阶段临时生成的变量需先修复快照保存问题再重建作业。已有终端内临时 export 的变量或 Conda 激活状态不会自动传入新会话。普通命令保留容器工作目录，不可访问时回到 HOME；交互 shell 从 HOME 开始。
+Exec 使用容器环境和任务用户的 shell 配置。命令所需的变量可在容器环境或 shell 启动文件中设置。普通命令优先使用容器工作目录，不可访问时回到 HOME。交互 shell 从 HOME 开始。
 
 非 TTY 命令默认先探测用户 shell 导出的环境（最多 10 秒、1 MiB），忽略启动提示后执行原始参数。如果用户配置阻塞或只需容器环境，可执行：
 
@@ -41,7 +41,7 @@ SSH 连接和 exec 共用用户环境处理，无需手动执行 `/crater-start.
 crater job exec JOB --env-mode container -- env
 ```
 
-此模式仍使用任务用户和 HOME。别名和 shell 函数需要显式调用对应 shell。自定义镜像若绕过平台启动脚本，需在镜像或作业启动阶段准备好任务用户；镜像还需具备 `/bin/sh`、`env -0`、dd/wc 等基础工具，跨用户执行需要 runuser、sudo 或 su。缺失用户或无法切换身份会报错。旧作业可使用容器环境和用户配置；需要启动脚本保存的新环境时，应通过更新后的部署重新创建作业。
+此模式仍使用任务用户和 HOME。别名和 shell 函数需要显式调用对应 shell。自定义镜像若绕过平台启动脚本，需在镜像或作业启动阶段准备好任务用户；镜像还需具备 `/bin/sh`、`env -0`、dd/wc 等基础工具，跨用户执行需要 runuser、sudo 或 su。缺失用户或无法切换身份会报错。
 
 ## WebIDE 和 Jupyter 作业
 
@@ -52,7 +52,6 @@ crater job exec JOB -- conda run -n myenv python script.py
 crater job exec JOB -- /opt/conda/envs/myenv/bin/python script.py
 ```
 
-Jupyter 的 notebook 目录和 WebIDE 的默认工作目录保留为 `/home/用户名`。镜像已有用户的 HOME 若在其他路径，启动时会同时准备两个目录：应用继续使用原工作目录，shell 配置保留在用户自己的 HOME。平台网页终端继续使用原有入口和终端行为。
 
 ## 使用本机 SSH
 
@@ -65,6 +64,8 @@ crater job ssh JOB --connect --identity-file ~/.ssh/id_ed25519
 crater job ssh JOB --connect --user USER
 ```
 
-不加 `--connect` 时只取连接地址，不安装共享会话入口；网页 SSH 和旧客户端也保留这一行为。加上后 CLI 显式请求用户环境入口，再使用本机 OpenSSH 连接，保留本机 SSH 配置和主机密钥校验。默认使用后端确认的任务用户。`--user` 和 `--identity-file` 仅与 `--connect` 一起使用；指定其他用户时，该用户需能访问共用会话入口。交互连接要求本机输入输出均为终端，不能使用 `--json` 或 `--no-interactive`。没有 sshd 的镜像可使用 `job exec`。
+`job ssh` 输出连接地址。使用 `--connect` 时，本机 OpenSSH 按本机配置和主机密钥校验规则登录。默认使用当前平台登录用户名，容器账户不同时用 `--user` 指定，也可用 `--identity-file` 选择私钥。交互连接需要本机终端。
+
+如果镜像允许 SSH 密码认证，而你既没有可用密钥也没有容器密码，先用 `crater job exec JOB` 进入容器，再执行 `sudo passwd "$(id -un)"`，按终端提示输入密码。root 可直接运行 `passwd`。Exec 无需容器密码，设置密码需要 root 或可用的 sudo。此密码属于容器用户，与平台 LDAP 密码独立。随后用 `crater job ssh JOB --connect` 登录，按需指定 `--user`。
 
 SSH 保留平台管理员访问作业的权限，普通用户限当前账户中自己的作业；`job exec` 始终要求本人在当前账户拥有作业。SSH 自动选择作业主容器，Pod 中注入的 sidecar 不改变该目标。

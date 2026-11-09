@@ -15,7 +15,7 @@ type JobClient interface {
 	GetJobTemplate(name string) (string, error)
 	GetJupyterToken(name string) (*JobToken, error)
 	GetWebIDESecret(name string) (*JobToken, error)
-	OpenJobSSH(name string, userSession bool) (*SSHInfo, error)
+	OpenJobSSH(name string) (*SSHInfo, error)
 	SnapshotJob(name string) (string, error)
 	ToggleJobAlert(name string) (string, error)
 	DeleteJob(name string) (string, error)
@@ -143,10 +143,8 @@ type JobToken struct {
 }
 
 type SSHInfo struct {
-	IP             string `json:"ip"`
-	Port           string `json:"port"`
-	User           string `json:"user,omitempty"`
-	SessionCommand string `json:"session_command,omitempty"`
+	IP   string `json:"ip"`
+	Port string `json:"port"`
 }
 
 type JobCommonRequest struct {
@@ -361,13 +359,9 @@ func (c *Client) getJobToken(name string, suffix string) (*JobToken, error) {
 	return &result.Data, nil
 }
 
-func (c *Client) OpenJobSSH(name string, userSession bool) (*SSHInfo, error) {
+func (c *Client) OpenJobSSH(name string) (*SSHInfo, error) {
 	var result Response[SSHInfo]
-	request := c.httpClient.R().SetSuccessResult(&result).SetErrorResult(&result)
-	if userSession {
-		request.SetQueryParam("session", "user")
-	}
-	resp, err := request.Post(VCJobsPrefix + "/" + url.PathEscape(name) + "/ssh")
+	resp, err := c.httpClient.R().SetSuccessResult(&result).SetErrorResult(&result).Post(VCJobsPrefix + "/" + url.PathEscape(name) + "/ssh")
 	if err != nil {
 		return nil, &NetworkError{Cause: err}
 	}
