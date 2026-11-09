@@ -589,6 +589,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `snapshot` / `alert` / `delete`: `message`
 - **状态**: [x] Completed
 
+作业容器的 `SYS_ADMIN` 默认关闭。所有创建命令的 `--file` 请求可显式设置 `sysAdminEnabled: true`；后端在创建时核对管理员授予的当前资格，未授权时返回 403。省略或设为 `false` 不注入该权限；模板内容本身不构成授权。
+
 ### `crater job create jupyter|webide`
 - **描述**: 创建交互式作业。支持 flags 构造常用请求，也支持 `--file` 传入完整 JSON 请求体。
 - **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。

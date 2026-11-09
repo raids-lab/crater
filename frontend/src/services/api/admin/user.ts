@@ -40,7 +40,12 @@ export interface IUserAttributes {
   gid?: string
 }
 
+export interface IAdminUpdateUserAttributesReq extends IUserAttributes {
+  containerSysAdminEnabled?: boolean
+}
+
 export interface IUser {
+  containerSysAdminEnabled: boolean
   id: number
   name: string
   role: Role
@@ -87,8 +92,10 @@ export const apiAdminUserList = () => apiV1Get<IResponse<IUser[]>>('admin/users'
 export const apiAdminUserDelete = (userName: string) =>
   apiV1Delete<IResponse<string>>(`admin/users/${userName}`)
 
-export const apiAdminUpdateUserAttributes = (username: string, data: IUserAttributes) =>
-  apiV1Put<IResponse<string>>(`admin/users/${username}/attributes`, data)
+export const apiAdminUpdateUserAttributes = (
+  username: string,
+  data: IAdminUpdateUserAttributesReq
+) => apiV1Put<IResponse<string>>(`admin/users/${username}/attributes`, data)
 
 export const apiAdminUserUpdateRole = (userName: string, role: Role) =>
   apiV1Put<IResponse<string>>(`admin/users/${userName}/role`, {

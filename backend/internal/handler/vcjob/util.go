@@ -446,6 +446,7 @@ func generatePodSpecForParallelJob(
 	if task.WorkingDir != nil {
 		podSpec.Containers[0].WorkingDir = *task.WorkingDir
 	}
+	craterUtils.AddJobProfilingCapabilities(&podSpec)
 	return podSpec
 }
 
@@ -679,6 +680,7 @@ func generateInteractivePodSpec(
 		EnableServiceLinks:    ptr.To(false),
 		ShareProcessNamespace: ptr.To(true),
 	}
+	craterUtils.AddJobProfilingCapabilities(&podSpec)
 	return podSpec, nil
 }
 

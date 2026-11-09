@@ -3,6 +3,8 @@ definitions:
     type: object
   datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota:
     type: object
+  datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute:
+    type: object
   datatypes.JSONType-v1_ResourceList:
     type: object
   github_com_raids-lab_crater_dao_model.AccessMode:
@@ -348,6 +350,31 @@ definitions:
       username:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_handler_vcjob.DatasetMount:
+    properties:
+      datasetID:
+        type: integer
+      mountPath:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_handler_vcjob.Forward:
+    properties:
+      name:
+        type: string
+      port:
+        type: integer
+      type:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service_vcjob.ForwardType'
+    type: object
+  github_com_raids-lab_crater_internal_handler_vcjob.ImageBaseInfo:
+    properties:
+      archs:
+        items:
+          type: string
+        type: array
+      imageLink:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_payload.CreateTensorboardReq:
     properties:
       logDir:
@@ -611,6 +638,18 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.UserResp'
+        type: array
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis:
     properties:
       code:
@@ -688,6 +727,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_UserJobPermissions:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service.UserJobPermissions'
       msg:
         type: string
     type: object
@@ -1113,6 +1162,11 @@ definitions:
       used:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_service.UserJobPermissions:
+    properties:
+      containerSysAdminEnabled:
+        type: boolean
+    type: object
   github_com_raids-lab_crater_internal_service_vcjob.ForwardType:
     enum:
     - 0
@@ -1394,6 +1448,44 @@ definitions:
         type: array
       windowHours:
         type: integer
+    type: object
+  internal_handler.AdminUpdateUserAttributesReq:
+    properties:
+      avatar:
+        description: 头像
+        type: string
+      containerSysAdminEnabled:
+        type: boolean
+      email:
+        description: 邮箱
+        type: string
+      expiredAt:
+        description: 过期时间
+        type: string
+      gid:
+        description: GID
+        type: string
+      group:
+        description: 课题组
+        type: string
+      id:
+        description: ID
+        type: integer
+      name:
+        description: 账号
+        type: string
+      nickname:
+        description: 昵称，如果没有指定，则与账号相同
+        type: string
+      phone:
+        description: 电话
+        type: string
+      teacher:
+        description: 老师
+        type: string
+      uid:
+        description: UID and GID are used for Filesystem
+        type: string
     type: object
   internal_handler.ApprovalOrderResp:
     properties:
@@ -2380,6 +2472,45 @@ definitions:
       role:
         type: string
     type: object
+  internal_handler.UserResp:
+    properties:
+      attributes:
+        allOf:
+        - $ref: '#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute'
+        description: 用户额外属性
+      banRestrictions:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions'
+        description: 当前生效的封禁限制，未封禁时为空
+      banned:
+        description: 当前是否处于封禁状态
+        type: boolean
+      bannedTimestamp:
+        description: 用户封禁截止时间
+        type: string
+      containerSysAdminEnabled:
+        type: boolean
+      extraBalance:
+        description: 用户额外点数
+        type: number
+      id:
+        description: 用户ID
+        type: integer
+      name:
+        description: 用户名称
+        type: string
+      permanentBanned:
+        description: 是否永久封禁
+        type: boolean
+      role:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Role'
+        description: 用户角色
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_dao_model.Status'
+        description: 用户状态
+    type: object
   internal_handler.VersionInfo:
     properties:
       appVersion:
@@ -2448,6 +2579,99 @@ definitions:
     required:
     - datasetID
     - userID
+    type: object
+  internal_handler_aijob.CreateAIJobReq:
+    properties:
+      alertEnabled:
+        type: boolean
+      command:
+        type: string
+      cpuPinningEnabled:
+        type: boolean
+      datasetMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.DatasetMount'
+        type: array
+      envs:
+        items:
+          $ref: '#/definitions/v1.EnvVar'
+        type: array
+      forwards:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.Forward'
+        type: array
+      image:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.ImageBaseInfo'
+      name:
+        type: string
+      resource:
+        $ref: '#/definitions/v1.ResourceList'
+      selectors:
+        items:
+          $ref: '#/definitions/v1.NodeSelectorRequirement'
+        type: array
+      shell:
+        type: string
+      slo:
+        type: integer
+      sysAdminEnabled:
+        description: SysAdminEnabled is opt-in for this creation only and requires
+          administrator authorization.
+        type: boolean
+      template:
+        type: string
+      volumeMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount'
+        type: array
+      workingDir:
+        type: string
+    required:
+    - image
+    - name
+    - workingDir
+    type: object
+  internal_handler_aijob.CreateJupyterReq:
+    properties:
+      alertEnabled:
+        type: boolean
+      cpuPinningEnabled:
+        type: boolean
+      datasetMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.DatasetMount'
+        type: array
+      envs:
+        items:
+          $ref: '#/definitions/v1.EnvVar'
+        type: array
+      forwards:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.Forward'
+        type: array
+      image:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.ImageBaseInfo'
+      name:
+        type: string
+      resource:
+        $ref: '#/definitions/v1.ResourceList'
+      selectors:
+        items:
+          $ref: '#/definitions/v1.NodeSelectorRequirement'
+        type: array
+      sysAdminEnabled:
+        description: SysAdminEnabled is opt-in for this creation only and requires
+          administrator authorization.
+        type: boolean
+      template:
+        type: string
+      volumeMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount'
+        type: array
+    required:
+    - image
+    - name
     type: object
   internal_handler_image.ChangeImagePublicStatusRequest:
     properties:
@@ -2605,6 +2829,83 @@ definitions:
       updated_at:
         type: string
     type: object
+  internal_handler_spjob.CreateRecommendDLJobReq:
+    properties:
+      alertEnabled:
+        type: boolean
+      batchSize:
+        type: integer
+      command:
+        type: string
+      cpuPinningEnabled:
+        type: boolean
+      datasetMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.DatasetMount'
+        type: array
+      embeddingDim:
+        items:
+          type: integer
+        type: array
+      embeddingDimTotal:
+        type: integer
+      embeddingSizeTotal:
+        type: integer
+      embeddingTableCount:
+        type: integer
+      envs:
+        items:
+          $ref: '#/definitions/v1.EnvVar'
+        type: array
+      forwards:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.Forward'
+        type: array
+      image:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.ImageBaseInfo'
+      inputTensor:
+        items:
+          type: integer
+        type: array
+      macs:
+        type: integer
+      name:
+        type: string
+      params:
+        type: integer
+      replicas:
+        type: integer
+      resource:
+        $ref: '#/definitions/v1.ResourceList'
+      runningType:
+        type: string
+      selectors:
+        items:
+          $ref: '#/definitions/v1.NodeSelectorRequirement'
+        type: array
+      shell:
+        type: string
+      sysAdminEnabled:
+        description: SysAdminEnabled is opt-in for this creation only and requires
+          administrator authorization.
+        type: boolean
+      template:
+        type: string
+      vocabularySize:
+        items:
+          type: integer
+        type: array
+      volumeMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount'
+        type: array
+      workingDir:
+        type: string
+    required:
+    - image
+    - name
+    - workingDir
+    type: object
   internal_handler_tool.PodIngress:
     properties:
       name:
@@ -2681,6 +2982,55 @@ definitions:
           $ref: '#/definitions/internal_handler_tool.PodNodeport'
         type: array
     type: object
+  internal_handler_vcjob.CreateCustomReq:
+    properties:
+      alertEnabled:
+        type: boolean
+      command:
+        type: string
+      cpuPinningEnabled:
+        type: boolean
+      datasetMounts:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.DatasetMount'
+        type: array
+      envs:
+        items:
+          $ref: '#/definitions/v1.EnvVar'
+        type: array
+      forwards:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.Forward'
+        type: array
+      image:
+        $ref: '#/definitions/internal_handler_vcjob.ImageBaseInfo'
+      name:
+        type: string
+      resource:
+        $ref: '#/definitions/v1.ResourceList'
+      selectors:
+        items:
+          $ref: '#/definitions/v1.NodeSelectorRequirement'
+        type: array
+      shell:
+        type: string
+      sysAdminEnabled:
+        description: SysAdminEnabled is opt-in for this creation only and requires
+          administrator authorization.
+        type: boolean
+      template:
+        type: string
+      volumeMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount'
+        type: array
+      workingDir:
+        type: string
+    required:
+    - image
+    - name
+    - workingDir
+    type: object
   internal_handler_vcjob.CreateJupyterReq:
     properties:
       alertEnabled:
@@ -2709,6 +3059,10 @@ definitions:
         items:
           $ref: '#/definitions/v1.NodeSelectorRequirement'
         type: array
+      sysAdminEnabled:
+        description: SysAdminEnabled is opt-in for this creation only and requires
+          administrator authorization.
+        type: boolean
       template:
         type: string
       volumeMounts:
@@ -2717,6 +3071,47 @@ definitions:
         type: array
     required:
     - image
+    - name
+    type: object
+  internal_handler_vcjob.CreateTensorflowReq:
+    properties:
+      alertEnabled:
+        type: boolean
+      cpuPinningEnabled:
+        type: boolean
+      datasetMounts:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.DatasetMount'
+        type: array
+      envs:
+        items:
+          $ref: '#/definitions/v1.EnvVar'
+        type: array
+      forwards:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.Forward'
+        type: array
+      name:
+        type: string
+      selectors:
+        items:
+          $ref: '#/definitions/v1.NodeSelectorRequirement'
+        type: array
+      sysAdminEnabled:
+        description: SysAdminEnabled is opt-in for this creation only and requires
+          administrator authorization.
+        type: boolean
+      tasks:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.TaskReq'
+        type: array
+      template:
+        type: string
+      volumeMounts:
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount'
+        type: array
+    required:
     - name
     type: object
   internal_handler_vcjob.DatasetMount:
@@ -2798,15 +3193,32 @@ definitions:
       token:
         type: string
     type: object
-  internal_handler_vcjob.SSHInfo:
+  internal_handler_vcjob.PortReq:
     properties:
-      ip:
+      name:
         type: string
       port:
+        type: integer
+    type: object
+  internal_handler_vcjob.TaskReq:
+    properties:
+      command:
         type: string
-      session_command:
+      image:
+        $ref: '#/definitions/internal_handler_vcjob.ImageBaseInfo'
+      name:
         type: string
-      user:
+      ports:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.PortReq'
+        type: array
+      replicas:
+        type: integer
+      resource:
+        $ref: '#/definitions/v1.ResourceList'
+      shell:
+        type: string
+      workingDir:
         type: string
     type: object
   map_string_string:
@@ -5495,7 +5907,7 @@ paths:
         "200":
           description: 成功获取用户信息
           schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserResp'
         "400":
           description: 请求参数错误
           schema:
@@ -5544,37 +5956,46 @@ paths:
     put:
       consumes:
       - application/json
-      description: 管理员更新指定用户的属性
+      description: Update user attributes and optionally grant or revoke SYS_ADMIN
+        for subsequently created job containers.
       parameters:
       - description: username
         in: path
         name: name
         required: true
         type: string
-      - description: 用户属性
+      - description: User attributes and optional container permission
         in: body
         name: attributes
         required: true
         schema:
-          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
+          $ref: '#/definitions/internal_handler.AdminUpdateUserAttributesReq'
       produces:
       - application/json
       responses:
         "200":
-          description: 用户属性更新成功
+          description: User attributes updated
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
+        "400":
+          description: Invalid request
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: 请求参数错误
+        "403":
+          description: Administrator permission required
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: User not found
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: 其他错误
+          description: Database unavailable
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 管理员更新用户属性
+      summary: Admin update user attributes
       tags:
       - User
   /v1/admin/users/{name}/ban:
@@ -5904,6 +6325,43 @@ paths:
       summary: 获取vcjob Yaml详情
       tags:
       - vcjob-jupyter
+  /v1/aijobs/jupyter:
+    post:
+      consumes:
+      - application/json
+      description: SYS_ADMIN is disabled by default. sysAdminEnabled requires current
+        administrator authorization.
+      parameters:
+      - description: Job creation request
+        in: body
+        name: job
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_aijob.CreateJupyterReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: SYS_ADMIN is not authorized
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Service error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Create an EMIAS Jupyter job
+      tags:
+      - AIJob
   /v1/aijobs/quota:
     get:
       consumes:
@@ -5933,13 +6391,15 @@ paths:
     post:
       consumes:
       - application/json
-      description: CreateCustom a new AI job by client-go
+      description: SYS_ADMIN is disabled by default. sysAdminEnabled requires current
+        administrator authorization.
       parameters:
       - description: CreateCustom AI Job Request
         in: body
         name: job
         required: true
-        schema: {}
+        schema:
+          $ref: '#/definitions/internal_handler_aijob.CreateAIJobReq'
       produces:
       - application/json
       responses:
@@ -5949,6 +6409,10 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
           description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: SYS_ADMIN is not authorized
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
@@ -6285,6 +6749,28 @@ paths:
       security:
       - Bearer: []
       summary: Update after judging Verification Code for email
+      tags:
+      - Context
+  /v1/context/job-permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_UserJobPermissions'
+        "401":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Unable to read permissions
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get current user job container permissions
       tags:
       - Context
   /v1/context/job-resource-summary:
@@ -8698,6 +9184,43 @@ paths:
       summary: 获取稀疏推荐作业的事件
       tags:
       - SpJob
+  /v1/spjobs/training:
+    post:
+      consumes:
+      - application/json
+      description: SYS_ADMIN is disabled by default. sysAdminEnabled requires current
+        administrator authorization.
+      parameters:
+      - description: Job creation request
+        in: body
+        name: job
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_spjob.CreateRecommendDLJobReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: SYS_ADMIN is not authorized
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Service error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Create a SEACS job
+      tags:
+      - SparseJob
   /v1/statistics:
     get:
       consumes:
@@ -9708,7 +10231,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a Jupyter job
+      description: SYS_ADMIN is disabled by default. sysAdminEnabled requires current
+        administrator authorization.
       parameters:
       - description: Create Jupyter Job Request
         in: body
@@ -9727,6 +10251,10 @@ paths:
           description: Request parameter error
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: SYS_ADMIN is not authorized
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
           description: Other errors
           schema:
@@ -9736,17 +10264,56 @@ paths:
       summary: Create a Jupyter job
       tags:
       - VolcanoJob
+  /v1/vcjobs/pytorch:
+    post:
+      consumes:
+      - application/json
+      description: SYS_ADMIN is disabled by default. sysAdminEnabled requires current
+        administrator authorization.
+      parameters:
+      - description: Job creation request
+        in: body
+        name: job
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_vcjob.CreateTensorflowReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: SYS_ADMIN is not authorized
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Service error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Create a PyTorch job
+      tags:
+      - VolcanoJob
   /v1/vcjobs/tensorflow:
     post:
       consumes:
       - application/json
-      description: Create a training job
+      description: SYS_ADMIN is disabled by default. sysAdminEnabled requires current
+        administrator authorization.
       parameters:
       - description: CreateTrainingReq
         in: body
         name: CreateTrainingReq
         required: true
-        schema: {}
+        schema:
+          $ref: '#/definitions/internal_handler_vcjob.CreateTensorflowReq'
       produces:
       - application/json
       responses:
@@ -9756,6 +10323,10 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
           description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: SYS_ADMIN is not authorized
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
@@ -9771,13 +10342,15 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a training job
+      description: SYS_ADMIN is disabled by default. sysAdminEnabled requires current
+        administrator authorization.
       parameters:
       - description: CreateTrainingReq
         in: body
         name: CreateTrainingReq
         required: true
-        schema: {}
+        schema:
+          $ref: '#/definitions/internal_handler_vcjob.CreateCustomReq'
       produces:
       - application/json
       responses:
@@ -9787,6 +10360,10 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
           description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: SYS_ADMIN is not authorized
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
@@ -9927,7 +10504,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a WebIDE job
+      description: SYS_ADMIN is disabled by default. sysAdminEnabled requires current
+        administrator authorization.
       parameters:
       - description: Create WebIDE Job Request
         in: body
@@ -9944,6 +10522,10 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
           description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: SYS_ADMIN is not authorized
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":

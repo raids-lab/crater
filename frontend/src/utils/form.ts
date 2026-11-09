@@ -312,7 +312,7 @@ const importFromJobSubmitJson = <T>(
     version = migration.to
   }
 
-  return data as T
+  return (metadata.normalizeImportedData ? metadata.normalizeImportedData(data) : data) as T
 }
 
 // usage: importFromJsonFile<FormData>(metadata, file)

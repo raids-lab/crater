@@ -1688,6 +1688,7 @@ func main() {
 				return dropColumnIfPresent(tx, "jobs", &Job{}, "PodGroupPhase")
 			},
 		},
+		userContainerSysAdminMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1906,6 +1907,21 @@ func jobListIndexes() []jobListIndex {
 		{
 			create: `CREATE INDEX IF NOT EXISTS idx_jobs_type_creation_timestamp ON jobs (job_type, creation_timestamp DESC)`,
 			drop:   `DROP INDEX IF EXISTS idx_jobs_type_creation_timestamp`,
+		},
+	}
+}
+
+func userContainerSysAdminMigration() *gormigrate.Migration {
+	type userContainerPermission struct {
+		ContainerSysAdminEnabled bool `gorm:"not null;default:false"`
+	}
+	return &gormigrate.Migration{
+		ID: "202611021600",
+		Migrate: func(tx *gorm.DB) error {
+			return addColumnIfMissing(tx, "users", &userContainerPermission{}, "ContainerSysAdminEnabled")
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return dropColumnIfPresent(tx, "users", &userContainerPermission{}, "ContainerSysAdminEnabled")
 		},
 	}
 }

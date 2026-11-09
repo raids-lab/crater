@@ -111,6 +111,7 @@ var (
 var (
 	errFinalLogsUnavailable      = errors.New("final download logs are unavailable")
 	errRepositoryPayloadMissing  = errors.New("repository metadata payload is missing")
+	errDownloadStateChanged      = errors.New("download state changed during reconciliation")
 	repositoryMetadataFieldNames = map[string]struct{}{
 		"display_name": {}, "description": {}, "readme": {}, "license": {},
 		"task": {}, "library": {}, "model_type": {}, "parameter_count": {},
@@ -195,11 +196,32 @@ func (r *ModelDownloadReconciler) fetchDownloadRecord(
 func (r *ModelDownloadReconciler) syncDownloadWithJob(
 	ctx context.Context, job *batchv1.Job, download *model.ModelDownload, logger logr.Logger,
 ) (ctrl.Result, error) {
+	// Paused is a user-requested desired state, not a status inferred from the
+	// Kubernetes Job. Never let an already queued Job event move it back to
+	// Downloading or Failed; only converge the runtime by removing the Job.
+	if download.Status == model.ModelDownloadStatusPaused {
+		return r.ensurePausedJobDeleted(ctx, job, logger)
+	}
+	result, err := r.syncActiveDownloadWithJob(ctx, job, download, logger)
+	if errors.Is(err, errDownloadStateChanged) {
+		// Re-read the desired state on the next reconcile before processing this
+		// Job again. A pause or a new attempt may have won the conditional update.
+		return ctrl.Result{RequeueAfter: progressRequeueInterval}, nil
+	}
+	return result, err
+}
+
+func (r *ModelDownloadReconciler) syncActiveDownloadWithJob(
+	ctx context.Context, job *batchv1.Job, download *model.ModelDownload, logger logr.Logger,
+) (ctrl.Result, error) {
 	oldStatus := download.Status
 	newStatus := r.getJobStatus(job)
 
 	if newStatus == model.ModelDownloadStatusDownloading {
 		if err := r.updateProgress(ctx, job, download); err != nil {
+			if errors.Is(err, errDownloadStateChanged) {
+				return ctrl.Result{}, err
+			}
 			logger.Error(err, "failed to update progress")
 		}
 	}
@@ -214,6 +236,9 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 	// see why (gated repo, auth, network, OOM, ...) instead of an empty message.
 	if newStatus == model.ModelDownloadStatusFailed && download.Status != model.ModelDownloadStatusFailed {
 		if _, err := r.persistFinalLogs(ctx, job, download); err != nil {
+			if errors.Is(err, errDownloadStateChanged) {
+				return ctrl.Result{}, err
+			}
 			logger.Error(err, "failed to persist failed download logs")
 		}
 		if err := r.extractFailureReason(ctx, job, download); err != nil {
@@ -225,8 +250,7 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 
 	if newStatus != oldStatus {
 		if err := r.updateDownloadStatus(ctx, download, newStatus); err != nil {
-			logger.Error(err, "failed to update download status")
-			return ctrl.Result{Requeue: true}, err
+			return ctrl.Result{Requeue: true}, fmt.Errorf("update download status: %w", err)
 		}
 		logger.Info(fmt.Sprintf("model download: %s, status: %s -> %s", job.Name, oldStatus, newStatus))
 	}
@@ -237,6 +261,21 @@ func (r *ModelDownloadReconciler) syncDownloadWithJob(
 		return ctrl.Result{RequeueAfter: progressRequeueInterval}, nil
 	}
 
+	return ctrl.Result{}, nil
+}
+
+func (r *ModelDownloadReconciler) ensurePausedJobDeleted(
+	ctx context.Context, job *batchv1.Job, logger logr.Logger,
+) (ctrl.Result, error) {
+	if !job.DeletionTimestamp.IsZero() {
+		return ctrl.Result{}, nil
+	}
+	if err := r.Delete(ctx, job, client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil &&
+		!k8serrors.IsNotFound(err) {
+		logger.Error(err, "failed to delete Job for paused download", "jobName", job.Name)
+		return ctrl.Result{}, err
+	}
+	logger.Info("deleted Job for paused download", "jobName", job.Name)
 	return ctrl.Result{}, nil
 }
 
@@ -383,6 +422,15 @@ func persistRepositoryMetadataWithDB(
 	)
 
 	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var current model.ModelDownload
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND status = ? AND job_name = ?", download.ID, download.Status, download.JobName).
+			First(&current).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errDownloadStateChanged
+			}
+			return err
+		}
 		source := model.ModelDatasetSource{
 			Provider:      model.ModelDatasetProvider(download.Source),
 			ResourceType:  model.DataType(download.Category),
@@ -536,36 +584,64 @@ func (r *ModelDownloadReconciler) resolveRepositoryLogo(
 func (r *ModelDownloadReconciler) handleJobNotFound(ctx context.Context, jobName string) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
 
-	q := query.ModelDownload
-	download, err := q.WithContext(ctx).Where(q.JobName.Eq(jobName)).First()
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// Job和数据库记录都不存在，这是正常的（可能是旧Job或已清理的任务）
-			logger.V(1).Info("Job not found in both k8s and database", "jobName", jobName)
-			return ctrl.Result{}, nil
-		}
-		logger.Error(err, "unable to fetch download record")
-		return ctrl.Result{Requeue: true}, err
-	}
-
-	logger.Info("Job not found in k8s but exists in database", "jobName", jobName, "status", download.Status)
-
-	// If already in terminal state, no update needed
-	if download.Status == model.ModelDownloadStatusReady ||
-		download.Status == model.ModelDownloadStatusFailed ||
-		download.Status == model.ModelDownloadStatusPaused {
+	status, transitioned, err := r.failMissingJobIfActive(ctx, jobName)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.V(1).Info("Job not found in both k8s and database", "jobName", jobName)
 		return ctrl.Result{}, nil
 	}
-
-	// Job deleted but status not terminal, mark as failed
-	if err := r.updateDownloadStatus(ctx, download, model.ModelDownloadStatusFailed); err != nil {
-		logger.Error(err, "failed to update download status to failed")
+	if err != nil {
+		logger.Error(err, "failed to reconcile missing download Job", "jobName", jobName)
 		return ctrl.Result{Requeue: true}, err
 	}
-
-	_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message, "Job was deleted")
+	logger.Info("Job not found in k8s but exists in database", "jobName", jobName, "status", status,
+		"markedFailed", transitioned)
 
 	return ctrl.Result{}, nil
+}
+
+// failMissingJobIfActive atomically distinguishes an unexpected Job deletion
+// from a concurrent pause. The row is re-read inside the transaction so a
+// stale reconcile event cannot overwrite a newer Paused state.
+func (r *ModelDownloadReconciler) failMissingJobIfActive(
+	ctx context.Context, jobName string,
+) (model.ModelDownloadStatus, bool, error) {
+	var download model.ModelDownload
+	transitioned := false
+	db := r.database()
+	err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("job_name = ?", jobName).
+			First(&download).Error; err != nil {
+			return err
+		}
+		if download.Status != model.ModelDownloadStatusPending &&
+			download.Status != model.ModelDownloadStatusDownloading {
+			return nil
+		}
+
+		result := tx.Model(&model.ModelDownload{}).
+			Where("id = ? AND status IN ?", download.ID, []model.ModelDownloadStatus{
+				model.ModelDownloadStatusPending,
+				model.ModelDownloadStatusDownloading,
+			}).
+			Updates(map[string]any{
+				"status":  model.ModelDownloadStatusFailed,
+				"message": "Job was deleted",
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil
+		}
+		if err := service.ReleaseModelDownloadQuotaReservation(ctx, tx, download.ID); err != nil {
+			return err
+		}
+		download.Status = model.ModelDownloadStatusFailed
+		transitioned = true
+		return nil
+	})
+	return download.Status, transitioned, err
 }
 
 func (r *ModelDownloadReconciler) getJobStatus(job *batchv1.Job) model.ModelDownloadStatus {
@@ -599,11 +675,9 @@ func (r *ModelDownloadReconciler) getJobStatus(job *batchv1.Job) model.ModelDown
 func (r *ModelDownloadReconciler) updateDownloadStatus(
 	ctx context.Context, download *model.ModelDownload, status model.ModelDownloadStatus,
 ) error {
-	db := query.ModelDownload.WithContext(ctx).UnderlyingDB().Session(&gorm.Session{NewDB: true})
+	db := r.database()
 	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&model.ModelDownload{}).
-			Where("id = ?", download.ID).
-			Update("status", status).Error; err != nil {
+		if err := updateDownloadAttempt(ctx, tx, download, map[string]any{"status": status}); err != nil {
 			return err
 		}
 
@@ -616,6 +690,21 @@ func (r *ModelDownloadReconciler) updateDownloadStatus(
 			return nil
 		}
 	})
+}
+
+// updateDownloadAttempt rejects writes from a snapshot superseded by a pause,
+// retry, or resume, including writes that only change progress or log fields.
+func updateDownloadAttempt(ctx context.Context, db *gorm.DB, download *model.ModelDownload, updates map[string]any) error {
+	result := db.WithContext(ctx).Model(&model.ModelDownload{}).
+		Where("id = ? AND status = ? AND job_name = ?", download.ID, download.Status, download.JobName).
+		Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errDownloadStateChanged
+	}
+	return nil
 }
 
 func (r *ModelDownloadReconciler) latestPodForJob(ctx context.Context, job *batchv1.Job) (*v1.Pod, error) {
@@ -692,9 +781,7 @@ func (r *ModelDownloadReconciler) updateProgress(ctx context.Context, job *batch
 		}
 	}
 
-	q := query.ModelDownload
-	_, err = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(updates)
-	return err
+	return updateDownloadAttempt(ctx, r.database(), download, updates)
 }
 
 func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
@@ -714,7 +801,6 @@ func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *b
 		download.SizeBytes = sizeBytes
 		download.DownloadedBytes = sizeBytes
 
-		q := query.ModelDownload
 		updates := map[string]any{
 			"size_bytes":       sizeBytes,
 			"downloaded_bytes": sizeBytes,
@@ -726,8 +812,7 @@ func (r *ModelDownloadReconciler) extractFinalResult(ctx context.Context, job *b
 			updates["download_speed"] = download.DownloadSpeed
 		}
 
-		_, err = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Updates(updates)
-		return err
+		return updateDownloadAttempt(ctx, r.database(), download, updates)
 	}
 
 	return nil
@@ -782,10 +867,10 @@ func (r *ModelDownloadReconciler) persistFinalLogs(
 
 	storedLogs := truncateLogTail(logsWithoutCapturedReadme(logs), maxStoredLogBytes)
 	now := time.Now()
-	if err := r.database().WithContext(ctx).Model(&model.ModelDownload{}).Where("id = ?", download.ID).Updates(map[string]any{
+	if err := updateDownloadAttempt(ctx, r.database(), download, map[string]any{
 		"logs":          storedLogs,
 		"logs_saved_at": now,
-	}).Error; err != nil {
+	}); err != nil {
 		return "", fmt.Errorf("update stored download logs: %w", err)
 	}
 	download.Logs = storedLogs
@@ -947,18 +1032,20 @@ func logsWithoutCapturedReadme(logs string) string {
 // stores a concise, human-readable reason on the download record so users can
 // understand why a download failed instead of seeing an empty message.
 func (r *ModelDownloadReconciler) extractFailureReason(ctx context.Context, job *batchv1.Job, download *model.ModelDownload) error {
-	q := query.ModelDownload
+	q := query.Use(r.database()).ModelDownload
 
 	pod, err := r.latestPodForJob(ctx, job)
 	if err != nil || pod == nil {
-		_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message, "Download job failed (pod not found)")
+		_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID), q.Status.Eq(string(download.Status)),
+			q.JobName.Eq(download.JobName)).Update(q.Message, "Download job failed (pod not found)")
 		return err
 	}
 
 	// Prefer the container termination reason when available (e.g. OOMKilled).
 	for i := range pod.Status.ContainerStatuses {
 		if term := pod.Status.ContainerStatuses[i].State.Terminated; term != nil && term.Reason == "OOMKilled" {
-			_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message,
+			_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID), q.Status.Eq(string(download.Status)),
+				q.JobName.Eq(download.JobName)).Update(q.Message,
 				"Download failed: out of memory (OOMKilled). Try again later or contact an admin to raise the job memory limit.")
 			return nil
 		}
@@ -966,11 +1053,13 @@ func (r *ModelDownloadReconciler) extractFailureReason(ctx context.Context, job 
 
 	logs, logErr := r.getPodLogs(ctx, pod)
 	if logErr != nil {
-		_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message, "Download job failed (logs unavailable)")
+		_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID), q.Status.Eq(string(download.Status)),
+			q.JobName.Eq(download.JobName)).Update(q.Message, "Download job failed (logs unavailable)")
 		return logErr
 	}
 
-	_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID)).Update(q.Message, classifyDownloadFailure(logs))
+	_, _ = q.WithContext(ctx).Where(q.ID.Eq(download.ID), q.Status.Eq(string(download.Status)),
+		q.JobName.Eq(download.JobName)).Update(q.Message, classifyDownloadFailure(logs))
 	return nil
 }
 
@@ -1130,7 +1219,7 @@ func datasetExtraForDownload(
 func (r *ModelDownloadReconciler) createDatasetForModel(
 	ctx context.Context, download *model.ModelDownload, readmeDesc string, repositoryTags []string,
 ) error {
-	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return r.database().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		txQuery := query.Use(tx)
 
 		// More than one backend instance may reconcile the same completed Job. Lock
@@ -1138,15 +1227,20 @@ func (r *ModelDownloadReconciler) createDatasetForModel(
 		// serialize on the same lock before checking whether the Dataset exists.
 		// Locking only the current download row would not protect concurrent
 		// HuggingFace and ModelScope downloads of the same repository name.
-		if _, err := txQuery.ModelDownload.WithContext(ctx).
+		locked, err := txQuery.ModelDownload.WithContext(ctx).
 			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where(txQuery.ModelDownload.Name.Eq(download.Name)).
 			Order(txQuery.ModelDownload.ID).
-			Find(); err != nil {
+			Find()
+		if err != nil {
 			return fmt.Errorf("failed to lock model downloads for %s: %w", download.Name, err)
 		}
-
-		return r.createDatasetForModelTx(ctx, txQuery, download, readmeDesc, repositoryTags)
+		for _, current := range locked {
+			if current.ID == download.ID && current.Status == download.Status && current.JobName == download.JobName {
+				return r.createDatasetForModelTx(ctx, txQuery, download, readmeDesc, repositoryTags)
+			}
+		}
+		return errDownloadStateChanged
 	})
 }
 

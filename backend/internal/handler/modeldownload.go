@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -359,57 +360,93 @@ func (mgr *ModelDownloadMgr) findReadyOrOngoingDownload(
 }
 
 func updateDownloadAndReleaseQuota(
-	ctx context.Context, downloadID uint, updates map[string]any,
+	ctx context.Context, db *gorm.DB, download *model.ModelDownload, updates map[string]any,
 ) error {
-	return query.GetDB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&model.ModelDownload{}).Where("id = ?", downloadID).Updates(updates).Error; err != nil {
-			return err
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&model.ModelDownload{}).
+			Where("id = ? AND status = ? AND job_name = ?", download.ID, download.Status, download.JobName).
+			Updates(updates)
+		if result.Error != nil {
+			return result.Error
 		}
-		return service.ReleaseModelDownloadQuotaReservation(ctx, tx, downloadID)
+		if result.RowsAffected == 0 {
+			return nil
+		}
+		return service.ReleaseModelDownloadQuotaReservation(ctx, tx, download.ID)
 	})
 }
 
-// restoreAndResetSoftDeletedDownload 恢复并重置软删除的下载记录
+// finishDownloadSubmission preserves state changes observed while the Job
+// creation request was in flight and returns the current persisted response.
+func finishDownloadSubmission(ctx context.Context, db *gorm.DB, download *model.ModelDownload) (*model.ModelDownload, error) {
+	if err := db.WithContext(ctx).Model(&model.ModelDownload{}).
+		Where("id = ? AND status = ? AND job_name = ?", download.ID, model.ModelDownloadStatusPending, download.JobName).
+		Update("status", model.ModelDownloadStatusDownloading).Error; err != nil {
+		return nil, err
+	}
+	var current model.ModelDownload
+	if err := db.WithContext(ctx).First(&current, download.ID).Error; err != nil {
+		return nil, err
+	}
+	return &current, nil
+}
+
+func pauseDownloadAndReleaseQuota(ctx context.Context, db *gorm.DB, download *model.ModelDownload) error {
+	return db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		result := tx.Model(&model.ModelDownload{}).
+			Where("id = ? AND status = ? AND job_name = ?",
+				download.ID, model.ModelDownloadStatusDownloading, download.JobName).
+			Updates(map[string]any{
+				"status":  model.ModelDownloadStatusPaused,
+				"message": "Download paused by user",
+			})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return bizerr.Conflict.ResourceStatusError.New("download state changed; only the current downloading task can be paused")
+		}
+		return service.ReleaseModelDownloadQuotaReservation(ctx, tx, download.ID)
+	})
+}
+
+// restoreAndResetSoftDeletedDownload reuses Ready records and prepares all
+// other restored records for a new submission while holding the row lock.
 func (mgr *ModelDownloadMgr) restoreAndResetSoftDeletedDownload(
 	c *gin.Context, txQ *query.Query,
 	name string, source model.ModelSource, category model.DownloadCategory, revision string, username string,
 ) (*model.ModelDownload, error) {
 	q := txQ.ModelDownload
 
-	softDeletedDownload, _ := q.WithContext(c).Unscoped().
+	softDeletedDownload, err := q.WithContext(c).Unscoped().
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where(q.Name.Eq(name), q.Source.Eq(string(source)),
 			q.Category.Eq(string(category)), q.Revision.Eq(revision),
 			q.DeletedAt.IsNotNull()).First()
 
-	if softDeletedDownload == nil {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
-
-	// 恢复软删除的记录
-	_, err := q.WithContext(c).Unscoped().
-		Where(q.ID.Eq(softDeletedDownload.ID)).
-		Update(q.DeletedAt, nil)
 	if err != nil {
-		return nil, fmt.Errorf("restore soft-deleted record failed: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find soft-deleted download")
 	}
 
-	// 如果是失败状态，重置为待下载
-	if softDeletedDownload.Status == model.ModelDownloadStatusFailed {
-		newJobName := fmt.Sprintf("model-dl-%s-%s", username, uuid.New().String()[:8])
-		updates := map[string]any{
-			"status":   model.ModelDownloadStatusPending,
-			"message":  "",
-			"job_name": newJobName,
-		}
-		_, err := q.WithContext(c).Where(q.ID.Eq(softDeletedDownload.ID)).Updates(updates)
-		if err != nil {
-			return nil, fmt.Errorf("update soft-deleted record failed: %w", err)
+	updates := map[string]any{"deleted_at": nil}
+	if shouldSubmitRestoredDownload(softDeletedDownload) {
+		if err := mgr.requirePreviousDownloadStopped(c, softDeletedDownload); err != nil {
+			return nil, err
 		}
 		softDeletedDownload.Status = model.ModelDownloadStatusPending
-		softDeletedDownload.JobName = newJobName
+		softDeletedDownload.JobName = fmt.Sprintf("model-dl-%s-%s", username, uuid.New().String()[:8])
+		softDeletedDownload.Message = ""
+		updates["status"] = softDeletedDownload.Status
+		updates["job_name"] = softDeletedDownload.JobName
+		updates["message"] = softDeletedDownload.Message
 	}
-
+	if _, err := q.WithContext(c).Unscoped().Where(q.ID.Eq(softDeletedDownload.ID)).Updates(updates); err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "restore soft-deleted download")
+	}
+	softDeletedDownload.DeletedAt = gorm.DeletedAt{}
 	return softDeletedDownload, nil
 }
 
@@ -449,10 +486,9 @@ func (mgr *ModelDownloadMgr) resetFailedDownload(
 
 // getOrCreateDownload 在事务中获取或创建下载任务
 func (mgr *ModelDownloadMgr) getOrCreateDownload(
-	c *gin.Context, req *CreateDownloadReq, token util.JWTMessage,
+	c *gin.Context, db *query.Query, req *CreateDownloadReq, token util.JWTMessage,
 	source model.ModelSource, category model.DownloadCategory, downloadPath, revision string,
 ) (*model.ModelDownload, bool, error) {
-	db := query.Use(query.GetDB())
 	var download *model.ModelDownload
 	var isNewDownload bool
 
@@ -564,7 +600,9 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	downloadPath := modelDownloadStoragePath(basePath, safeName)
 
 	// 在事务中获取或创建下载任务
-	download, isNewDownload, err := mgr.getOrCreateDownload(c, &req, token, source, category, downloadPath, req.Revision)
+	download, isNewDownload, err := mgr.getOrCreateDownload(
+		c, query.Use(query.GetDB()), &req, token, source, category, downloadPath, req.Revision,
+	)
 	if err != nil {
 		klog.Errorf("get or create download failed: %v", err)
 		resputil.HandleError(c, err)
@@ -593,7 +631,7 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 			"status":  model.ModelDownloadStatusFailed,
 			"message": fmt.Sprintf("submit job failed: %v", err),
 		}
-		if rollbackErr := updateDownloadAndReleaseQuota(c, download.ID, updates); rollbackErr != nil {
+		if rollbackErr := updateDownloadAndReleaseQuota(c, query.GetDB(), download, updates); rollbackErr != nil {
 			klog.Errorf("release failed download quota reservation: %v", rollbackErr)
 		}
 
@@ -601,9 +639,11 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 		return
 	}
 
-	// 更新状态为 Downloading
-	q := query.ModelDownload
-	_, _ = q.WithContext(c).Where(q.ID.Eq(download.ID)).Update(q.Status, model.ModelDownloadStatusDownloading)
+	download, err = finishDownloadSubmission(c, query.GetDB(), download)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "read submitted download state failed"))
+		return
+	}
 
 	resputil.Success(c, convertDownloadToResp(download, token))
 }
@@ -925,15 +965,18 @@ func (mgr *ModelDownloadMgr) RetryDownload(c *gin.Context) {
 			"status":  model.ModelDownloadStatusFailed,
 			"message": fmt.Sprintf("submit job failed: %v", err),
 		}
-		if rollbackErr := updateDownloadAndReleaseQuota(c, download.ID, updates); rollbackErr != nil {
+		if rollbackErr := updateDownloadAndReleaseQuota(c, query.GetDB(), download, updates); rollbackErr != nil {
 			klog.Errorf("release failed retry quota reservation: %v", rollbackErr)
 		}
 		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "submit download job failed"))
 		return
 	}
 
-	download.Status = model.ModelDownloadStatusDownloading
-	download.Message = ""
+	download, err = finishDownloadSubmission(c, query.GetDB(), download)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "read retried download state failed"))
+		return
+	}
 
 	resputil.Success(c, convertDownloadToResp(download, token))
 }
@@ -998,7 +1041,7 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 
 		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
 		updates := map[string]any{
-			"status": model.ModelDownloadStatusDownloading, "message": "", "job_name": newJobName,
+			"status": model.ModelDownloadStatusPending, "message": "", "job_name": newJobName,
 		}
 		if revision != nil {
 			updates["revision"] = *revision
@@ -1007,7 +1050,7 @@ func (mgr *ModelDownloadMgr) prepareRetryDownload(
 			return retryUpdateError(err)
 		}
 
-		d.Status, d.JobName, d.Message = model.ModelDownloadStatusDownloading, newJobName, ""
+		d.Status, d.JobName, d.Message = model.ModelDownloadStatusPending, newJobName, ""
 		if revision != nil {
 			d.Revision = *revision
 		}
@@ -1162,24 +1205,26 @@ func (mgr *ModelDownloadMgr) PauseDownload(c *gin.Context) {
 		return
 	}
 
-	// Pausing is implemented by deleting the Job. Persist logs before removal.
+	// Persist the user's pause intent before deleting the Job. Kubernetes deletion
+	// is asynchronous, so the reconciler must be able to observe Paused before it
+	// handles the Job deletion event.
 	mgr.captureJobLogsToRecord(c, download)
-	if err := mgr.deleteDownloadJob(c, download.JobName); err != nil {
-		resputil.HandleError(c, err)
-		return
-	}
-
-	updates := map[string]any{
-		"status":  model.ModelDownloadStatusPaused,
-		"message": "Download paused by user",
-	}
-	if err := updateDownloadAndReleaseQuota(c, download.ID, updates); err != nil {
+	if err := pauseDownloadAndReleaseQuota(c, query.GetDB(), download); err != nil {
+		if errors.Is(err, bizerr.Conflict.Base) {
+			resputil.HandleError(c, err)
+			return
+		}
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "update paused download failed"))
 		return
 	}
 
 	download.Status = model.ModelDownloadStatusPaused
 	download.Message = "Download paused by user"
+	if err := mgr.deleteDownloadJob(c, download.JobName); err != nil {
+		// Paused is the durable desired state. Keep it instead of rolling back to
+		// Downloading; the reconciler will retry the idempotent Job cleanup.
+		klog.Warningf("download %d was paused but Job %q cleanup failed: %v", download.ID, download.JobName, err)
+	}
 
 	resputil.Success(c, convertDownloadToResp(download, token))
 }
@@ -1235,15 +1280,18 @@ func (mgr *ModelDownloadMgr) ResumeDownload(c *gin.Context) {
 			"status":  model.ModelDownloadStatusPaused,
 			"message": fmt.Sprintf("resume failed: %v", err),
 		}
-		if rollbackErr := updateDownloadAndReleaseQuota(c, download.ID, rollbackUpdates); rollbackErr != nil {
+		if rollbackErr := updateDownloadAndReleaseQuota(c, query.GetDB(), download, rollbackUpdates); rollbackErr != nil {
 			klog.Errorf("release failed resume quota reservation: %v", rollbackErr)
 		}
 		resputil.HandleError(c, bizerr.Internal.K8sServiceError.Wrap(err, "submit download job failed"))
 		return
 	}
 
-	download.Status = model.ModelDownloadStatusDownloading
-	download.Message = ""
+	download, err = finishDownloadSubmission(c, query.GetDB(), download)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "read resumed download state failed"))
+		return
+	}
 
 	resputil.Success(c, convertDownloadToResp(download, token))
 }
@@ -1277,6 +1325,9 @@ func (mgr *ModelDownloadMgr) prepareResumeDownload(
 		if err := checkLogicalDownloadConflict(c, tx, locked); err != nil {
 			return err
 		}
+		if err := mgr.requirePreviousDownloadStopped(c, locked); err != nil {
+			return err
+		}
 		if err := mgr.quotaService.Reserve(
 			c, txQ.WithContext(c).UnderlyingDB(), token.UserID,
 			locked.ID, model.ModelDownloadSubmissionResume,
@@ -1286,19 +1337,54 @@ func (mgr *ModelDownloadMgr) prepareResumeDownload(
 
 		newJobName := fmt.Sprintf("model-dl-%s-%s", token.Username, uuid.New().String()[:8])
 		if _, err := txQ.WithContext(c).Where(txQ.ID.Eq(locked.ID)).Updates(map[string]any{
-			"status":   model.ModelDownloadStatusDownloading,
+			"status":   model.ModelDownloadStatusPending,
 			"message":  "",
 			"job_name": newJobName,
 		}); err != nil {
 			return bizerr.Internal.DatabaseError.Wrap(err, "update resumed download")
 		}
-		locked.Status = model.ModelDownloadStatusDownloading
+		locked.Status = model.ModelDownloadStatusPending
 		locked.JobName = newJobName
 		locked.Message = ""
 		download = locked
 		return nil
 	})
 	return download, err
+}
+
+// Wait for the old downloader before starting a new writer in the same
+// directory. A failed attempt may retain a finished Job for diagnostics.
+func (mgr *ModelDownloadMgr) requirePreviousDownloadStopped(ctx context.Context, download *model.ModelDownload) error {
+	jobName := download.JobName
+	if jobName == "" {
+		return nil
+	}
+	const stoppingMessage = "previous download is still stopping; retry shortly"
+	job, err := mgr.crClient.BatchV1().Jobs(mgr.namespace).Get(ctx, jobName, metav1.GetOptions{})
+	if err == nil {
+		finished := slices.ContainsFunc(job.Status.Conditions, func(condition batchv1.JobCondition) bool {
+			return condition.Status == corev1.ConditionTrue &&
+				(condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete)
+		})
+		if download.Status != model.ModelDownloadStatusFailed || !finished {
+			return bizerr.Conflict.ResourceStatusError.New(stoppingMessage)
+		}
+	} else if !k8serrors.IsNotFound(err) {
+		return bizerr.Internal.K8sServiceError.Wrap(err, "check previous download Job")
+	}
+	pods, err := mgr.crClient.CoreV1().Pods(mgr.namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "job-name=" + jobName,
+	})
+	if err != nil {
+		return bizerr.Internal.K8sServiceError.Wrap(err, "check previous download Pods")
+	}
+	for i := range pods.Items {
+		phase := pods.Items[i].Status.Phase
+		if phase != corev1.PodSucceeded && phase != corev1.PodFailed {
+			return bizerr.Conflict.ResourceStatusError.New(stoppingMessage)
+		}
+	}
+	return nil
 }
 
 // ListAllDownloads godoc
@@ -2253,7 +2339,8 @@ func (mgr *ModelDownloadMgr) captureJobLogsToRecord(c *gin.Context, download *mo
 
 	now := time.Now()
 	q := query.ModelDownload
-	if _, err := q.WithContext(c).Where(q.ID.Eq(download.ID)).Updates(map[string]any{
+	if _, err := q.WithContext(c).Where(q.ID.Eq(download.ID), q.Status.Eq(string(download.Status)),
+		q.JobName.Eq(download.JobName)).Updates(map[string]any{
 		"logs":          truncateDownloadLogTail(string(raw), maxStoredDownloadLogBytes),
 		"logs_saved_at": now,
 	}); err != nil {

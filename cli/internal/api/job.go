@@ -156,6 +156,7 @@ type JobCommonRequest struct {
 	Selectors         []NodeSelectorRequirement `json:"selectors,omitempty"`
 	Template          string                    `json:"template,omitempty"`
 	AlertEnabled      bool                      `json:"alertEnabled"`
+	SysAdminEnabled   bool                      `json:"sysAdminEnabled,omitempty"`
 	CpuPinningEnabled bool                      `json:"cpuPinningEnabled,omitempty"`
 	Forwards          []Forward                 `json:"forwards,omitempty"`
 }
