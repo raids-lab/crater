@@ -16,4 +16,7 @@ app.onError((error, context) => {
 
 serve({ fetch: app.fetch, port: config.port }, (info) => {
   console.info(`Crater-Agent is listening on port ${String(info.port)}`);
+  console.info(
+    `Crater-Agent backend origin: ${new URL(config.backendInternalURL).origin}`,
+  );
 });

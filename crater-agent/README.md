@@ -6,15 +6,25 @@ context token and streams AI SDK UI messages back through the backend.
 
 ## Local development
 
-Use the same random service token for the backend and this process. Start the
-Agent with only that token and the backend URL:
+Use the same random service token for the backend and this process. On first
+setup, copy `.env.example` to the git-ignored `.env` file. Set
+`CRATER_AGENT_INTERNAL_TOKEN` to the backend's existing service token and
+`CRATER_BACKEND_INTERNAL_URL` to the actual local backend address and port.
+Keep these values when restarting either service.
+
+Run the following commands from `crater-agent/`. `pnpm dev` automatically loads
+`.env`; explicitly exported environment variables take precedence:
 
 ```bash
-export CRATER_AGENT_INTERNAL_TOKEN="$(openssl rand -hex 32)"
-export CRATER_BACKEND_INTERNAL_URL="http://localhost:8088"
 pnpm install
 pnpm dev
 ```
+
+If the terminal previously exported an outdated backend URL, run
+`unset CRATER_BACKEND_INTERNAL_URL` before `pnpm dev` to use the value in `.env`.
+The startup output shows the effective backend origin. Do not source
+`backend/.debug.env` into the Agent process: the backend-only signing and
+encryption keys must remain in the backend environment.
 
 Set `CRATER_AGENT_URL=http://localhost:8000`, the same
 `CRATER_AGENT_INTERNAL_TOKEN`, a separate

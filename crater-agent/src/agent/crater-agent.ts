@@ -33,7 +33,12 @@ export function createCraterAgent(
       "\n\n",
     ),
     tools: selectSkillTools(skill.activeTools),
-    experimental_download: () =>
-      Promise.reject(new Error("URL downloads are disabled")),
+    experimental_download: (requestedDownloads) => {
+      // The SDK invokes this hook even when a text-only prompt has no assets.
+      if (requestedDownloads.length > 0) {
+        return Promise.reject(new Error("URL downloads are disabled"));
+      }
+      return Promise.resolve([]);
+    },
   });
 }

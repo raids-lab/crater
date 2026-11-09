@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/app.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/app.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "tsc --noEmit && eslint . --max-warnings 0",
