@@ -34,6 +34,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -242,7 +243,9 @@ func TestResumeWaitsForPreviousDownloaderToStop(t *testing.T) {
 				objects = append(objects, &corev1.Pod{ObjectMeta: metadata, Status: corev1.PodStatus{Phase: tc.podPhase}})
 			}
 			mgr := ModelDownloadMgr{crClient: fake.NewClientset(objects...), namespace: "jobs"}
-			err := mgr.requirePreviousDownloadStopped(t.Context(), testOldDownloadJobName)
+			err := mgr.requirePreviousDownloadStopped(t.Context(), &model.ModelDownload{
+				Status: model.ModelDownloadStatusPaused, JobName: testOldDownloadJobName,
+			})
 			if tc.wantConflict {
 				if !errors.Is(err, bizerr.Conflict.Base) {
 					t.Fatalf("resume error = %v, want a stopping conflict", err)
@@ -263,7 +266,9 @@ func TestResumeRejectsUnverifiablePreviousJobState(t *testing.T) {
 				return true, nil, apiErr
 			})
 			mgr := ModelDownloadMgr{crClient: kube, namespace: "jobs"}
-			if err := mgr.requirePreviousDownloadStopped(t.Context(), testOldDownloadJobName); !errors.Is(err, apiErr) {
+			if err := mgr.requirePreviousDownloadStopped(t.Context(), &model.ModelDownload{
+				Status: model.ModelDownloadStatusPaused, JobName: testOldDownloadJobName,
+			}); !errors.Is(err, apiErr) {
 				t.Fatalf("resume error = %v, want the Kubernetes API error", err)
 			}
 		})
@@ -309,4 +314,126 @@ func TestPrepareResumePreservesPausedAttemptWhilePreviousJobStops(t *testing.T) 
 	if _, err := mgr.prepareResumeDownload(ctx, query.Use(db), paused.ID, token); !errors.Is(err, bizerr.Conflict.Base) {
 		t.Fatalf("in-flight submission accepted a second resume: %v", err)
 	}
+}
+
+func TestRecreateSoftDeletedDownload(t *testing.T) {
+	for _, tc := range []struct {
+		status  model.ModelDownloadStatus
+		objects []runtime.Object
+	}{
+		{status: model.ModelDownloadStatusPaused},
+		{status: model.ModelDownloadStatusFailed, objects: []runtime.Object{finishedDownloadJob()}},
+	} {
+		t.Run(string(tc.status), func(t *testing.T) {
+			db, mgr, history := newSoftDeletedDownloadTest(t, tc.status, tc.objects...)
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			token := util.JWTMessage{UserID: history.CreatorID, Username: "alice"}
+			download, submit, err := mgr.getOrCreateDownload(
+				ctx, query.Use(db), &CreateDownloadReq{Name: history.Name}, token,
+				history.Source, history.Category, history.Path, history.Revision,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !submit || download.ID != history.ID || download.Status != model.ModelDownloadStatusPending ||
+				download.JobName == history.JobName || download.JobName == "" || download.Message != "" {
+				t.Fatalf("recreated attempt = id %d status %s job %q message %q, submit %v",
+					download.ID, download.Status, download.JobName, download.Message, submit)
+			}
+			var reservations []model.ModelDownloadSubmission
+			if err := db.Where("model_download_id = ?", history.ID).Find(&reservations).Error; err != nil {
+				t.Fatal(err)
+			}
+			if len(reservations) != 1 || reservations[0].Action != model.ModelDownloadSubmissionCreate ||
+				reservations[0].Status != model.ModelDownloadSubmissionReserved {
+				t.Fatalf("recreated attempt reservations = %+v, want one reserved create submission", reservations)
+			}
+			finished, err := finishDownloadSubmission(ctx, db, download)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if finished.Status != model.ModelDownloadStatusDownloading {
+				t.Fatalf("submitted record status = %s, want Downloading", finished.Status)
+			}
+		})
+	}
+}
+
+func TestRecreateSoftDeletedDownloadWaitsForPreviousPod(t *testing.T) {
+	now := metav1.Now()
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "jobs", Name: "old-pod",
+			Labels: map[string]string{"job-name": testOldDownloadJobName}, DeletionTimestamp: &now,
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	for _, tc := range []struct {
+		status  model.ModelDownloadStatus
+		objects []runtime.Object
+	}{
+		{status: model.ModelDownloadStatusPaused, objects: []runtime.Object{pod}},
+		{status: model.ModelDownloadStatusFailed, objects: []runtime.Object{finishedDownloadJob(), pod}},
+	} {
+		t.Run(string(tc.status), func(t *testing.T) {
+			db, mgr, history := newSoftDeletedDownloadTest(t, tc.status, tc.objects...)
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			token := util.JWTMessage{UserID: history.CreatorID, Username: "alice"}
+			_, submit, err := mgr.getOrCreateDownload(
+				ctx, query.Use(db), &CreateDownloadReq{Name: history.Name}, token,
+				history.Source, history.Category, history.Path, history.Revision,
+			)
+			if !errors.Is(err, bizerr.Conflict.Base) || submit {
+				t.Fatalf("recreate while a Pod is stopping: submit=%v err=%v, want conflict", submit, err)
+			}
+			var stored model.ModelDownload
+			if err := db.Unscoped().First(&stored, history.ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			if !stored.DeletedAt.Valid || stored.Status != history.Status || stored.JobName != history.JobName {
+				t.Fatalf("blocked recreate changed history: deleted=%v status=%s job=%q",
+					stored.DeletedAt.Valid, stored.Status, stored.JobName)
+			}
+			var reservations int64
+			if err := db.Model(&model.ModelDownloadSubmission{}).Count(&reservations).Error; err != nil {
+				t.Fatal(err)
+			}
+			if reservations != 0 {
+				t.Fatalf("blocked recreate reserved quota %d times", reservations)
+			}
+		})
+	}
+}
+
+func finishedDownloadJob() *batchv1.Job {
+	return &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "jobs", Name: testOldDownloadJobName},
+		Status: batchv1.JobStatus{Conditions: []batchv1.JobCondition{
+			{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+		}},
+	}
+}
+
+func newSoftDeletedDownloadTest(
+	t *testing.T, status model.ModelDownloadStatus, objects ...runtime.Object,
+) (*gorm.DB, *ModelDownloadMgr, model.ModelDownload) {
+	t.Helper()
+	db := newPauseDownloadTestDB(t)
+	if err := db.AutoMigrate(&model.SystemConfig{}, &model.UserModelDownload{}); err != nil {
+		t.Fatal(err)
+	}
+	mgr := &ModelDownloadMgr{
+		crClient: fake.NewClientset(objects...), namespace: "jobs",
+		quotaService: service.NewModelDownloadQuotaService(service.NewConfigService(query.Use(db))),
+	}
+	history := createResumePreparationTestDownload(
+		t, db, model.ModelSourceModelScope, "master", status, testOldDownloadJobName,
+	)
+	if err := db.Model(&history).Update("message", "previous download attempt").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Delete(&history).Error; err != nil {
+		t.Fatal(err)
+	}
+	return db, mgr, history
 }

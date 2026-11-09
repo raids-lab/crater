@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -409,47 +410,43 @@ func pauseDownloadAndReleaseQuota(ctx context.Context, db *gorm.DB, download *mo
 	})
 }
 
-// restoreAndResetSoftDeletedDownload 恢复并重置软删除的下载记录
+// restoreAndResetSoftDeletedDownload reuses Ready records and prepares all
+// other restored records for a new submission while holding the row lock.
 func (mgr *ModelDownloadMgr) restoreAndResetSoftDeletedDownload(
 	c *gin.Context, txQ *query.Query,
 	name string, source model.ModelSource, category model.DownloadCategory, revision string, username string,
 ) (*model.ModelDownload, error) {
 	q := txQ.ModelDownload
 
-	softDeletedDownload, _ := q.WithContext(c).Unscoped().
+	softDeletedDownload, err := q.WithContext(c).Unscoped().
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where(q.Name.Eq(name), q.Source.Eq(string(source)),
 			q.Category.Eq(string(category)), q.Revision.Eq(revision),
 			q.DeletedAt.IsNotNull()).First()
 
-	if softDeletedDownload == nil {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
-
-	// 恢复软删除的记录
-	_, err := q.WithContext(c).Unscoped().
-		Where(q.ID.Eq(softDeletedDownload.ID)).
-		Update(q.DeletedAt, nil)
 	if err != nil {
-		return nil, fmt.Errorf("restore soft-deleted record failed: %w", err)
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "find soft-deleted download")
 	}
 
-	// 如果是失败状态，重置为待下载
-	if softDeletedDownload.Status == model.ModelDownloadStatusFailed {
-		newJobName := fmt.Sprintf("model-dl-%s-%s", username, uuid.New().String()[:8])
-		updates := map[string]any{
-			"status":   model.ModelDownloadStatusPending,
-			"message":  "",
-			"job_name": newJobName,
-		}
-		_, err := q.WithContext(c).Where(q.ID.Eq(softDeletedDownload.ID)).Updates(updates)
-		if err != nil {
-			return nil, fmt.Errorf("update soft-deleted record failed: %w", err)
+	updates := map[string]any{"deleted_at": nil}
+	if shouldSubmitRestoredDownload(softDeletedDownload) {
+		if err := mgr.requirePreviousDownloadStopped(c, softDeletedDownload); err != nil {
+			return nil, err
 		}
 		softDeletedDownload.Status = model.ModelDownloadStatusPending
-		softDeletedDownload.JobName = newJobName
+		softDeletedDownload.JobName = fmt.Sprintf("model-dl-%s-%s", username, uuid.New().String()[:8])
+		softDeletedDownload.Message = ""
+		updates["status"] = softDeletedDownload.Status
+		updates["job_name"] = softDeletedDownload.JobName
+		updates["message"] = softDeletedDownload.Message
 	}
-
+	if _, err := q.WithContext(c).Unscoped().Where(q.ID.Eq(softDeletedDownload.ID)).Updates(updates); err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "restore soft-deleted download")
+	}
+	softDeletedDownload.DeletedAt = gorm.DeletedAt{}
 	return softDeletedDownload, nil
 }
 
@@ -489,10 +486,9 @@ func (mgr *ModelDownloadMgr) resetFailedDownload(
 
 // getOrCreateDownload 在事务中获取或创建下载任务
 func (mgr *ModelDownloadMgr) getOrCreateDownload(
-	c *gin.Context, req *CreateDownloadReq, token util.JWTMessage,
+	c *gin.Context, db *query.Query, req *CreateDownloadReq, token util.JWTMessage,
 	source model.ModelSource, category model.DownloadCategory, downloadPath, revision string,
 ) (*model.ModelDownload, bool, error) {
-	db := query.Use(query.GetDB())
 	var download *model.ModelDownload
 	var isNewDownload bool
 
@@ -604,7 +600,9 @@ func (mgr *ModelDownloadMgr) CreateDownload(c *gin.Context) {
 	downloadPath := modelDownloadStoragePath(basePath, safeName)
 
 	// 在事务中获取或创建下载任务
-	download, isNewDownload, err := mgr.getOrCreateDownload(c, &req, token, source, category, downloadPath, req.Revision)
+	download, isNewDownload, err := mgr.getOrCreateDownload(
+		c, query.Use(query.GetDB()), &req, token, source, category, downloadPath, req.Revision,
+	)
 	if err != nil {
 		klog.Errorf("get or create download failed: %v", err)
 		resputil.HandleError(c, err)
@@ -1327,7 +1325,7 @@ func (mgr *ModelDownloadMgr) prepareResumeDownload(
 		if err := checkLogicalDownloadConflict(c, tx, locked); err != nil {
 			return err
 		}
-		if err := mgr.requirePreviousDownloadStopped(c, locked.JobName); err != nil {
+		if err := mgr.requirePreviousDownloadStopped(c, locked); err != nil {
 			return err
 		}
 		if err := mgr.quotaService.Reserve(
@@ -1354,18 +1352,24 @@ func (mgr *ModelDownloadMgr) prepareResumeDownload(
 	return download, err
 }
 
-// A successful foreground deletion request does not mean the downloader has
-// exited. Keep the paused attempt until its Job is gone and its remaining Pods
-// are terminal, so resume cannot start a second writer in the same directory.
-func (mgr *ModelDownloadMgr) requirePreviousDownloadStopped(ctx context.Context, jobName string) error {
+// Wait for the old downloader before starting a new writer in the same
+// directory. A failed attempt may retain a finished Job for diagnostics.
+func (mgr *ModelDownloadMgr) requirePreviousDownloadStopped(ctx context.Context, download *model.ModelDownload) error {
+	jobName := download.JobName
 	if jobName == "" {
 		return nil
 	}
-	_, err := mgr.crClient.BatchV1().Jobs(mgr.namespace).Get(ctx, jobName, metav1.GetOptions{})
+	const stoppingMessage = "previous download is still stopping; retry shortly"
+	job, err := mgr.crClient.BatchV1().Jobs(mgr.namespace).Get(ctx, jobName, metav1.GetOptions{})
 	if err == nil {
-		return bizerr.Conflict.ResourceStatusError.New("previous download is still stopping; retry resume shortly")
-	}
-	if !k8serrors.IsNotFound(err) {
+		finished := slices.ContainsFunc(job.Status.Conditions, func(condition batchv1.JobCondition) bool {
+			return condition.Status == corev1.ConditionTrue &&
+				(condition.Type == batchv1.JobFailed || condition.Type == batchv1.JobComplete)
+		})
+		if download.Status != model.ModelDownloadStatusFailed || !finished {
+			return bizerr.Conflict.ResourceStatusError.New(stoppingMessage)
+		}
+	} else if !k8serrors.IsNotFound(err) {
 		return bizerr.Internal.K8sServiceError.Wrap(err, "check previous download Job")
 	}
 	pods, err := mgr.crClient.CoreV1().Pods(mgr.namespace).List(ctx, metav1.ListOptions{
@@ -1377,7 +1381,7 @@ func (mgr *ModelDownloadMgr) requirePreviousDownloadStopped(ctx context.Context,
 	for i := range pods.Items {
 		phase := pods.Items[i].Status.Phase
 		if phase != corev1.PodSucceeded && phase != corev1.PodFailed {
-			return bizerr.Conflict.ResourceStatusError.New("previous download is still stopping; retry resume shortly")
+			return bizerr.Conflict.ResourceStatusError.New(stoppingMessage)
 		}
 	}
 	return nil
