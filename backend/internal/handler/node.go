@@ -254,7 +254,7 @@ func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 // AdminGetPodsForNode godoc
 //
 //	@Summary		获取节点Pod信息（管理员）
-//	@Description	获取节点Pod信息，包含作业和用户信息
+//	@Description	获取节点Pod信息，匹配到 Crater 作业时包含 jobName、锁定状态和用户信息
 //	@Tags			Node
 //	@Accept			json
 //	@Produce		json

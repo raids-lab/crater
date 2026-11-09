@@ -62,10 +62,11 @@ export interface IClusterPodInfo {
   requestResources?: Record<string, string> // 添加 requests 资源
   locked: boolean
   permanentLocked: boolean
-  lockedTimestamp?: string
+  lockedTimestamp?: string | null
   // added by frontend
   type?: string
   // 管理员接口返回的字段
+  jobName?: string
   userName?: string
   userID?: number
   userRealName?: string

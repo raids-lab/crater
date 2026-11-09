@@ -39,7 +39,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 
 import { DurationFields } from '@/components/form/duration-fields'
 
-import { IJobInfo, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
+import { type IJobInfo, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
+
+import { showErrorToast } from '@/utils/toast'
 
 // Moved Zod schema to component
 const getFormSchema = (t: (key: string) => string) =>
@@ -55,12 +57,18 @@ const getFormSchema = (t: (key: string) => string) =>
 
 type FormValues = z.infer<ReturnType<typeof getFormSchema>>
 
+export type JobLockTarget = Pick<
+  IJobInfo,
+  'jobName' | 'locked' | 'permanentLocked' | 'lockedTimestamp'
+>
+
 interface DurationDialogProps {
-  jobs: IJobInfo[]
+  jobs: JobLockTarget[]
   open: boolean
   setOpen: (open: boolean) => void
   onSuccess?: () => void
   setExtend?: boolean
+  approval?: boolean
   defaultDays?: number
   defaultHours?: number
 }
@@ -71,14 +79,25 @@ export function DurationDialog({
   setOpen,
   onSuccess,
   setExtend,
+  approval = false,
   defaultDays,
   defaultHours,
 }: DurationDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const allLocked = jobs.length > 0 && jobs.every((job) => job.locked)
   const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked)
   const mixedState = !allLocked && !allUnlocked
-  const isExtendDialogOpen = setExtend && allLocked
+  const singleJob = jobs.length === 1 ? jobs[0] : undefined
+  const lockEnd = Date.parse(singleJob?.lockedTimestamp ?? '')
+  const alreadyPermanent = approval && singleJob?.permanentLocked
+  const isExtendDialogOpen = approval ? lockEnd > Date.now() : setExtend && allLocked
+  const isUnlockDialog = !approval && allLocked && !isExtendDialogOpen
+  const action = isUnlockDialog ? 'unlock' : isExtendDialogOpen ? 'extend' : 'lock'
+  const title = alreadyPermanent
+    ? t('durationDialog.approval.permanentTitle')
+    : approval
+      ? t(isExtendDialogOpen ? 'durationDialog.approval.extend' : 'durationDialog.approval.lock')
+      : t(`durationDialog.title.${action}`)
 
   // Initialize form with translated schema
   const form = useForm<FormValues>({
@@ -134,9 +153,7 @@ export function DurationDialog({
       setOpen(false)
       onSuccess?.()
     },
-    onError: () => {
-      toast.error(t('durationDialog.toast.lockError'))
-    },
+    onError: showErrorToast,
   })
 
   // Use React Query for unlock mutation
@@ -150,28 +167,51 @@ export function DurationDialog({
       setOpen(false)
       onSuccess?.()
     },
-    onError: () => {
-      toast.error(t('durationDialog.toast.unlockError'))
-    },
+    onError: showErrorToast,
   })
 
+  const isPending = lockMutation.isPending || unlockMutation.isPending
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) setOpen(nextOpen)
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {allLocked && !isExtendDialogOpen
-              ? t('durationDialog.title.unlock')
-              : t('durationDialog.title.lock')}
-          </DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {allLocked && !isExtendDialogOpen
-              ? t('durationDialog.description.unlock', { count: jobs.length })
-              : t('durationDialog.description.lock', { count: jobs.length })}
+            {alreadyPermanent
+              ? t('durationDialog.approval.permanent')
+              : isUnlockDialog
+                ? t('durationDialog.description.unlock', { count: jobs.length })
+                : t('durationDialog.description.lock', { count: jobs.length })}
           </DialogDescription>
+          {singleJob && <p className="font-mono text-sm break-all">{singleJob.jobName}</p>}
         </DialogHeader>
 
-        {mixedState ? (
+        {approval && !alreadyPermanent && (
+          <p className="bg-muted rounded-md p-3 text-sm">
+            {isExtendDialogOpen
+              ? t('durationDialog.approval.lockedUntil', {
+                  time: new Intl.DateTimeFormat(i18n.language, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }).format(lockEnd),
+                })
+              : t('durationDialog.approval.unlocked')}
+          </p>
+        )}
+
+        {alreadyPermanent ? (
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+          </DialogFooter>
+        ) : mixedState ? (
           <div className="py-4">
             <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
               <CardContent className="flex items-start gap-2 pt-6">
@@ -185,7 +225,7 @@ export function DurationDialog({
               </CardContent>
             </Card>
           </div>
-        ) : allLocked && !isExtendDialogOpen ? (
+        ) : isUnlockDialog ? (
           <Button
             onClick={() => unlockMutation.mutate()}
             className="w-full"
@@ -254,7 +294,9 @@ export function DurationDialog({
                   <Lock className="mr-2 h-4 w-4" />
                   {lockMutation.isPending
                     ? t('durationDialog.button.locking')
-                    : t('durationDialog.button.lock')}
+                    : approval || isExtendDialogOpen
+                      ? title
+                      : t('durationDialog.button.lock')}
                 </Button>
               </DialogFooter>
             </form>

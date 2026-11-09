@@ -22,7 +22,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取节点Pod信息，包含作业和用户信息",
+                "description": "获取节点Pod信息，匹配到 Crater 作业时包含 jobName、锁定状态和用户信息",
                 "consumes": [
                     "application/json"
                 ],
@@ -4175,6 +4175,55 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/vcjobs/{name}/detail": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "按作业名称查询作业详情和锁定状态",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "获取作业详情",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "作业详情（含 locked、permanentLocked 和 lockedTimestamp）",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -10499,7 +10548,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "调用k8s get crd",
+                "description": "按作业名称查询作业详情和锁定状态",
                 "consumes": [
                     "application/json"
                 ],
@@ -10509,7 +10558,7 @@ const docTemplate = `{
                 "tags": [
                     "VolcanoJob"
                 ],
-                "summary": "获取jupyter详情",
+                "summary": "获取作业详情",
                 "parameters": [
                     {
                         "type": "string",
@@ -10521,7 +10570,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "任务描述",
+                        "description": "作业详情（含 locked、permanentLocked 和 lockedTimestamp）",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -12820,6 +12869,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "ip": {
+                    "type": "string"
+                },
+                "jobName": {
+                    "description": "Crater job matched by the admin node endpoint.",
                     "type": "string"
                 },
                 "locked": {

@@ -27,7 +27,7 @@ import {
   Type,
   User,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -55,7 +55,12 @@ import {
   reviewApprovalOrder,
 } from '@/services/api/approvalorder'
 import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
-import { JobStatus, apiJobGetDetail, apiJobGetPods, getJobStateType } from '@/services/api/vcjob'
+import {
+  JobStatus,
+  apiAdminGetJobDetail,
+  apiJobGetPods,
+  getJobStateType,
+} from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
@@ -103,7 +108,7 @@ function RouteComponent() {
   // Fetch job detail if it's a job
   const { data: jobDetail } = useQuery({
     queryKey: ['job', 'detail', order?.name],
-    queryFn: () => apiJobGetDetail(order!.name),
+    queryFn: () => apiAdminGetJobDetail(order!.name),
     select: (res) => res.data,
     enabled: !!order && order.type === 'job',
   })
@@ -151,19 +156,14 @@ function RouteComponent() {
     selectedJob,
     selectedExtHours,
     isDelayDialogOpen,
-    isFetchingJob,
+    isProcessingLock,
     handleApproveWithDelay,
+    handleDelaySuccess,
     setIsDelayDialogOpen,
-    clearSelection,
   } = useApprovalOrderLock()
 
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
-
-  const selectedOrderRef = useRef<ApprovalOrder | null>(null)
-  useEffect(() => {
-    selectedOrderRef.current = selectedOrder ?? null
-  }, [selectedOrder])
 
   const invalidateOrderLists = () => {
     queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
@@ -261,7 +261,7 @@ function RouteComponent() {
   }
 
   const isPendingStatus = order?.status === 'Pending'
-  const isProcessing = approveMutation.isPending || rejectMutation.isPending || isFetchingJob
+  const isProcessing = approveMutation.isPending || rejectMutation.isPending || isProcessingLock
 
   if (!order) {
     return <div className="text-muted-foreground p-6 text-center">工单不存在或已被删除</div>
@@ -447,28 +447,9 @@ function RouteComponent() {
           key={`${selectedOrder.id}-${selectedExtHours}`}
           jobs={[selectedJob]}
           open={isDelayDialogOpen}
-          setOpen={(open) => {
-            setIsDelayDialogOpen(open)
-            if (!open && !approveMutation.isPending) {
-              clearSelection()
-            }
-          }}
-          onSuccess={async () => {
-            const target = selectedOrderRef.current
-            if (!target) {
-              toast.error('未找到工单，无法批准')
-              return
-            }
-            try {
-              await approveMutation.mutateAsync(target)
-            } catch {
-              // 错误提示已在 mutation onError 中处理
-            } finally {
-              clearSelection()
-              await refetch()
-            }
-          }}
-          setExtend={selectedJob.locked}
+          setOpen={setIsDelayDialogOpen}
+          onSuccess={handleDelaySuccess}
+          approval
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}
         />

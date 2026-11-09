@@ -20,6 +20,10 @@ The platform employs smart scheduling algorithms to automatically allocate the m
 ### 📈 Comprehensive Monitoring
 Crater offers detailed monitoring data and logging capabilities, empowering users with deep visibility into cluster operations. These features facilitate quick troubleshooting and performance tuning, helping maintain system stability and responsiveness.
 
+### Job locks
+
+In the admin view, open a node under **Cluster → Nodes** and use a Pod’s actions menu to lock, extend, or unlock its job. A lock protects the entire job from automatic cleanup. When reviewing a lock request, check the current lock and the expiration preview. For an active temporary lock, the requested duration is added to its existing expiration time.
+
 ---
 ## Overall Architecture
 ![alt text](./assets/architecture.webp)

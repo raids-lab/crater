@@ -66,7 +66,7 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
     selectedJob,
     selectedExtHours,
     isDelayDialogOpen,
-    isFetchingJob,
+    isProcessingLock,
     handleApproveWithDelay,
     handleDelaySuccess,
     setIsDelayDialogOpen,
@@ -186,7 +186,7 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
           }
         },
         label: order.type === 'job' ? '批准并锁定' : '批准',
-        disabled: () => isApproving || isRejecting || isFetchingJob,
+        disabled: () => isApproving || isRejecting || isProcessingLock,
       },
       reject: {
         show: isPending,
@@ -237,7 +237,7 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
           open={isDelayDialogOpen}
           setOpen={setIsDelayDialogOpen}
           onSuccess={handleDelaySuccess}
-          setExtend={selectedJob.locked}
+          approval
           defaultDays={Math.floor((selectedExtHours || 8) / 24)}
           defaultHours={(selectedExtHours || 8) % 24}
         />

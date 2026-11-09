@@ -30,7 +30,7 @@ interface JobNameCellProps {
 }
 
 // 格式化锁定日期为中文格式
-const formatLockDate = (timestamp?: string) => {
+const formatLockDate = (timestamp?: string | null) => {
   const date = new Date(timestamp ?? Date.now())
   return format(date, 'M月d日 HH:mm', { locale: zhCN })
 }

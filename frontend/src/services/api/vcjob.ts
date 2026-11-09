@@ -69,7 +69,7 @@ export interface IJobInfo {
   resources?: Record<string, string>
   locked: boolean
   permanentLocked: boolean
-  lockedTimestamp?: string
+  lockedTimestamp?: string | null
   billedPointsTotal: number
 }
 
@@ -430,6 +430,9 @@ export interface IJupyterDetail {
   createdAt: string
   startedAt: string
   completedAt: string
+  locked: boolean
+  permanentLocked: boolean
+  lockedTimestamp?: string | null
 }
 
 export interface ISSHPortDetail {

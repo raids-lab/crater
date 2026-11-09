@@ -1311,6 +1311,9 @@ definitions:
         type: string
       ip:
         type: string
+      jobName:
+        description: Crater job matched by the admin node endpoint.
+        type: string
       locked:
         type: boolean
       lockedTimestamp:
@@ -3510,7 +3513,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取节点Pod信息，包含作业和用户信息
+      description: 获取节点Pod信息，匹配到 Crater 作业时包含 jobName、锁定状态和用户信息
       parameters:
       - description: 节点名称
         in: path
@@ -6164,6 +6167,37 @@ paths:
       security:
       - Bearer: []
       summary: Admin delete the job
+      tags:
+      - VolcanoJob
+  /v1/admin/vcjobs/{name}/detail:
+    get:
+      consumes:
+      - application/json
+      description: 按作业名称查询作业详情和锁定状态
+      parameters:
+      - description: Job Name
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 作业详情（含 locked、permanentLocked 和 lockedTimestamp）
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "400":
+          description: Request parameter error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Other errors
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 获取作业详情
       tags:
       - VolcanoJob
   /v1/aijobs:
@@ -9724,7 +9758,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: 调用k8s get crd
+      description: 按作业名称查询作业详情和锁定状态
       parameters:
       - description: Job Name
         in: path
@@ -9735,7 +9769,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: 任务描述
+          description: 作业详情（含 locked、permanentLocked 和 lockedTimestamp）
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "400":
@@ -9748,7 +9782,7 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取jupyter详情
+      summary: 获取作业详情
       tags:
       - VolcanoJob
   /v1/vcjobs/{name}/event:

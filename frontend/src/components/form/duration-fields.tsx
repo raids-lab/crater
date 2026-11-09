@@ -1,5 +1,4 @@
-import { addHours, format } from 'date-fns'
-import { zhCN } from 'date-fns/locale'
+import { addHours } from 'date-fns'
 import { CalendarClock } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +32,7 @@ export function DurationFields({
   showPreview = true,
   className,
 }: DurationFieldsProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [days, setDays] = useState<number>(value?.days ?? 0)
   const [hours, setHours] = useState<number>(value?.hours ?? 0)
 
@@ -48,14 +47,19 @@ export function DurationFields({
     return { days: d, hours: h, totalHours: d * 24 + h }
   }, [days, hours])
 
-  // 预览到期时间
   const preview = useMemo(() => {
-    if (!showPreview) return null
-    if (normalized.totalHours <= 0) return null
-    const base =
-      typeof origin === 'string' ? new Date(origin) : origin instanceof Date ? origin : new Date()
-    return addHours(base, normalized.totalHours)
+    if (!showPreview || normalized.totalHours <= 0) return null
+
+    const now = Date.now()
+    const originTime = typeof origin === 'string' ? Date.parse(origin) : origin?.getTime()
+    const base = originTime && originTime > now ? originTime : now
+    return { base, end: addHours(base, normalized.totalHours) }
   }, [normalized.totalHours, origin, showPreview])
+
+  const dateTime = new Intl.DateTimeFormat(i18n.language, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
 
   // 同步外部变更
   useEffect(() => {
@@ -142,14 +146,12 @@ export function DurationFields({
           <CardContent className="pt-4">
             <div className="text-muted-foreground flex items-center gap-2">
               <CalendarClock className="h-4 w-4" />
-              <span>到期时间预览</span>
+              <span>{t('durationDialog.preview.title')}</span>
             </div>
             <div className="mt-2">
-              <p className="text-lg font-medium">
-                {format(preview, 'yyyy年MM月dd日 HH:mm', { locale: zhCN })}
-              </p>
+              <p className="text-lg font-medium">{dateTime.format(preview.end)}</p>
               <p className="text-muted-foreground mt-1 text-sm">
-                当前时间：{format(new Date(), 'yyyy年MM月dd日 HH:mm', { locale: zhCN })}
+                {t('durationDialog.preview.base', { time: dateTime.format(preview.base) })}
               </p>
             </div>
           </CardContent>

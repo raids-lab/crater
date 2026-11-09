@@ -129,6 +129,7 @@ func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("user/:username/facets", mgr.GetUserJobFacets)
 	g.GET("billing", mgr.GetAllJobBillingInDays)
 	g.GET("billing/user/:username", mgr.GetUserJobBillingInDays)
+	g.GET(":name/detail", mgr.GetJobDetail)
 	g.GET(":name/billing", mgr.GetJobBillingDetail)
 	// delete job
 	g.DELETE(":name", mgr.AdminDeleteJob)
@@ -896,6 +897,9 @@ type (
 		CreationTimestamp       metav1.Time                   `json:"createdAt"`
 		RunningTimestamp        metav1.Time                   `json:"startedAt"`
 		CompletedTimestamp      metav1.Time                   `json:"completedAt"`
+		Locked                  bool                          `json:"locked"`
+		PermanentLocked         bool                          `json:"permanentLocked"`
+		LockedTimestamp         metav1.Time                   `json:"lockedTimestamp"`
 	}
 
 	// SSHPortData 定义 SSH 端口信息的结构体
@@ -930,17 +934,18 @@ type (
 
 // GetJobDetail godoc
 //
-//	@Summary		获取jupyter详情
-//	@Description	调用k8s get crd
+//	@Summary		获取作业详情
+//	@Description	按作业名称查询作业详情和锁定状态
 //	@Tags			VolcanoJob
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
 //	@Param			name	path		string					true	"Job Name"
-//	@Success		200		{object}	resputil.Response[any]	"任务描述"
+//	@Success		200		{object}	resputil.Response[any]	"作业详情（含 locked、permanentLocked 和 lockedTimestamp）"
 //	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/{name}/detail [get]
+//	@Router			/v1/admin/vcjobs/{name}/detail [get]
 func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -996,6 +1001,9 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		CreationTimestamp:       metav1.NewTime(job.CreationTimestamp),
 		RunningTimestamp:        metav1.NewTime(job.RunningTimestamp),
 		CompletedTimestamp:      metav1.NewTime(job.CompletedTimestamp),
+		Locked:                  job.LockedTimestamp.After(utils.GetLocalTime()),
+		PermanentLocked:         utils.IsPermanentTime(job.LockedTimestamp),
+		LockedTimestamp:         metav1.NewTime(job.LockedTimestamp),
 	}
 	resputil.Success(c, jobDetail)
 }
