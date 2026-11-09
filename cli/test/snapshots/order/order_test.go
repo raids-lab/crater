@@ -17,13 +17,50 @@ const goldenStemOrder = "order"
 
 func TestApproveOrderSendsOneAtomicWrite(t *testing.T) {
 	for _, tt := range []struct {
-		name string
-		args []string
-		lock *api.JobOrderLockRequest
+		name     string
+		lang     string
+		args     []string
+		lock     *api.JobOrderLockRequest
+		approved api.ApprovedJobLock
+		want     string
 	}{
-		{"default requested duration", nil, nil},
-		{"override duration", []string{"--lock", "--hours", "2", "--minutes", "15"}, &api.JobOrderLockRequest{Hours: 2, Minutes: 15}},
-		{"permanent", []string{"--lock", "--permanent"}, &api.JobOrderLockRequest{IsPermanent: true}},
+		{
+			name:     "default requested duration",
+			lang:     "en",
+			args:     []string{"--json"},
+			approved: api.ApprovedJobLock{DurationMinutes: 180},
+			want:     `"durationMinutes": 180`,
+		},
+		{
+			name:     "whole hours",
+			lang:     "en",
+			approved: api.ApprovedJobLock{DurationMinutes: 180},
+			want:     "Approved lock: 3 h\n",
+		},
+		{
+			name:     "hours and remaining minutes",
+			lang:     "zh-CN",
+			args:     []string{"--lock", "--hours", "3", "--minutes", "30"},
+			lock:     &api.JobOrderLockRequest{Hours: 3, Minutes: 30},
+			approved: api.ApprovedJobLock{DurationMinutes: 210},
+			want:     "实际批准时长: 3 小时 30 分钟\n",
+		},
+		{
+			name:     "minutes only",
+			lang:     "zh-CN",
+			args:     []string{"--lock", "--minutes", "30"},
+			lock:     &api.JobOrderLockRequest{Minutes: 30},
+			approved: api.ApprovedJobLock{DurationMinutes: 30},
+			want:     "实际批准时长: 30 分钟\n",
+		},
+		{
+			name:     "permanent",
+			lang:     "zh-CN",
+			args:     []string{"--lock", "--permanent"},
+			lock:     &api.JobOrderLockRequest{IsPermanent: true},
+			approved: api.ApprovedJobLock{IsPermanent: true},
+			want:     "实际批准时长: 永久锁定\n",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			writes := make(chan api.ApproveJobOrderRequest, 2)
@@ -40,22 +77,25 @@ func TestApproveOrderSendsOneAtomicWrite(t *testing.T) {
 						return
 					}
 					writes <- req
-					_, _ = io.WriteString(w, `{"code":0,"data":{"message":"approved","lockMessage":"locked","approvedLock":{"durationMinutes":135,"lockedUntil":"2026-11-09T12:00:00Z"}}}`)
+					result := api.ApproveJobOrderResult{Message: "approved", LockMessage: "locked", ApprovedLock: tt.approved}
+					if err := json.NewEncoder(w).Encode(api.Response[api.ApproveJobOrderResult]{Data: result}); err != nil {
+						t.Error(err)
+					}
 				default:
 					t.Errorf("unexpected separate request: %s %s", r.Method, r.URL)
 					http.NotFound(w, r)
 				}
 			}))
 			t.Cleanup(server.Close)
-			env := append(snaptest.EnvMinimal(t.TempDir(), "en"),
+			env := append(snaptest.EnvMinimal(t.TempDir(), tt.lang),
 				"CRATER_TEST_SANDBOX_HTTP=passthrough", "CRATER_TEST_SANDBOX_PLATFORM_URL="+server.URL)
-			args := append([]string{"admin", "order", "approve", "17", "--json", "--review-notes", "confirmed"}, tt.args...)
+			args := append([]string{"admin", "order", "approve", "17", "--review-notes", "confirmed"}, tt.args...)
 			result, err := snaptest.Run(snaptest.CraterExecutable(t), env, args)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result.ExitCode != 0 || !strings.Contains(result.Stdout, `"approved_lock"`) {
-				t.Fatalf("approve result: %+v", result)
+			if result.ExitCode != 0 || !strings.Contains(result.Stdout, tt.want) {
+				t.Fatalf("approve result = %+v, want success with %q", result, tt.want)
 			}
 			if len(writes) != 1 {
 				t.Fatalf("approval writes = %d, want 1", len(writes))
@@ -70,6 +110,7 @@ func TestApproveOrderSendsOneAtomicWrite(t *testing.T) {
 }
 
 func TestOrderReadWithResourceDetails(t *testing.T) {
+	const approvedJobOrder = `{"id":12,"name":"job-a","type":"job","status":"Approved","createdAt":"2026-11-08T01:00:00Z","reviewedAt":"2026-11-08T01:10:00Z","content":{"approvalorderExtensionHours":6,"approvedLock":{"durationMinutes":210,"lockedUntil":"2026-11-08T04:40:00Z"}}}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -78,6 +119,8 @@ func TestOrderReadWithResourceDetails(t *testing.T) {
 			_, _ = io.WriteString(w, `{"code":40301,"msg":"permission denied to view this approval order"}`)
 		case "/api/v1/admin/approvalorder/17":
 			_, _ = io.WriteString(w, `{"code":0,"data":{"id":17,"name":"job-a","type":"job","status":"Pending","content":{"approvalorderTypeID":1,"approvalorderExtensionHours":8}}}`)
+		case "/api/v1/admin/approvalorder/12":
+			_, _ = io.WriteString(w, `{"code":0,"data":`+approvedJobOrder+`}`)
 		case "/api/v1/admin/approvalorder/18":
 			_, _ = io.WriteString(w, `{"code":0,"data":{"id":18,"name":"deleted-job","type":"job","status":"Approved"}}`)
 		case "/api/v1/admin/approvalorder/19":
@@ -93,7 +136,7 @@ func TestOrderReadWithResourceDetails(t *testing.T) {
 			}
 			_, _ = io.WriteString(w, `{"code":0,"data":[
 				{"id":17,"name":"job-a","type":"job","status":"Pending","createdAt":"2026-11-09T05:00:00Z","content":{"approvalorderExtensionHours":8}},
-				{"id":12,"name":"job-a","type":"job","status":"Approved","createdAt":"2026-11-08T01:00:00Z","reviewedAt":"2026-11-08T01:10:00Z","content":{"approvalorderExtensionHours":6,"approvedLock":{"durationMinutes":120,"lockedUntil":"2026-11-08T03:10:00Z"}}},
+				`+approvedJobOrder+`,
 				{"id":2,"name":"job-a","type":"dataset","status":"Approved","createdAt":"2026-11-07T01:00:00Z"}
 			]}`)
 		case "/api/v1/approvalorder/name/deleted-job":
@@ -116,9 +159,11 @@ func TestOrderReadWithResourceDetails(t *testing.T) {
 		{"administrator hint preserves forbidden code", []string{"order", "get", "17", "--json"}, true,
 			[]string{`"code": "ERR_FORBIDDEN_403"`, `"suggested_command": "crater admin order get 17"`}},
 		{"readable job resources", []string{"admin", "order", "get", "17"}, false,
-			[]string{"Pending", "Job status: Running", "Requested job resources:", "16Gi", "nvidia.com/a100", "request #2", "10m0s"}},
+			[]string{"Pending", "Job status: Running", "Requested job resources:", "16Gi", "nvidia.com/a100", "request #2", "3 h 30 min", "10m0s"}},
+		{"approved job order detail", []string{"admin", "order", "get", "12"}, false,
+			[]string{"Approved lock: 3 h 30 min\n"}},
 		{"structured job resources", []string{"admin", "order", "get", "17", "--json"}, false,
-			[]string{`"order": {`, `"job": {`, `"nvidia.com/a100": "2"`, `"currentAttempt": 2`, `"requestedHours": 6`, `"durationMinutes": 120`, `"reviewSeconds": 600`}},
+			[]string{`"order": {`, `"job": {`, `"nvidia.com/a100": "2"`, `"currentAttempt": 2`, `"requestedHours": 6`, `"durationMinutes": 210`, `"reviewSeconds": 600`}},
 		{"missing job preserves the order", []string{"admin", "order", "get", "18", "--json"}, false,
 			[]string{`"id": 18`, `"job_error": {`, `"code": "ERR_NOT_FOUND_404"`, `"history_error":`}},
 		{"dataset order skips the job lookup", []string{"admin", "order", "get", "19", "--json"}, false,

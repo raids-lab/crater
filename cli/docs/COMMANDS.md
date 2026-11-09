@@ -817,7 +817,7 @@ This section covers account context and additional resource commands. All comman
 - `crater admin user ls [--base] [--search TEXT] [--role Guest|User|Admin] [--status Pending|Active|Inactive] [--page N] [--page-size N] [--all-pages]`；搜索覆盖用户名与显示名，默认按 ID 倒序。`--base` 与 `--role` / `--status` 互斥。
 - 上述工单和用户列表均先本地筛选再分页，`page-size` 默认 `15`、最大 `200`；JSON 当前页输出同时包含 `data.pagination`。
 - `crater admin billing status|jobs`, `crater admin order get <id>`, `crater admin user billing summary|accounts <username>`.
-- `crater admin order get <id>` 对作业工单显示资源申请、申请序号和历次工单的状态、申请时长、实际批准时长及审核耗时。`--json` 在 `data.order`、`data.job` 和 `data.history` 中返回这些信息。作业摘要或历史查询失败时，分别通过 `data.job_error` 或 `data.history_error` 报告原因。
+- `crater admin order get <id>` 对作业工单显示资源申请、申请序号和历次工单的状态、申请时长、实际批准时长及审核耗时。实际批准的有限时长按整小时和剩余分钟显示，例如 `3 小时` 或 `3 小时 30 分钟`。`--json` 在 `data.order`、`data.job` 和 `data.history` 中返回这些信息，实际批准的有限时长使用 `durationMinutes`。作业摘要或历史查询失败时，分别通过 `data.job_error` 或 `data.history_error` 报告原因。
 
 ### Approval Order Writes
 - User-visible commands stay under `crater order ...`:
@@ -831,7 +831,7 @@ This section covers account context and additional resource commands. All comman
   - `crater admin order check --yes`.
 - `order edit` first reads the current order and preserves fields that were not explicitly provided, so absent flags do not clear existing content.
 - For running job orders, `admin order approve` approves and locks the job in one operation. It uses the requested hours by default. Use `--lock` with a positive duration or `--permanent` to override the request. Finite locks extend from the later of the current time and the existing expiration.
-- A job approval records the actual lock in `content.approvedLock` while preserving the request. Older orders without a lock record show the approved duration as unknown. Dataset approvals and rejections use the review API.
+- A job approval records the actual lock in `content.approvedLock` while preserving the request. The approval confirmation shows the applied duration in hours and remaining minutes or as a permanent lock. Older orders without a lock record show the approved duration as unknown. Dataset approvals and rejections use the review API.
 - Lock duration flags must be non-negative. Use either `--permanent` or a finite duration.
 - `--json` success payloads use `data.message`. Successful job approvals also include `data.lock_message` and `data.approved_lock`.
 

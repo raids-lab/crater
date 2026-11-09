@@ -390,6 +390,7 @@ func runAdminOrderApprove(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println(i18n.T("order_lock_success", result.LockMessage))
 	fmt.Println(i18n.T("order_update_success", result.Message))
+	fmt.Printf("%s: %s\n", i18n.T("order_history_approved_duration"), approvedLockLabel(&result.ApprovedLock))
 	return nil
 }
 

@@ -103,5 +103,13 @@ func approvedLockLabel(lock *api.ApprovedJobLock) string {
 	if lock.IsPermanent {
 		return i18n.T("order_approved_permanent_lock")
 	}
-	return (time.Duration(lock.DurationMinutes) * time.Minute).String()
+	hours := lock.DurationMinutes / 60
+	minutes := lock.DurationMinutes % 60
+	if hours == 0 {
+		return i18n.T("order_approved_duration_minutes", minutes)
+	}
+	if minutes == 0 {
+		return i18n.T("order_approved_duration_hours", hours)
+	}
+	return i18n.T("order_approved_duration_hours_minutes", hours, minutes)
 }
