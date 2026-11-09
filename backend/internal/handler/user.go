@@ -13,6 +13,7 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
@@ -55,24 +56,30 @@ func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/baseinfo", mgr.ListUserBaseInfo)
 	g.DELETE("/:name", mgr.DeleteUser)
 	g.PUT("/:name/role", mgr.UpdateRole)
-	g.PUT("/:name/attributes", mgr.UpdateUserAttributesByAdmin)
+	g.PUT("/:name/attributes", mgr.AdminUpdateUserAttributes)
 	g.POST("/:name/billing/extra-balance", mgr.AdjustUserExtraBalance)
 	g.GET("/:name/billing/accounts", mgr.GetUserBillingAccounts)
 	g.GET("/:name/ban", mgr.GetUserBanStatus)
 	g.PUT("/:name/ban", mgr.UpdateUserBanStatus)
 }
 
+type AdminUpdateUserAttributesReq struct {
+	model.UserAttribute
+	ContainerSysAdminEnabled *bool `json:"containerSysAdminEnabled"`
+}
+
 type UserResp struct {
-	ID              uint                                    `json:"id"`                        // 用户ID
-	Name            string                                  `json:"name"`                      // 用户名称
-	Role            model.Role                              `json:"role"`                      // 用户角色
-	Status          model.Status                            `json:"status"`                    // 用户状态
-	ExtraBalance    float64                                 `json:"extraBalance"`              // 用户额外点数
-	Attributes      datatypes.JSONType[model.UserAttribute] `json:"attributes"`                // 用户额外属性
-	Banned          bool                                    `json:"banned"`                    // 当前是否处于封禁状态
-	PermanentBanned bool                                    `json:"permanentBanned"`           // 是否永久封禁
-	BannedTimestamp *time.Time                              `json:"bannedTimestamp,omitempty"` // 用户封禁截止时间
-	BanRestrictions model.UserBanRestrictions               `json:"banRestrictions"`           // 当前生效的封禁限制，未封禁时为空
+	ContainerSysAdminEnabled bool                                    `json:"containerSysAdminEnabled"`
+	ID                       uint                                    `json:"id"`                        // 用户ID
+	Name                     string                                  `json:"name"`                      // 用户名称
+	Role                     model.Role                              `json:"role"`                      // 用户角色
+	Status                   model.Status                            `json:"status"`                    // 用户状态
+	ExtraBalance             float64                                 `json:"extraBalance"`              // 用户额外点数
+	Attributes               datatypes.JSONType[model.UserAttribute] `json:"attributes"`                // 用户额外属性
+	Banned                   bool                                    `json:"banned"`                    // 当前是否处于封禁状态
+	PermanentBanned          bool                                    `json:"permanentBanned"`           // 是否永久封禁
+	BannedTimestamp          *time.Time                              `json:"bannedTimestamp,omitempty"` // 用户封禁截止时间
+	BanRestrictions          model.UserBanRestrictions               `json:"banRestrictions"`           // 当前生效的封禁限制，未封禁时为空
 }
 
 type UserDetailResp struct {
@@ -177,14 +184,14 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Success		200	{object}	resputil.Response[any]	"成功获取用户信息"
+//	@Success		200	{object}	resputil.Response[[]UserResp]	"成功获取用户信息"
 //	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
 //	@Failure		500	{object}	resputil.Response[any]	"其他错误"
 //	@Router			/v1/admin/users [get]
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	u := query.User
 	users, err := u.WithContext(c).
-		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.BannedTimestamp, u.BanRestrictions).
+		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.ContainerSysAdminEnabled, u.BannedTimestamp, u.BanRestrictions).
 		Order(u.ID.Desc()).
 		Find()
 	if err != nil {
@@ -199,15 +206,16 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 		}
 		banned := service.IsUserBanned(users[i].BannedTimestamp)
 		resp = append(resp, UserResp{
-			ID:              users[i].ID,
-			Name:            users[i].Name,
-			Role:            users[i].Role,
-			Status:          users[i].Status,
-			ExtraBalance:    extraBalance,
-			Attributes:      users[i].Attributes,
-			Banned:          banned,
-			PermanentBanned: service.IsUserPermanentlyBanned(users[i].BannedTimestamp),
-			BannedTimestamp: users[i].BannedTimestamp,
+			ContainerSysAdminEnabled: users[i].ContainerSysAdminEnabled,
+			ID:                       users[i].ID,
+			Name:                     users[i].Name,
+			Role:                     users[i].Role,
+			Status:                   users[i].Status,
+			ExtraBalance:             extraBalance,
+			Attributes:               users[i].Attributes,
+			Banned:                   banned,
+			PermanentBanned:          service.IsUserPermanentlyBanned(users[i].BannedTimestamp),
+			BannedTimestamp:          users[i].BannedTimestamp,
 			BanRestrictions: service.EffectiveUserBanRestrictions(
 				banned,
 				users[i].BanRestrictions.Data(),
@@ -459,50 +467,49 @@ func (mgr *UserMgr) CheckIfEmailVerified(c *gin.Context) {
 	})
 }
 
-// UpdateUserAttributesByAdmin godoc
+// AdminUpdateUserAttributes godoc
 //
-//	@Summary		管理员更新用户属性
-//	@Description	管理员更新指定用户的属性
-//	@Tags			User
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			name		path		string					true	"username"
-//	@Param			attributes	body		model.UserAttribute		true	"用户属性"
-//	@Success		200			{object}	resputil.Response[any]	"用户属性更新成功"
-//	@Failure		400			{object}	resputil.Response[any]	"请求参数错误"
-//	@Failure		500			{object}	resputil.Response[any]	"其他错误"
-//	@Router			/v1/admin/users/{name}/attributes [put]
-func (mgr *UserMgr) UpdateUserAttributesByAdmin(c *gin.Context) {
+// @Summary Admin update user attributes
+// @Description Update user attributes and optionally grant or revoke SYS_ADMIN for subsequently created job containers.
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param name path string true "username"
+// @Param attributes body AdminUpdateUserAttributesReq true "User attributes and optional container permission"
+// @Success 200 {object} resputil.Response[string] "User attributes updated"
+// @Failure 400 {object} resputil.Response[any] "Invalid request"
+// @Failure 403 {object} resputil.Response[any] "Administrator permission required"
+// @Failure 404 {object} resputil.Response[any] "User not found"
+// @Failure 500 {object} resputil.Response[any] "Database unavailable"
+// @Router /v1/admin/users/{name}/attributes [put]
+func (mgr *UserMgr) AdminUpdateUserAttributes(c *gin.Context) {
+	token := util.GetToken(c)
+	if token.RolePlatform != model.RoleAdmin {
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("Administrator permission is required"))
+		return
+	}
 	var nameReq UserNameReq
+	var req AdminUpdateUserAttributesReq
 	if err := c.ShouldBindUri(&nameReq); err != nil {
-		resputil.BadRequestError(c, fmt.Sprintf("Invalid request body: %v", err))
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "A username is required"))
 		return
 	}
-	name := nameReq.Name
-
-	var attributes model.UserAttribute
-	if err := c.ShouldBindJSON(&attributes); err != nil {
-		resputil.BadRequestError(c, "Invalid request body")
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "Invalid user attributes"))
 		return
 	}
-
-	u := query.User
-	user, err := u.WithContext(c).Where(u.Name.Eq(name)).First()
-	if err != nil {
-		resputil.Error(c, "User not found", resputil.NotSpecified)
+	if err := service.AdminUpdateUserAttributes(
+		c.Request.Context(), nameReq.Name, &req.UserAttribute, req.ContainerSysAdminEnabled,
+	); err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
-
-	user.Attributes = datatypes.NewJSONType(attributes)
-	user.Nickname = attributes.Nickname
-	if err := u.WithContext(c).Save(user); err != nil {
-		resputil.Error(c, fmt.Sprintf("Failed to update user attributes: %v", err), resputil.NotSpecified)
-		return
+	if req.ContainerSysAdminEnabled != nil {
+		klog.InfoS("Updated user container permission", "operator", token.Username,
+			"username", nameReq.Name, "containerSysAdminEnabled", *req.ContainerSysAdminEnabled)
 	}
-
-	klog.Infof("update user attributes success by admin, username: %s", name)
-	resputil.Success(c, "用户属性更新成功")
+	resputil.Success(c, "User attributes updated successfully")
 }
 
 // AdjustUserExtraBalance godoc

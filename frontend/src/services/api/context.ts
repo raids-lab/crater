@@ -90,3 +90,10 @@ export const apiVerifyEmailCode = (email: string, code: string) =>
     code,
     email,
   })
+
+export interface UserJobPermissions {
+  containerSysAdminEnabled: boolean
+}
+
+export const apiGetUserJobPermissions = () =>
+  apiV1Get<IResponse<UserJobPermissions>>('context/job-permissions')
