@@ -26,6 +26,8 @@ Use this skill when the user wants to manage their own approval orders through `
 ## Rules
 
 - Do not use `--admin` with user approval commands.
+- `order ls` and `order get` only read orders created by the active user, including when that user is a platform administrator. For cross-user reads as an administrator, use `crater admin order ls` or `crater admin order get <id>`. If `order get` returns `ERR_FORBIDDEN_403`, check `context.suggested_command` for an administrator command and use it only if the task calls for administrator access.
+- `order by-name` returns orders only for jobs and datasets the active user can access. An empty list may mean there are no visible orders for that name.
 - Do not approve, reject, or check platform-wide orders with this skill.
 - `order edit` preserves fields that are not explicitly supplied by reading the current order first.
 - Use `--yes` for `cancel` in non-interactive or JSON workflows.

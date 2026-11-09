@@ -40,12 +40,13 @@ import {
 
 import {
   type ApprovalOrder,
-  listApprovalOrdersbyName,
+  listJobApprovalOrders,
   reviewApprovalOrder,
 } from '@/services/api/approvalorder'
 
 import useAdmin from '@/hooks/use-admin'
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
+import { useAuth } from '@/hooks/use-auth'
 
 interface JobOrderListProps {
   jobName: string
@@ -55,6 +56,7 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const isAdmin = useAdmin()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
@@ -74,7 +76,7 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
 
   const query = useQuery({
     queryKey: ['approvalorders', 'byName', jobName],
-    queryFn: () => listApprovalOrdersbyName(jobName),
+    queryFn: () => listJobApprovalOrders(jobName),
     select: (res) =>
       [...(res.data ?? [])].sort((a, b) => {
         // 先按状态排序：待审批 > 已批准 > 已拒绝
@@ -163,11 +165,7 @@ export default function JobOrderList({ jobName }: JobOrderListProps) {
   // 创建操作配置 - 根据是否是管理员显示不同的操作
   const createActionConfig = (order: ApprovalOrder): ApprovalOrderActionConfig => {
     if (!isAdmin) {
-      const config = createViewOnlyConfig(handleViewOrder)
-      // 临时调试：确认配置正确
-      // eslint-disable-next-line no-console
-      console.log('View-only config created:', config)
-      return config
+      return order.creatorID === user?.id ? createViewOnlyConfig(handleViewOrder) : {}
     }
 
     const isPending = order.status === 'Pending'

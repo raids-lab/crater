@@ -72,7 +72,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui-custom/alert-dialog'
 
-import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
+import { listJobApprovalOrders } from '@/services/api/approvalorder'
 import { apiJobBillingDetail } from '@/services/api/billing'
 import { apiGetPodIngresses } from '@/services/api/tool'
 import {
@@ -132,8 +132,9 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
   // 获取工单列表以确定是否显示“相关工单”选项卡
   const { data: ordersData } = useQuery({
     queryKey: ['approvalorders', 'byName', jobName],
-    queryFn: () => listApprovalOrdersbyName(jobName),
+    queryFn: () => listJobApprovalOrders(jobName),
     select: (res) => res.data,
+    enabled: !!data,
   })
 
   // Pod 相关信息获取

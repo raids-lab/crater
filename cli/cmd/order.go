@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -12,6 +13,7 @@ import (
 	"github.com/raids-lab/crater/cli/internal/completion"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
+	"github.com/raids-lab/crater/cli/internal/session"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,8 +38,8 @@ var orderCmd = &cobra.Command{
 	},
 }
 
-var orderLsCmd = &cobra.Command{Use: "ls", Short: "List approval orders", Args: noArgs, RunE: runOrderLs}
-var orderGetCmd = &cobra.Command{Use: "get <id>", Short: "Get an approval order", Args: exactArgs(1, "id"), RunE: runOrderGet}
+var orderLsCmd = &cobra.Command{Use: "ls", Short: "List approval orders you created", Args: noArgs, RunE: runOrderLs}
+var orderGetCmd = &cobra.Command{Use: "get <id>", Short: "View an approval order you created", Args: exactArgs(1, "id"), RunE: runOrderGet}
 var orderByNameCmd = &cobra.Command{Use: "by-name <name>", Short: "List approval orders by name", Args: exactArgs(1, "order-name"), RunE: runOrderByName}
 var orderSubmitCmd = &cobra.Command{Use: "submit", Short: "Submit an approval order", Args: noArgs, RunE: runOrderSubmit}
 var orderEditCmd = &cobra.Command{Use: "edit <id>", Short: "Edit a pending approval order", Args: exactArgs(1, "id"), RunE: runOrderEdit}
@@ -181,15 +183,90 @@ func runOrderGet(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "order", Path: fmt.Sprintf("%s/%s", api.ApprovalOrderPrefix, api.UintPath(id)), Params: noParams, Table: printRawObject})
+	err = runRawRead(cmd, rawReadSpec{PayloadKey: "order", Path: fmt.Sprintf("%s/%s", api.ApprovalOrderPrefix, api.UintPath(id)), Params: noParams, Table: printRawObject})
+	var cliErr *clierror.Error
+	if errors.As(err, &cliErr) && cliErr.Code == errorcodes.ErrForbidden403 &&
+		cliErr.Context["crater_code"] == api.CodePermissionDenied {
+		if st, loadErr := session.LoadState(); loadErr == nil {
+			if info, ok := session.ActiveAuthInfo(st); ok && info.Role == "admin" {
+				suggestedCommand := "crater admin order get " + api.UintPath(id)
+				cliErr.Context["suggested_command"] = suggestedCommand
+				cliErr.Message += "\n" + i18n.T("order_admin_get_hint", suggestedCommand)
+			}
+		}
+	}
+	return err
 }
 
-func runAdminOrderGet(cmd *cobra.Command, args []string) error {
+func runAdminOrderGet(_ *cobra.Command, args []string) error {
 	id, err := requiredUintArg(args, "order_label_id", "id")
 	if err != nil {
 		return err
 	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "order", Path: fmt.Sprintf("%s/%s", api.AdminApprovalPrefix, api.UintPath(id)), Params: noParams, Table: printRawObject})
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	order, err := client.GetApprovalOrder(id, true)
+	if err != nil {
+		return cliErrFromAPI(err)
+	}
+
+	payload := map[string]interface{}{"order": order}
+	var job *api.JobDetail
+	var jobErr *clierror.Error
+	if order.Type == "job" {
+		job, err = client.GetJob(order.Name)
+		if err != nil {
+			jobErr = cliErrFromAPI(err)
+			payload["job_error"] = map[string]string{"code": jobErr.Code, "message": jobErr.Message}
+		} else {
+			payload["job"] = map[string]interface{}{"jobName": job.JobName, "status": job.Status, "queue": job.Queue, "resources": job.Resources}
+		}
+	}
+	var history *approvalOrderHistory
+	var historyErr string
+	if order.Type == "job" {
+		history, historyErr = readJobApprovalHistory(client, order)
+		if historyErr == "" {
+			payload["history"] = history
+		} else {
+			payload["history_error"] = historyErr
+		}
+	}
+	if outputJSON {
+		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(payload))
+	}
+	printAdminOrderDetail(order, job, jobErr)
+	if history != nil {
+		printJobApprovalHistory(history)
+	} else if historyErr != "" {
+		fmt.Printf("\n%s\n", i18n.T("order_history_unavailable", historyErr))
+	}
+	return nil
+}
+
+func printAdminOrderDetail(order *api.ApprovalOrder, job *api.JobDetail, jobErr *clierror.Error) {
+	fmt.Printf("%s: %d\n", i18n.T("table_id"), order.ID)
+	fmt.Printf("%s: %s\n", i18n.T("table_name"), order.Name)
+	fmt.Printf("%s: %s\n", i18n.T("table_type"), order.Type)
+	fmt.Printf("%s: %s\n", i18n.T("table_status"), order.Status)
+	fmt.Printf("%s: %s\n", i18n.T("order_label_creator"), emptyDash(order.Creator.Username))
+	fmt.Printf("%s: %s\n", i18n.T("table_created_at"), formatAPITime(order.CreatedAt))
+	fmt.Printf("%s: %s\n", i18n.T("order_label_reason"), emptyDash(order.Content.ApprovalOrderReason))
+	if order.Type == "job" {
+		fmt.Printf("%s: %d\n", i18n.T("order_label_extension_hours"), order.Content.ApprovalOrderExtensionHours)
+	}
+	fmt.Printf("%s: %s\n", i18n.T("order_label_reviewer"), emptyDash(order.Reviewer.Username))
+	fmt.Printf("%s: %s\n", i18n.T("order_label_review_notes"), emptyDash(order.ReviewNotes))
+	if job != nil {
+		fmt.Printf("\n%s: %s\n", i18n.T("table_job_name"), job.JobName)
+		fmt.Printf("%s: %s\n", i18n.T("order_label_job_status"), job.Status)
+		fmt.Printf("%s: %s\n", i18n.T("table_queue"), job.Queue)
+		fmt.Printf("%s: %s\n", i18n.T("order_label_requested_resources"), formatResources(job.Resources))
+	} else if jobErr != nil {
+		fmt.Printf("\n%s\n", i18n.T("order_job_unavailable", jobErr.Message))
+	}
 }
 
 func runOrderByName(cmd *cobra.Command, args []string) error {
@@ -201,7 +278,7 @@ func runOrderByName(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	orders, err := client.ListApprovalOrdersByName(name)
+	orders, err := client.ListApprovalOrdersByName(name, "")
 	if err != nil {
 		return cliErrFromAPI(err)
 	}

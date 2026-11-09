@@ -2,13 +2,14 @@ package api
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 )
 
 type ApprovalOrderClient interface {
 	ListApprovalOrders(admin bool) ([]ApprovalOrder, error)
 	GetApprovalOrder(id uint, admin bool) (*ApprovalOrder, error)
-	ListApprovalOrdersByName(name string) ([]ApprovalOrder, error)
+	ListApprovalOrdersByName(name, orderType string) ([]ApprovalOrder, error)
 	CreateApprovalOrder(req ApprovalOrderRequest) (string, error)
 	UpdateApprovalOrder(id uint, req ApprovalOrderRequest) (string, error)
 	ReviewApprovalOrder(id uint, req ApprovalOrderReviewRequest) (string, error)
@@ -36,6 +37,7 @@ type ApprovalOrder struct {
 	Content     ApprovalOrderContent `json:"content"`
 	ReviewNotes string               `json:"reviewNotes"`
 	CreatedAt   time.Time            `json:"createdAt"`
+	ReviewedAt  *time.Time           `json:"reviewedAt,omitempty"`
 	CreatorID   uint                 `json:"creatorID"`
 	Creator     ApprovalUserInfo     `json:"creator"`
 	ReviewerID  uint                 `json:"reviewerID"`
@@ -96,9 +98,13 @@ func (c *Client) GetApprovalOrder(id uint, admin bool) (*ApprovalOrder, error) {
 	return &result.Data, nil
 }
 
-func (c *Client) ListApprovalOrdersByName(name string) ([]ApprovalOrder, error) {
+func (c *Client) ListApprovalOrdersByName(name, orderType string) ([]ApprovalOrder, error) {
 	var result Response[[]ApprovalOrder]
-	resp, err := c.httpClient.R().SetSuccessResult(&result).SetErrorResult(&result).Get(ApprovalOrderPrefix + "/name/" + name)
+	req := c.httpClient.R().SetSuccessResult(&result).SetErrorResult(&result)
+	if orderType != "" {
+		req.SetQueryParam("type", orderType)
+	}
+	resp, err := req.Get(ApprovalOrderPrefix + "/name/" + url.PathEscape(name))
 	if err != nil {
 		return nil, &NetworkError{Cause: err}
 	}

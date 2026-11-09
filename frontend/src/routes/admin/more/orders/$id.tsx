@@ -54,7 +54,7 @@ import {
   adminGetApprovalOrder,
   reviewApprovalOrder,
 } from '@/services/api/approvalorder'
-import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
+import { listJobApprovalOrders } from '@/services/api/approvalorder'
 import { JobStatus, apiJobGetDetail, apiJobGetPods, getJobStateType } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 
@@ -123,7 +123,7 @@ function RouteComponent() {
 
   const { data: ordersData } = useQuery({
     queryKey: ['approvalorders', 'byName', order?.name],
-    queryFn: () => listApprovalOrdersbyName(order!.name),
+    queryFn: () => listJobApprovalOrders(order!.name),
     select: (res) => res.data,
     enabled: !!order && order.type === 'job',
   })

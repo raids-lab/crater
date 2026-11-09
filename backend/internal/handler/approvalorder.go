@@ -185,6 +185,7 @@ type ApprovalOrderResp struct {
 	Content     model.ApprovalOrderContent `json:"content"`
 	ReviewNotes string                     `json:"reviewNotes"`
 	CreatedAt   time.Time                  `json:"createdAt"`
+	ReviewedAt  *time.Time                 `json:"reviewedAt,omitempty"`
 
 	CreatorID  uint           `json:"creatorID"`
 	Creator    model.UserInfo `json:"creator"`
@@ -250,32 +251,8 @@ func unmarshalApprovalOrderContent(content datatypes.JSONType[model.ApprovalOrde
 // 新增辅助函数：将 ApprovalOrder 数组转换为 ApprovalOrderResp 数组
 func convertToApprovalOrderResps(orders []*model.ApprovalOrder) []ApprovalOrderResp {
 	var result []ApprovalOrderResp
-	for i := range orders {
-		resp := ApprovalOrderResp{
-			ID:          orders[i].ID,
-			Name:        orders[i].Name,
-			Type:        orders[i].Type,
-			Status:      orders[i].Status,
-			Content:     unmarshalApprovalOrderContent(orders[i].Content),
-			ReviewNotes: orders[i].ReviewNotes,
-			CreatedAt:   orders[i].CreatedAt,
-			CreatorID:   orders[i].CreatorID,
-			Creator: model.UserInfo{
-				Username: orders[i].Creator.Name,
-				Nickname: orders[i].Creator.Nickname,
-			},
-			ReviewerID: orders[i].ReviewerID,
-		}
-
-		// 处理审批人信息
-		if orders[i].ReviewerID != 0 {
-			resp.Reviewer = model.UserInfo{
-				Username: orders[i].Reviewer.Name,
-				Nickname: orders[i].Reviewer.Nickname,
-			}
-		}
-
-		result = append(result, resp)
+	for _, order := range orders {
+		result = append(result, convertToApprovalOrderResp(order))
 	}
 	return result
 }
@@ -730,64 +707,12 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrder(c *gin.Context) {
 	if order.CreatorID != token.UserID {
 		klog.Warningf("user attempted to view an order not created by themselves, userID: %d, orderID: %d, creatorID: %d",
 			token.UserID, orderID.ID, order.CreatorID)
-		resputil.Error(c, "permission denied to view this approval order", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied to view this approval order"))
 		return
 	}
 
 	// 5. 转换为响应格式
 	result := convertToApprovalOrderResp(order)
-	resputil.Success(c, result)
-}
-
-type ApprovalOrderNameReq struct {
-	Name string `uri:"name" binding:"required"` // 工单名称
-}
-
-// swagger
-//
-//	@Summary		通过名称获取审批工单
-//	@Description	通过名称获取所有同名审批工单（无需身份验证）
-//	@Tags			approvalorder
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			name path string true "工单名称"
-//	@Success		200	{object}	resputil.Response[[]ApprovalOrderResp]	"成功返回工单列表"
-//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
-//	@Failure		404	{object}	resputil.Response[any]	"工单不存在"
-//	@Failure		500	{object}	resputil.Response[any]	"服务器错误"
-//	@Router			/v1/approvalorder/name/{name} [get]
-func (mgr *ApprovalOrderMgr) GetApprovalOrderByName(c *gin.Context) {
-	// 1. 获取工单名称
-	var nameReq ApprovalOrderNameReq
-	if err := c.ShouldBindUri(&nameReq); err != nil {
-		klog.Errorf("failed to bind request parameters: %v", err)
-		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
-		return
-	}
-
-	// 2. 查询指定名称的所有工单（不验证身份）
-	ao := query.ApprovalOrder
-	orders, err := ao.WithContext(c).
-		Preload(ao.Creator).  // 预加载创建人信息
-		Preload(ao.Reviewer). // 预加载审批人信息（可能为空）
-		Where(ao.Name.Eq(nameReq.Name)).
-		Order(ao.CreatedAt.Desc()). // 按创建时间倒序排列，最新的在前
-		Find()
-
-	if err != nil {
-		klog.Errorf("failed to query approval orders by name, name: %s, err: %v", nameReq.Name, err)
-		resputil.Error(c, "failed to get approval orders", resputil.NotSpecified)
-		return
-	}
-
-	// 3. 转换为响应格式（即使为空也返回空列表）
-	result := convertToApprovalOrderResps(orders)
-	if len(orders) == 0 {
-		klog.Infof("no approval orders found for name: %s", nameReq.Name)
-	} else {
-		klog.Infof("found %d approval orders for name: %s", len(result), nameReq.Name)
-	}
 	resputil.Success(c, result)
 }
 
@@ -863,6 +788,11 @@ func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 			Nickname: order.Creator.Nickname,
 		},
 		ReviewerID: order.ReviewerID,
+	}
+
+	if (order.Status == model.ApprovalOrderStatusApproved || order.Status == model.ApprovalOrderStatusRejected) &&
+		!order.UpdatedAt.IsZero() && !order.UpdatedAt.Before(order.CreatedAt) {
+		resp.ReviewedAt = &order.UpdatedAt
 	}
 
 	// 处理审批人信息

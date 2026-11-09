@@ -2,6 +2,9 @@ package api
 
 import "fmt"
 
+// CodePermissionDenied is the Crater API business code for a forbidden action.
+const CodePermissionDenied = 40301
+
 // RequestError 表示已收到 HTTP 响应但请求未成功，供命令层映射为 *clierror.Error（含 http_status、crater_code、msg）。
 type RequestError struct {
 	HTTPStatus int

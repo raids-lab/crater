@@ -4715,7 +4715,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "通过名称获取所有同名审批工单（无需身份验证）",
+                "description": "按名称查询当前用户可访问的作业或数据集的审批工单",
                 "consumes": [
                     "application/json"
                 ],
@@ -4733,6 +4733,16 @@ const docTemplate = `{
                         "name": "name",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "enum": [
+                            "job",
+                            "dataset"
+                        ],
+                        "type": "string",
+                        "description": "关联资源类型",
+                        "name": "type",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4744,12 +4754,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "404": {
-                        "description": "工单不存在",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -13101,6 +13105,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "reviewNotes": {
+                    "type": "string"
+                },
+                "reviewedAt": {
                     "type": "string"
                 },
                 "reviewer": {

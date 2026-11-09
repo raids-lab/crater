@@ -1493,6 +1493,8 @@ definitions:
         type: string
       reviewNotes:
         type: string
+      reviewedAt:
+        type: string
       reviewer:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
       reviewerID:
@@ -6596,12 +6598,19 @@ paths:
     get:
       consumes:
       - application/json
-      description: 通过名称获取所有同名审批工单（无需身份验证）
+      description: 按名称查询当前用户可访问的作业或数据集的审批工单
       parameters:
       - description: 工单名称
         in: path
         name: name
         required: true
+        type: string
+      - description: 关联资源类型
+        enum:
+        - job
+        - dataset
+        in: query
+        name: type
         type: string
       produces:
       - application/json
@@ -6612,10 +6621,6 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp'
         "400":
           description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "404":
-          description: 工单不存在
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":

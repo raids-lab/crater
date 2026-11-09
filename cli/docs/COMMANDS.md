@@ -811,11 +811,13 @@ This section covers account context and additional resource commands. All comman
   - `page-size` 默认 `15`、最大 `200`；JSON 使用 `data.billing`，非 `--all-pages` 时同时有 `data.pagination`。
 - `crater user get <username>`, `email-verified`.
 - `crater order ls [--status STATUS] [--type TYPE] [--search TEXT] [--page N] [--page-size N] [--all-pages]`, `get <id>`, `by-name <name>`。
+- `order ls` 和 `order get` 只查询当前用户创建的工单。`order by-name` 只返回与当前用户可访问的作业或数据集关联的工单。管理员跨用户按 ID 查询请使用 `crater admin order get <id>`。
 - `crater admin order ls` 支持相同的本地筛选和分页，并额外支持 `--creator TEXT`。普通用户 `order ls` 不提供 creator filter；两者的 `--search` 均匹配工单名称或创建者信息。
 - 工单列表默认按 `Pending`、`Approved`、`Rejected`、`Canceled` 分组，同状态按创建时间和 ID 倒序排列。
 - `crater admin user ls [--base] [--search TEXT] [--role Guest|User|Admin] [--status Pending|Active|Inactive] [--page N] [--page-size N] [--all-pages]`；搜索覆盖用户名与显示名，默认按 ID 倒序。`--base` 与 `--role` / `--status` 互斥。
 - 上述工单和用户列表均先本地筛选再分页，`page-size` 默认 `15`、最大 `200`；JSON 当前页输出同时包含 `data.pagination`。
 - `crater admin billing status|jobs`, `crater admin order get <id>`, `crater admin user billing summary|accounts <username>`.
+- `crater admin order get <id>` 对作业工单显示作业资源申请、当前申请序号和历次工单的状态、申请时长及审核耗时。`--json` 保留 `data.order`，作业摘要和历史分别在 `data.job` 和 `data.history`。
 
 ### Approval Order Writes
 - User-visible commands stay under `crater order ...`:

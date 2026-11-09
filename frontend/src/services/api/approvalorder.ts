@@ -31,6 +31,7 @@ export interface ApprovalOrder {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Canceled'
   content: Content
   reviewNotes: string
+  creatorID: number
   creator: IUserInfo
   reviewer: IUserInfo
   createdAt: string
@@ -69,8 +70,10 @@ export const updateApprovalOrder = (id: number, data: ApprovalOrderReq) => {
 export const reviewApprovalOrder = (id: number, data: ApprovalOrderReviewReq) => {
   return apiV1Put<IResponse<string>>(`admin/approvalorder/${id}/review`, data)
 }
-export const listApprovalOrdersbyName = (name: string) => {
-  return apiV1Get<IResponse<ApprovalOrder[]>>(`approvalorder/name/${name}`)
+export const listJobApprovalOrders = (jobName: string) => {
+  return apiV1Get<IResponse<ApprovalOrder[]>>(`approvalorder/name/${encodeURIComponent(jobName)}`, {
+    searchParams: { type: 'job' },
+  })
 }
 export const getApprovalOrder = (id: number) => {
   return apiV1Get<IResponse<ApprovalOrder>>(`approvalorder/${id}`)

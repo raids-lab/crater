@@ -27,6 +27,7 @@ Use this skill only for administrator approval-order workflows.
 ## Rules
 
 - Admin commands always use the `crater admin order ...` prefix. Do not use `--admin`.
+- Use `crater admin order get <id>` to inspect the job's resource requests and order history before reviewing it. History shows the current request number, each request's status and requested extension, and time to review when known. Requested hours are the submitter's request. With `--json`, read `data.order`, `data.job`, and `data.history`. When an enrichment is unavailable, `data.job_error` or `data.history_error` explains why.
 - `reject` requires `--review-notes`.
 - `approve --lock` first reads the order detail, locks the target job, and only then reviews the order.
 - Lock duration values must be non-negative. Unless `--permanent` is set, `--lock` requires a positive duration.
