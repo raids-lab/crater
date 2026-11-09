@@ -196,6 +196,16 @@ func runOrderGet(cmd *cobra.Command, args []string) error {
 		order, getErr := client.GetApprovalOrder(id, false)
 		if getErr == nil {
 			printOrderDetail(order)
+			if order.Type == "job" {
+				job, jobErr := client.GetJob(order.Name)
+				if jobErr != nil {
+					printOrderJobDetail(nil, cliErrFromAPI(jobErr))
+				} else {
+					printOrderJobDetail(job, nil)
+				}
+				history, historyErr := readJobApprovalHistory(client, order, false)
+				printJobApprovalHistory(history, historyErr)
+			}
 			return nil
 		}
 		err = cliErrFromAPI(getErr)
@@ -243,7 +253,7 @@ func runAdminOrderGet(_ *cobra.Command, args []string) error {
 	var history *approvalOrderHistory
 	var historyErr string
 	if order.Type == "job" {
-		history, historyErr = readJobApprovalHistory(client, order)
+		history, historyErr = readJobApprovalHistory(client, order, true)
 		if historyErr == "" {
 			payload["history"] = history
 		} else {
@@ -253,12 +263,9 @@ func runAdminOrderGet(_ *cobra.Command, args []string) error {
 	if outputJSON {
 		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(payload))
 	}
-	printAdminOrderDetail(order, job, jobErr)
-	if history != nil {
-		printJobApprovalHistory(history)
-	} else if historyErr != "" {
-		fmt.Printf("\n%s\n", i18n.T("order_history_unavailable", historyErr))
-	}
+	printOrderDetail(order)
+	printOrderJobDetail(job, jobErr)
+	printJobApprovalHistory(history, historyErr)
 	return nil
 }
 
@@ -278,10 +285,10 @@ func printOrderDetail(order *api.ApprovalOrder) {
 	fmt.Printf("%s: %s\n", i18n.T("order_label_review_notes"), emptyDash(order.ReviewNotes))
 }
 
-func printAdminOrderDetail(order *api.ApprovalOrder, job *api.JobDetail, jobErr *clierror.Error) {
-	printOrderDetail(order)
+func printOrderJobDetail(job *api.JobDetail, jobErr *clierror.Error) {
 	if job != nil {
 		fmt.Printf("\n%s: %s\n", i18n.T("table_job_name"), job.JobName)
+		fmt.Printf("%s: %s\n", i18n.T("order_label_job_owner"), emptyDash(job.Username))
 		fmt.Printf("%s: %s\n", i18n.T("order_label_job_status"), job.Status)
 		fmt.Printf("%s: %s\n", i18n.T("table_queue"), job.Queue)
 		fmt.Printf("%s: %s\n", i18n.T("order_label_requested_resources"), formatResources(job.Resources))

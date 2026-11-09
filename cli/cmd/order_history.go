@@ -27,8 +27,14 @@ type approvalOrderHistory struct {
 	Entries        []approvalOrderHistoryEntry `json:"entries"`
 }
 
-func readJobApprovalHistory(client api.ApprovalOrderClient, current *api.ApprovalOrder) (*approvalOrderHistory, string) {
-	orders, err := client.ListApprovalOrdersByName(current.Name, "job")
+func readJobApprovalHistory(client api.ApprovalOrderClient, current *api.ApprovalOrder, admin bool) (*approvalOrderHistory, string) {
+	var orders []api.ApprovalOrder
+	var err error
+	if admin {
+		orders, err = client.ListApprovalOrdersByName(current.Name, "job")
+	} else {
+		orders, err = client.ListApprovalOrders(false)
+	}
 	if err != nil {
 		return nil, cliErrFromAPI(err).Message
 	}
@@ -70,7 +76,13 @@ func readJobApprovalHistory(client api.ApprovalOrderClient, current *api.Approva
 	return history, ""
 }
 
-func printJobApprovalHistory(history *approvalOrderHistory) {
+func printJobApprovalHistory(history *approvalOrderHistory, historyErr string) {
+	if history == nil {
+		if historyErr != "" {
+			fmt.Printf("\n%s\n", i18n.T("order_history_unavailable", historyErr))
+		}
+		return
+	}
 	fmt.Printf("\n%s\n", i18n.T("order_history_heading", history.CurrentAttempt, history.ApprovedCount))
 	fmt.Printf("%s %s %s %s %s %s %s\n",
 		i18n.PadRight(i18n.T("order_history_attempt"), 8),

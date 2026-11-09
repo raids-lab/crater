@@ -111,16 +111,27 @@ func TestApproveOrderSendsOneAtomicWrite(t *testing.T) {
 
 func TestOrderReadWithResourceDetails(t *testing.T) {
 	const approvedJobOrder = `{"id":12,"name":"job-a","type":"job","status":"Approved","createdAt":"2026-11-08T01:00:00Z","reviewedAt":"2026-11-08T01:10:00Z","content":{"approvalorderExtensionHours":6,"approvedLock":{"durationMinutes":210,"lockedUntil":"2026-11-08T04:40:00Z"}}}`
+	const personalOrder = `{
+		"id":13,"name":"my-job","type":"job","status":"Approved","createdAt":"2026-11-08T01:00:00Z",
+		"content":{"approvalorderExtensionHours":6,"approvalorderReason":"need more time","approvedLock":{"durationMinutes":210}},
+		"creator":{"username":"submitter"},
+		"reviewer":{"username":"reviewer","nickname":"Review Admin"},"reviewNotes":"confirmed",
+		"extraField":"preserve in JSON"
+	}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/api/v1/approvalorder/13":
-			_, _ = io.WriteString(w, `{"code":0,"data":{
-				"id":13,"name":"my-job","type":"job","status":"Approved","createdAt":"2026-11-08T01:00:00Z",
-				"content":{"approvalorderExtensionHours":6,"approvalorderReason":"need more time","approvedLock":{"durationMinutes":210}},
-				"reviewer":{"username":"reviewer","nickname":"Review Admin"},"reviewNotes":"confirmed",
-				"extraField":"preserve in JSON"
-			}}`)
+			_, _ = io.WriteString(w, `{"code":0,"data":`+personalOrder+`}`)
+		case "/api/v1/approvalorder/18":
+			_, _ = io.WriteString(w, `{"code":0,"data":{"id":18,"name":"deleted-job","type":"job","status":"Approved"}}`)
+		case "/api/v1/approvalorder":
+			_, _ = io.WriteString(w, `{"code":0,"data":[
+				`+personalOrder+`,
+				{"id":9,"name":"my-job","type":"job","status":"Approved","createdAt":"2026-11-07T01:00:00Z","content":{"approvalorderExtensionHours":8,"approvedLock":{"durationMinutes":180}}},
+				{"id":8,"name":"my-job","type":"dataset","status":"Approved","createdAt":"2026-11-06T01:00:00Z"},
+				{"id":18,"name":"deleted-job","type":"job","status":"Approved"}
+			]}`)
 		case "/api/v1/approvalorder/17":
 			w.WriteHeader(http.StatusForbidden)
 			_, _ = io.WriteString(w, `{"code":40301,"msg":"permission denied to view this approval order"}`)
@@ -133,7 +144,9 @@ func TestOrderReadWithResourceDetails(t *testing.T) {
 		case "/api/v1/admin/approvalorder/19":
 			_, _ = io.WriteString(w, `{"code":0,"data":{"id":19,"name":"my-dataset","type":"dataset","status":"Pending"}}`)
 		case "/api/v1/vcjobs/job-a/detail":
-			_, _ = io.WriteString(w, `{"code":0,"data":{"jobName":"job-a","status":"Running","queue":"batch","resources":{"cpu":"8","memory":"16Gi","nvidia.com/a100":"2"}}}`)
+			_, _ = io.WriteString(w, `{"code":0,"data":{"jobName":"job-a","username":"batch-owner","status":"Running","queue":"batch","resources":{"cpu":"8","memory":"16Gi","nvidia.com/a100":"2"}}}`)
+		case "/api/v1/vcjobs/my-job/detail":
+			_, _ = io.WriteString(w, `{"code":0,"data":{"jobName":"my-job","username":"job-owner","status":"Running","queue":"batch","resources":{"cpu":"250m","memory":"256Mi"}}}`)
 		case "/api/v1/vcjobs/deleted-job/detail":
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = io.WriteString(w, `{"code":40401,"msg":"job not found"}`)
@@ -164,8 +177,11 @@ func TestOrderReadWithResourceDetails(t *testing.T) {
 		want   []string
 	}{
 		{"personal order detail is readable", []string{"order", "get", "13"}, false,
-			[]string{"ID: 13\n", "NAME: my-job\n", "STATUS: Approved\n", "approval reason: need more time\n",
-				"Requested extension (hours): 6\n", "Approved lock: 3 h 30 min\n", "Reviewer: reviewer\n", "Review notes: confirmed\n"}},
+			[]string{"ID: 13\n", "NAME: my-job\n", "STATUS: Approved\n", "Submitted by: submitter\n", "approval reason: need more time\n",
+				"Requested extension (hours): 6\n", "Approved lock: 3 h 30 min\n", "Reviewer: reviewer\n", "Review notes: confirmed\n",
+				"Job owner: job-owner\n", "Requested job resources: cpu=250m,memory=256Mi\n", "request #2, approved total: 2"}},
+		{"personal history survives unavailable job details", []string{"order", "get", "18"}, false,
+			[]string{"ID: 18\n", "Job resources unavailable", "request #1, approved total: 1"}},
 		{"personal JSON preserves the API fields", []string{"order", "get", "13", "--json"}, false,
 			[]string{`"order": {`, `"id": 13`, `"durationMinutes": 210`, `"nickname": "Review Admin"`, `"extraField": "preserve in JSON"`}},
 		{"personal text includes the administrator hint", []string{"order", "get", "17"}, true,
@@ -173,7 +189,7 @@ func TestOrderReadWithResourceDetails(t *testing.T) {
 		{"administrator hint preserves forbidden code", []string{"order", "get", "17", "--json"}, true,
 			[]string{`"code": "ERR_FORBIDDEN_403"`, `"suggested_command": "crater admin order get 17"`}},
 		{"readable job resources", []string{"admin", "order", "get", "17"}, false,
-			[]string{"Pending", "Job status: Running", "Requested job resources:", "16Gi", "nvidia.com/a100", "request #2", "3 h 30 min", "10m0s"}},
+			[]string{"Pending", "Job owner: batch-owner\n", "Job status: Running", "Requested job resources:", "16Gi", "nvidia.com/a100", "request #2", "3 h 30 min", "10m0s"}},
 		{"approved job order detail", []string{"admin", "order", "get", "12"}, false,
 			[]string{"Approved lock: 3 h 30 min\n"}},
 		{"structured job resources", []string{"admin", "order", "get", "17", "--json"}, false,
