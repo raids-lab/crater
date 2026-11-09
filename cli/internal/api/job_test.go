@@ -299,3 +299,24 @@ func TestFetchAllJobPagesSequentially(t *testing.T) {
 		t.Fatalf("unexpected items: %#v", items)
 	}
 }
+
+func TestJobCreateSysAdminOptInIsExplicit(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(map[bool]string{false: "default", true: "requested"}[enabled], func(t *testing.T) {
+			client := jobTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+				body := decodeJobTestBody(t, r)
+				value, present := body["sysAdminEnabled"]
+				if enabled && (!present || value != true) {
+					t.Fatalf("explicit request lost: %#v", body)
+				}
+				if !enabled && present && value != false {
+					t.Fatalf("default unexpectedly enabled: %#v", body)
+				}
+				writeJobTestResponse(t, w, map[string]interface{}{})
+			})
+			if _, err := client.CreateJupyterJob(CreateInteractiveJobRequest{JobCommonRequest: JobCommonRequest{Name: "job", SysAdminEnabled: enabled}}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

@@ -8,6 +8,7 @@ import (
 	_ "github.com/raids-lab/crater/internal/handler/image"
 	_ "github.com/raids-lab/crater/internal/handler/operations"
 	_ "github.com/raids-lab/crater/internal/handler/spjob"
+	_ "github.com/raids-lab/crater/internal/handler/tensorboard"
 	_ "github.com/raids-lab/crater/internal/handler/tool"
 	_ "github.com/raids-lab/crater/internal/handler/vcjob"
 )

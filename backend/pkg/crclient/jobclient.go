@@ -80,6 +80,7 @@ func (c *JobControl) createTrainingJobFromTask(task *model.AITask) (jobname stri
 	jobname = strings.ReplaceAll(jobname, "_", "-")
 	//nolint:gosec // taskID is safe
 	taskID := strconv.Itoa(int(task.ID))
+	craterUtils.ResolveTensorboardLogDirInPodSpec(&podSpec, jobname)
 
 	// set labels and annotations
 	labels := map[string]string{
@@ -159,6 +160,7 @@ func (c *JobControl) createJupyterJobFromTask(task *model.AITask) (jobname strin
 	jobname = strings.ReplaceAll(jobname, "_", "-")
 	//nolint:gosec // taskID is safe
 	taskID := strconv.Itoa(int(task.ID))
+	craterUtils.ResolveTensorboardLogDirInPodSpec(&podSpec, jobname)
 
 	// set labels and annotations
 	labels := map[string]string{

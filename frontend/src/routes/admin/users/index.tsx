@@ -130,6 +130,7 @@ function UserList() {
     refetchInterval: USER_BAN_STATUS_REFETCH_INTERVAL,
     select: (res): AdminUserRow[] =>
       res.data.map((item) => ({
+        containerSysAdminEnabled: item.containerSysAdminEnabled,
         id: item.id,
         name: item.name,
         role: item.role.toString(),

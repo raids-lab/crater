@@ -25,7 +25,7 @@ import (
 // CreateWebIDEJob godoc
 //
 //	@Summary		Create a WebIDE job
-//	@Description	Create a WebIDE job
+//	@Description	SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.
 //	@Tags			VolcanoJob
 //	@Accept			json
 //	@Produce		json
@@ -33,6 +33,7 @@ import (
 //	@Param			CreateJupyterReq	body		CreateJupyterReq		true	"Create WebIDE Job Request"
 //	@Success		200					{object}	resputil.Response[any]	"Success"
 //	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		403	{object}	resputil.Response[any]	"SYS_ADMIN is not authorized"
 //	@Failure		500					{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/webide [post]
 //
@@ -102,6 +103,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 	podSpec, err := generateInteractivePodSpec(
 		c,
 		token,
+		jobName,
 		&req.CreateJobCommon,
 		req.Resource,
 		req.Image,
@@ -153,7 +155,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.submitJob(c, token, &job); err != nil {
+	if err = mgr.submitJob(c, token, &job, req.SysAdminEnabled); err != nil {
 		handleJobSubmissionError(c, err)
 		return
 	}

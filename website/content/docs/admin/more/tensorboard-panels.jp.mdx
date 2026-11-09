@@ -1,0 +1,64 @@
+---
+title: TensorBoard パネルのデプロイと運用
+description: イメージ、認証、スケジューリング、TTL、アップグレード、ロールバックの設定
+---
+
+<ChartBadge />
+
+## イメージとスケジューリング
+
+動的に作成される TensorBoard Pod は次の Helm values を使用します。
+
+- `images.tensorboard.repository` と `images.tensorboard.tag`
+- グローバルな `imagePullPolicy` と `imagePullSecrets`
+- TensorBoard 専用の `tensorboard.nodeSelector`、`tensorboard.tolerations`、`tensorboard.affinity`
+- TensorBoard Ingress の認証スイッチ `tensorboard.ingressAuthEnabled`（デフォルトは `true`）
+- 連続無アクセス時間の上限 `tensorboard.idleTimeoutSeconds`（正の整数秒。デフォルトは `57600`、16 時間）
+
+プライベートレジストリの pull secret はジョブ名前空間に必要です。パネルは所有者の Volcano キューに投入されます。デフォルト affinity は GPU のないノードを優先しますが、control-plane には固定しません。専用サービスノードがある場合は TensorBoard 専用 values を上書きし、Pod の配置とイベントを確認してください。
+
+## アクセス認証
+
+TensorBoard Ingress は ingress-nginx external auth で Crater を呼び出します。保護された API がユーザーと所有権を確認し、対象パス限定の短期 Secure、HttpOnly、SameSite=Strict Cookie を発行します。ingress-nginx と Crater ホストの HTTPS/TLS を正しく構成してください。ランダム URL はセキュリティ境界ではありません。
+
+共有環境、テスト環境、本番環境では `tensorboard.ingressAuthEnabled: true` を維持してください。`false` にすると Ingress から external-auth 注釈が削除され、URL を知っている利用者が Crater のログインおよび所有権確認を回避できます。無効化は、ネットワークが明確に隔離されたローカル開発環境だけに限定してください。
+
+2 人の一般ユーザーとログアウト状態で、他人のパネルと未ログインアクセスが拒否され、削除または期限切れ直後に URL が無効になることを確認してください。
+
+## TTL と状態
+
+イメージには `python` で呼び出せる Python 3 と TensorBoard が必要です。ランチャーのプロキシは HTTP のみ対応し、WebSocket のアップグレードには対応しません。同時接続は最大 32、Socket タイムアウトは 60 秒です。標準ページと scalar API は検証済みですが、独自プラグインや遅いデータ要求は別途確認してください。
+
+各パネルは 100m CPU と 256Mi メモリを要求する 1 Pod の Volcano Job です。コンテナ内のランチャーが TensorBoard を起動し、ローカル HTTP プロキシで最終アクセス時刻をメモリに記録します。リクエストごとにデータベースや Kubernetes へ書き込みません。連続 16 時間アクセスがない場合（変更可能）、またはランチャーの実行が 4 日に達した場合、TensorBoard を停止して終了コード 0 を返します。Pod は Succeeded、VCJob は Completed になり、実際の起動・実行エラーは Failed のままです。待機時間とイメージ取得時間は実行時間に含みません。
+
+ページ、静的ファイル、データ要求は活動時刻を更新しますが、専用ヘルスプローブと Crater の一覧ポーリングは更新しません。ブラウザーのバックグラウンド更新もアクセスとして扱います。タブを閉じても即時削除されず、最後の要求から無アクセス時間を計測します。アクセスしても 4 日の上限は延長されません。`tensorboard.idleTimeoutSeconds` は新規パネルにのみ適用されます。隔離されたテスト環境では一時的に `60` にして検証し、その後デフォルト値に戻してください。
+
+`TaskCompleted → CompleteJob` ポリシーにより Job が完了し、`ttlSecondsAfterFinished: 300` で 5 分後に削除されます。Service と Ingress は owner reference で連鎖削除され、終了したパネルは HTTP サービスを停止します。利用者はいつでも VCJob を削除して Pod を停止でき、ソースログは削除されません。Pod の `activeDeadlineSeconds` は 4 日と 1 時間の障害時の保険であり、通常の期限切れには使用しません。保険が発動した場合は Failed になり得ます。1 ユーザーにつき待機中または稼働中のパネルは最大 10 個です。現在のバージョンは VCJob のみを管理し、旧パネルの期限切れ GC は実行しません。
+
+`pending`、`starting`、`ready`、`completed`、`failed`、`expired` は Volcano Job の phase と Pod Ready 条件から判定します。`pending` は通常の VCJob の Pending phase と一致します。Service、Ingress、EndpointSlice の状態は集約しません。Volcano キュー、Pod イベント、Service endpoint、Ingress controller ログも確認してください。
+
+通常の期限切れとその他の正常終了は `completed` を返し、通常ジョブと同じ緑色の「完了」で表示します。理由は `idle_expired`、`runtime_expired`、`completed` を区別します。`expired` は障害時の期限超過の保険にのみ残します。理由はコンテナの termination message から取得し、活動報告 API は追加しません。
+
+TensorBoard は補助ワークロードであり、過去の記録も含めて通常ジョブの一覧、件数、ジョブ資源使用量の集計から除外します。クラスタの実際の CPU、メモリ、キュー使用量には引き続き含めます。過去のデータベース記録を削除する必要はありません。
+
+## アップグレードとロールバック
+
+**backend → frontend** の順でアップグレードします。事前に旧パネルを削除し、残る TensorBoard パネルがすべて VCJob であることを確認してください。
+
+VCJob パネルに対応していない旧 backend に戻す前に、削除対象のパネルを確認します。
+
+```bash
+kubectl -n <job-namespace> get jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+kubectl -n <job-namespace> delete jobs.batch.volcano.sh -l crater.raids.io/task-type=tensorboard
+```
+
+delete コマンドは一覧の全パネルを削除します。事前に範囲を確認してください。旧 backend は VCJob パネルを一覧表示、認証、削除できません。ログはソースストレージに残ります。
+
+## リリース前の確認
+
+- 非デフォルトレジストリ、pull secret、本番 tag で作成する。
+- control-plane taint のあるクラスタで Pod の配置を確認する。
+- 個人ディレクトリ、単一/複数ソース、同名ジョブ、TensorFlow PS、待機/準備完了/完了/失敗/期限切れ、4 日後の回収、同時数制限、異常系を確認する。
+- 調度不能な大規模 GPU ジョブを先に置き、互換性のある CPU/メモリが残る場合に小規模パネルが起動できることを確認する。
+- Chart の lint/template を実行し、backend 設定にイメージ、`ingressAuthEnabled`、スケジューリング項目があることを確認する。
+- 短い無アクセス上限で、利用者の要求だけが時間を更新し、プローブだけでは終了することを確認する。終了コード 0、VCJob Completed、5 分後の連鎖削除、手動削除、実際のプロセス障害も検証する。

@@ -32,14 +32,15 @@ type (
 // CreateTrainingJob godoc
 //
 //	@Summary		Create a training job
-//	@Description	Create a training job
+//	@Description	SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.
 //	@Tags			VolcanoJob
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			CreateTrainingReq	body		any						true	"CreateTrainingReq"
+//	@Param			CreateTrainingReq	body		CreateCustomReq						true	"CreateTrainingReq"
 //	@Success		200					{object}	resputil.Response[any]	"Success"
 //	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		403	{object}	resputil.Response[any]	"SYS_ADMIN is not authorized"
 //	@Failure		500					{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/training [post]
 func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
@@ -95,7 +96,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 	)
 
 	// 5. Create the pod spec
-	podSpec, err := GenerateCustomPodSpec(c, token, &req)
+	podSpec, err := GenerateCustomPodSpec(c, token, jobName, &req)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
@@ -144,7 +145,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.submitJob(c, token, &job); err != nil {
+	if err = mgr.submitJob(c, token, &job, req.SysAdminEnabled); err != nil {
 		handleJobSubmissionError(c, err)
 		return
 	}
@@ -155,6 +156,7 @@ func (mgr *VolcanojobMgr) CreateTrainingJob(c *gin.Context) {
 func GenerateCustomPodSpec(
 	ctx context.Context,
 	token util.JWTMessage,
+	jobName string,
 	custom *CreateCustomReq,
 ) (podSpec v1.PodSpec, err error) {
 	volumes, volumeMounts, err := GenerateVolumeMounts(ctx, custom.VolumeMounts, token)
@@ -165,7 +167,7 @@ func GenerateCustomPodSpec(
 	baseAffinity := GenerateNodeAffinity(custom.Selectors, custom.Resource)
 	affinity := GenerateArchitectureNodeAffinity(custom.Image, baseAffinity)
 	tolerations := GenerateTaintTolerationsForAccount(token)
-	envs := GenerateEnvs(ctx, token, custom.Envs)
+	envs := GenerateEnvs(ctx, token, jobName, custom.Envs)
 
 	imagePullSecrets := []v1.LocalObjectReference{}
 	if config.GetConfig().Secrets.ImagePullSecretName != "" {
@@ -214,5 +216,6 @@ func GenerateCustomPodSpec(
 		podSpec.Containers[0].Command = []string{*custom.Shell, "-c", *custom.Command}
 	}
 
+	utils.AddJobProfilingCapabilities(&podSpec)
 	return podSpec, nil
 }

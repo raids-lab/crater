@@ -43,14 +43,15 @@ type (
 // CreateTrainingJob godoc
 //
 //	@Summary		Create a training job
-//	@Description	Create a training job
+//	@Description	SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.
 //	@Tags			VolcanoJob
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			CreateTrainingReq	body		any						true	"CreateTrainingReq"
+//	@Param			CreateTrainingReq	body		CreateTensorflowReq						true	"CreateTrainingReq"
 //	@Success		200					{object}	resputil.Response[any]	"Success"
 //	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		403	{object}	resputil.Response[any]	"SYS_ADMIN is not authorized"
 //	@Failure		500					{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/tensorflow [post]
 func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
@@ -116,7 +117,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 	// 2. Node Affinity and Tolerations
 	baseAffinity := GenerateNodeAffinity(req.Selectors, jobResources)
 	baseTolerations := GenerateTaintTolerationsForAccount(token)
-	envs := GenerateEnvs(c, token, req.Envs)
+	envs := GenerateEnvs(c, token, jobName, req.Envs)
 
 	// 3. Labels and Annotations
 	labels, jobAnnotations, podAnnotations := getLabelAndAnnotations(
@@ -168,7 +169,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.submitJob(c, token, &job); err != nil {
+	if err = mgr.submitJob(c, token, &job, req.SysAdminEnabled); err != nil {
 		handleJobSubmissionError(c, err)
 		return
 	}

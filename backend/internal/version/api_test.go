@@ -16,9 +16,16 @@ package version
 
 import "testing"
 
-func TestModelDownloadReuseContractVersion(t *testing.T) {
-	if APIVersion != 4 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("download reuse contract = %d, minimum CLI = %d, want 4/3",
+func TestUserContainerPermissionContractVersion(t *testing.T) {
+	if APIVersion != 6 || MinSupportedCLIAPIVersion != 3 {
+		t.Fatalf("user container permission contract = %d, minimum CLI = %d, want 6/3",
+			APIVersion, MinSupportedCLIAPIVersion)
+	}
+}
+
+func TestTensorboardLogDirContractVersion(t *testing.T) {
+	if APIVersion < 5 || MinSupportedCLIAPIVersion != 3 {
+		t.Fatalf("TensorBoard log directory contract = %d, minimum CLI = %d, want >=5/3",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}
 }

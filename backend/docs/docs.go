@@ -285,6 +285,23 @@ const docTemplate = `{
                 }
             }
         },
+        "/tensorboard/auth": {
+            "get": {
+                "description": "供 ingress-nginx external-auth 子请求调用",
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "校验 TensorBoard Ingress 访问",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
         "/v1/accounts": {
             "get": {
                 "security": [
@@ -4005,7 +4022,7 @@ const docTemplate = `{
                     "200": {
                         "description": "成功获取用户信息",
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserResp"
                         }
                     },
                     "400": {
@@ -4119,7 +4136,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "管理员更新指定用户的属性",
+                "description": "Update user attributes and optionally grant or revoke SYS_ADMIN for subsequently created job containers.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4129,7 +4146,7 @@ const docTemplate = `{
                 "tags": [
                     "User"
                 ],
-                "summary": "管理员更新用户属性",
+                "summary": "Admin update user attributes",
                 "parameters": [
                     {
                         "type": "string",
@@ -4139,30 +4156,42 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "用户属性",
+                        "description": "User attributes and optional container permission",
                         "name": "attributes",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute"
+                            "$ref": "#/definitions/internal_handler.AdminUpdateUserAttributesReq"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "用户属性更新成功",
+                        "description": "User attributes updated",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
-                    "400": {
-                        "description": "请求参数错误",
+                    "403": {
+                        "description": "Administrator permission required",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "其他错误",
+                        "description": "Database unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -4452,6 +4481,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/aijobs/jupyter": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AIJob"
+                ],
+                "summary": "Create an EMIAS Jupyter job",
+                "parameters": [
+                    {
+                        "description": "Job creation request",
+                        "name": "job",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_aijob.CreateJupyterReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "SYS_ADMIN is not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/aijobs/quota": {
             "get": {
                 "security": [
@@ -4499,7 +4585,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "CreateCustom a new AI job by client-go",
+                "description": "SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4516,7 +4602,9 @@ const docTemplate = `{
                         "name": "job",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_aijob.CreateAIJobReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -4528,6 +4616,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "SYS_ADMIN is not authorized",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -5248,6 +5342,42 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/context/job-permissions": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Context"
+                ],
+                "summary": "Get current user job container permissions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_UserJobPermissions"
+                        }
+                    },
+                    "401": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Unable to read permissions",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -6094,7 +6224,8 @@ const docTemplate = `{
                             "kuberay",
                             "deepspeed",
                             "openmpi",
-                            "custom"
+                            "custom",
+                            "tensorboard"
                         ],
                         "type": "string",
                         "x-enum-varnames": [
@@ -6106,7 +6237,8 @@ const docTemplate = `{
                             "JobTypeKubeRay",
                             "JobTypeDeepSpeed",
                             "JobTypeOpenMPI",
-                            "JobTypeCustom"
+                            "JobTypeCustom",
+                            "JobTypeTensorboard"
                         ],
                         "name": "type",
                         "in": "query",
@@ -8387,7 +8519,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "根据 ID 获取模型下载任务详情",
+                "description": "根据 ID 获取模型下载任务详情，已完成任务包含实际关联资源的 resourceId（资源存在时）",
                 "consumes": [
                     "application/json"
                 ],
@@ -10253,6 +10385,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/spjobs/training": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SparseJob"
+                ],
+                "summary": "Create a SEACS job",
+                "parameters": [
+                    {
+                        "description": "Job creation request",
+                        "name": "job",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_spjob.CreateRecommendDLJobReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "SYS_ADMIN is not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Service error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/spjobs/{name}/events": {
             "get": {
                 "security": [
@@ -10506,6 +10695,254 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ModelDownloadLimitConfigResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tensorboard": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前用户创建的 TensorBoard 面板",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "获取 TensorBoard 面板列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_payload_TensorboardInfo"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Create a named TensorBoard panel from a personal log directory or owned source jobs.\nName is required (1-40 characters); duplicate names are allowed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "创建 TensorBoard 面板",
+                "parameters": [
+                    {
+                        "description": "TensorBoard 面板配置",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.CreateTensorboardReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_CreateTensorboardResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tensorboard/source/{jobName}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取当前用户来源任务中声明的 TensorBoard 日志目录",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "获取 TensorBoard 来源任务配置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "来源任务名称",
+                        "name": "jobName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_TensorboardSourceConfigResp"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tensorboard/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "删除 TensorBoard 面板及其关联的网络资源",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "删除 TensorBoard 面板",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "TensorBoard 面板 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tensorboard/{id}/access": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "校验面板所有权，并为该面板路径设置短期登录 Cookie",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TensorBoard"
+                ],
+                "summary": "创建 TensorBoard 访问会话",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "TensorBoard 面板 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     }
                 }
@@ -11031,7 +11468,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Create a Jupyter job",
+                "description": "SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.",
                 "consumes": [
                     "application/json"
                 ],
@@ -11066,8 +11503,71 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
+                    "403": {
+                        "description": "SYS_ADMIN is not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
                     "500": {
                         "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs/pytorch": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Create a PyTorch job",
+                "parameters": [
+                    {
+                        "description": "Job creation request",
+                        "name": "job",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_vcjob.CreateTensorflowReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "SYS_ADMIN is not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Service error",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -11082,7 +11582,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Create a training job",
+                "description": "SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.",
                 "consumes": [
                     "application/json"
                 ],
@@ -11099,7 +11599,9 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_vcjob.CreateTensorflowReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -11111,6 +11613,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "SYS_ADMIN is not authorized",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -11131,7 +11639,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Create a training job",
+                "description": "SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.",
                 "consumes": [
                     "application/json"
                 ],
@@ -11148,7 +11656,9 @@ const docTemplate = `{
                         "name": "CreateTrainingReq",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler_vcjob.CreateCustomReq"
+                        }
                     }
                 ],
                 "responses": {
@@ -11160,6 +11670,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "SYS_ADMIN is not authorized",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -11369,7 +11885,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Create a WebIDE job",
+                "description": "SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.",
                 "consumes": [
                     "application/json"
                 ],
@@ -11400,6 +11916,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "SYS_ADMIN is not authorized",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -12063,6 +12585,9 @@ const docTemplate = `{
         "datatypes.JSONType-github_com_raids-lab_crater_dao_model_QueueQuota": {
             "type": "object"
         },
+        "datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute": {
+            "type": "object"
+        },
         "datatypes.JSONType-v1_ResourceList": {
             "type": "object"
         },
@@ -12342,7 +12867,8 @@ const docTemplate = `{
                 "kuberay",
                 "deepspeed",
                 "openmpi",
-                "custom"
+                "custom",
+                "tensorboard"
             ],
             "x-enum-varnames": [
                 "JobTypeAll",
@@ -12353,7 +12879,8 @@ const docTemplate = `{
                 "JobTypeKubeRay",
                 "JobTypeDeepSpeed",
                 "JobTypeOpenMPI",
-                "JobTypeCustom"
+                "JobTypeCustom",
+                "JobTypeTensorboard"
             ]
         },
         "github_com_raids-lab_crater_dao_model.ReviewStatus": {
@@ -12520,6 +13047,45 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_handler_vcjob.DatasetMount": {
+            "type": "object",
+            "properties": {
+                "datasetID": {
+                    "type": "integer"
+                },
+                "mountPath": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_handler_vcjob.Forward": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "type": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service_vcjob.ForwardType"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_handler_vcjob.ImageBaseInfo": {
+            "type": "object",
+            "properties": {
+                "archs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "imageLink": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_kthena.PodProfile": {
             "type": "object",
             "properties": {
@@ -12622,6 +13188,55 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_payload.CreateTensorboardReq": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "logDir": {
+                    "type": "string",
+                    "example": "/mnt/vol0/logs"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Training comparison"
+                },
+                "sourceJobName": {
+                    "type": "string",
+                    "example": "job-old-xxxx"
+                },
+                "sourceJobNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sourceJobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq"
+                    }
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.CreateTensorboardResp": {
+            "type": "object",
+            "properties": {
+                "accessPath": {
+                    "description": "Relative route prefix used to access the panel.",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "User-defined display name.",
+                    "type": "string"
+                },
+                "tensorboardId": {
+                    "description": "Unique panel identifier.",
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_payload.Order": {
             "type": "string",
             "enum": [
@@ -12667,6 +13282,94 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardInfo": {
+            "type": "object",
+            "properties": {
+                "accessPath": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "expiration": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardStatus"
+                },
+                "statusMessage": {
+                    "type": "string"
+                },
+                "statusReason": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardStatusReason"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardSourceConfigResp": {
+            "type": "object",
+            "properties": {
+                "logDir": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardSourceJobReq": {
+            "type": "object",
+            "properties": {
+                "jobName": {
+                    "type": "string"
+                },
+                "logDir": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "starting",
+                "ready",
+                "failed",
+                "completed",
+                "expired"
+            ],
+            "x-enum-varnames": [
+                "TensorboardStatusPending",
+                "TensorboardStatusStarting",
+                "TensorboardStatusReady",
+                "TensorboardStatusFailed",
+                "TensorboardStatusCompleted",
+                "TensorboardStatusExpired"
+            ]
+        },
+        "github_com_raids-lab_crater_internal_payload.TensorboardStatusReason": {
+            "type": "string",
+            "enum": [
+                "waiting_for_schedule",
+                "pod_starting",
+                "job_failed",
+                "runtime_expired",
+                "idle_expired",
+                "completed",
+                "ready"
+            ],
+            "x-enum-varnames": [
+                "TensorboardStatusReasonWaitingForSchedule",
+                "TensorboardStatusReasonPodStarting",
+                "TensorboardStatusReasonJobFailed",
+                "TensorboardStatusReasonRuntimeExpired",
+                "TensorboardStatusReasonIdleExpired",
+                "TensorboardStatusReasonCompleted",
+                "TensorboardStatusReasonReady"
+            ]
         },
         "github_com_raids-lab_crater_internal_payload.TimePointData": {
             "type": "object",
@@ -12771,6 +13474,24 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "data": {},
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_payload_TensorboardInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardInfo"
+                    }
+                },
                 "msg": {
                     "type": "string"
                 }
@@ -12956,6 +13677,24 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_UserResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.UserResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis": {
             "type": "object",
             "properties": {
@@ -12971,6 +13710,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_CreateTensorboardResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.CreateTensorboardResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp": {
             "type": "object",
             "properties": {
@@ -12980,6 +13734,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_TensorboardSourceConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_payload.TensorboardSourceConfigResp"
                 },
                 "msg": {
                     "type": "string"
@@ -13055,6 +13824,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_UserJobPermissions": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.UserJobPermissions"
                 },
                 "msg": {
                     "type": "string"
@@ -13799,6 +14583,14 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_service.UserJobPermissions": {
+            "type": "object",
+            "properties": {
+                "containerSysAdminEnabled": {
+                    "type": "boolean"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_service_inference.ChatMessage": {
             "type": "object",
             "properties": {
@@ -14331,6 +15123,58 @@ const docTemplate = `{
                 },
                 "windowHours": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.AdminUpdateUserAttributesReq": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "description": "头像",
+                    "type": "string"
+                },
+                "containerSysAdminEnabled": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "description": "邮箱",
+                    "type": "string"
+                },
+                "expiredAt": {
+                    "description": "过期时间",
+                    "type": "string"
+                },
+                "gid": {
+                    "description": "GID",
+                    "type": "string"
+                },
+                "group": {
+                    "description": "课题组",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "账号",
+                    "type": "string"
+                },
+                "nickname": {
+                    "description": "昵称，如果没有指定，则与账号相同",
+                    "type": "string"
+                },
+                "phone": {
+                    "description": "电话",
+                    "type": "string"
+                },
+                "teacher": {
+                    "description": "老师",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "UID and GID are used for Filesystem",
+                    "type": "string"
                 }
             }
         },
@@ -15451,6 +16295,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
                     }
                 },
+                "resourceId": {
+                    "description": "Linked resource, when available in a Ready download detail.",
+                    "type": "integer"
+                },
                 "revision": {
                     "type": "string"
                 },
@@ -16378,6 +17226,70 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.UserResp": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "description": "用户额外属性",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/datatypes.JSONType-github_com_raids-lab_crater_dao_model_UserAttribute"
+                        }
+                    ]
+                },
+                "banRestrictions": {
+                    "description": "当前生效的封禁限制，未封禁时为空",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserBanRestrictions"
+                        }
+                    ]
+                },
+                "banned": {
+                    "description": "当前是否处于封禁状态",
+                    "type": "boolean"
+                },
+                "bannedTimestamp": {
+                    "description": "用户封禁截止时间",
+                    "type": "string"
+                },
+                "containerSysAdminEnabled": {
+                    "type": "boolean"
+                },
+                "extraBalance": {
+                    "description": "用户额外点数",
+                    "type": "number"
+                },
+                "id": {
+                    "description": "用户ID",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "用户名称",
+                    "type": "string"
+                },
+                "permanentBanned": {
+                    "description": "是否永久封禁",
+                    "type": "boolean"
+                },
+                "role": {
+                    "description": "用户角色",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.Role"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "用户状态",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.Status"
+                        }
+                    ]
+                }
+            }
+        },
         "internal_handler.VersionInfo": {
             "type": "object",
             "properties": {
@@ -16478,6 +17390,141 @@ const docTemplate = `{
                 },
                 "userID": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler_aijob.CreateAIJobReq": {
+            "type": "object",
+            "required": [
+                "image",
+                "name",
+                "workingDir"
+            ],
+            "properties": {
+                "alertEnabled": {
+                    "type": "boolean"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "cpuPinningEnabled": {
+                    "type": "boolean"
+                },
+                "datasetMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.DatasetMount"
+                    }
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.EnvVar"
+                    }
+                },
+                "forwards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.Forward"
+                    }
+                },
+                "image": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.ImageBaseInfo"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "selectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.NodeSelectorRequirement"
+                    }
+                },
+                "shell": {
+                    "type": "string"
+                },
+                "slo": {
+                    "type": "integer"
+                },
+                "sysAdminEnabled": {
+                    "description": "SysAdminEnabled is opt-in for this creation only and requires administrator authorization.",
+                    "type": "boolean"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "volumeMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount"
+                    }
+                },
+                "workingDir": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_aijob.CreateJupyterReq": {
+            "type": "object",
+            "required": [
+                "image",
+                "name"
+            ],
+            "properties": {
+                "alertEnabled": {
+                    "type": "boolean"
+                },
+                "cpuPinningEnabled": {
+                    "type": "boolean"
+                },
+                "datasetMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.DatasetMount"
+                    }
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.EnvVar"
+                    }
+                },
+                "forwards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.Forward"
+                    }
+                },
+                "image": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.ImageBaseInfo"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "selectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.NodeSelectorRequirement"
+                    }
+                },
+                "sysAdminEnabled": {
+                    "description": "SysAdminEnabled is opt-in for this creation only and requires administrator authorization.",
+                    "type": "boolean"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "volumeMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount"
+                    }
                 }
             }
         },
@@ -16718,6 +17765,119 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_spjob.CreateRecommendDLJobReq": {
+            "type": "object",
+            "required": [
+                "image",
+                "name",
+                "workingDir"
+            ],
+            "properties": {
+                "alertEnabled": {
+                    "type": "boolean"
+                },
+                "batchSize": {
+                    "type": "integer"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "cpuPinningEnabled": {
+                    "type": "boolean"
+                },
+                "datasetMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.DatasetMount"
+                    }
+                },
+                "embeddingDim": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "embeddingDimTotal": {
+                    "type": "integer"
+                },
+                "embeddingSizeTotal": {
+                    "type": "integer"
+                },
+                "embeddingTableCount": {
+                    "type": "integer"
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.EnvVar"
+                    }
+                },
+                "forwards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.Forward"
+                    }
+                },
+                "image": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_handler_vcjob.ImageBaseInfo"
+                },
+                "inputTensor": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "macs": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "params": {
+                    "type": "integer"
+                },
+                "replicas": {
+                    "type": "integer"
+                },
+                "resource": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "runningType": {
+                    "type": "string"
+                },
+                "selectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.NodeSelectorRequirement"
+                    }
+                },
+                "shell": {
+                    "type": "string"
+                },
+                "sysAdminEnabled": {
+                    "description": "SysAdminEnabled is opt-in for this creation only and requires administrator authorization.",
+                    "type": "boolean"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "vocabularySize": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "volumeMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount"
+                    }
+                },
+                "workingDir": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler_tool.PodIngress": {
             "type": "object",
             "required": [
@@ -16826,6 +17986,77 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_vcjob.CreateCustomReq": {
+            "type": "object",
+            "required": [
+                "image",
+                "name",
+                "workingDir"
+            ],
+            "properties": {
+                "alertEnabled": {
+                    "type": "boolean"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "cpuPinningEnabled": {
+                    "type": "boolean"
+                },
+                "datasetMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_vcjob.DatasetMount"
+                    }
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.EnvVar"
+                    }
+                },
+                "forwards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_vcjob.Forward"
+                    }
+                },
+                "image": {
+                    "$ref": "#/definitions/internal_handler_vcjob.ImageBaseInfo"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "resource": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "selectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.NodeSelectorRequirement"
+                    }
+                },
+                "shell": {
+                    "type": "string"
+                },
+                "sysAdminEnabled": {
+                    "description": "SysAdminEnabled is opt-in for this creation only and requires administrator authorization.",
+                    "type": "boolean"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "volumeMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount"
+                    }
+                },
+                "workingDir": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler_vcjob.CreateJupyterReq": {
             "type": "object",
             "required": [
@@ -16870,6 +18101,70 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/v1.NodeSelectorRequirement"
+                    }
+                },
+                "sysAdminEnabled": {
+                    "description": "SysAdminEnabled is opt-in for this creation only and requires administrator authorization.",
+                    "type": "boolean"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "volumeMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_util.VolumeMount"
+                    }
+                }
+            }
+        },
+        "internal_handler_vcjob.CreateTensorflowReq": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "alertEnabled": {
+                    "type": "boolean"
+                },
+                "cpuPinningEnabled": {
+                    "type": "boolean"
+                },
+                "datasetMounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_vcjob.DatasetMount"
+                    }
+                },
+                "envs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.EnvVar"
+                    }
+                },
+                "forwards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_vcjob.Forward"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "selectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/v1.NodeSelectorRequirement"
+                    }
+                },
+                "sysAdminEnabled": {
+                    "description": "SysAdminEnabled is opt-in for this creation only and requires administrator authorization.",
+                    "type": "boolean"
+                },
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_vcjob.TaskReq"
                     }
                 },
                 "template": {
@@ -17000,6 +18295,49 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler_vcjob.PortReq": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler_vcjob.TaskReq": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string"
+                },
+                "image": {
+                    "$ref": "#/definitions/internal_handler_vcjob.ImageBaseInfo"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_vcjob.PortReq"
+                    }
+                },
+                "replicas": {
+                    "type": "integer"
+                },
+                "resource": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "shell": {
+                    "type": "string"
+                },
+                "workingDir": {
                     "type": "string"
                 }
             }

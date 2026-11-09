@@ -352,6 +352,7 @@ Publishing is split into two tracks. Later workflow changes must keep this split
 
 ### Release Preparation And Verification
 
+- Increase the three-part release version (`major.minor.patch`) during formal release preparation to cover all changes since the previous formal release, including new frontend/backend API features or changes in API behavior. The maintainer chooses the version level following [charts/CONTRIBUTING.md](charts/CONTRIBUTING.md), and updates `Chart.yaml` `version` / `appVersion` together.
 - Merge release preparation, including the reviewed What's New text, into `main` before tagging. Record the exact reviewed commit SHA on `main`; a feature-branch SHA may change during squash merge. Recheck the release scope if `main` advances, and do not tag an unrelated local `HEAD`.
 - Before pushing the tag, verify the target version, What's New version, Chart `version` / `appVersion`, relevant CI results, and developer manual checks. Chart version decisions follow [charts/CONTRIBUTING.md](charts/CONTRIBUTING.md); application build versions and API compatibility counters remain separate.
 - Track tag creation, artifact builds, npm staging, npm approval, and public availability separately. Verify the expected image and Chart tags and the CLI's [npm approval and installation checks](cli/CONTRIBUTING.md#staged-npm-publication); a green staging workflow alone does not mean the CLI is published. Publishing artifacts does not deploy them to a cluster.
@@ -381,6 +382,7 @@ This contract applies only to APIs consumed by the independently distributed CLI
 
 - Backend constants live in `backend/internal/version/api.go`; CLI constants live in `cli/internal/version/version.go`.
 - `APIVersion` is one shared, monotonically increasing API-contract counter. Backend and CLI must carry the same current value after an API contract consumed by the CLI changes.
+- Behavior and semantics count even when paths and request/response shapes stay the same: new error or job types, or changes to user-visible processing that could leave an older CLI missing important information or misinterpreting results, require a shared `APIVersion` increment. Small bug fixes that correct faulty logic or restore intended behavior, and internal changes without meaningful CLI-visible impact, normally do not. Judge the actual user impact rather than treating every backend edit as an API change.
 - Version `1` is the first published contract. Value `0` must not be published as a supported contract. If a handshake explicitly reports `0`, the CLI treats it as a pre-contract legacy version so it can explain which minimum-version check fails; a missing version field or a negative value remains invalid or unknown.
 - Each side independently owns the minimum peer it needs: the backend owns `MinSupportedCLIAPIVersion`; the CLI owns `MinSupportedBackendAPIVersion`. They need not be equal and must not be raised merely because `APIVersion` changes.
 - Raise a minimum only when that side cannot complete the affected operation with an older peer and no fallback remains. Set it to the first peer API version that provides the required contract.
@@ -388,8 +390,9 @@ This contract applies only to APIs consumed by the independently distributed CLI
 
 | Change | `APIVersion` | Minimum peer version |
 |--------|--------------|----------------------|
-| Backend implementation only, frontend-only API, or CLI-local behavior | Unchanged | Unchanged |
+| Backend implementation only, small bug fixes restoring intended behavior, frontend-only API, or CLI-local behavior | Unchanged | Unchanged |
 | Add an endpoint, field, or optional semantic consumed by the CLI | Increment on backend and CLI | Usually unchanged |
+| CLI-visible behavioral or semantic changes, such as new error/job types or changed user-visible processing | Increment on backend and CLI | Usually unchanged; assess each side's fallback separately |
 | Change/remove a CLI-consumed path, method, required field, field type, meaning, authorization requirement, or response structure | Increment on backend and CLI | Raise only on the side that cannot support the older peer |
 | CLI begins requiring a capability already present in the backend API contract | Unchanged | If there is no fallback, raise the CLI's minimum backend version to the API version that first provided the capability |
 | Add a CLI fallback or keep an existing capability optional | Unchanged unless the backend API contract itself changes | Do not raise the minimum |

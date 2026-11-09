@@ -183,6 +183,7 @@ func applyJobFilters(
 	a := query.Account
 	q := j.WithContext(ctx).
 		Select(j.ALL).
+		Where(j.JobType.Neq(string(model.JobTypeTensorboard))).
 		LeftJoin(u, j.UserID.EqCol(u.ID)).
 		LeftJoin(a, j.AccountID.EqCol(a.ID))
 

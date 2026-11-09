@@ -1,6 +1,6 @@
 ---
 name: crater-devel-release
-version: 1.0.0
+version: 1.1.0
 description: "Crater 发布（开发者侧）：Chart 开发、What's New 与 Release 文案、正式 tag 发布、CI 产物验证和 npm 暂存包人工审批交接。用户修改 charts/、准备更新公告或发布正式版本时使用；开始前须应用 crater-devel-shared。具体集群部署与 rollout 不属于本 Skill。"
 ---
 
@@ -24,11 +24,11 @@ description: "Crater 发布（开发者侧）：Chart 开发、What's New 与 Re
 
 ## Chart 开发
 
-按 Chart 贡献规范判断版本级别，联动 values、模板、README 和英文注释，并执行对应验证；文档引用版本遵循 `website/CONTRIBUTING.md` 的占位约定。对照真实配置时遵守根文档的敏感信息边界。Chart 发布交由 CI，通常无需本地手动打包或推送。
+修改 Chart 模板、依赖、配置逻辑或配置项行为 / 默认值时，按 Chart 贡献规范在对应 PR 中同步提升 `version` / `appVersion`，联动 values、模板、README 和英文注释，并执行对应验证；文档引用版本遵循 `website/CONTRIBUTING.md` 的占位约定。对照真实配置时遵守根文档的敏感信息边界。Chart 发布交由 CI，通常无需本地手动打包或推送。
 
 ## 正式发布流程
 
-1. **确定范围**：确认目标版本、上一个正式版本、预期发布组件，以及用户授权的是文案准备还是实际发布。读取当前 workflow，不凭历史发布经验猜测触发器或产物。
+1. **确定范围与版本**：确认上一个正式版本、预期发布组件，以及用户授权的是文案准备还是实际发布。按根与 Chart 贡献规范检查上次正式发布以来的累计变化，包括前后端接口新增功能或行为变化，据此提升发布版本号；与维护者确认具体提升 patch、minor 还是 major，并同步更新 Chart `version` / `appVersion`，与目标 tag 对齐。读取当前 workflow，不凭历史发布经验猜测触发器或产物。
 2. **整理文案**：阅读上一版公告与本次包含的合并改动，按前端 What's New 规范起草简短引言与主题要点，交维护者核对事实和措辞，再更新组件版本与各语言文案。GitHub Release 草稿按根 Release Notes 从同一份已审阅内容转写，不机械保留反馈邀请。
 3. **准备合并**：按 shared 的实现、验证、人工检查和 PR 流程完成发布准备；用 review Skill 自检。记录需要维护者亲自查看的弹窗、语言和确认行为。只完成本次授权范围，不能把“准备发布”理解为自动合并 PR。
 4. **锁定发布点**：准备内容合入 `main` 后，核对根发布检查项，向用户展示准确的 tag、目标 SHA、包含范围和预期产物。确认已有授权覆盖该版本的 tag 推送及可选 Release 发布；未覆盖时才请求补充授权。维护者授权后只推送明确的 tag，不顺带推送本地分支。

@@ -32,6 +32,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_user.DeletedAt = field.NewField(tableName, "deleted_at")
+	_user.ContainerSysAdminEnabled = field.NewBool(tableName, "container_sys_admin_enabled")
 	_user.Name = field.NewString(tableName, "name")
 	_user.Nickname = field.NewString(tableName, "nickname")
 	_user.Password = field.NewString(tableName, "password")
@@ -65,25 +66,26 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo userDo
 
-	ALL                 field.Asterisk
-	ID                  field.Uint
-	CreatedAt           field.Time
-	UpdatedAt           field.Time
-	DeletedAt           field.Field
-	Name                field.String // 用户名
-	Nickname            field.String // 昵称
-	Password            field.String // 密码
-	Role                field.Uint8  // 用户在平台的角色 (guest, user, admin)
-	Status              field.Uint8  // 用户状态 (pending, active, inactive)
-	Space               field.String // 用户空间绝对路径
-	ImageQuota          field.Int64  // 用户在镜像仓库的配额
-	SpaceQuota          field.Int64  // User storage quota in bytes
-	ExtraBalance        field.Int64  // 用户额外点数余额(内部微点, 充值/奖励)
-	LastEmailVerifiedAt field.Time   // 最后一次邮箱验证时间
-	BannedTimestamp     field.Time   // 用户封禁截止时间，晚于当前时间表示封禁中
-	BanRestrictions     field.Field  // 最近一次封禁配置的限制内容，仅在封禁截止时间有效时生效
-	Attributes          field.Field  // 用户的额外属性 (昵称、邮箱、电话、头像等)
-	UserAccounts        userHasManyUserAccounts
+	ALL                      field.Asterisk
+	ID                       field.Uint
+	CreatedAt                field.Time
+	UpdatedAt                field.Time
+	DeletedAt                field.Field
+	ContainerSysAdminEnabled field.Bool   // Container SYS_ADMIN grant
+	Name                     field.String // 用户名
+	Nickname                 field.String // 昵称
+	Password                 field.String // 密码
+	Role                     field.Uint8  // 用户在平台的角色 (guest, user, admin)
+	Status                   field.Uint8  // 用户状态 (pending, active, inactive)
+	Space                    field.String // 用户空间绝对路径
+	ImageQuota               field.Int64  // 用户在镜像仓库的配额
+	SpaceQuota               field.Int64  // User storage quota in bytes
+	ExtraBalance             field.Int64  // 用户额外点数余额(内部微点, 充值/奖励)
+	LastEmailVerifiedAt      field.Time   // 最后一次邮箱验证时间
+	BannedTimestamp          field.Time   // 用户封禁截止时间，晚于当前时间表示封禁中
+	BanRestrictions          field.Field  // 最近一次封禁配置的限制内容，仅在封禁截止时间有效时生效
+	Attributes               field.Field  // 用户的额外属性 (昵称、邮箱、电话、头像等)
+	UserAccounts             userHasManyUserAccounts
 
 	UserDatasets userHasManyUserDatasets
 
@@ -106,6 +108,7 @@ func (u *user) updateTableName(table string) *user {
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
 	u.DeletedAt = field.NewField(table, "deleted_at")
+	u.ContainerSysAdminEnabled = field.NewBool(table, "container_sys_admin_enabled")
 	u.Name = field.NewString(table, "name")
 	u.Nickname = field.NewString(table, "nickname")
 	u.Password = field.NewString(table, "password")
@@ -143,11 +146,12 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 19)
+	u.fieldMap = make(map[string]field.Expr, 20)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
 	u.fieldMap["deleted_at"] = u.DeletedAt
+	u.fieldMap["container_sys_admin_enabled"] = u.ContainerSysAdminEnabled
 	u.fieldMap["name"] = u.Name
 	u.fieldMap["nickname"] = u.Nickname
 	u.fieldMap["password"] = u.Password

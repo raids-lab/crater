@@ -35,6 +35,8 @@ const (
 	JobTypeDeepSpeed  JobType = "deepspeed"
 	JobTypeOpenMPI    JobType = "openmpi"
 	JobTypeCustom     JobType = "custom"
+	// JobTypeTensorboard identifies auxiliary workloads, not regular user jobs.
+	JobTypeTensorboard JobType = "tensorboard"
 )
 
 func ParseWaitingToleranceSeconds(raw string) (*int64, error) {
