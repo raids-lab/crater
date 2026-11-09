@@ -25,6 +25,7 @@ export interface MetadataFormType {
   version: string
   type: string
   migrations?: Record<string, MetadataFormMigration>
+  normalizeImportedData?: (data: unknown) => unknown
 }
 
 // Each bump registers a migration from the previous version so older templates chain up to the current one.
@@ -191,40 +192,56 @@ const withTensorboardLogDirMigration = (
   },
 })
 
+const resetJobSysAdmin = (data: unknown): unknown => {
+  if (!isRecord(data)) throw new Error('The job template data is invalid')
+  return { ...data, sysAdminEnabled: false }
+}
+
+// Imports and clones require a fresh choice, including templates at the current version.
+const withSysAdminOptIn = (metadata: MetadataFormType): MetadataFormType => ({
+  ...metadata,
+  version: '20261103',
+  migrations: {
+    ...metadata.migrations,
+    [metadata.version]: { to: '20261103', migrate: resetJobSysAdmin },
+  },
+  normalizeImportedData: resetJobSysAdmin,
+})
+
 export const MetadataFormAccount: MetadataFormType = {
   version: '20241208',
   type: 'account',
 }
 
-export const MetadataFormJupyter: MetadataFormType = {
+export const MetadataFormJupyter: MetadataFormType = withSysAdminOptIn({
   version: CurrentTensorboardJobTemplateVersion,
   type: 'jupyter',
   migrations: withTensorboardLogDirMigration('20250420'),
-}
+})
 
-export const MetadataFormWebIDE: MetadataFormType = {
+export const MetadataFormWebIDE: MetadataFormType = withSysAdminOptIn({
   version: CurrentTensorboardJobTemplateVersion,
   type: 'webide',
   migrations: withTensorboardLogDirMigration('20251126'),
-}
+})
 
-export const MetadataFormCustom: MetadataFormType = {
+export const MetadataFormCustom: MetadataFormType = withSysAdminOptIn({
   version: CurrentTensorboardJobTemplateVersion,
   type: 'custom',
   migrations: withTensorboardLogDirMigration('20250317', '20260728'),
-}
+})
 
-export const MetadataFormCustomEmias: MetadataFormType = {
+export const MetadataFormCustomEmias: MetadataFormType = withSysAdminOptIn({
   version: CurrentJobTemplateVersion,
   type: 'custom-emias',
   migrations: jobTemplateMigrations('20250420'),
-}
+})
 
-export const MetadataFormTensorflow: MetadataFormType = {
+export const MetadataFormTensorflow: MetadataFormType = withSysAdminOptIn({
   version: CurrentTensorboardJobTemplateVersion,
   type: 'tensorflow',
   migrations: withTensorboardLogDirMigration('20240528'),
-}
+})
 
 export const MetadataFormTensorboard: MetadataFormType = {
   version: CurrentTensorboardPanelTemplateVersion,
@@ -241,17 +258,17 @@ export const MetadataFormTensorboard: MetadataFormType = {
   },
 }
 
-export const MetadataFormPytorch: MetadataFormType = {
+export const MetadataFormPytorch: MetadataFormType = withSysAdminOptIn({
   version: CurrentTensorboardJobTemplateVersion,
   type: 'pytorch',
   migrations: withTensorboardLogDirMigration('20240528'),
-}
+})
 
-export const MetadataFormSingle: MetadataFormType = {
+export const MetadataFormSingle: MetadataFormType = withSysAdminOptIn({
   version: CurrentJobTemplateVersion,
   type: 'single',
   migrations: jobTemplateMigrations('20240528'),
-}
+})
 
 // 基于Dockerfile构建
 export const MetadataFormDockerfile: MetadataFormType = {
@@ -277,8 +294,8 @@ export const MetadataFormEnvdRaw: MetadataFormType = {
   type: ImagePackSource.EnvdRaw,
 }
 
-export const MetadataFormJupyterEmias: MetadataFormType = {
+export const MetadataFormJupyterEmias: MetadataFormType = withSysAdminOptIn({
   version: CurrentJobTemplateVersion,
   type: 'jupyter-emias',
   migrations: jobTemplateMigrations('20240528'),
-}
+})

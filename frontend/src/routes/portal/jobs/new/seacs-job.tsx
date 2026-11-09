@@ -89,6 +89,7 @@ export const Route = createFileRoute('/portal/jobs/new/seacs-job')({
 })
 
 const formSchema = z.object({
+  sysAdminEnabled: z.boolean().default(false),
   jobName: z
     .string()
     .min(1, {
@@ -147,6 +148,7 @@ function RouteComponent() {
     mutationFn: (values: FormSchema) =>
       apiSparseCreate({
         name: values.jobName,
+        sysAdminEnabled: values.sysAdminEnabled,
         resource: convertToResourceList(values.task.resource),
         image: values.task.image,
         command: values.task.command,
@@ -186,6 +188,7 @@ function RouteComponent() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       jobName: '',
+      sysAdminEnabled: false,
       runningType: 'one-shot',
       macs: 0,
       params: 0,
@@ -752,6 +755,7 @@ function RouteComponent() {
             <VolumeMountsCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
+              sysAdminEnabledPath="sysAdminEnabled"
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"
