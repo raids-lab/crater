@@ -292,6 +292,11 @@ func (mgr *AgentMgr) UserChat(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	if _, err := mgr.service.ResolveEffectiveConfig(c.Request.Context(), userID); err != nil {
+		_ = mgr.conversations.FailRun(c.Request.Context(), userID, identity, prepared.RunID, err)
+		resputil.HandleError(c, err)
+		return
+	}
 	body, err = json.Marshal(prepared)
 	if err != nil {
 		_ = mgr.conversations.FailRun(c.Request.Context(), userID, identity, prepared.RunID, err)

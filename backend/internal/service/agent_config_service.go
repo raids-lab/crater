@@ -38,7 +38,6 @@ type PersonalLLMConfigStatus struct {
 	EffectiveSource    LLMConfigSource
 	BaseURL            string
 	ModelName          string
-	Personal           *LLMConfig
 }
 
 type AgentConfigService struct {
@@ -78,7 +77,7 @@ func (s *AgentConfigService) GetStatus(
 	ctx context.Context,
 	userID uint,
 ) (*PersonalLLMConfigStatus, error) {
-	personal, found, err := s.getPersonalConfig(ctx, userID)
+	personal, found, err := s.getPersonalConfigRecord(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -87,10 +86,12 @@ func (s *AgentConfigService) GetStatus(
 		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to load platform LLM configuration")
 	}
 
+	// Saved personal settings remain readable without decrypting the API key.
+	personalConfigured := found && strings.TrimSpace(personal.BaseURL) != "" &&
+		strings.TrimSpace(personal.ModelName) != "" && strings.TrimSpace(personal.EncryptedAPIKey) != ""
 	status := &PersonalLLMConfigStatus{
-		PersonalConfigured: found && isCompleteLLMConfig(personal),
+		PersonalConfigured: personalConfigured,
 		PlatformConfigured: isCompleteLLMConfig(platform),
-		Personal:           personal,
 	}
 	if status.PersonalConfigured {
 		status.EffectiveSource = LLMConfigSourcePersonal
@@ -225,10 +226,10 @@ func (s *AgentConfigService) resolveSubmittedConfig(
 	return resolved, nil
 }
 
-func (s *AgentConfigService) getPersonalConfig(
+func (s *AgentConfigService) getPersonalConfigRecord(
 	ctx context.Context,
 	userID uint,
-) (*LLMConfig, bool, error) {
+) (*model.UserLLMConfig, bool, error) {
 	var record model.UserLLMConfig
 	err := s.db.WithContext(ctx).
 		Where("user_id = ?", userID).
@@ -238,6 +239,17 @@ func (s *AgentConfigService) getPersonalConfig(
 			return nil, false, nil
 		}
 		return nil, false, bizerr.Internal.DatabaseError.Wrap(err, "failed to load personal LLM configuration")
+	}
+	return &record, true, nil
+}
+
+func (s *AgentConfigService) getPersonalConfig(
+	ctx context.Context,
+	userID uint,
+) (*LLMConfig, bool, error) {
+	record, found, err := s.getPersonalConfigRecord(ctx, userID)
+	if err != nil || !found || strings.TrimSpace(record.EncryptedAPIKey) == "" {
+		return nil, false, err
 	}
 	keys, err := s.agentDecryptionKeys()
 	if err != nil {

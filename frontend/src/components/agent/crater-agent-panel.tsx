@@ -2,6 +2,7 @@ import { useChat } from '@ai-sdk/react'
 import { useQuery } from '@tanstack/react-query'
 import { DefaultChatTransport, type UIMessage } from 'ai'
 import { useAtom, useAtomValue } from 'jotai'
+import { HTTPError } from 'ky'
 import {
   BotIcon,
   CopyIcon,
@@ -906,23 +907,28 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
 }
 
 async function agentFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const response = await apiFetch(input, init)
+  const response = await apiFetch(input, init).catch((error: unknown) => {
+    if (error instanceof HTTPError) return error.response
+    throw error
+  })
   if (response.ok) return response
 
   const payload = (await response
     .clone()
     .json()
-    .catch(() => null)) as { msg?: string; error?: string } | null
+    .catch(() => null)) as { msg?: string; error?: string; code?: number } | null
   throw new AgentRequestError(
     payload?.msg || payload?.error || `AI service returned status ${response.status}`,
-    response.status
+    response.status,
+    payload?.code
   )
 }
 
 class AgentRequestError extends Error {
   constructor(
     message: string,
-    readonly status: number
+    readonly status: number,
+    readonly code?: number
   ) {
     super(message)
     this.name = 'AgentRequestError'
