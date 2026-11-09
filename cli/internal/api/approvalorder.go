@@ -15,13 +15,14 @@ type ApprovalOrderClient interface {
 	ReviewApprovalOrder(id uint, req ApprovalOrderReviewRequest) (string, error)
 	DeleteApprovalOrder(id uint) (string, error)
 	CheckApprovalOrders() (string, error)
-	LockJob(req JobLockRequest) (string, error)
+	ApproveJobOrder(id uint, req ApproveJobOrderRequest) (*ApproveJobOrderResult, error)
 }
 
 type ApprovalOrderContent struct {
-	ApprovalOrderTypeID         uint   `json:"approvalorderTypeID"`
-	ApprovalOrderReason         string `json:"approvalorderReason"`
-	ApprovalOrderExtensionHours uint   `json:"approvalorderExtensionHours"`
+	ApprovalOrderTypeID         uint             `json:"approvalorderTypeID"`
+	ApprovalOrderReason         string           `json:"approvalorderReason"`
+	ApprovalOrderExtensionHours uint             `json:"approvalorderExtensionHours"`
+	ApprovedLock                *ApprovedJobLock `json:"approvedLock,omitempty"`
 }
 
 type ApprovalUserInfo struct {
@@ -58,12 +59,28 @@ type ApprovalOrderReviewRequest struct {
 	ReviewNotes string `json:"reviewNotes,omitempty"`
 }
 
-type JobLockRequest struct {
-	Name        string `json:"name"`
-	IsPermanent bool   `json:"isPermanent"`
-	Days        int    `json:"days"`
-	Hours       int    `json:"hours"`
-	Minutes     int    `json:"minutes"`
+type ApprovedJobLock struct {
+	IsPermanent     bool      `json:"isPermanent"`
+	DurationMinutes int64     `json:"durationMinutes,omitempty"`
+	LockedUntil     time.Time `json:"lockedUntil"`
+}
+
+type JobOrderLockRequest struct {
+	IsPermanent bool `json:"isPermanent"`
+	Days        int  `json:"days"`
+	Hours       int  `json:"hours"`
+	Minutes     int  `json:"minutes"`
+}
+
+type ApproveJobOrderRequest struct {
+	Lock        *JobOrderLockRequest `json:"lock,omitempty"`
+	ReviewNotes string               `json:"reviewNotes,omitempty"`
+}
+
+type ApproveJobOrderResult struct {
+	Message      string          `json:"message"`
+	LockMessage  string          `json:"lockMessage"`
+	ApprovedLock ApprovedJobLock `json:"approvedLock"`
 }
 
 func (c *Client) ListApprovalOrders(admin bool) ([]ApprovalOrder, error) {
@@ -174,14 +191,15 @@ func (c *Client) CheckApprovalOrders() (string, error) {
 	return result.Data, nil
 }
 
-func (c *Client) LockJob(req JobLockRequest) (string, error) {
-	var result Response[string]
-	resp, err := c.httpClient.R().SetBody(&req).SetSuccessResult(&result).SetErrorResult(&result).Put(AdminOperationsPfx + "/add/locktime")
+func (c *Client) ApproveJobOrder(id uint, req ApproveJobOrderRequest) (*ApproveJobOrderResult, error) {
+	var result Response[ApproveJobOrderResult]
+	path := fmt.Sprintf("%s/%d/approve-and-lock", AdminApprovalPrefix, id)
+	resp, err := c.httpClient.R().SetBody(&req).SetSuccessResult(&result).SetErrorResult(&result).Put(path)
 	if err != nil {
-		return "", &NetworkError{Cause: err}
+		return nil, &NetworkError{Cause: err}
 	}
 	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return "", err
+		return nil, err
 	}
-	return result.Data, nil
+	return &result.Data, nil
 }

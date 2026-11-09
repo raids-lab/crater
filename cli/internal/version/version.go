@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	// v6 adds per-user SYS_ADMIN eligibility and explicit, default-off per-job opt-in.
-	APIVersion = 6
-	// v3 first exposes /admin/system-config/scheduler-extender, which this CLI calls with no fallback.
-	MinSupportedBackendAPIVersion    = 3
+	// v7 adds the atomic approval and lock operation for job orders.
+	APIVersion = 7
+	// v7 first exposes approve-and-lock, which this CLI requires to approve job orders.
+	MinSupportedBackendAPIVersion    = 7
 	APIVersionHeader                 = "X-Crater-API-Version"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"

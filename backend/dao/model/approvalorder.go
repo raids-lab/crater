@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
@@ -25,9 +27,17 @@ const (
 
 // ApprovalOrderContent 审批订单内容
 type ApprovalOrderContent struct {
-	ApprovalOrderTypeID         uint   `json:"approvalorderTypeID"`
-	ApprovalOrderExtensionHours uint   `json:"approvalorderExtensionHours"` // 延长小时数
-	ApprovalOrderReason         string `json:"approvalorderReason"`         // 审批原因
+	ApprovalOrderTypeID         uint             `json:"approvalorderTypeID"`
+	ApprovalOrderExtensionHours uint             `json:"approvalorderExtensionHours"` // 延长小时数
+	ApprovalOrderReason         string           `json:"approvalorderReason"`         // 审批原因
+	ApprovedLock                *ApprovedJobLock `json:"approvedLock,omitempty"`
+}
+
+// ApprovedJobLock records the lock applied when a job order was approved.
+type ApprovedJobLock struct {
+	IsPermanent     bool      `json:"isPermanent"`
+	DurationMinutes int64     `json:"durationMinutes,omitempty"`
+	LockedUntil     time.Time `json:"lockedUntil"`
 }
 
 // ApprovalOrder 审批订单模型

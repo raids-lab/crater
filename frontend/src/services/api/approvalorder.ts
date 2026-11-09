@@ -16,12 +16,19 @@
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 import { IResponse } from '@/services/types'
 
-import { IUserInfo } from './vcjob'
+import { IUserInfo, type JobLockDuration } from './vcjob'
+
+export interface ApprovedJobLock {
+  isPermanent: boolean
+  durationMinutes?: number
+  lockedUntil: string
+}
 
 export interface Content {
   approvalorderTypeID: number
   approvalorderReason: string
   approvalorderExtensionHours: number
+  approvedLock?: ApprovedJobLock
 }
 
 export interface ApprovalOrder {
@@ -70,6 +77,11 @@ export const updateApprovalOrder = (id: number, data: ApprovalOrderReq) => {
 export const reviewApprovalOrder = (id: number, data: ApprovalOrderReviewReq) => {
   return apiV1Put<IResponse<string>>(`admin/approvalorder/${id}/review`, data)
 }
+export const adminApproveJobOrder = (id: number, lock: JobLockDuration) =>
+  apiV1Put<IResponse<{ message: string; lockMessage: string; approvedLock: ApprovedJobLock }>>(
+    `admin/approvalorder/${id}/approve-and-lock`,
+    { lock }
+  )
 export const listJobApprovalOrders = (jobName: string) => {
   return apiV1Get<IResponse<ApprovalOrder[]>>(`approvalorder/name/${encodeURIComponent(jobName)}`, {
     searchParams: { type: 'job' },

@@ -16,16 +16,9 @@ package version
 
 import "testing"
 
-func TestUserContainerPermissionContractVersion(t *testing.T) {
-	if APIVersion != 6 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("user container permission contract = %d, minimum CLI = %d, want 6/3",
-			APIVersion, MinSupportedCLIAPIVersion)
-	}
-}
-
-func TestTensorboardLogDirContractVersion(t *testing.T) {
-	if APIVersion < 5 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("TensorBoard log directory contract = %d, minimum CLI = %d, want >=5/3",
+func TestAtomicJobApprovalContractVersion(t *testing.T) {
+	if APIVersion != 7 || MinSupportedCLIAPIVersion != 7 {
+		t.Fatalf("atomic job approval contract = %d, minimum CLI = %d, want 7/7",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}
 }

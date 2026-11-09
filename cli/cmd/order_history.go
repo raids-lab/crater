@@ -11,13 +11,14 @@ import (
 )
 
 type approvalOrderHistoryEntry struct {
-	Attempt        int        `json:"attempt"`
-	ID             uint       `json:"id"`
-	Status         string     `json:"status"`
-	RequestedHours uint       `json:"requestedHours"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	ReviewedAt     *time.Time `json:"reviewedAt,omitempty"`
-	ReviewSeconds  *int64     `json:"reviewSeconds,omitempty"`
+	Attempt        int                  `json:"attempt"`
+	ID             uint                 `json:"id"`
+	Status         string               `json:"status"`
+	RequestedHours uint                 `json:"requestedHours"`
+	ApprovedLock   *api.ApprovedJobLock `json:"approvedLock,omitempty"`
+	CreatedAt      time.Time            `json:"createdAt"`
+	ReviewedAt     *time.Time           `json:"reviewedAt,omitempty"`
+	ReviewSeconds  *int64               `json:"reviewSeconds,omitempty"`
 }
 
 type approvalOrderHistory struct {
@@ -47,6 +48,7 @@ func readJobApprovalHistory(client api.ApprovalOrderClient, current *api.Approva
 			ID:             order.ID,
 			Status:         order.Status,
 			RequestedHours: order.Content.ApprovalOrderExtensionHours,
+			ApprovedLock:   order.Content.ApprovedLock,
 			CreatedAt:      order.CreatedAt,
 			ReviewedAt:     order.ReviewedAt,
 		}
@@ -70,11 +72,12 @@ func readJobApprovalHistory(client api.ApprovalOrderClient, current *api.Approva
 
 func printJobApprovalHistory(history *approvalOrderHistory) {
 	fmt.Printf("\n%s\n", i18n.T("order_history_heading", history.CurrentAttempt, history.ApprovedCount))
-	fmt.Printf("%s %s %s %s %s %s\n",
+	fmt.Printf("%s %s %s %s %s %s %s\n",
 		i18n.PadRight(i18n.T("order_history_attempt"), 8),
 		i18n.PadRight(i18n.T("table_id"), 8),
 		i18n.PadRight(i18n.T("table_status"), 12),
 		i18n.PadRight(i18n.T("order_history_hours"), 18),
+		i18n.PadRight(i18n.T("order_history_approved_duration"), 18),
 		i18n.PadRight(i18n.T("table_created_at"), 25),
 		i18n.T("order_history_review_time"))
 	for _, entry := range history.Entries {
@@ -82,12 +85,23 @@ func printJobApprovalHistory(history *approvalOrderHistory) {
 		if entry.ReviewSeconds != nil {
 			reviewTime = (time.Duration(*entry.ReviewSeconds) * time.Second).String()
 		}
-		fmt.Printf("%s %s %s %s %s %s\n",
+		fmt.Printf("%s %s %s %s %s %s %s\n",
 			i18n.PadRight(fmt.Sprint(entry.Attempt), 8),
 			i18n.PadRight(fmt.Sprint(entry.ID), 8),
 			i18n.PadRight(entry.Status, 12),
 			i18n.PadRight(fmt.Sprint(entry.RequestedHours), 18),
+			i18n.PadRight(approvedLockLabel(entry.ApprovedLock), 18),
 			i18n.PadRight(formatAPITime(entry.CreatedAt), 25),
 			reviewTime)
 	}
+}
+
+func approvedLockLabel(lock *api.ApprovedJobLock) string {
+	if lock == nil {
+		return "-"
+	}
+	if lock.IsPermanent {
+		return i18n.T("order_approved_permanent_lock")
+	}
+	return (time.Duration(lock.DurationMinutes) * time.Minute).String()
 }

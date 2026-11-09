@@ -1,4 +1,5 @@
 {
+  "ApprovalOrderTable.actions.approveAndLock": "批准并锁定",
   "ApprovalOrderTable.actions.menuLabel": "更多操作",
   "ApprovalOrderTable.actions.menuTrigger": "操作菜单",
   "ApprovalOrderTable.actions.viewDetails": "查看详情",
@@ -14,6 +15,9 @@
   "ApprovalOrderTable.column.status": "状态",
   "ApprovalOrderTable.column.type": "类型",
   "ApprovalOrderTable.column.typeId": "类型编号",
+  "ApprovalOrderTable.detail.approvedLockDuration": "实际批准时长",
+  "ApprovalOrderTable.detail.approvedLockMinutes": "{{minutes}} 分钟",
+  "ApprovalOrderTable.detail.approvedLockPermanent": "永久锁定",
   "ApprovalOrderTable.info.description": "查看和管理与我相关的审批工单",
   "ApprovalOrderTable.info.title": "审批工单",
   "ApprovalOrderTable.toast.approveError": "批准失败，请重试",

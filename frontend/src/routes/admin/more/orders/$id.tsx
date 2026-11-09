@@ -27,7 +27,8 @@ import {
   Type,
   User,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -76,6 +77,7 @@ export const Route = createFileRoute('/admin/more/orders/$id')({
 })
 
 function RouteComponent() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const { id } = Route.useParams()
@@ -153,17 +155,13 @@ function RouteComponent() {
     isDelayDialogOpen,
     isFetchingJob,
     handleApproveWithDelay,
+    submitApprovalLock,
     setIsDelayDialogOpen,
     clearSelection,
   } = useApprovalOrderLock()
 
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
-
-  const selectedOrderRef = useRef<ApprovalOrder | null>(null)
-  useEffect(() => {
-    selectedOrderRef.current = selectedOrder ?? null
-  }, [selectedOrder])
 
   const invalidateOrderLists = () => {
     queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
@@ -382,6 +380,20 @@ function RouteComponent() {
                         </span>
                       </div>
                     )}
+                    {order.content.approvedLock && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          {t('ApprovalOrderTable.detail.approvedLockDuration')}
+                        </span>
+                        <span>
+                          {order.content.approvedLock.isPermanent
+                            ? t('ApprovalOrderTable.detail.approvedLockPermanent')
+                            : t('ApprovalOrderTable.detail.approvedLockMinutes', {
+                                minutes: order.content.approvedLock.durationMinutes ?? 0,
+                              })}
+                        </span>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -449,25 +461,10 @@ function RouteComponent() {
           open={isDelayDialogOpen}
           setOpen={(open) => {
             setIsDelayDialogOpen(open)
-            if (!open && !approveMutation.isPending) {
-              clearSelection()
-            }
+            if (!open) clearSelection()
           }}
-          onSuccess={async () => {
-            const target = selectedOrderRef.current
-            if (!target) {
-              toast.error('未找到工单，无法批准')
-              return
-            }
-            try {
-              await approveMutation.mutateAsync(target)
-            } catch {
-              // 错误提示已在 mutation onError 中处理
-            } finally {
-              clearSelection()
-              await refetch()
-            }
-          }}
+          submitLock={submitApprovalLock}
+          onSuccess={() => void refetch()}
           setExtend={selectedJob.locked}
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}

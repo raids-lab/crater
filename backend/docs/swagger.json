@@ -936,6 +936,82 @@
                 }
             }
         },
+        "/v1/admin/approvalorder/{id}/approve-and-lock": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "在同一事务中锁定运行中的作业、批准工单并记录实际批准时长，省略锁定参数时使用工单申请时长",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "批准作业工单并锁定作业",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "锁定时长及审核备注",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ApproveJobOrderReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/approvalorder/{id}/review": {
             "put": {
                 "security": [
@@ -943,7 +1019,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容",
+                "description": "审批数据集工单或拒绝、取消工单。批准作业工单使用 approve-and-lock",
                 "consumes": [
                     "application/json"
                 ],
@@ -10987,6 +11063,9 @@
                 },
                 "approvalorderTypeID": {
                     "type": "integer"
+                },
+                "approvedLock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock"
                 }
             }
         },
@@ -11035,6 +11114,20 @@
                 "ApprovalOrderTypeDataset",
                 "ApprovalOrderTypeJob"
             ]
+        },
+        "github_com_raids-lab_crater_dao_model.ApprovedJobLock": {
+            "type": "object",
+            "properties": {
+                "durationMinutes": {
+                    "type": "integer"
+                },
+                "isPermanent": {
+                    "type": "boolean"
+                },
+                "lockedUntil": {
+                    "type": "string"
+                }
+            }
         },
         "github_com_raids-lab_crater_dao_model.BuildSource": {
             "type": "string",
@@ -12060,6 +12153,21 @@
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ApproveJobOrderResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp": {
             "type": "object",
             "properties": {
@@ -12610,6 +12718,23 @@
                 "NodePortType"
             ]
         },
+        "github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer"
+                },
+                "hours": {
+                    "type": "integer"
+                },
+                "isPermanent": {
+                    "type": "boolean"
+                },
+                "minutes": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_util.VolumeMount": {
             "type": "object",
             "properties": {
@@ -13143,6 +13268,31 @@
                 },
                 "type": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderType"
+                }
+            }
+        },
+        "internal_handler.ApproveJobOrderReq": {
+            "type": "object",
+            "properties": {
+                "lock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration"
+                },
+                "reviewNotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.ApproveJobOrderResp": {
+            "type": "object",
+            "properties": {
+                "approvedLock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock"
+                },
+                "lockMessage": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
                 }
             }
         },

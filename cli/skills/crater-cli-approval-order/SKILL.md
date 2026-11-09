@@ -1,7 +1,7 @@
 ---
 name: crater-cli-approval-order
 description: "Crater CLI 用户审批工单域：提交、编辑、取消、查看当前用户的审批工单。管理员审核动作必须使用 crater-cli-admin-approval-order。"
-version: 0.2.0
+version: 0.3.0
 metadata:
   requires:
     bins: ["crater"]
@@ -26,7 +26,7 @@ Use this skill when the user wants to manage their own approval orders through `
 ## Rules
 
 - Do not use `--admin` with user approval commands.
-- `order ls` and `order get` only read orders created by the active user, including when that user is a platform administrator. For cross-user reads as an administrator, use `crater admin order ls` or `crater admin order get <id>`. If `order get` returns `ERR_FORBIDDEN_403`, check `context.suggested_command` for an administrator command and use it only if the task calls for administrator access.
+- `order ls` and `order get` only read orders created by the active user, including when that user is a platform administrator. For cross-user reads as an administrator, switch to `crater-cli-admin-approval-order`. If `order get` returns `ERR_FORBIDDEN_403`, check `context.suggested_command` for an administrator command and use it only if the task calls for administrator access.
 - `order by-name` returns orders only for jobs and datasets the active user can access. An empty list may mean there are no visible orders for that name.
 - Do not approve, reject, or check platform-wide orders with this skill.
 - `order edit` preserves fields that are not explicitly supplied by reading the current order first.
@@ -38,4 +38,4 @@ Use this skill when the user wants to manage their own approval orders through `
 
 ## Escalation
 
-If the task requires approving, rejecting, or checking invalid pending job orders, switch to `crater-cli-admin-approval-order` and use `crater admin order ...`.
+If the task requires approving, rejecting, or checking invalid pending job orders, switch to `crater-cli-admin-approval-order` for the administrator command and permission requirements.
