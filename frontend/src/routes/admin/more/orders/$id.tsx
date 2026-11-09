@@ -265,6 +265,22 @@ function RouteComponent() {
     return <div className="text-muted-foreground p-6 text-center">工单不存在或已被删除</div>
   }
 
+  const approvedLock = order.content?.approvedLock
+  let approvedLockDuration: string | undefined
+  if (approvedLock?.isPermanent) {
+    approvedLockDuration = t('ApprovalOrderTable.detail.approvedLockPermanent')
+  } else if (approvedLock?.durationMinutes != null) {
+    const hours = Math.floor(approvedLock.durationMinutes / 60)
+    const minutes = approvedLock.durationMinutes % 60
+    if (hours === 0) {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationMinutes', { minutes })
+    } else if (minutes === 0) {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationHours', { hours })
+    } else {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationHoursMinutes', { hours, minutes })
+    }
+  }
+
   return (
     <>
       <DetailPage
@@ -376,22 +392,18 @@ function RouteComponent() {
                       <div className="flex justify-between border-t pt-2">
                         <span className="text-muted-foreground text-sm">延长时间</span>
                         <span className="font-medium">
-                          {order.content.approvalorderExtensionHours} 小时
+                          {t('ApprovalOrderTable.detail.durationHours', {
+                            hours: order.content.approvalorderExtensionHours,
+                          })}
                         </span>
                       </div>
                     )}
-                    {order.content.approvedLock && (
+                    {approvedLockDuration && (
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-muted-foreground text-sm">
                           {t('ApprovalOrderTable.detail.approvedLockDuration')}
                         </span>
-                        <span>
-                          {order.content.approvedLock.isPermanent
-                            ? t('ApprovalOrderTable.detail.approvedLockPermanent')
-                            : t('ApprovalOrderTable.detail.approvedLockMinutes', {
-                                minutes: order.content.approvedLock.durationMinutes ?? 0,
-                              })}
-                        </span>
+                        <span>{approvedLockDuration}</span>
                       </div>
                     )}
                   </CardContent>
