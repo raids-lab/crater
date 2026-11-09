@@ -276,7 +276,7 @@ export function DurationDialog({
                       form.setValue('hours', val.hours, { shouldValidate: true, shouldDirty: true })
                     }}
                     origin={isExtendDialogOpen ? jobs[0]?.lockedTimestamp : null}
-                    showPreview={true}
+                    jobLockPreview
                   />
                 </>
               )}

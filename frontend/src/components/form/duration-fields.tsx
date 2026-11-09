@@ -1,4 +1,5 @@
-import { addHours } from 'date-fns'
+import { addHours, format } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
 import { CalendarClock } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +22,7 @@ interface DurationFieldsProps {
   // 用于前端校验显示（不强制阻止输入），父组件可再次校验
   maxTotalHours?: number
   showPreview?: boolean
+  jobLockPreview?: boolean
   className?: string
 }
 
@@ -30,6 +32,7 @@ export function DurationFields({
   origin,
   maxTotalHours = 0,
   showPreview = true,
+  jobLockPreview = false,
   className,
 }: DurationFieldsProps) {
   const { t, i18n } = useTranslation()
@@ -50,16 +53,17 @@ export function DurationFields({
   const preview = useMemo(() => {
     if (!showPreview || normalized.totalHours <= 0) return null
 
-    const now = Date.now()
-    const originTime = typeof origin === 'string' ? Date.parse(origin) : origin?.getTime()
-    const base = originTime && originTime > now ? originTime : now
+    const now = new Date()
+    const originDate = typeof origin === 'string' ? new Date(origin) : origin
+    const base = originDate && (!jobLockPreview || originDate > now) ? originDate : now
     return { base, end: addHours(base, normalized.totalHours) }
-  }, [normalized.totalHours, origin, showPreview])
+  }, [normalized.totalHours, origin, showPreview, jobLockPreview])
 
-  const dateTime = new Intl.DateTimeFormat(i18n.language, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  })
+  const dateTime = jobLockPreview
+    ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })
+    : undefined
+  const formatTime = (date: Date) =>
+    dateTime?.format(date) ?? format(date, 'yyyy年MM月dd日 HH:mm', { locale: zhCN })
 
   // 同步外部变更
   useEffect(() => {
@@ -146,12 +150,14 @@ export function DurationFields({
           <CardContent className="pt-4">
             <div className="text-muted-foreground flex items-center gap-2">
               <CalendarClock className="h-4 w-4" />
-              <span>{t('durationDialog.preview.title')}</span>
+              <span>{jobLockPreview ? t('durationDialog.preview.title') : '到期时间预览'}</span>
             </div>
             <div className="mt-2">
-              <p className="text-lg font-medium">{dateTime.format(preview.end)}</p>
+              <p className="text-lg font-medium">{formatTime(preview.end)}</p>
               <p className="text-muted-foreground mt-1 text-sm">
-                {t('durationDialog.preview.base', { time: dateTime.format(preview.base) })}
+                {jobLockPreview
+                  ? t('durationDialog.preview.base', { time: formatTime(preview.base) })
+                  : `当前时间：${formatTime(new Date())}`}
               </p>
             </div>
           </CardContent>

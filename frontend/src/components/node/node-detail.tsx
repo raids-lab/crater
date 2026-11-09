@@ -482,7 +482,7 @@ const getColumns = (
               {t('nodeDetail.actions.operations')}
             </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => handleShowMonitor(taskInfo)}>
-              <GaugeIcon />
+              {isAdminView && <GaugeIcon />}
               {t('nodeDetail.actions.monitor')}
             </DropdownMenuItem>
             {isAdminView && (
