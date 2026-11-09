@@ -100,8 +100,15 @@ func readOrderListOptions(cmd *cobra.Command, admin bool) (orderListOptions, err
 		creator, _ = cmd.Flags().GetString("creator")
 		creator = strings.TrimSpace(creator)
 	}
-	if status != "" && !slices.Contains(orderListStatuses, status) {
-		issues = append(issues, invalidIssue("status", i18n.T("err_invalid_status", status)))
+	if status != "" {
+		index := slices.IndexFunc(orderListStatuses, func(candidate string) bool {
+			return strings.EqualFold(candidate, status)
+		})
+		if index == -1 {
+			issues = append(issues, invalidIssue("status", i18n.T("err_invalid_status", status)))
+		} else {
+			status = orderListStatuses[index]
+		}
 	}
 	if orderType != "" && !slices.Contains(orderTypes, orderType) {
 		issues = append(issues, invalidIssue("type", i18n.T("err_invalid_order_type", orderType)))
