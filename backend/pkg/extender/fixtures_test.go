@@ -27,6 +27,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/lru"
 	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 	schedulinginternal "volcano.sh/apis/pkg/apis/scheduling"
@@ -70,6 +71,7 @@ func cpuOf(list v1.ResourceList) string {
 func newView(name string, res v1.ResourceList, mutators ...func(*jobView)) *jobView {
 	view := &jobView{
 		name:           name,
+		uid:            types.UID(name + "-uid"),
 		userID:         testUserID,
 		queue:          publicQueue,
 		resources:      res,
@@ -137,6 +139,7 @@ func addQueue(snap *snapshot, name, parent string, capability v1.ResourceList) {
 func seededServer(snap *snapshot) *Server {
 	return &Server{
 		recorder:    record.NewFakeRecorder(16),
+		lastWarned:  lru.New(heldWarningCacheSize),
 		accumulator: newSessionAccumulator(),
 		logger:      logr.Discard(),
 		session: &sessionState{

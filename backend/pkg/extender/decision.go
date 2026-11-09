@@ -18,8 +18,7 @@ import (
 // maxQueueHierarchyDepth guards the parent walk against a mis-configured queue cycle.
 const maxQueueHierarchyDepth = 8
 
-// Event reasons recorded on the vcjob, the only object crater's job detail page lists events for
-// before the job has pods. They mirror the log causes below.
+// Reasons of the Warning events recorded on a held vcjob.
 const (
 	reasonQueueQuotaExceeded     = "QueueQuotaExceeded"
 	reasonBlockedByTimedOutJob   = "BlockedByTimedOutJob"
@@ -66,8 +65,7 @@ func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
 
 	if result := snap.quotaVerdict(candidate, s.accumulator); result != nil && result.Exceeded {
 		quota := formatQuotaDetails(result.Details)
-		s.recorder.Eventf(candidate.reference(), v1.EventTypeWarning, reasonQueueQuotaExceeded,
-			"per-user quota of queue %s would be exceeded with this job: %s", candidate.queue, quota)
+		s.warnHeld(candidate, reasonQueueQuotaExceeded, "per-user queue quota would be exceeded")
 		return vote{status: voteReject, fields: []any{
 			"job", jobName,
 			"cause", "queue quota exceeded",
@@ -78,8 +76,7 @@ func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
 	}
 
 	if blocker := snap.blockerFor(candidate, s.accumulator); blocker != nil {
-		s.recorder.Eventf(candidate.reference(), v1.EventTypeWarning, reasonBlockedByTimedOutJob,
-			"waiting behind timed-out job %s in queue %s", blocker.name, candidate.queue)
+		s.warnHeld(candidate, reasonBlockedByTimedOutJob, "waiting behind a timed-out job")
 		return vote{status: voteReject, fields: []any{
 			"job", jobName,
 			"cause", "blocked by timed out job",
@@ -91,13 +88,14 @@ func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
 	}
 
 	// Capacity rejects it every round: the minimum demand exceeds the queue's or an ancestor's
-	// capability. Abstain without reserving, so no standing reservation shrinks the owner's headroom
-	// for as long as the job exists. Capacity records the reason only on the pod group, which crater
-	// does not show, so the event repeats it on the vcjob.
+	// capability. Abstain without reserving headroom; capacity's own reason lands only on the pod group.
 	if exceeded := snap.exceededCapability(candidate); exceeded != "" {
-		s.recorder.Eventf(candidate.reference(), v1.EventTypeWarning, reasonExceedsQueueCapability,
-			"minimum demand exceeds the capability of queue %s", exceeded)
-		return vote{status: voteAbstain, fields: []any{"job", jobName, "skip", "exceeds queue capability"}}
+		s.warnHeld(candidate, reasonExceedsQueueCapability, "minimum demand exceeds queue capability")
+		return vote{status: voteAbstain, fields: []any{
+			"job", jobName,
+			"skip", "exceeds queue capability",
+			"capability", exceeded,
+		}}
 	}
 
 	s.accumulator.reserve(candidate)
@@ -166,8 +164,8 @@ func (snap *snapshot) hasBlockingPower(blocker *jobView, acc *sessionAccumulator
 	return snap.exceededCapability(blocker) == ""
 }
 
-// exceededCapability mirrors capacity's hierarchical check: the minimum demand must fit the leaf
-// queue and every ancestor. It describes the first queue that does not fit, or returns "".
+// exceededCapability mirrors capacity's check of the leaf queue and every ancestor, describing the
+// first queue the minimum demand does not fit, or "".
 func (snap *snapshot) exceededCapability(view *jobView) string {
 	name := view.queue
 	for depth := 0; name != "" && depth < maxQueueHierarchyDepth; depth++ {
@@ -184,8 +182,8 @@ func (snap *snapshot) exceededCapability(view *jobView) string {
 	return ""
 }
 
-// exceededResource matches volcano's capacity plugin: absent resources and zero cpu or memory limits
-// are unlimited. It returns the first resource over its limit, or "".
+// exceededResource returns the first resource over its limit, or "". As in volcano's capacity plugin,
+// absent resources and zero cpu or memory limits are unlimited.
 func exceededResource(required, capability v1.ResourceList) v1.ResourceName {
 	for _, name := range slices.Sorted(maps.Keys(capability)) {
 		limit := capability[name]

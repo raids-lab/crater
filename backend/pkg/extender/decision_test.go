@@ -26,6 +26,7 @@ import (
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 const (
@@ -46,7 +47,7 @@ func fieldValue(v vote, key string) any {
 	return nil
 }
 
-// recordedEvents drains the events decide recorded on the server's fake recorder.
+// recordedEvents drains the fake recorder.
 func recordedEvents(s *Server) []string {
 	recorder, _ := s.recorder.(*record.FakeRecorder)
 	var events []string
@@ -135,10 +136,19 @@ func TestDecideQuota(t *testing.T) {
 		So(fieldValue(result, "quota"), ShouldEqual, "cpu used 3 limit 2; nvidia.com/a100 used 2 limit 1")
 		So(fieldValue(result, "userID"), ShouldEqual, testUserID)
 		So(s.accumulator.entries, ShouldNotContainKey, jobA)
-		So(recordedEvents(s), ShouldResemble, []string{
-			"Warning QueueQuotaExceeded per-user quota of queue default would be exceeded with this job: " +
-				"cpu used 3 limit 2; nvidia.com/a100 used 2 limit 1",
-		})
+		quotaEvent := []string{"Warning QueueQuotaExceeded per-user queue quota would be exceeded"}
+		So(recordedEvents(s), ShouldResemble, quotaEvent)
+
+		// Repeats are skipped until the reason changes or heldWarningRefresh passes.
+		s.decide(t.Context(), vcjobRequest(jobA))
+		So(recordedEvents(s), ShouldBeEmpty)
+		uid := s.session.snap.byName[jobA].uid
+		s.lastWarned.Add(uid, heldWarning{reason: reasonBlockedByTimedOutJob, at: utils.GetLocalTime()})
+		s.decide(t.Context(), vcjobRequest(jobA))
+		So(recordedEvents(s), ShouldResemble, quotaEvent)
+		s.lastWarned.Add(uid, heldWarning{reason: reasonQueueQuotaExceeded, at: utils.GetLocalTime().Add(-heldWarningRefresh)})
+		s.decide(t.Context(), vcjobRequest(jobA))
+		So(recordedEvents(s), ShouldResemble, quotaEvent)
 	})
 
 	PatchConvey("exactly the limit passes and is reserved", t, func() {
@@ -205,9 +215,10 @@ func TestDecideQuota(t *testing.T) {
 		s = seededServer(snap)
 		result := s.decide(t.Context(), vcjobRequest(jobA))
 		So(fieldValue(result, fieldSkip), ShouldEqual, "exceeds queue capability")
+		So(fieldValue(result, "capability"), ShouldEqual, "default: cpu requested 2 capability 1")
 		So(s.accumulator.entries, ShouldBeEmpty)
 		So(recordedEvents(s), ShouldResemble, []string{
-			"Warning ExceedsQueueCapability minimum demand exceeds the capability of queue default: cpu requested 2 capability 1",
+			"Warning ExceedsQueueCapability minimum demand exceeds queue capability",
 		})
 	})
 }
@@ -235,7 +246,7 @@ func TestDecideBlockingScope(t *testing.T) {
 		So(fieldValue(result, "blockerResources"), ShouldEqual, "cpu=1, nvidia.com/a100=1")
 		So(s.accumulator.entries, ShouldNotContainKey, jobA)
 		So(recordedEvents(s), ShouldResemble, []string{
-			"Warning BlockedByTimedOutJob waiting behind timed-out job job-blocker in queue default",
+			"Warning BlockedByTimedOutJob waiting behind a timed-out job",
 		})
 	})
 

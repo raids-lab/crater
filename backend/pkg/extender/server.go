@@ -5,16 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/lru"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -31,6 +28,10 @@ const (
 	sessionStaleAfter = 2 * time.Second
 	// closeSilenceLimit: a longer silence means close notifications stopped (volcano runs a round every second).
 	closeSilenceLimit = 10 * time.Second
+	// heldWarningRefresh renews an unchanged reason within the one-hour event TTL, at the spam filter's
+	// refill rate of one event per five minutes.
+	heldWarningRefresh   = 5 * time.Minute
+	heldWarningCacheSize = 4096
 )
 
 // settings holds the admin-facing configuration a decision needs, read once per scheduling round
@@ -54,6 +55,7 @@ type sessionState struct {
 type Server struct {
 	reader        client.Reader
 	recorder      record.EventRecorder
+	lastWarned    *lru.Cache // job UID -> heldWarning
 	quotaService  *service.QueueQuotaService
 	configService *service.ConfigService
 	accumulator   *sessionAccumulator
@@ -78,6 +80,7 @@ func New(
 	return &Server{
 		reader:        reader,
 		recorder:      recorder,
+		lastWarned:    lru.New(heldWarningCacheSize),
 		quotaService:  quotaService,
 		configService: configService,
 		accumulator:   newSessionAccumulator(),
@@ -86,30 +89,23 @@ func New(
 	}
 }
 
-// NewEventRecorder keys client-go's spam filter on the reason as well. The default key is source plus
-// object, so every reason on a job shares one token bucket: after 25 rounds of one reason, a changed
-// reason waited up to five minutes. The message stays out of the key so writes stay bounded.
-func NewEventRecorder(kubeClient kubernetes.Interface) record.EventRecorder {
-	broadcaster := record.NewBroadcaster(record.WithCorrelatorOptions(record.CorrelatorOptions{
-		SpamKeyFunc: spamKeyByReason,
-	}))
-	broadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-	return broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "crater-volcano-extender"})
+// heldWarning is the last reason recorded for a job; the message is fixed per reason.
+type heldWarning struct {
+	reason string
+	at     time.Time
 }
 
-// spamKeyByReason is client-go's default spam key with the reason appended.
-func spamKeyByReason(event *v1.Event) string {
-	return strings.Join([]string{
-		event.Source.Component,
-		event.Source.Host,
-		event.InvolvedObject.Kind,
-		event.InvolvedObject.Namespace,
-		event.InvolvedObject.Name,
-		string(event.InvolvedObject.UID),
-		event.InvolvedObject.APIVersion,
-		event.Type,
-		event.Reason,
-	}, "")
+// warnHeld records a job's hold reason when it changes and every heldWarningRefresh. Repeats must stop
+// here: client-go drops events once its queue is full, before its own dedup sees them.
+func (s *Server) warnHeld(job *jobView, reason, message string) {
+	now := utils.GetLocalTime()
+	if value, ok := s.lastWarned.Get(job.uid); ok {
+		if last := value.(heldWarning); last.reason == reason && now.Sub(last.at) < heldWarningRefresh {
+			return
+		}
+	}
+	s.lastWarned.Add(job.uid, heldWarning{reason: reason, at: now})
+	s.recorder.Event(job.reference(), v1.EventTypeWarning, reason, message)
 }
 
 // NeedLeaderElection is false: the endpoint must answer whenever the pod serves traffic, otherwise
