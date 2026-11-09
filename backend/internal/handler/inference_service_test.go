@@ -120,18 +120,22 @@ func TestKthenaServiceToRespIncludesOwnerUserInfo(t *testing.T) {
 	}
 }
 
-func TestRuntimeAwareInferencePhase(t *testing.T) {
+func TestServingObservationPreservesPausedAndQueuedStateWithoutRouting(t *testing.T) {
 	t.Parallel()
 
-	resources := []kthena.RoleSpec{{Name: "server", Instances: 1, NodesPerInstance: 1}}
-	if got := runtimeAwareInferencePhase(kthenaPhaseReady, resources, 1, nil); got != kthenaPhaseDegraded {
-		t.Fatalf("runtimeAwareInferencePhase() = %q, want Degraded", got)
-	}
-	if got := runtimeAwareInferencePhase(kthenaPhaseReady, resources, 1, []KthenaRuntimePod{{Role: "server", Entry: true, Ready: true}}); got != kthenaPhaseReady {
-		t.Fatalf("runtimeAwareInferencePhase() = %q, want Ready", got)
-	}
-	if got := runtimeAwareInferencePhase(kthenaPhaseProgressing, resources, 1, nil); got != kthenaPhaseProgressing {
-		t.Fatalf("runtimeAwareInferencePhase() = %q, want Progressing", got)
+	for _, test := range []struct{ phase, want string }{
+		{"Suspended", "Suspended"},
+		{"Prequeue", "Prequeue"},
+		{kthenaPhaseReady, kthenaPhaseProgressing},
+	} {
+		t.Run(test.phase, func(t *testing.T) {
+			response := &KthenaServiceResp{Phase: test.phase}
+			applyServingObservation(response)
+			if response.Phase != test.want || len(response.Diagnostics) != 1 ||
+				response.Diagnostics[0].Reason != "RoutingResourcesMissing" {
+				t.Fatalf("phase = %q, diagnostics = %v", response.Phase, response.Diagnostics)
+			}
+		})
 	}
 }
 

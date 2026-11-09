@@ -15942,6 +15942,40 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.KthenaRuntimeGroup": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "ready": {
+                    "type": "boolean"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.KthenaRuntimeRole"
+                    }
+                }
+            }
+        },
+        "internal_handler.KthenaRuntimeInstance": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "podNames": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ready": {
+                    "type": "boolean"
+                }
+            }
+        },
         "internal_handler.KthenaRuntimePod": {
             "type": "object",
             "properties": {
@@ -15955,6 +15989,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "instance": {
+                    "type": "string"
+                },
+                "message": {
                     "type": "string"
                 },
                 "name": {
@@ -15978,13 +16015,39 @@ const docTemplate = `{
                 "readyContainers": {
                     "type": "integer"
                 },
+                "reason": {
+                    "type": "string"
+                },
                 "restarts": {
                     "type": "integer"
                 },
                 "role": {
                     "type": "string"
                 },
+                "stage": {
+                    "type": "string"
+                },
                 "totalContainers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.KthenaRuntimeRole": {
+            "type": "object",
+            "properties": {
+                "desiredInstances": {
+                    "type": "integer"
+                },
+                "instances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.KthenaRuntimeInstance"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "readyInstances": {
                     "type": "integer"
                 }
             }
@@ -16059,6 +16122,9 @@ const docTemplate = `{
                 "queue": {
                     "type": "string"
                 },
+                "readyReplicas": {
+                    "type": "integer"
+                },
                 "replicas": {
                     "type": "integer"
                 },
@@ -16072,6 +16138,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_raids-lab_crater_internal_kthena.RoleSpec"
+                    }
+                },
+                "runtimeGroups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.KthenaRuntimeGroup"
                     }
                 },
                 "runtimePods": {

@@ -54,6 +54,7 @@ export interface CreateKthenaReq {
 }
 export interface KthenaService extends CreateKthenaReq {
   desiredReplicas: number
+  readyReplicas?: number
   namespace: string
   owner?: string
   userInfo?: { username: string; nickname: string }
@@ -66,6 +67,7 @@ export interface KthenaService extends CreateKthenaReq {
   conditions: Array<Record<string, unknown>>
   resources: KthenaResource[]
   runtimePods?: KthenaRuntimePod[]
+  runtimeGroups?: KthenaRuntimeGroup[]
   diagnostics?: KthenaDiagnostic[]
   access: KthenaAccess
   labels: Record<string, string>
@@ -116,10 +118,24 @@ export interface KthenaRuntimePod {
   podIP?: string
   hostIP?: string
   phase: string
+  stage: 'scheduling' | 'downloading' | 'starting' | 'blocked' | 'failed' | 'ready' | 'terminating'
+  reason?: string
+  message?: string
   ready: boolean
   restarts: number
   readyContainers: number
   totalContainers: number
+}
+
+export interface KthenaRuntimeGroup {
+  name: string
+  ready: boolean
+  roles: Array<{
+    name: string
+    desiredInstances: number
+    readyInstances: number
+    instances: Array<{ name: string; ready: boolean; podNames: string[] }>
+  }>
 }
 
 export interface KthenaAccess {

@@ -2289,6 +2289,28 @@ definitions:
       ready:
         type: boolean
     type: object
+  internal_handler.KthenaRuntimeGroup:
+    properties:
+      name:
+        type: string
+      ready:
+        type: boolean
+      roles:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaRuntimeRole'
+        type: array
+    type: object
+  internal_handler.KthenaRuntimeInstance:
+    properties:
+      name:
+        type: string
+      podNames:
+        items:
+          type: string
+        type: array
+      ready:
+        type: boolean
+    type: object
   internal_handler.KthenaRuntimePod:
     properties:
       entry:
@@ -2298,6 +2320,8 @@ definitions:
       hostIP:
         type: string
       instance:
+        type: string
+      message:
         type: string
       name:
         type: string
@@ -2313,11 +2337,28 @@ definitions:
         type: boolean
       readyContainers:
         type: integer
+      reason:
+        type: string
       restarts:
         type: integer
       role:
         type: string
+      stage:
+        type: string
       totalContainers:
+        type: integer
+    type: object
+  internal_handler.KthenaRuntimeRole:
+    properties:
+      desiredInstances:
+        type: integer
+      instances:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaRuntimeInstance'
+        type: array
+      name:
+        type: string
+      readyInstances:
         type: integer
     type: object
   internal_handler.KthenaServiceResp:
@@ -2367,6 +2408,8 @@ definitions:
         type: integer
       queue:
         type: string
+      readyReplicas:
+        type: integer
       replicas:
         type: integer
       resources:
@@ -2376,6 +2419,10 @@ definitions:
       roles:
         items:
           $ref: '#/definitions/github_com_raids-lab_crater_internal_kthena.RoleSpec'
+        type: array
+      runtimeGroups:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaRuntimeGroup'
         type: array
       runtimePods:
         items:

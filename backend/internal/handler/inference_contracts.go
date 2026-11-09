@@ -71,32 +71,34 @@ type CreateKthenaReq struct {
 }
 
 type KthenaServiceResp struct {
-	ModelRevision     string              `json:"modelRevision"`
-	DesiredReplicas   int64               `json:"desiredReplicas"`
-	Name              string              `json:"name"`
-	Namespace         string              `json:"namespace"`
-	Owner             string              `json:"owner"`
-	UserInfo          model.UserInfo      `json:"userInfo"`
-	ModelSource       string              `json:"modelSource"`
-	PlatformModelID   uint                `json:"platformModelId"`
-	ModelURI          string              `json:"modelURI"`
-	ServedModel       string              `json:"servedModel"`
-	BackendType       string              `json:"backendType"`
-	CacheURI          string              `json:"cacheURI"`
-	Replicas          int64               `json:"replicas"`
-	Queue             string              `json:"queue"`
-	Layout            string              `json:"layout"`
-	Port              int64               `json:"port"`
-	Roles             []kthena.RoleSpec   `json:"roles"`
-	TotalResources    corev1.ResourceList `json:"totalResources"`
-	Phase             string              `json:"phase"`
-	Conditions        []map[string]any    `json:"conditions"`
-	Resources         []KthenaResource    `json:"resources"`
-	RuntimePods       []KthenaRuntimePod  `json:"runtimePods"`
-	Diagnostics       []KthenaDiagnostic  `json:"diagnostics"`
-	Access            KthenaAccess        `json:"access"`
-	Labels            map[string]string   `json:"labels"`
-	CreationTimestamp time.Time           `json:"createdAt"`
+	ModelRevision     string               `json:"modelRevision"`
+	DesiredReplicas   int64                `json:"desiredReplicas"`
+	ReadyReplicas     *int64               `json:"readyReplicas,omitempty"`
+	Name              string               `json:"name"`
+	Namespace         string               `json:"namespace"`
+	Owner             string               `json:"owner"`
+	UserInfo          model.UserInfo       `json:"userInfo"`
+	ModelSource       string               `json:"modelSource"`
+	PlatformModelID   uint                 `json:"platformModelId"`
+	ModelURI          string               `json:"modelURI"`
+	ServedModel       string               `json:"servedModel"`
+	BackendType       string               `json:"backendType"`
+	CacheURI          string               `json:"cacheURI"`
+	Replicas          int64                `json:"replicas"`
+	Queue             string               `json:"queue"`
+	Layout            string               `json:"layout"`
+	Port              int64                `json:"port"`
+	Roles             []kthena.RoleSpec    `json:"roles"`
+	TotalResources    corev1.ResourceList  `json:"totalResources"`
+	Phase             string               `json:"phase"`
+	Conditions        []map[string]any     `json:"conditions"`
+	Resources         []KthenaResource     `json:"resources"`
+	RuntimePods       []KthenaRuntimePod   `json:"runtimePods"`
+	RuntimeGroups     []KthenaRuntimeGroup `json:"runtimeGroups,omitempty"`
+	Diagnostics       []KthenaDiagnostic   `json:"diagnostics"`
+	Access            KthenaAccess         `json:"access"`
+	Labels            map[string]string    `json:"labels"`
+	CreationTimestamp time.Time            `json:"createdAt"`
 }
 
 type KthenaResource struct {
@@ -119,10 +121,35 @@ type KthenaRuntimePod struct {
 	PodIP           string `json:"podIP,omitempty"`
 	HostIP          string `json:"hostIP,omitempty"`
 	Phase           string `json:"phase"`
+	Stage           string `json:"stage"`
+	Reason          string `json:"reason,omitempty"`
+	Message         string `json:"message,omitempty"`
 	Ready           bool   `json:"ready"`
 	Restarts        int32  `json:"restarts"`
 	ReadyContainers int    `json:"readyContainers"`
 	TotalContainers int    `json:"totalContainers"`
+}
+
+// KthenaRuntimeGroup reports whether every configured role can serve.
+type KthenaRuntimeGroup struct {
+	Name  string              `json:"name"`
+	Ready bool                `json:"ready"`
+	Roles []KthenaRuntimeRole `json:"roles"`
+}
+
+// KthenaRuntimeRole compares the current instances to the role specification.
+type KthenaRuntimeRole struct {
+	Name             string                  `json:"name"`
+	DesiredInstances int64                   `json:"desiredInstances"`
+	ReadyInstances   int64                   `json:"readyInstances"`
+	Instances        []KthenaRuntimeInstance `json:"instances"`
+}
+
+// KthenaRuntimeInstance points to the entry and worker Pods that form an instance.
+type KthenaRuntimeInstance struct {
+	Name     string   `json:"name"`
+	Ready    bool     `json:"ready"`
+	PodNames []string `json:"podNames"`
 }
 
 type KthenaAccess struct {

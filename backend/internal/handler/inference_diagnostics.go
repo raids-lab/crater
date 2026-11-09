@@ -6,53 +6,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/raids-lab/crater/internal/kthena"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
-
-func kthenaRuntimePodFromPod(pod *corev1.Pod) KthenaRuntimePod {
-	readyContainers := 0
-	totalContainers := len(pod.Status.ContainerStatuses)
-	restarts := int32(0)
-	for i := range pod.Status.ContainerStatuses {
-		status := &pod.Status.ContainerStatuses[i]
-		if status.Ready {
-			readyContainers++
-		}
-		restarts += status.RestartCount
-	}
-	return KthenaRuntimePod{
-		Group:           pod.Labels[kthena.GroupLabel],
-		Role:            pod.Labels[kthena.RoleLabel],
-		Instance:        pod.Labels["modelserving.volcano.sh/role-id"],
-		Entry:           pod.Labels[kthena.EntryLabel] == kthena.EntryValue,
-		Name:            pod.Name,
-		Namespace:       pod.Namespace,
-		NodeName:        pod.Spec.NodeName,
-		PodIP:           pod.Status.PodIP,
-		HostIP:          pod.Status.HostIP,
-		Phase:           string(pod.Status.Phase),
-		Ready:           isPodReady(pod),
-		Restarts:        restarts,
-		ReadyContainers: readyContainers,
-		TotalContainers: totalContainers,
-	}
-}
-
-func isPodReady(pod *corev1.Pod) bool {
-	if !pod.DeletionTimestamp.IsZero() || pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
-		return false
-	}
-	for _, condition := range pod.Status.Conditions {
-		if condition.Type == corev1.PodReady {
-			return condition.Status == corev1.ConditionTrue
-		}
-	}
-	return false
-}
 
 func (mgr *KthenaMgr) diagnosticsFromPod(ctx context.Context, pod *corev1.Pod) []KthenaDiagnostic {
 	if pod == nil {
@@ -244,61 +201,4 @@ func (mgr *KthenaMgr) diagnosticsFromPodEvents(ctx context.Context, pod *corev1.
 		})
 	}
 	return diagnostics
-}
-
-func runtimeAwareInferencePhase(phase string, roles []kthena.RoleSpec, replicas int64, pods []KthenaRuntimePod) string {
-	if phase != kthenaPhaseReady && phase != kthenaPhaseActive {
-		return phase
-	}
-	if replicas < 1 || len(roles) == 0 {
-		return kthenaPhaseDegraded
-	}
-	groups := map[string]map[string]map[string][]KthenaRuntimePod{}
-	for i := range pods {
-		pod := &pods[i]
-		if !pod.Ready {
-			return kthenaPhaseDegraded
-		}
-		if groups[pod.Group] == nil {
-			groups[pod.Group] = map[string]map[string][]KthenaRuntimePod{}
-		}
-		if groups[pod.Group][pod.Role] == nil {
-			groups[pod.Group][pod.Role] = map[string][]KthenaRuntimePod{}
-		}
-		groups[pod.Group][pod.Role][pod.Instance] = append(groups[pod.Group][pod.Role][pod.Instance], *pod)
-	}
-	if int64(len(groups)) != replicas {
-		return kthenaPhaseDegraded
-	}
-	for _, group := range groups {
-		if !servingGroupReady(group, roles) {
-			return kthenaPhaseDegraded
-		}
-	}
-	return phase
-}
-
-func servingGroupReady(group map[string]map[string][]KthenaRuntimePod, roles []kthena.RoleSpec) bool {
-	if len(group) != len(roles) {
-		return false
-	}
-	for i := range roles {
-		role := &roles[i]
-		instances := group[role.Name]
-		if int64(len(instances)) != role.Instances {
-			return false
-		}
-		for _, instance := range instances {
-			entries := 0
-			for i := range instance {
-				if instance[i].Entry {
-					entries++
-				}
-			}
-			if entries != 1 || int64(len(instance)) != role.NodesPerInstance {
-				return false
-			}
-		}
-	}
-	return true
 }

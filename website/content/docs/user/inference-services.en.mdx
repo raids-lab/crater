@@ -19,6 +19,12 @@ Templates, import/export, and cloning preserve the complete roles configuration.
 
 Role settings show the approved runtime images and KV connector. Administrators add private images to the corresponding profile in `runtimeImages`. Cloning restores node selection and RDMA settings; disabling a control removes its request. Additional selectors and extended resources can be edited separately. After suspension, scale-down or deletion, terminating Pods continue to count against quota until their resources are released.
 
+## Track deployment progress
+
+The deployment list shows ready groups out of the desired total. The ready count displays a dash until Kthena observes the latest deployment configuration. The Instances tab groups Pods by serving group, role, and instance. A P/D group needs ready instances for both Prefill and Decode. A multi-node instance needs its entry Pod and all worker Pods to be ready. Pods being removed during scale-down remain visible while they terminate.
+
+Pod stages distinguish scheduling, model download, startup, and readiness. If scheduling or startup is blocked, the row shows the reason reported by Kubernetes. Open the Pod's logs to inspect the engine or model downloader. The Diagnostics tab shows historical events.
+
 ## Call the service
 
 Use the access information shown on the detail page. Through the Crater proxy, `model` is the deployment route name; omitting it selects that route automatically. It may differ from the model's own name. The proxy supports streaming responses; clients should process the returned content type.

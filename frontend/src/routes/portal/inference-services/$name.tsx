@@ -65,7 +65,6 @@ import {
   OverviewField,
   OverviewSection,
   ResourceCard,
-  RuntimePanel,
   displayAPIBaseURL,
 } from './-components/detail-parts'
 import { InferenceMetrics } from './-components/inference-metrics'
@@ -92,12 +91,12 @@ function KthenaServiceDetailPage() {
     refetchInterval: REFETCH_INTERVAL,
   })
 
-  const [tab, setTab] = useState('')
+  const [tab, setTab] = useState<{ name: string; value: string }>()
   const [repairOpen, setRepairOpen] = useState(false)
   const diagnosticsQuery = useQuery({
     queryKey: [...keys.detail(name), 'diagnostics'],
     queryFn: () => apiGetKthenaDiagnostics(name).then((res) => res.data),
-    enabled: !!data && (tab === 'diagnostics' || (!tab && data.phase !== 'Ready')),
+    enabled: !!data && tab?.name === name && tab.value === 'diagnostics',
   })
   const repair = useMutation({
     mutationFn: () => apiRepairKthenaService(name),
@@ -148,7 +147,6 @@ function KthenaServiceDetailPage() {
   }
 
   const workerResources = getServingResources(service)
-  const primaryPod = service.runtimePods?.find((pod) => pod.ready) ?? service.runtimePods?.[0]
 
   return (
     <div className="flex flex-col gap-6">
@@ -206,35 +204,42 @@ function KthenaServiceDetailPage() {
       </div>
 
       <Tabs
-        onValueChange={setTab}
-        defaultValue={service.phase === 'Ready' ? 'invoke' : 'diagnostics'}
-        className="gap-0"
+        key={name}
+        onValueChange={(value) => setTab({ name, value })}
+        defaultValue={service.phase === 'Ready' ? 'invoke' : 'runtime'}
+        className="min-w-0 gap-0"
       >
-        <TabsList className="tabs-list-underline">
-          <TabsTrigger className="tabs-trigger-underline" value="invoke">
-            <MessageSquareIcon className="size-4" />
-            {t('kthena.detail.tabs.invoke')}
-          </TabsTrigger>
-          <TabsTrigger className="tabs-trigger-underline" value="overview">
-            <NetworkIcon className="size-4" />
-            {t('kthena.detail.tabs.overview')}
-          </TabsTrigger>
-          <TabsTrigger className="tabs-trigger-underline" value="resources">
-            <BracesIcon className="size-4" />
-            {t('kthena.detail.tabs.resources')}
-          </TabsTrigger>
-          <TabsTrigger className="tabs-trigger-underline" value="usage">
-            <GaugeIcon className="size-4" />
-            {t('kthena.detail.tabs.usage')}
-          </TabsTrigger>
-          <TabsTrigger className="tabs-trigger-underline" value="diagnostics">
-            <AlertTriangleIcon className="size-4" />
-            {t('kthena.detail.tabs.diagnostics')}
-          </TabsTrigger>
-        </TabsList>
+        <div className="relative mb-4 max-w-full overflow-x-auto">
+          <TabsList className="tabs-list-underline mb-0 min-w-max gap-4 sm:gap-6">
+            <TabsTrigger className="tabs-trigger-underline" value="invoke">
+              <MessageSquareIcon className="size-4" />
+              {t('kthena.detail.tabs.invoke')}
+            </TabsTrigger>
+            <TabsTrigger className="tabs-trigger-underline" value="overview">
+              <NetworkIcon className="size-4" />
+              {t('kthena.detail.tabs.overview')}
+            </TabsTrigger>
+            <TabsTrigger className="tabs-trigger-underline" value="runtime">
+              <ServerIcon className="size-4" />
+              {t('kthena.runtime.title')}
+            </TabsTrigger>
+            <TabsTrigger className="tabs-trigger-underline" value="resources">
+              <BracesIcon className="size-4" />
+              {t('kthena.detail.tabs.resources')}
+            </TabsTrigger>
+            <TabsTrigger className="tabs-trigger-underline" value="usage">
+              <GaugeIcon className="size-4" />
+              {t('kthena.detail.tabs.usage')}
+            </TabsTrigger>
+            <TabsTrigger className="tabs-trigger-underline" value="diagnostics">
+              <AlertTriangleIcon className="size-4" />
+              {t('kthena.detail.tabs.diagnostics')}
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview" className="mt-0">
-          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="grid items-start gap-4 lg:grid-cols-2">
             <div className="bg-card overflow-hidden rounded-xl border">
               <OverviewSection icon={TerminalIcon} title={t('kthena.detail.invokeInfo')}>
                 <OverviewField label={t('kthena.detail.apiBase')}>
@@ -264,9 +269,29 @@ function KthenaServiceDetailPage() {
                 </div>
               </OverviewSection>
             </div>
-            <RuntimePanel service={service} primaryPod={primaryPod} resources={workerResources} />
-            <ServingRuntime service={service} />
+            <div className="bg-card overflow-hidden rounded-xl border">
+              <OverviewSection icon={ServerIcon} title={t('kthena.topology.step.roles')}>
+                <div className="grid gap-3">
+                  {service.roles.map((role) => (
+                    <div key={role.name} className="rounded-lg border p-3 text-sm">
+                      <p className="font-medium">
+                        {role.name} · {role.execution}
+                      </p>
+                      <p className="text-muted-foreground mt-1">
+                        {role.instances} × {role.nodesPerInstance} Pods · TP {role.tensorParallel} /
+                        PP {role.pipelineParallel}
+                      </p>
+                      <p className="text-muted-foreground mt-1 break-all">{role.entry.image}</p>
+                    </div>
+                  ))}
+                </div>
+              </OverviewSection>
+            </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="runtime" className="mt-0">
+          <ServingRuntime service={service} />
         </TabsContent>
 
         <TabsContent value="resources" className="mt-0">

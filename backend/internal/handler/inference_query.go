@@ -135,13 +135,7 @@ func (mgr *KthenaMgr) inferenceServiceToResp(ctx context.Context, obj *unstructu
 		response.RuntimePods = append(response.RuntimePods, kthenaRuntimePodFromPod(&pods[i]))
 	}
 	response.Access = mgr.buildKthenaAccess(ctx, obj, resources)
-	if response.Access.RouteName == "" || response.Access.ServerName == "" {
-		response.Phase = kthenaPhaseProgressing
-		response.Diagnostics = []KthenaDiagnostic{{Level: "warning",
-			Reason:  "RoutingResourcesMissing",
-			Message: "Routing resources are incomplete; retry deployment repair"}}
-	}
-	response.Phase = runtimeAwareInferencePhase(response.Phase, response.Roles, response.Replicas, response.RuntimePods)
+	applyServingObservation(response)
 	return response, nil
 }
 
@@ -171,6 +165,7 @@ func inferenceServiceSummary(obj *unstructured.Unstructured) (*KthenaServiceResp
 		CacheURI:        deployment.CacheURI,
 		Replicas:        deployment.Replicas,
 		DesiredReplicas: desiredServingReplicas(obj),
+		ReadyReplicas:   observedReadyReplicas(obj),
 		Layout:          deployment.Layout, Port: deployment.Port, Roles: deployment.Roles, TotalResources: deployment.TotalResources(),
 		Queue:      obj.GetAnnotations()["scheduling.volcano.sh/queue-name"],
 		Phase:      phase,

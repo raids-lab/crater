@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 
-import KthenaStatusBadge from '@/components/badge/kthena-status-badge'
-import ResourceBadges from '@/components/badge/resource-badges'
 import { CopyButton } from '@/components/button/copy-button'
 import TooltipCopy from '@/components/label/tooltop-copy'
 
@@ -13,7 +11,6 @@ import {
   ChatCompletionReq,
   KthenaDiagnostic,
   KthenaResource,
-  KthenaRuntimePod,
   KthenaService,
 } from '@/services/api/inference'
 
@@ -80,82 +77,6 @@ export function OverviewField({ label, children }: { label: string; children: Re
       <div className="text-muted-foreground text-xs font-medium">{label}</div>
       <div className="mt-1 min-w-0 text-sm">{children}</div>
     </div>
-  )
-}
-
-export function RuntimePanel({
-  service,
-  primaryPod,
-  resources,
-}: {
-  service: KthenaService
-  primaryPod?: KthenaRuntimePod
-  resources: Record<string, string>
-}) {
-  const { t } = useTranslation()
-  const pods = service.runtimePods ?? []
-  return (
-    <section className="bg-card overflow-hidden rounded-xl border">
-      <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <ActivityIcon className="text-primary size-4 shrink-0" />
-          <h3 className="truncate text-sm font-semibold">{t('kthena.table.status')}</h3>
-        </div>
-        <KthenaStatusBadge service={service} />
-      </div>
-      <div className="grid gap-3 p-3">
-        <OverviewField label={t('kthena.detail.runtimePod')}>
-          <CopyValue value={primaryPod?.name || '-'} />
-        </OverviewField>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-          <OverviewField label={t('kthena.detail.runtimeNode')}>
-            <CopyValue value={primaryPod?.nodeName || '-'} />
-          </OverviewField>
-          <OverviewField label={t('kthena.detail.runtimeResources')}>
-            {Object.keys(resources).length ? (
-              <ResourceBadges resources={resources} />
-            ) : (
-              <span className="text-muted-foreground">-</span>
-            )}
-          </OverviewField>
-        </div>
-      </div>
-      {pods.length ? (
-        <div className="grid gap-1.5 border-t p-3">
-          <div className="text-muted-foreground flex items-center justify-between gap-2 text-xs font-medium">
-            <span>{t('kthena.detail.runtimePods')}</span>
-            <Badge variant="secondary">{pods.length}</Badge>
-          </div>
-          {pods.map((pod) => (
-            <div
-              key={`${pod.namespace}/${pod.name}`}
-              className="bg-muted/20 flex min-w-0 items-start justify-between gap-3 rounded-lg border px-3 py-2"
-            >
-              <div className="min-w-0 flex-1">
-                <TooltipCopy
-                  name={pod.name}
-                  copyMessage={t('kthena.copy.generic', { label: 'Pod' })}
-                  className="max-w-full min-w-0 truncate font-mono text-xs"
-                />
-                <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs">
-                  <span>{pod.nodeName || '-'}</span>
-                  {pod.podIP && <span>{pod.podIP}</span>}
-                  <span>
-                    {pod.readyContainers}/{pod.totalContainers}
-                  </span>
-                  {pod.restarts > 0 && (
-                    <span>{t('kthena.detail.restarts', { count: pod.restarts })}</span>
-                  )}
-                </div>
-              </div>
-              <Badge className="shrink-0" variant={pod.ready ? 'default' : 'secondary'}>
-                {pod.phase || '-'}
-              </Badge>
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </section>
   )
 }
 

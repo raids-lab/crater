@@ -131,11 +131,16 @@ function KthenaServicesPage() {
         cell: ({ row }) => <span className="font-mono text-xs">{row.original.backendType}</span>,
       },
       {
-        accessorKey: 'replicas',
+        id: 'replicas',
+        accessorKey: 'desiredReplicas',
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={t('kthena.table.replicas')} />
+          <DataTableColumnHeader column={column} title={t('kthena.runtime.groupColumn')} />
         ),
-        cell: ({ row }) => <span className="font-mono text-xs">{row.original.replicas}</span>,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs">
+            {row.original.readyReplicas ?? '—'} / {row.original.desiredReplicas}
+          </span>
+        ),
       },
       {
         id: 'resources',

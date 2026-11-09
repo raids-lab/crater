@@ -3,6 +3,13 @@ import { Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,7 +21,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import { KthenaService, apiScaleServing, apiServingLogs } from '@/services/api/inference'
+import {
+  KthenaRuntimeGroup,
+  KthenaRuntimePod,
+  KthenaService,
+  apiScaleServing,
+  apiServingLogs,
+} from '@/services/api/inference'
 
 import { useInferenceKeys } from '@/hooks/inference/use-inference-keys'
 
@@ -28,7 +41,7 @@ export function ServingLifecycle({ service }: { service: KthenaService }) {
   const scale = useMutation({
     mutationFn: (replicas: number) => apiScaleServing(service.name, replicas),
     onSuccess: async () => {
-      await cache.invalidateQueries({ queryKey: keys.detail(service.name) })
+      await cache.invalidateQueries({ queryKey: keys.scope })
     },
     onError: showErrorToast,
   })
@@ -70,82 +83,65 @@ export function ServingRuntime({ service }: { service: KthenaService }) {
   const [container, setContainer] = useState('engine')
   const pods = service.runtimePods ?? []
   const selected = pods.find((p) => p.name === pod)
+  const podsByName = new Map(pods.map((p) => [p.name, p]))
+  const groups = service.runtimeGroups ?? []
   const logs = useQuery({
     queryKey: [...keys.detail(service.name), 'logs', pod, container],
     queryFn: () => apiServingLogs(service.name, pod, container).then((r) => r.data),
     enabled: !!selected,
     refetchInterval: selected ? 15000 : false,
   })
-  const groups = [...new Set(pods.map((p) => p.group))].sort()
+  function openLogs(pod: KthenaRuntimePod) {
+    setPod(pod.name)
+    setContainer(pod.stage === 'downloading' ? 'model-downloader' : 'engine')
+  }
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('kthena.topology.step.roles')}</CardTitle>
+        <CardTitle>{t('kthena.runtime.title')}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
         <ServingLifecycle service={service} />
-        {service.roles.map((role) => (
-          <div key={role.name} className="rounded-lg border p-3 text-sm">
-            <strong>{role.name}</strong> · {role.execution} · {role.instances} ×{' '}
-            {role.nodesPerInstance} Pods / {t('kthena.topology.groups')} · TP {role.tensorParallel}{' '}
-            / PP {role.pipelineParallel}
-            <p className="text-muted-foreground mt-1 break-all">{role.entry.image}</p>
-          </div>
-        ))}
-        {groups.map((group) => (
-          <details key={group} open>
-            <summary>{group}</summary>
-            <div className="ml-3 grid gap-2 py-2">
-              {service.roles.map((role) => (
-                <div key={role.name}>
-                  <p className="text-sm font-medium">
-                    {role.name} ·{' '}
-                    {t('kthena.topology.readiness', {
-                      ready: pods.filter(
-                        (p) => p.group === group && p.role === role.name && p.ready
-                      ).length,
-                      desired: role.instances * role.nodesPerInstance,
-                    })}
-                  </p>
-                  {pods
-                    .filter((p) => p.group === group && p.role === role.name)
-                    .sort(
-                      (a, b) =>
-                        a.instance.localeCompare(b.instance) || Number(b.entry) - Number(a.entry)
-                    )
-                    .map((p) => (
-                      <Button
-                        key={p.name}
-                        variant={p.name === pod ? 'secondary' : 'ghost'}
-                        className="h-auto w-full justify-start text-left text-xs whitespace-normal"
-                        onClick={() => setPod(p.name)}
-                      >
-                        {p.instance} / {p.entry ? 'Entry' : 'Worker'} · {p.phase} ·{' '}
-                        {p.ready ? 'Ready' : 'Waiting'} · {p.nodeName || '—'}
-                      </Button>
-                    ))}
-                </div>
-              ))}
-            </div>
-          </details>
-        ))}
+        <p className="text-muted-foreground text-sm">
+          {t('kthena.runtime.groupReadiness', {
+            ready: service.readyReplicas ?? '—',
+            desired: service.desiredReplicas,
+          })}
+        </p>
+        {service.diagnostics?.some((item) => item.reason === 'RoutingResourcesMissing') && (
+          <p className="text-muted-foreground text-sm">{t('kthena.runtime.routingPending')}</p>
+        )}
+        {groups.length === 0 ? (
+          <p className="text-muted-foreground text-sm">{t('kthena.runtime.noPods')}</p>
+        ) : (
+          <Accordion type="single" collapsible defaultValue={`group:${groups[0].name}`}>
+            {groups.map((group) => (
+              <RuntimeGroup key={group.name} group={group} pods={podsByName} openLogs={openLogs} />
+            ))}
+          </Accordion>
+        )}
         {selected && (
           <>
-            <div className="flex items-center justify-between gap-2">
-              <span className="min-w-0 text-xs break-all">{pod}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="min-w-0 flex-1 text-xs break-all">{pod}</span>
               <Select value={container} onValueChange={setContainer}>
                 <SelectTrigger className="w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="engine">Engine</SelectItem>
+                  <SelectItem value="engine">{t('kthena.runtime.engine')}</SelectItem>
                   {service.modelSource === 'external' && (
-                    <SelectItem value="model-downloader">Downloader</SelectItem>
+                    <SelectItem value="model-downloader">
+                      {t('kthena.runtime.downloader')}
+                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
               <Button variant="outline" onClick={() => void logs.refetch()}>
                 {t('kthena.topology.retry')}
+              </Button>
+              <Button variant="ghost" onClick={() => setPod('')}>
+                {t('kthena.runtime.closeLogs')}
               </Button>
             </div>
             {logs.isError ? (
@@ -159,5 +155,95 @@ export function ServingRuntime({ service }: { service: KthenaService }) {
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function RuntimeGroup({
+  group,
+  pods,
+  openLogs,
+}: {
+  group: KthenaRuntimeGroup
+  pods: Map<string, KthenaRuntimePod>
+  openLogs: (pod: KthenaRuntimePod) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <AccordionItem value={`group:${group.name}`}>
+      <AccordionTrigger>
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="break-all">{group.name || '—'}</span>
+          <Badge variant={group.ready ? 'default' : 'secondary'}>
+            {t(group.ready ? 'kthena.runtime.stage.ready' : 'kthena.runtime.waiting')}
+          </Badge>
+        </span>
+      </AccordionTrigger>
+      <AccordionContent className="space-y-3">
+        {group.roles.map((role) => (
+          <section key={role.name} className="space-y-2 rounded-lg border p-3">
+            <h4 className="flex flex-wrap items-center gap-2 font-medium">
+              {role.name || '—'}
+              <span className="text-muted-foreground text-xs">
+                {t('kthena.runtime.instanceReadiness', {
+                  ready: role.readyInstances,
+                  desired: role.desiredInstances,
+                })}
+              </span>
+            </h4>
+            {role.instances.map((instance) => (
+              <div key={instance.name} className="space-y-1">
+                <p className="text-muted-foreground text-xs">
+                  {t('kthena.runtime.instance', { name: instance.name || '—' })}
+                  {' · '}
+                  {t(instance.ready ? 'kthena.runtime.stage.ready' : 'kthena.runtime.waiting')}
+                </p>
+                <ul className="divide-y">
+                  {instance.podNames.map((name) => {
+                    const pod = pods.get(name)
+                    return pod ? <RuntimePod key={name} pod={pod} openLogs={openLogs} /> : null
+                  })}
+                </ul>
+              </div>
+            ))}
+          </section>
+        ))}
+      </AccordionContent>
+    </AccordionItem>
+  )
+}
+
+function RuntimePod({
+  pod,
+  openLogs,
+}: {
+  pod: KthenaRuntimePod
+  openLogs: (pod: KthenaRuntimePod) => void
+}) {
+  const { t } = useTranslation()
+  const failed = pod.stage === 'failed' || pod.stage === 'blocked'
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-2 py-2 text-xs">
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">
+            {t(pod.entry ? 'kthena.runtime.entry' : 'kthena.runtime.worker')}
+          </span>
+          <Badge variant={failed ? 'destructive' : pod.ready ? 'default' : 'secondary'}>
+            {t(`kthena.runtime.stage.${pod.stage}`)}
+          </Badge>
+        </div>
+        <p className="text-muted-foreground font-mono break-all">
+          {pod.name} · {pod.nodeName || '—'}
+        </p>
+        {pod.reason && (
+          <p className="text-muted-foreground break-words">
+            {[pod.reason, pod.message].filter(Boolean).join(' · ')}
+          </p>
+        )}
+      </div>
+      <Button size="sm" variant="outline" onClick={() => openLogs(pod)}>
+        {t('kthena.runtime.logs')}
+      </Button>
+    </li>
   )
 }
