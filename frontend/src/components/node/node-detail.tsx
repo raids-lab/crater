@@ -32,6 +32,7 @@ import {
   InfoIcon,
   Layers,
   LockIcon,
+  LogsIcon,
   MemoryStickIcon as Memory,
   NetworkIcon,
   ServerIcon,
@@ -481,6 +482,7 @@ const getColumns = (
               {t('nodeDetail.actions.operations')}
             </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => handleShowMonitor(taskInfo)}>
+              <GaugeIcon />
               {t('nodeDetail.actions.monitor')}
             </DropdownMenuItem>
             {isAdminView && (
@@ -492,6 +494,7 @@ const getColumns = (
                   })
                 }
               >
+                <LogsIcon />
                 {t('nodeDetail.actions.logs')}
               </DropdownMenuItem>
             )}
