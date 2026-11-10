@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	// v7 adds optional UI phase job filtering while preserving raw status queries.
+	// v7 adds optional UI phase job filtering and sorting while preserving raw status queries.
 	APIVersion = 7
 	// v3 first exposes /admin/system-config/scheduler-extender, which this CLI calls with no fallback.
 	MinSupportedBackendAPIVersion    = 3

@@ -554,7 +554,7 @@ type (
 //	@Security		Bearer
 //	@Param			page		query	int	false	"Page number"
 //	@Param			page_size	query	int	false	"Page size, 1-200"
-//	@Param			sort		query	string	false	"Sort fields"
+//	@Param			sort		query	string	false	"Sort fields. Use phase for display stages (unknown last) and - for descending"
 //	@Param			search		query	string	false	"Search jobs"
 //	@Param			days		query	int	false	"Number of days to look back, -1 for all"
 //	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
@@ -584,7 +584,7 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 //	@Param			days	query		int						false	"Number of days to look back, default is 14"	default(14)
 //	@Param			page		query	int	false	"Page number"
 //	@Param			page_size	query	int	false	"Page size, 1-200"
-//	@Param			sort		query	string	false	"Sort fields"
+//	@Param			sort		query	string	false	"Sort fields. Use phase for display stages (unknown last) and - for descending"
 //	@Param			search		query	string	false	"Search jobs"
 //	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
@@ -830,7 +830,7 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 //	@Param			days		query		int						false	"Number of days to look back, default is 30, -1 for all"	default(30)
 //	@Param			page		query		int					false	"Page number"
 //	@Param			page_size	query		int					false	"Page size, 1-200"
-//	@Param			sort		query		string				false	"Sort fields"
+//	@Param			sort		query		string				false	"Sort fields. Use phase for display stages (unknown last) and - for descending"
 //	@Param			search		query		string				false	"Search jobs"
 //	@Param			job_type	query		[]string			false	"Job types" collectionFormat(multi)
 //	@Param			status		query		[]string			false	"Job statuses" collectionFormat(multi)

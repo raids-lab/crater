@@ -10115,7 +10115,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort fields. Use phase for display stages (unknown last) and
+          - for descending
         in: query
         name: sort
         type: string
@@ -10526,7 +10527,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort fields. Use phase for display stages (unknown last) and
+          - for descending
         in: query
         name: sort
         type: string
@@ -10848,7 +10850,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort fields. Use phase for display stages (unknown last) and
+          - for descending
         in: query
         name: sort
         type: string

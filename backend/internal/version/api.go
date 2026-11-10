@@ -16,7 +16,7 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	// v7 adds optional UI phase job filtering while preserving raw status queries.
+	// v7 adds optional UI phase job filtering and sorting while preserving raw status queries.
 	APIVersion = 7
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
