@@ -55,6 +55,7 @@ func (c failingGetClient) Get(context.Context, client.ObjectKey, client.Object, 
 func podGroupScheme() *runtime.Scheme {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(scheduling.AddToScheme(scheme))
+	utilruntime.Must(v1.AddToScheme(scheme))
 	return scheme
 }
 
