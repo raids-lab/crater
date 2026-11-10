@@ -39,6 +39,10 @@ function harness(handler, timeout) {
     get invalidations() {
       return invalidations
     },
+    switchSession(a = 'other-access', r = 'other-refresh') {
+      access = a
+      refresh = r
+    },
     logout() {
       access = null
       refresh = null
@@ -190,3 +194,89 @@ test('a restriction on job submission does not revoke platform login', async () 
   assert.equal(h.invalidations, 0)
   assert.equal(h.access, 'old-access')
 })
+
+function deferred() {
+  let resolve
+  const promise = new Promise((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
+for (const change of ['switch', 'logout', 'access-only switch']) {
+  test(`a late expired POST cannot cross a ${change}`, async () => {
+    const started = deferred(),
+      release = deferred()
+    let calls = 0
+    const h = harness(async (request) => {
+      calls++
+      assert.equal(request.headers.get('Authorization'), 'Bearer old-access')
+      assert.deepEqual(await request.json(), { job: 'for-original-account' })
+      started.resolve()
+      await release.promise
+      return expired()
+    })
+    const result = h.client.post('v1/jobs', { json: { job: 'for-original-account' } })
+    await started.promise
+    if (change === 'logout') h.logout()
+    else h.switchSession('other-access', change === 'switch' ? 'other-refresh' : 'old-refresh')
+    release.resolve()
+    await assert.rejects(result, HTTPError)
+    assert.equal(calls, 1)
+    assert.equal(h.invalidations, 0)
+    assert.equal(h.access, change === 'logout' ? null : 'other-access')
+  })
+}
+
+test('a late expired response can reuse this session renewal without refreshing again', async () => {
+  const started = deferred(),
+    release = deferred()
+  let renewals = 0,
+    replays = 0
+  const h = harness(async (request) => {
+    if (request.url.endsWith('/auth/refresh')) {
+      renewals++
+      return renewal()
+    }
+    if (request.headers.get('Authorization') === 'Bearer new-access') {
+      replays++
+      return json(200, { code: 0 })
+    }
+    if (request.url.endsWith('/late')) {
+      started.resolve()
+      await release.promise
+    }
+    return expired()
+  })
+  const late = h.client.post('v1/late', { json: {} })
+  await started.promise
+  await h.client.get('v1/early')
+  release.resolve()
+  await late
+  assert.equal(renewals, 1)
+  assert.equal(replays, 2)
+})
+
+for (const status of [200, 401]) {
+  test(`an old renewal (${status}) neither overwrites nor invalidates a new session`, async () => {
+    const started = deferred(),
+      release = deferred()
+    const h = harness(async (request) => {
+      if (!request.url.endsWith('/auth/refresh')) return expired()
+      const body = await request.json()
+      if (body.refreshToken === 'old-refresh') {
+        started.resolve()
+        await release.promise
+        return status === 200 ? renewal() : json(401, { code: 40102 })
+      }
+      return renewal()
+    })
+    const old = h.client.get('v1/old')
+    await started.promise
+    h.switchSession()
+    release.resolve()
+    await assert.rejects(old)
+    assert.equal(h.access, 'other-access')
+    assert.equal(h.invalidations, 0)
+  })
+}

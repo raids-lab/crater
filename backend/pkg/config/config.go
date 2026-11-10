@@ -498,11 +498,14 @@ func (c *Config) ValidateConfig() error {
 	}
 
 	// Validate auth configuration
-	if c.Auth.Token.AccessTokenSecret == "" {
-		errors = append(errors, "auth.token.accessTokenSecret is required")
-	}
-	if c.Auth.Token.RefreshTokenSecret == "" {
-		errors = append(errors, "auth.token.refreshTokenSecret is required")
+	for name, secret := range map[string]string{
+		"accessTokenSecret":  c.Auth.Token.AccessTokenSecret,
+		"refreshTokenSecret": c.Auth.Token.RefreshTokenSecret,
+	} {
+		switch strings.TrimSpace(secret) {
+		case "", "example-access-token", "example-refresh-token", "<MUSTEDIT>":
+			errors = append(errors, "auth.token."+name+" must be set to a private, randomly generated secret (public example values are forbidden)")
+		}
 	}
 
 	// Validate postgres configuration

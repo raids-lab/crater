@@ -37,8 +37,8 @@ with tempfile.TemporaryDirectory(prefix="crater-auth-") as directory:
     manifest.write_text(json.dumps({"Replace": overlay}))
     result = subprocess.run([
         "go", "test", "-overlay", str(manifest),
-        "./internal/util", "./internal/middleware", "./internal/handler", "./internal/bizerr", "./internal/resputil",
-        "-run", "^Test(Authentication|Wrap|HandleError|Success)",
+        "./pkg/config", "./internal/util", "./internal/middleware", "./internal/handler", "./internal/bizerr", "./internal/resputil",
+        "-run", "^Test(Authentication|TokenSecretConfiguration|Wrap|HandleError|Success)",
         "-count=1", "-timeout=60s", "-v",
     ], cwd=root)
     sys.exit(result.returncode)

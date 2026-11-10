@@ -130,8 +130,10 @@ func TestAuthenticationSignupPoliciesAndRollback(t *testing.T) {
 				config.GetConfig().Auth.Normal.AllowRegister = false
 				status, code = 403, bizerr.Forbidden.RegistrationDisabled
 			case "duplicate":
-				name = firstLoginUsername
 				firstSession(t, mgr)
+				if err := db.Model(&model.User{}).Where("name = ?", firstLoginUsername).Update("name", name).Error; err != nil {
+					t.Fatal(err)
+				}
 				status, code = 409, bizerr.Conflict.ResourceAlreadyExists
 			case "bad name":
 				name = "../escape"
@@ -365,5 +367,25 @@ func TestAuthenticationLoginKeepsVersionOnCheckEndpoint(t *testing.T) {
 	}
 	if _, ok := response.Data["version"]; !ok {
 		t.Fatal("auth/check must return backend version metadata")
+	}
+}
+
+func TestAuthenticationSignupUsernameBoundaries(t *testing.T) {
+	for _, name := range []string{"Alice_01", "Alice", "alice_01", "alice.01", "1alice", "alice-", "a", strings.Repeat("a", 21)} {
+		t.Run(name, func(t *testing.T) {
+			mgr, db := newFirstLoginHarness(t, false, false)
+			config.GetConfig().Auth.Normal.AllowRegister = true
+			body, _ := json.Marshal(SignupReq{Username: name, Password: "valid-password"})
+			requireAuthResponse(t, authRequest(t, mgr, "signup", string(body), ""), 400, bizerr.BadRequest.ParameterError)
+			assertFirstLoginRowCounts(t, db, 0, 0)
+		})
+	}
+	for _, name := range []string{"ab", "a0", "alice-01", strings.Repeat("a", 20)} {
+		t.Run(name, func(t *testing.T) {
+			mgr, _ := newFirstLoginHarness(t, false, false)
+			config.GetConfig().Auth.Normal.AllowRegister = true
+			body, _ := json.Marshal(SignupReq{Username: name, Password: "valid-password"})
+			requireAuthResponse(t, authRequest(t, mgr, "signup", string(body), ""), 200, 0)
+		})
 	}
 }

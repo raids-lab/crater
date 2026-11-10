@@ -1048,10 +1048,9 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	if ok, _ := regexp.MatchString(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$`, req.Username); !ok {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("Local usernames must contain 1 to 64 ASCII letters, digits, "+
-			"dots, underscores "+
-			"or hyphens, starting with a letter or digit."))
+	if ok, _ := regexp.MatchString(`^[a-z][a-z0-9-]{0,18}[a-z0-9]$`, req.Username); !ok {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("Local usernames must contain 2 to 20 lowercase ASCII letters, "+
+			"digits or hyphens, starting with a letter and ending with a letter or digit."))
 		return
 	}
 	if len(req.Password) > maxLocalPasswordBytes {

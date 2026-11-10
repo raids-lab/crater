@@ -40,15 +40,28 @@ export function createSessionClient(settings: SessionOptions) {
   const rejectsSession = (code: number | undefined, request: Request) =>
     terminalCodes.has(code ?? 0) &&
     (code !== ERROR_USER_BANNED || /\/auth\/check$/.test(new URL(request.url).pathname))
-  let refreshing: Promise<string> | undefined
+  interface Session {
+    access: string | null
+    refresh: string | null
+    refreshing?: Promise<string>
+  }
+  let session: Session | undefined
+  const currentSession = () => {
+    const access = settings.getAccessToken()
+    const refresh = settings.getRefreshToken()
+    if (!session || session.access !== access || session.refresh !== refresh)
+      session = { access, refresh }
+    return session
+  }
+  const requestSessions = new WeakMap<NormalizedOptions, Session>()
   const notify = (error: HTTPError, data: unknown) => {
     Object.assign(error, { data })
     settings.onInvalid(error)
   }
-  const refresh = (request: Request, options: NormalizedOptions) => {
-    if (!refreshing) {
-      refreshing = (async () => {
-        const original = settings.getRefreshToken()
+  const refresh = (request: Request, options: NormalizedOptions, owner: Session) => {
+    if (!owner.refreshing) {
+      owner.refreshing = (async () => {
+        const original = owner.refresh
         if (!original) {
           const error = new HTTPError(
             new Response(JSON.stringify({ code: ERROR_TOKEN_INVALID }), { status: 401 }),
@@ -65,31 +78,34 @@ export function createSessionClient(settings: SessionOptions) {
           if (!response.data?.accessToken || !response.data.refreshToken)
             throw new Error('Incomplete session response')
           // A logout or a newer login while refreshing must not restore the old session.
-          if (settings.getRefreshToken() !== original)
-            throw new Error('Session changed during renewal')
+          if (currentSession() !== owner) throw new Error('Session changed during renewal')
           settings.saveTokens(response.data.accessToken, response.data.refreshToken)
+          owner.access = response.data.accessToken
+          owner.refresh = response.data.refreshToken
           return response.data.accessToken
         } catch (error) {
-          if (error instanceof HTTPError && settings.getRefreshToken() === original) {
+          if (error instanceof HTTPError && currentSession() === owner) {
             const data = await error.response
               .clone()
               .json()
               .catch(() => undefined)
-            if (terminalCodes.has(data?.code)) notify(error, data)
+            if (terminalCodes.has(data?.code) && currentSession() === owner) notify(error, data)
           }
           throw error
         }
       })().finally(() => {
-        refreshing = undefined
+        owner.refreshing = undefined
       })
     }
-    return refreshing
+    return owner.refreshing
   }
   return basic.extend({
     hooks: {
       beforeRequest: [
-        (request) => {
-          const token = settings.getAccessToken()
+        (request, options) => {
+          const owner = currentSession()
+          requestSessions.set(options, owner)
+          const token = owner.access
           if (token) request.headers.set('Authorization', `Bearer ${token}`)
         },
       ],
@@ -105,13 +121,18 @@ export function createSessionClient(settings: SessionOptions) {
             .json()
             .catch(() => undefined)
           const sentToken = request.headers.get('Authorization')
+          const owner = requestSessions.get(options)
+          // Only this client's renewal may keep a request in the same session.
+          // Login, logout, account switches and external token changes end it.
+          if (!owner || currentSession() !== owner) return response
           if (response.status === 401 && data?.code === ERROR_TOKEN_EXPIRED) {
             // A late response using the previous access token can reuse an already renewed one.
             const current = settings.getAccessToken()
             const token =
               current && sentToken !== `Bearer ${current}`
                 ? current
-                : await refresh(request, options)
+                : await refresh(request, options, owner)
+            if (currentSession() !== owner) return response
             request.headers.set('Authorization', `Bearer ${token}`)
             const retried = await basic(request, {
               ...options,
@@ -125,7 +146,11 @@ export function createSessionClient(settings: SessionOptions) {
                 .clone()
                 .json()
                 .catch(() => undefined)
-              if (rejectsSession(failure?.code, request) && settings.getAccessToken() === token)
+              if (
+                rejectsSession(failure?.code, request) &&
+                currentSession() === owner &&
+                owner.access === token
+              )
                 notify(new HTTPError(retried, request, options), failure)
             }
             return retried
