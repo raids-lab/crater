@@ -40,13 +40,8 @@ import { PhaseBadge, PhaseBadgeData } from './phase-badge'
 
 export const jobPhases = [
   {
-    value: 'Prequeue',
-    label: t('jobs.statuses.prequeue.label'),
-    color: '#8b5cf6',
-  },
-  {
     value: 'Pending',
-    label: t('jobs.statuses.pending.label'),
+    label: t('jobs.statuses.waiting.label'),
     color: '#a855f7',
   },
   {
