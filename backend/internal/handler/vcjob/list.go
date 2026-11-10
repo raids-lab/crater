@@ -98,7 +98,7 @@ func parseJobSort(raw string) ([]jobSort, error) {
 	}
 	allowed := map[string]struct{}{
 		"name": {}, "jobName": {}, "owner": {}, "queue": {}, "jobType": {},
-		"status": {}, "billedPointsTotal": {}, "createdAt": {},
+		"status": {}, "phase": {}, "billedPointsTotal": {}, "createdAt": {},
 		"startedAt": {}, "completedAt": {},
 	}
 	parts := strings.Split(raw, ",")
@@ -118,6 +118,11 @@ func parseJobSort(raw string) ([]jobSort, error) {
 		}
 		seen[name] = struct{}{}
 		sorts = append(sorts, jobSort{field: name, descending: descending})
+	}
+	if _, phaseSort := seen["phase"]; phaseSort {
+		if _, explicitCreatedAt := seen["createdAt"]; !explicitCreatedAt {
+			sorts = append(sorts, jobSort{field: "createdAt", descending: true})
+		}
 	}
 	sorts = append(sorts, jobSort{field: "id", descending: true})
 	return sorts, nil
@@ -155,6 +160,10 @@ func findJobs(
 		Preload(query.Job.Account)
 	fields := jobSortFields()
 	for _, sort := range request.sorts {
+		if sort.field == "phase" {
+			q = q.Order(jobFilterPhaseSortExpr(sort.descending))
+			continue
+		}
 		expression := fields[sort.field]
 		if sort.descending {
 			q = q.Order(expression.Desc())
