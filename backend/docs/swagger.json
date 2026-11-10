@@ -10314,7 +10314,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10429,7 +10429,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10921,7 +10921,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
                         "name": "sort",
                         "in": "query"
                     },

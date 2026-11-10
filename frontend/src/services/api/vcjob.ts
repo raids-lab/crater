@@ -289,8 +289,13 @@ function withJobTypes(params: RemoteTableParams, allowed: JobType[]): RemoteTabl
 
 export function toJobProtocol(params: RemoteTableParams): RemoteTableParams {
   const { jobType, status, ...filters } = params.filters
+  const sort = params.sort
+    ?.split(',')
+    .map((field) => (field === 'status' ? 'phase' : field === '-status' ? '-phase' : field))
+    .join(',')
   return {
     ...params,
+    ...(sort ? { sort } : {}),
     filters: {
       ...filters,
       ...(jobType ? { job_type: jobType } : {}),

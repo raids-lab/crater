@@ -186,3 +186,60 @@ test('saved legacy selection migrates through the same encoder and preserves oth
   effects.pop()()
   assert.equal(updates.length, 1)
 })
+
+test('display-stage sorting uses the existing job protocol adapter for every list', () => {
+  for (const [sort, expected] of [
+    ['status', 'phase'],
+    ['-status', '-phase'],
+    ['name,-status,createdAt', 'name,-phase,createdAt'],
+    ['-createdAt', '-createdAt'],
+  ]) {
+    const params = {
+      page: 2,
+      page_size: 3,
+      sort,
+      filters: { status: ['Prequeue', 'Pending', 'Inqueue', 'Starting'] },
+    }
+    const before = structuredClone(params)
+    for (const name of [
+      'apiAdminGetJobList',
+      'apiJobAllList',
+      'apiJobSelfList',
+      'apiJobBatchList',
+      'apiJobInteractiveList',
+    ]) {
+      api[name](params)
+      const query = requests.at(-1).options.searchParams
+      assert.equal(query.get('sort'), expected, name)
+      assert.deepEqual(query.getAll('phase'), ['Pending', 'Inqueue', 'Starting'])
+      assert.equal(query.get('page'), '2')
+      assert.equal(query.get('page_size'), '3')
+    }
+    assert.deepEqual(params, before)
+  }
+})
+
+test('the job menu keeps all 15 candidates and zero counts under any selection', () => {
+  const options = badge.getJobFilterOptions()
+  assert.equal(options.length, 15)
+  for (const facets of [
+    {},
+    {
+      phase: [
+        { value: 'Running', count: 8 },
+        { value: 'Pending', count: 0 },
+      ],
+    },
+  ]) {
+    const config = toolbar.getRemoteJobToolbarConfig({ facets })
+    const status = config.filterOptions.find(({ key }) => key === 'status')
+    assert.equal(status.showZeroCountOptions, true)
+    assert.equal(status.option.length, 15)
+    assert.equal(status.option.filter(({ value }) => value === 'Pending').length, 1)
+    assert.equal(status.option.find(({ value }) => value === 'Starting').count, 0)
+    assert.equal(
+      config.filterOptions.find(({ key }) => key === 'jobType').showZeroCountOptions,
+      false
+    )
+  }
+})

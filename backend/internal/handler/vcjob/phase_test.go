@@ -191,3 +191,66 @@ func TestBindJobFilterPhase(t *testing.T) {
 		})
 	}
 }
+
+func TestJobPhaseSortingAcrossPages(t *testing.T) {
+	db := phaseTestDB(t)
+	for i, fixture := range phaseFixtures(t) {
+		if err := db.Exec("INSERT INTO jobs (id,status,pod_group_phase,user_id,account_id,job_type,name,creation_timestamp) VALUES (?,?,?,?,?,?,?,?)",
+			i+1, fixture.Status, fixture.PodGroupPhase, 1, 1, "custom", "target", "2026-01-01").Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Exec("INSERT INTO jobs (id,status,user_id,account_id,job_type,name) VALUES (23,'FuturePhase',1,1,'custom','target'),(24,'Pending',2,1,'custom','target')").Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, sort string
+		phases     []string
+		want       []uint
+	}{
+		{"ascending", "phase", nil, []uint{3, 2, 1, 17, 11, 10, 9, 16, 13, 12, 8, 5, 4, 15, 14, 7, 6, 18, 21, 19, 20, 22, 23}},
+		{"descending", "-phase", nil, []uint{22, 20, 19, 21, 18, 15, 14, 7, 6, 16, 13, 12, 8, 5, 4, 17, 11, 10, 9, 3, 2, 1, 23}},
+		{"multiple phases", "phase", []string{"Pending", "Inqueue"}, []uint{17, 11, 10, 9, 16, 13, 12, 8, 5, 4}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sorts, err := parseJobSort(tc.sort)
+			if err != nil {
+				t.Fatal(err)
+			}
+			days, user, account := -1, uint(1), uint(1)
+			request := jobListQuery{PageSize: 3, Days: &days, Phases: tc.phases, sorts: sorts}
+			scope := jobListScope{UserID: &user, AccountID: &account}
+			var got []uint
+			for request.Page = 1; len(got) < len(tc.want); request.Page++ {
+				rows, total, err := findJobs(t.Context(), scope, &request, 30)
+				if err != nil || total != int64(len(tc.want)) || len(rows) == 0 {
+					t.Fatalf("page=%d total=%d err=%v", request.Page, total, err)
+				}
+				for _, row := range rows {
+					got = append(got, row.ID)
+				}
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("IDs=%v want=%v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestParseJobPhaseSorting(t *testing.T) {
+	for _, raw := range []string{"phase", "-phase", "name,phase,-createdAt"} {
+		if _, err := parseJobSort(raw); err != nil {
+			t.Errorf("sort %q: %v", raw, err)
+		}
+	}
+	for _, raw := range []string{"phase,-phase", "phase,name,owner,queue", "phase;DROP TABLE jobs"} {
+		if _, err := parseJobSort(raw); err == nil {
+			t.Errorf("sort %q must be rejected", raw)
+		}
+	}
+	sorts, err := parseJobSort("phase")
+	want := []jobSort{{field: "phase"}, {field: "createdAt", descending: true}, {field: "id", descending: true}}
+	if err != nil || !reflect.DeepEqual(sorts, want) {
+		t.Fatalf("sorts=%+v err=%v", sorts, err)
+	}
+}

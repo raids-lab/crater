@@ -16,6 +16,7 @@ package vcjob
 
 import (
 	"context"
+	"strings"
 
 	"gorm.io/gen/field"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
@@ -52,7 +53,7 @@ func validJobFilterPhase(value string) bool {
 	return value != string(model.Prequeue) && value != legacyCancelled && validRawJobStatus(value)
 }
 
-// This is the sole database-stage expression, shared by filtering and facets.
+// This is the sole database-stage expression, shared by filtering, facets, and sorting.
 // Fixed identifiers are never derived from input; every stage value is bound.
 // Keep the existing getJobDisplayPhase semantics, merging legacy Prequeue into Pending.
 func jobFilterPhaseExpr() field.Field {
@@ -69,6 +70,28 @@ func jobFilterPhaseExpr() field.Field {
 		"", scheduling.PodGroupPending, scheduling.PodGroupInqueue,
 		"", filterPhaseInit,
 		batch.Pending)
+}
+
+// These are sorting priorities only. Classification comes from the same CASE
+// used by filtering and facets, including the historical Prequeue alias.
+func jobFilterPhaseSortExpr(descending bool) field.Expr {
+	phases := []any{
+		filterPhaseInit, batch.Pending, scheduling.PodGroupInqueue, filterPhaseStarting,
+		batch.Running, batch.Restarting, batch.Completing, batch.Aborting, batch.Terminating,
+		batch.Completed, batch.Aborted, batch.Terminated, batch.Failed, model.Deleted, model.Freed,
+	}
+	args := []any{jobFilterPhaseExpr()}
+	for rank, phase := range phases {
+		if descending {
+			rank = -rank
+		}
+		args = append(args, phase, rank)
+	}
+	args = append(args, len(phases)) // Unknown phases stay last in both directions.
+	return field.NewUnsafeFieldRaw(
+		"CASE ?"+strings.Repeat(" WHEN ? THEN CAST(? AS INTEGER)", len(phases))+" ELSE CAST(? AS INTEGER) END",
+		args...,
+	).Asc()
 }
 
 func scanJobPhaseFacet(ctx context.Context, scope jobListScope, request *jobListQuery, defaultDays int) ([]resputil.FacetItem, error) {

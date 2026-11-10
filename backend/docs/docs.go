@@ -10322,7 +10322,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10437,7 +10437,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10929,7 +10929,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
                         "name": "sort",
                         "in": "query"
                     },
