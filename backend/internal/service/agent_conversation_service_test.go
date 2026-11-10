@@ -286,6 +286,42 @@ func TestAgentPrepareRunExpiresUnrecoverableTurn(t *testing.T) {
 	mustAgentTestEqual(t, storedRun.Status, AgentRunStatusFailed)
 }
 
+func TestAgentFailRunAfterRequestCancellationAllowsNextTurn(t *testing.T) {
+	t.Parallel()
+	db := newAgentConversationTestDB(t)
+	service := NewAgentConversationService(db)
+	conversationID := uuid.NewString()
+	run, err := service.PrepareRun(
+		context.Background(), 33, AgentIdentityUser, conversationID, nil, AgentRunModeAppend,
+		agentTestUserMessagePointer("user-canceled", "Analyze this job"),
+	)
+	mustAgentTestNoError(t, err)
+	checkedCleanup := false
+	mustAgentTestNoError(t, db.Callback().Update().Before("gorm:update").Register("check_agent_cleanup_context", func(tx *gorm.DB) {
+		deadline, ok := tx.Statement.Context.Deadline()
+		if !ok || time.Until(deadline) <= 0 || time.Until(deadline) > agentRunFailureTimeout || tx.Statement.Context.Err() != nil {
+			t.Error("run cleanup must use an independent, bounded context")
+		}
+		checkedCleanup = true
+	}))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	mustAgentTestNoError(t, service.FailRun(ctx, 33, AgentIdentityUser, run.RunID, ctx.Err()))
+	mustAgentTestNoError(t, db.Callback().Update().Remove("check_agent_cleanup_context"))
+	if !checkedCleanup {
+		t.Fatal("run cleanup did not update the database")
+	}
+	var storedRun model.AgentRun
+	mustAgentTestNoError(t, db.First(&storedRun, "id = ?", run.RunID).Error)
+	mustAgentTestEqual(t, storedRun.Status, AgentRunStatusFailed)
+	mustAgentTestEqual(t, storedRun.ErrorMessage, context.Canceled.Error())
+	_, err = service.PrepareRun(
+		context.Background(), 33, AgentIdentityUser, conversationID, agentTestStringPointer("user-canceled"), AgentRunModeAppend,
+		agentTestUserMessagePointer("user-retry", "Try again"),
+	)
+	mustAgentTestNoError(t, err)
+}
+
 func TestAdminAgentConversationListSupportsPaginationAndFiltering(t *testing.T) {
 	t.Parallel()
 	db := newAgentConversationTestDB(t)

@@ -25,6 +25,7 @@ const (
 	agentMaximumMessageIDLength   = 128
 	agentMaximumMessagePartsBytes = 256 << 10
 	agentMaximumErrorLength       = 2048
+	agentRunFailureTimeout        = 5 * time.Second
 
 	AgentRunStatusRunning   = "running"
 	AgentRunStatusCompleted = "completed"
@@ -428,6 +429,9 @@ func (s *AgentConversationService) FailRun(
 	runID string,
 	runErr error,
 ) error {
+	// A canceled HTTP request must not prevent its persisted run from being closed.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), agentRunFailureTimeout)
+	defer cancel()
 	message := ""
 	if runErr != nil {
 		message = runErr.Error()

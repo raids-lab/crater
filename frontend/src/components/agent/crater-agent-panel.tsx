@@ -252,6 +252,7 @@ function ChatMessage({
             aria-label={t('craterAgent.editMessage')}
             onChange={(event) => onEditingTextChange(event.target.value)}
             onKeyDown={(event) => {
+              if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
               if (event.key === 'Escape') onCancelEdit()
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault()
@@ -869,6 +870,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
                   placeholder={t('craterAgent.placeholder')}
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
+                    if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
                     if (event.key === 'Enter' && !event.shiftKey) {
                       event.preventDefault()
                       if (!busy) event.currentTarget.form?.requestSubmit()

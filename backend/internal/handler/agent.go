@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/bizerr"
@@ -29,15 +30,7 @@ const (
 	llmRequestTimeout          = 5 * time.Minute
 	agentIdentityHeader        = "X-Crater-Agent-Identity"
 	agentInternalTokenHeader   = "X-Crater-Agent-Internal-Token" // #nosec G101 -- header name only.
-	maxLLMRequestsPerMinute    = 60
-	maxConcurrentLLMRequests   = 2
 )
-
-type agentLLMRateState struct {
-	windowStarted time.Time
-	requests      int
-	active        int
-}
 
 //nolint:gochecknoinits // Managers register through the repository's standard init mechanism.
 func init() {
@@ -293,29 +286,35 @@ func (mgr *AgentMgr) UserChat(c *gin.Context) {
 		return
 	}
 	if _, err := mgr.service.ResolveEffectiveConfig(c.Request.Context(), userID); err != nil {
-		_ = mgr.conversations.FailRun(c.Request.Context(), userID, identity, prepared.RunID, err)
+		mgr.failAgentRun(c, userID, identity, prepared.RunID, err)
 		resputil.HandleError(c, err)
 		return
 	}
 	body, err = json.Marshal(prepared)
 	if err != nil {
-		_ = mgr.conversations.FailRun(c.Request.Context(), userID, identity, prepared.RunID, err)
+		mgr.failAgentRun(c, userID, identity, prepared.RunID, err)
 		resputil.HandleError(c, bizerr.Internal.ServiceError.Wrap(err, "failed to encode Agent chat request"))
 		return
 	}
 	resp, err := mgr.requestAgentRuntime(c, identity, body, "/chat")
 	if err != nil {
-		_ = mgr.conversations.FailRun(c.Request.Context(), userID, identity, prepared.RunID, err)
+		mgr.failAgentRun(c, userID, identity, prepared.RunID, err)
 		resputil.HandleError(c, err)
 		return
 	}
 	defer resp.Body.Close()
 	if err := validateAgentRuntimeResponse(resp); err != nil {
-		_ = mgr.conversations.FailRun(c.Request.Context(), userID, identity, prepared.RunID, err)
+		mgr.failAgentRun(c, userID, identity, prepared.RunID, err)
 		resputil.HandleError(c, err)
 		return
 	}
 	copyStreamingResponse(c, resp)
+}
+
+func (mgr *AgentMgr) failAgentRun(c *gin.Context, userID uint, identity service.AgentIdentity, runID string, runErr error) {
+	if err := mgr.conversations.FailRun(c.Request.Context(), userID, identity, runID, runErr); err != nil {
+		klog.ErrorS(err, "Failed to finalize Agent run", "runID", runID, "userID", userID, "identity", identity)
+	}
 }
 
 type agentChatReq struct {
@@ -564,18 +563,12 @@ func (mgr *AgentMgr) acquireLLMRequest(userID uint) bool {
 	mgr.llmRateMu.Lock()
 	defer mgr.llmRateMu.Unlock()
 
-	now := time.Now()
 	state := mgr.llmRateByUser[userID]
-	if state == nil || now.Sub(state.windowStarted) >= time.Minute {
-		state = &agentLLMRateState{windowStarted: now}
+	if state == nil {
+		state = &agentLLMRateState{}
 		mgr.llmRateByUser[userID] = state
 	}
-	if state.requests >= maxLLMRequestsPerMinute || state.active >= maxConcurrentLLMRequests {
-		return false
-	}
-	state.requests++
-	state.active++
-	return true
+	return state.acquire(time.Now())
 }
 
 func (mgr *AgentMgr) releaseLLMRequest(userID uint) {
