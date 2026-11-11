@@ -15,20 +15,12 @@
  */
 import { z } from 'zod'
 
+import { usernameSchema } from '@/services/auth-username'
+
 export const loginFormSchema = z.object({
-  username: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(1, { message: '用户名不能为空' })
-    .max(20, { message: '用户名最多 20 个字符' })
-    .regex(/^[a-z][a-z0-9-]*[a-z0-9]$/, {
-      message: '用户名须以小写字母开头，以小写字母或数字结尾，只能包含小写字母、数字和中划线',
-    }),
-  password: z
-    .string()
-    .min(1, { message: '密码不能为空' })
-    .max(20, { message: '密码最多 20 个字符' }),
+  username: z.string().trim().toLowerCase().pipe(usernameSchema),
+  // LDAP password policies are managed by the directory, not local signup rules.
+  password: z.string().min(1, { message: '密码不能为空' }),
   acceptPrivacy: z.boolean().refine((value) => value === true, {
     message: '请先阅读并同意隐私政策方可登录',
   }),

@@ -467,11 +467,11 @@ backendConfig:
     # Both token secrets must be specified for secure authentication
     token:
       # -- Secret key used to sign JWT access tokens (Required)
-      # Must be a secure, randomly generated string
-      accessTokenSecret: "example-access-token"
+      # Must be a private, randomly generated string; public example values are rejected
+      accessTokenSecret: ""
       # -- Secret key used to sign JWT refresh tokens (Required)
-      # Must be a secure, randomly generated string
-      refreshTokenSecret: "example-refresh-token"
+      # Must be a private, randomly generated string; public example values are rejected
+      refreshTokenSecret: ""
 
     # -- LDAP authentication settings
     ldap:

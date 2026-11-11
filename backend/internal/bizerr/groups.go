@@ -33,6 +33,10 @@ type authGroup struct {
 	AccountLocked BizCode `code:"40107"`
 	// MFARequired: 需要额外的二次验证（如短信验证码、谷歌验证器）
 	MFARequired BizCode `code:"40108"`
+	// AccountNotActivated: 平台账号仍处于待激活状态，不能完成登录
+	AccountNotActivated BizCode `code:"40109"`
+	// PasswordLoginUnavailable: 该账号没有本地密码，需要使用原登录方式
+	PasswordLoginUnavailable BizCode `code:"40110"`
 }
 
 // forbiddenGroup 403xx - 权限不足
@@ -45,6 +49,14 @@ type forbiddenGroup struct {
 	UserEmailNotVerified BizCode `code:"40302"`
 	// UserBanned: 用户已被管理员封禁，当前有效的封禁限制不允许执行该操作
 	UserBanned BizCode `code:"40303"`
+	// AccountDisabled: 平台账号已停用，管理员恢复后才能登录
+	AccountDisabled BizCode `code:"40304"`
+	// LoginMethodDisabled: 管理员关闭了所选登录方式
+	LoginMethodDisabled BizCode `code:"40305"`
+	// RegistrationDisabled: 管理员关闭了本地自主注册
+	RegistrationDisabled BizCode `code:"40306"`
+	// NoProjectAccess: 账号没有可用项目或所选项目的访问资格已失效
+	NoProjectAccess BizCode `code:"40307"`
 }
 
 // notFoundGroup 404xx - 资源不存在
@@ -119,6 +131,10 @@ type internalGroup struct {
 	InternalPanic BizCode `code:"50007"`
 	// VolcanoServiceError: 调度系统内部逻辑异常
 	VolcanoServiceError BizCode `code:"50008"`
+	// AccountInitializationFailed: 首次建号或默认项目、余额初始化失败
+	AccountInitializationFailed BizCode `code:"50009"`
+	// IdentityMappingFailed: 认证通过但无法获得有效的平台身份属性
+	IdentityMappingFailed BizCode `code:"50010"`
 }
 
 // badGatewayGroup 502xx - 网关错误
