@@ -803,6 +803,8 @@
   "jobs.statuses.terminating.label": "終了処理中",
   "jobs.statuses.unknown.description": "ジョブの状態は不明です。",
   "jobs.statuses.unknown.label": "不明",
+  "jobs.statuses.waiting.description": "まだ実行を開始していないジョブです。",
+  "jobs.statuses.waiting.label": "待機中",
   "jobs.successMessage": "操作が成功しました",
   "jobs.title": "ジョブ管理",
   "jobs.toast.deleted": "ジョブが削除されました",

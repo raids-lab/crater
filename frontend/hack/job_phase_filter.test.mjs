@@ -106,6 +106,18 @@ test('frontend display mapping agrees with the backend SQL fixture expectations'
   }
 })
 
+test('non-waiting and historical states ignore all PodGroup combinations', () => {
+  const states = [...Object.values(api.JobPhase), 'FuturePhase'].filter(
+    (status) => status !== '' && status !== 'Pending'
+  )
+  for (const status of states) {
+    for (const group of [undefined, null, '', ...Object.values(api.PodGroupPhase), 'FuturePhase']) {
+      const displayed = api.getJobDisplayPhase(status, group)
+      assert.equal(api.encodeJobFilterPhase(displayed), status === 'Prequeue' ? 'Pending' : status)
+    }
+  }
+})
+
 test('filter candidates reuse label resolution in every locale and merge legacy Prequeue', async () => {
   for (const locale of ['zhCN', 'enUS', 'ja', 'ko']) {
     await i18next.changeLanguage(locale)
@@ -132,7 +144,16 @@ test('filter candidates reuse label resolution in every locale and merge legacy 
       )
     }
     for (const raw of badge.jobPhases)
-      assert.equal(raw.label, badge.getJobPhaseLabel(raw.value).label)
+      assert.equal(
+        raw.label,
+        raw.value === 'Pending'
+          ? i18next.t('jobs.statuses.waiting.label')
+          : badge.getJobPhaseLabel(raw.value).label
+      )
+    assert.notEqual(
+      badge.jobPhases.find(({ value }) => value === 'Pending').label,
+      options.find(({ value }) => value === 'Pending').label
+    )
     assert.equal(badge.getJobPhaseLabel('Prequeue').label, badge.getJobPhaseLabel('Pending').label)
     const remote = toolbar.getRemoteJobToolbarConfig()
     for (const config of [toolbar.jobToolbarConfig, remote]) {
@@ -214,6 +235,10 @@ test('display-stage sorting uses the existing job protocol adapter for every lis
       assert.deepEqual(query.getAll('phase'), ['Pending', 'Inqueue', 'Starting'])
       assert.equal(query.get('page'), '2')
       assert.equal(query.get('page_size'), '3')
+    }
+    for (const name of ['apiAdminGetUserJobList', 'apiGetUserJobs']) {
+      api[name]('test-user', params)
+      assert.equal(requests.at(-1).options.searchParams.get('sort'), expected, name)
     }
     assert.deepEqual(params, before)
   }

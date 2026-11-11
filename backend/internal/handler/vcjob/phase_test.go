@@ -27,7 +27,9 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/util"
 )
 
 type phaseFixture struct {
@@ -122,6 +124,34 @@ func TestJobPhaseSQLMatchesSharedFixtures(t *testing.T) {
 	}
 }
 
+func TestJobPhaseNonWaitingMatrix(t *testing.T) {
+	db := phaseTestDB(t)
+	states := []string{"Prequeue", "Aborting", "Aborted", "Running", "Restarting", "Completing", "Completed", "Terminating", "Terminated", "Failed", "Deleted", "Freed", legacyCancelled, "FuturePhase"}
+	groups := []string{"", "Pending", "Inqueue", "Running", "Completed", "Unknown", "FuturePhase"}
+	for _, status := range states {
+		want := status
+		if status == "Prequeue" {
+			want = "Pending"
+		}
+		for _, group := range append(groups, "NULL") {
+			var podGroup *string
+			if group != "NULL" {
+				podGroup = &group
+			}
+			if err := db.Exec("DELETE FROM jobs").Error; err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Exec("INSERT INTO jobs (id,status,pod_group_phase) VALUES (1,?,?)", status, podGroup).Error; err != nil {
+				t.Fatal(err)
+			}
+			var got string
+			if err := query.Job.WithContext(t.Context()).Select(jobFilterPhaseExpr()).Scan(&got); err != nil || got != want {
+				t.Fatalf("status=%q podGroup=%v phase=%q want=%q err=%v", status, podGroup, got, want, err)
+			}
+		}
+	}
+}
+
 func TestJobPhaseCompositionAndLegacyQueries(t *testing.T) {
 	db := phaseTestDB(t)
 	for i, f := range phaseFixtures(t) {
@@ -155,13 +185,76 @@ func TestJobPhaseCompositionAndLegacyQueries(t *testing.T) {
 	}
 	request.Phases = []string{"Starting"}
 	selected, err := findJobFacets(t.Context(), jobListScope{}, &request, 30, false)
-	if err != nil || !reflect.DeepEqual(all["phase"], selected["phase"]) || !reflect.DeepEqual(all["status"], selected["status"]) {
+	if err != nil || !reflect.DeepEqual(all["phase"], selected["phase"]) {
 		t.Fatalf("facets changed under own selection: %+v err=%v", selected, err)
 	}
 	request.Search = "missing"
 	empty, err := scanJobPhaseFacet(t.Context(), jobListScope{}, &request, 30)
 	if err != nil || empty == nil || len(empty) != 0 {
 		t.Fatalf("empty=%v err=%v", empty, err)
+	}
+}
+
+func TestJobFacetRetainsOtherStatusDimension(t *testing.T) {
+	db := phaseTestDB(t)
+	if err := db.Exec("INSERT INTO jobs (id,status,pod_group_phase,user_id,account_id,job_type,name) VALUES (1,'Pending','Running',1,1,'custom','target'),(2,'Prequeue',NULL,1,1,'custom','target'),(3,'Running',NULL,1,1,'custom','target'),(4,'Pending','Running',2,1,'custom','target'),(5,'Pending','Running',1,2,'custom','target')").Error; err != nil {
+		t.Fatal(err)
+	}
+	days, user, account := -1, uint(1), uint(1)
+	request := jobListQuery{Days: &days, Statuses: []string{"Pending"}, Phases: []string{"Starting"}}
+	facets, err := findJobFacets(t.Context(), jobListScope{UserID: &user, AccountID: &account}, &request, 30, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"status", "phase"} {
+		if len(facets[key]) != 1 || facets[key][0].Count != 1 {
+			t.Fatalf("%s facet ignored the other dimension or scope: %+v", key, facets[key])
+		}
+	}
+	if facets["status"][0].Value != "Pending" || facets["phase"][0].Value != "Starting" {
+		t.Fatalf("unexpected facets: %+v", facets)
+	}
+}
+
+func TestExplicitJobSortTieBreakers(t *testing.T) {
+	for _, tc := range []struct {
+		raw  string
+		want []jobSort
+	}{
+		{"phase,id", []jobSort{{field: "phase"}, {field: "id"}, {field: "createdAt", descending: true}}},
+		{"phase,createdAt,id", []jobSort{{field: "phase"}, {field: "createdAt"}, {field: "id"}}},
+		{"phase,-createdAt,-id", []jobSort{{field: "phase"}, {field: "createdAt", descending: true}, {field: "id", descending: true}}},
+	} {
+		sorts, err := parseJobSort(tc.raw)
+		if err != nil || !reflect.DeepEqual(sorts, tc.want) {
+			t.Errorf("sort=%q got=%+v want=%+v err=%v", tc.raw, sorts, tc.want, err)
+		}
+	}
+}
+
+func TestJobSelfPhaseScope(t *testing.T) {
+	db := phaseTestDB(t)
+	if err := db.Exec("INSERT INTO jobs (id,status,pod_group_phase,user_id,account_id,job_type,name) VALUES (1,'Pending','Running',1,1,'custom','one'),(2,'Pending','Running',2,1,'custom','two'),(3,'Pending','Running',1,2,'custom','other-account')").Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, userID := range []uint{1, 2} {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		util.SetJWTContext(c, util.JWTMessage{UserID: userID, AccountID: 1, RolePlatform: model.RoleUser, RoleAccount: model.RoleUser})
+		scope := selfJobScope(c)
+		days := -1
+		sorts, err := parseJobSort("phase,id")
+		if err != nil {
+			t.Fatal(err)
+		}
+		request := jobListQuery{Page: 1, PageSize: 1, Days: &days, Phases: []string{"Starting"}, sorts: sorts}
+		rows, total, err := findJobs(t.Context(), scope, &request, 30)
+		if err != nil || total != 1 || len(rows) != 1 || rows[0].UserID != userID || rows[0].AccountID != 1 {
+			t.Fatalf("user=%d rows=%+v total=%d err=%v", userID, rows, total, err)
+		}
+		facets, err := findJobFacets(t.Context(), scope, &request, 30, false)
+		if err != nil || len(facets["phase"]) != 1 || facets["phase"][0].Count != 1 {
+			t.Fatalf("user=%d facets=%+v err=%v", userID, facets, err)
+		}
 	}
 }
 
@@ -174,10 +267,18 @@ func TestBindJobFilterPhase(t *testing.T) {
 		{"phase=Pending&phase=Starting", false},
 		{"phase=Init", false},
 		{"status=Prequeue&phase=Pending", false},
+		{"status=" + legacyCancelled, false},
 		{"status=Inqueue", true},
 		{"phase=Prequeue", true},
 		{"phase=" + legacyCancelled, true},
 		{"phase=invalid", true},
+		{"phase=Pending%27%3BSELECT+1", true},
+		{"sort=phase,-phase", true},
+		{"sort=id,-id", true},
+		{"sort=phase,id", false},
+		{"sort=phase%3BDROP+TABLE+jobs", true},
+		{"sort=" + strings.Repeat("x", 4096), true},
+		{"search=" + strings.Repeat("x", 129), true},
 		{"phase=", true},
 		{strings.TrimSuffix(strings.Repeat("phase=Pending&", 21), "&"), true},
 	} {
@@ -209,6 +310,7 @@ func TestJobPhaseSortingAcrossPages(t *testing.T) {
 		want       []uint
 	}{
 		{"ascending", "phase", nil, []uint{3, 2, 1, 17, 11, 10, 9, 16, 13, 12, 8, 5, 4, 15, 14, 7, 6, 18, 21, 19, 20, 22, 23}},
+		{"explicit ID ascending", "phase,id", nil, []uint{1, 2, 3, 9, 10, 11, 17, 4, 5, 8, 12, 13, 16, 6, 7, 14, 15, 18, 21, 19, 20, 22, 23}},
 		{"descending", "-phase", nil, []uint{22, 20, 19, 21, 18, 15, 14, 7, 6, 16, 13, 12, 8, 5, 4, 17, 11, 10, 9, 3, 2, 1, 23}},
 		{"multiple phases", "phase", []string{"Pending", "Inqueue"}, []uint{17, 11, 10, 9, 16, 13, 12, 8, 5, 4}},
 	} {

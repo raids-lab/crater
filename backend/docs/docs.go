@@ -10124,7 +10124,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10166,7 +10166,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10239,7 +10239,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10275,7 +10275,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10315,6 +10315,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -10361,7 +10362,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10389,6 +10390,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -10435,7 +10437,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10731,7 +10733,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields. Use phase for display stages (unknown last) and - for descending",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10767,7 +10769,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10819,6 +10821,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -10872,7 +10875,7 @@ const docTemplate = `{
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases; AND with status; Init encodes an empty phase",
+                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },

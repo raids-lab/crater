@@ -802,6 +802,8 @@
   "jobs.statuses.terminating.label": "종료 중",
   "jobs.statuses.unknown.description": "작업 상태를 알 수 없습니다.",
   "jobs.statuses.unknown.label": "알 수 없음",
+  "jobs.statuses.waiting.description": "아직 실행을 시작하지 않은 작업입니다.",
+  "jobs.statuses.waiting.label": "대기 중",
   "jobs.successMessage": "작업이 성공했습니다",
   "jobs.title": "작업 관리",
   "jobs.toast.deleted": "작업이 삭제되었습니다",

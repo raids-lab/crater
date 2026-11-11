@@ -32,6 +32,11 @@ type jobListScope struct {
 	AccountID *uint
 }
 
+func selfJobScope(c *gin.Context) jobListScope {
+	token := util.GetToken(c)
+	return jobListScope{UserID: &token.UserID, AccountID: &token.AccountID}
+}
+
 type jobListQuery struct {
 	Page     int      `form:"page,default=1" binding:"min=1"`
 	PageSize int      `form:"page_size,default=10" binding:"min=1,max=200"`
@@ -97,7 +102,7 @@ func parseJobSort(raw string) ([]jobSort, error) {
 		return []jobSort{{field: "createdAt", descending: true}, {field: "id", descending: true}}, nil
 	}
 	allowed := map[string]struct{}{
-		"name": {}, "jobName": {}, "owner": {}, "queue": {}, "jobType": {},
+		"id": {}, "name": {}, "jobName": {}, "owner": {}, "queue": {}, "jobType": {},
 		"status": {}, "phase": {}, "billedPointsTotal": {}, "createdAt": {},
 		"startedAt": {}, "completedAt": {},
 	}
@@ -124,7 +129,9 @@ func parseJobSort(raw string) ([]jobSort, error) {
 			sorts = append(sorts, jobSort{field: "createdAt", descending: true})
 		}
 	}
-	sorts = append(sorts, jobSort{field: "id", descending: true})
+	if _, explicitID := seen["id"]; !explicitID {
+		sorts = append(sorts, jobSort{field: "id", descending: true})
+	}
 	return sorts, nil
 }
 
@@ -294,8 +301,9 @@ func jobFacetQuery(source *jobListQuery, facet string) jobListQuery {
 	switch facet {
 	case "job_type":
 		request.JobTypes = nil
-	case "status", "phase":
+	case "status":
 		request.Statuses = nil
+	case "phase":
 		request.Phases = nil
 	}
 	return request
