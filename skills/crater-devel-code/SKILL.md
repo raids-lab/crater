@@ -1,6 +1,6 @@
 ---
 name: crater-devel-code
-version: 1.1.0
+version: 1.1.1
 description: "Crater 代码开发：在 backend/、frontend/、cli/ 下开发 Go 后端、React 前端、CLI、API、作业模板、组件、表单、hooks、i18n 与测试。用户修改 backend/、frontend/、cli/ 代码或前后端/CLI 联动时使用；调用 crater 命令则用 cli/skills/crater-cli-*；开始前须应用 crater-devel-shared。"
 ---
 
@@ -31,7 +31,7 @@ description: "Crater 代码开发：在 backend/、frontend/、cli/ 下开发 Go
 
 - CLI 消费的路径、方法、字段、类型、语义、鉴权或响应结构等 API 契约发生变化时，将后端和 CLI 的 `APIVersion` 同步递增到同一个新值；与 CLI 无关的后端实现或前端接口不提升。
 - 接口形式未变也要按实际用户影响判断：新增 CLI 用户可感知的错误类型、作业类型，或改变对外处理语义，使旧 CLI 可能缺失重要信息或误解结果时，也须同步提升。修复小 bug、纠正原本错误逻辑或恢复预期行为，以及不影响 CLI 用户的内部调整，通常不提升，不要把每次后端修改都算作 API 变化。
-- 分别判断双方是否还存在兼容旧版本对方的回退路径。只有确实无法继续支持时，才把本方的最低支持版本提升到首次提供所需契约的对方 `APIVersion`；CLI 只是开始强依赖已有后端能力时，当前 `APIVersion` 不变，只可能提升 CLI 的最低后端版本。
+- 按根 `CONTRIBUTING.md` 的排障目标分别判断双方最低版本。检查通过后，用户在常规排障中应能排除 API 版本不匹配。沿受影响的公开命令和选项检查旧版本的实际行为，确认能否按约定完成操作。例如，新增命令依赖新接口且没有等价回退时，提高 CLI 的最低后端版本。旧 CLI 的命令仍按约定工作时，后端的最低 CLI 版本保持不变。CLI 开始依赖后端已有能力时，当前 `APIVersion` 保持不变，CLI 的最低后端版本仍按实际行为判断。
 - PR 必须分别记录当前 `APIVersion` 和本方最低支持版本是否变化及原因，即使结论是不变。版本 Header 只是非可信诊断信息，不得用于鉴权、请求拦截或响应分流；普通业务命令不自动握手，只有 `crater compatibility` 显式检查。
 
 ## Backend 提醒
