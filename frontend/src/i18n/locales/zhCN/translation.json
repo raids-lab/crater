@@ -803,6 +803,8 @@
   "jobs.statuses.terminating.label": "即将终止",
   "jobs.statuses.unknown.description": "作业状态未知",
   "jobs.statuses.unknown.label": "未知",
+  "jobs.statuses.waiting.description": "尚未开始运行的作业，包括待入队、排队中和启动中。",
+  "jobs.statuses.waiting.label": "等待中",
   "jobs.successMessage": "操作成功",
   "jobs.title": "作业管理",
   "jobs.toast.deleted": "作业已删除",

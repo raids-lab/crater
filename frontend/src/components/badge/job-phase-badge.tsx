@@ -83,7 +83,9 @@ export const jobPhases = [
 ].map((phase) => ({
   ...phase,
   get label() {
-    return getJobPhaseLabel(phase.value as JobPhase).label
+    return phase.value === JobPhase.Pending
+      ? t('jobs.statuses.waiting.label')
+      : getJobPhaseLabel(phase.value as JobPhase).label
   },
 }))
 

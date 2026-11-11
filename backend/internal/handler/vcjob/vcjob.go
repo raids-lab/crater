@@ -552,23 +552,19 @@ type (
 //	@Security		Bearer
 //	@Param			page		query	int	false	"Page number"
 //	@Param			page_size	query	int	false	"Page size, 1-200"
-//	@Param			sort		query	string	false	"Sort fields. Use phase for display stages (unknown last) and - for descending"
+//	@Param			sort		query	string	false	"Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last"
 //	@Param			search		query	string	false	"Search jobs"
 //	@Param			days		query	int	false	"Number of days to look back, -1 for all"
 //	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases; AND with status; Init encodes an empty phase" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
 //	@Param			node		query	string	false	"Node name"
 //	@Success		200	{object}	resputil.Response[resputil.Page[JobResp]]	"Volcano Job List"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs [get]
 func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
-	token := util.GetToken(c)
-	mgr.listJobs(c, -1, jobListScope{
-		UserID:    &token.UserID,
-		AccountID: &token.AccountID,
-	})
+	mgr.listJobs(c, -1, selfJobScope(c))
 }
 
 // GetAllJobsInDays godoc
@@ -582,11 +578,11 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 //	@Param			days	query		int						false	"Number of days to look back, default is 14"	default(14)
 //	@Param			page		query	int	false	"Page number"
 //	@Param			page_size	query	int	false	"Page size, 1-200"
-//	@Param			sort		query	string	false	"Sort fields. Use phase for display stages (unknown last) and - for descending"
+//	@Param			sort		query	string	false	"Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last"
 //	@Param			search		query	string	false	"Search jobs"
 //	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases; AND with status; Init encodes an empty phase" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
 //	@Param			node		query	string	false	"Node name"
 //	@Success		200		{object}	resputil.Response[resputil.Page[JobResp]]	"admin get Volcano Job List"
 //	@Failure		400		{object}	resputil.Response[any]	"admin Request parameter error"
@@ -618,6 +614,7 @@ func (mgr *VolcanojobMgr) listJobs(c *gin.Context, defaultDays int, scope jobLis
 // GetSelfJobFacets godoc
 //
 //	@Summary	Get job facets for the current user
+//	@Description	Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.
 //	@Tags		VolcanoJob
 //	@Produce	json
 //	@Security	Bearer
@@ -625,21 +622,18 @@ func (mgr *VolcanojobMgr) listJobs(c *gin.Context, defaultDays int, scope jobLis
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases; AND with status; Init encodes an empty phase" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
 //	@Router		/v1/vcjobs/facets [get]
 func (mgr *VolcanojobMgr) GetSelfJobFacets(c *gin.Context) {
-	token := util.GetToken(c)
-	mgr.listJobFacets(c, -1, jobListScope{
-		UserID:    &token.UserID,
-		AccountID: &token.AccountID,
-	}, false)
+	mgr.listJobFacets(c, -1, selfJobScope(c), false)
 }
 
 // GetAllJobFacets godoc
 //
 //	@Summary	Get all visible job facets
+//	@Description	Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.
 //	@Tags		VolcanoJob
 //	@Produce	json
 //	@Security	Bearer
@@ -647,7 +641,7 @@ func (mgr *VolcanojobMgr) GetSelfJobFacets(c *gin.Context) {
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases; AND with status; Init encodes an empty phase" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
 //	@Router		/v1/vcjobs/all/facets [get]
@@ -658,6 +652,7 @@ func (mgr *VolcanojobMgr) GetAllJobFacets(c *gin.Context) {
 // GetUserJobFacets godoc
 //
 //	@Summary	Get job facets for a user
+//	@Description	Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.
 //	@Tags		VolcanoJob
 //	@Produce	json
 //	@Security	Bearer
@@ -666,7 +661,7 @@ func (mgr *VolcanojobMgr) GetAllJobFacets(c *gin.Context) {
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases; AND with status; Init encodes an empty phase" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
 //	@Router		/v1/vcjobs/user/{username}/facets [get]
@@ -828,11 +823,11 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 //	@Param			days		query		int						false	"Number of days to look back, default is 30, -1 for all"	default(30)
 //	@Param			page		query		int					false	"Page number"
 //	@Param			page_size	query		int					false	"Page size, 1-200"
-//	@Param			sort		query		string				false	"Sort fields. Use phase for display stages (unknown last) and - for descending"
+//	@Param			sort		query		string				false	"Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last"
 //	@Param			search		query		string				false	"Search jobs"
 //	@Param			job_type	query		[]string			false	"Job types" collectionFormat(multi)
 //	@Param			status		query		[]string			false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases; AND with status; Init encodes an empty phase" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
 //	@Param			node		query		string				false	"Node name"
 //	@Success		200			{object}	resputil.Response[resputil.Page[JobResp]]	"User's Job List"
 //	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"

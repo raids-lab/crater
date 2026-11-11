@@ -64,6 +64,8 @@ jobs:
 
       - name: Test job session and browser compatibility
         run: make test-job-sessions
+      - name: Test job phases
+        run: make test-job-phases
 
   backend-build-check:
     runs-on: ubuntu-latest

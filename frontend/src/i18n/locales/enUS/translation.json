@@ -803,6 +803,8 @@
   "jobs.statuses.terminating.label": "Terminating",
   "jobs.statuses.unknown.description": "The job status is unknown.",
   "jobs.statuses.unknown.label": "Unknown",
+  "jobs.statuses.waiting.description": "Jobs that have not started running yet: pending, queued, or starting.",
+  "jobs.statuses.waiting.label": "Pending",
   "jobs.successMessage": "Operation successful",
   "jobs.title": "Job Management",
   "jobs.toast.deleted": "Job deleted",
