@@ -10163,10 +10163,27 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10272,10 +10289,27 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10359,10 +10393,27 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10434,10 +10485,27 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10766,10 +10834,27 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
@@ -10872,10 +10957,27 @@ const docTemplate = `{
                     {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
                             "type": "string"
                         },
                         "collectionFormat": "multi",
-                        "description": "UI phases AND status. Init encodes empty. Pending includes legacy Prequeue",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
                         "name": "phase",
                         "in": "query"
                     },
