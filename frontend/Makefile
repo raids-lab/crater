@@ -112,7 +112,7 @@ lint: ## 🔍 Run ESLint and TypeScript checks
 	pnpm eslint .
 
 .PHONY: pre-commit-check
-pre-commit-check: test-model-download test-tensorboard-templates ## Run pre-commit checks (download tests, lint and lint-staged).
+pre-commit-check: test-model-download test-tensorboard-templates test-job-phases ## Run pre-commit checks (download tests, lint and lint-staged).
 	@echo "$(BLUE)Checking translation file format...$(RESET)"
 	@if [ -z "$(PYTHON)" ]; then \
 		echo "$(RED)❌ Python interpreter not found (python3/python).$(RESET)"; \
@@ -211,3 +211,7 @@ backend-help: ## ❓ Show backend server startup instructions
 
 # 默认目标
 .DEFAULT_GOAL := help
+
+.PHONY: test-job-phases
+test-job-phases: ## Verify shared job-phase fixtures, metadata reuse and request encoding.
+	node --test hack/job_phase_filter.test.mjs

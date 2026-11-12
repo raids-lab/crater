@@ -56,7 +56,7 @@ import {
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
 
-import useRemoteTableState from '@/hooks/use-remote-table-state'
+import useJobTableState from '@/hooks/use-job-table-state'
 
 import { isBillingVisibleForAdmin } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
@@ -103,7 +103,7 @@ const AdminJobOverview = () => {
     queryFn: () => apiAdminGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForAdmin(billingStatus)
-  const tableState = useRemoteTableState('admin_job_overview', {
+  const tableState = useJobTableState('admin_job_overview', {
     sorting: [{ id: 'createdAt', desc: true }],
     columnFilters: [{ id: 'days', value: ['7'] }],
   })
@@ -122,10 +122,7 @@ const AdminJobOverview = () => {
     queryKey: buildFacetQueryKey('admin-jobs', tableState.params),
     queryFn: async ({ signal }) => (await apiAdminGetJobFacets(tableState.params, signal)).data,
   })
-  const toolbarConfig = useMemo(
-    () => ({ ...getRemoteJobToolbarConfig(facetsQuery.data), getHeader }),
-    [facetsQuery.data]
-  )
+  const toolbarConfig = { ...getRemoteJobToolbarConfig(facetsQuery.data), getHeader }
 
   const refetchTaskList = useCallback(async () => {
     try {

@@ -1,1 +1,2 @@
 docs/* linguist-generated=true
+*.go text eol=lf

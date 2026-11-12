@@ -2,6 +2,8 @@ package vcjob
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
 	"strconv"
 	"strings"
 	"time"
@@ -23,11 +25,17 @@ const (
 	allJobsDefaultDays  = 7
 	userJobsDefaultDays = 30
 	jobMaxSearchRunes   = 128
+	jobMaxPhaseValues   = 20
 )
 
 type jobListScope struct {
 	UserID    *uint
 	AccountID *uint
+}
+
+func selfJobScope(c *gin.Context) jobListScope {
+	token := util.GetToken(c)
+	return jobListScope{UserID: &token.UserID, AccountID: &token.AccountID}
 }
 
 type jobListQuery struct {
@@ -38,6 +46,7 @@ type jobListQuery struct {
 	Days     *int     `form:"days" binding:"omitempty,eq=-1|gt=0"`
 	JobTypes []string `form:"job_type" binding:"max=20,dive,required"`
 	Statuses []string `form:"status" binding:"max=20,dive,required"`
+	Phases   []string `form:"phase" binding:"max=20,dive,required"`
 	Node     *string  `form:"node"`
 	sorts    []jobSort
 }
@@ -51,6 +60,12 @@ func bindJobListQuery(c *gin.Context, withSort bool) (jobListQuery, error) {
 	var request jobListQuery
 	if err := c.ShouldBindQuery(&request); err != nil {
 		return jobListQuery{}, bizerr.BadRequest.ParameterError.Wrap(err, "invalid job list query")
+	}
+	if len(request.Phases) > 0 {
+		request.Phases = strings.SplitN(strings.Join(request.Phases, ","), ",", jobMaxPhaseValues+1)
+		if len(request.Phases) > jobMaxPhaseValues {
+			return jobListQuery{}, bizerr.BadRequest.ParameterError.New("phase accepts at most " + strconv.Itoa(jobMaxPhaseValues) + " values")
+		}
 	}
 	request.Search = strings.TrimSpace(request.Search)
 	if utf8.RuneCountInString(request.Search) > jobMaxSearchRunes {
@@ -94,8 +109,8 @@ func parseJobSort(raw string) ([]jobSort, error) {
 		return []jobSort{{field: "createdAt", descending: true}, {field: "id", descending: true}}, nil
 	}
 	allowed := map[string]struct{}{
-		"name": {}, "jobName": {}, "owner": {}, "queue": {}, "jobType": {},
-		"status": {}, "billedPointsTotal": {}, "createdAt": {},
+		"id": {}, "name": {}, "jobName": {}, "owner": {}, "queue": {}, "jobType": {},
+		"status": {}, "phase": {}, "billedPointsTotal": {}, "createdAt": {},
 		"startedAt": {}, "completedAt": {},
 	}
 	parts := strings.Split(raw, ",")
@@ -116,11 +131,17 @@ func parseJobSort(raw string) ([]jobSort, error) {
 		seen[name] = struct{}{}
 		sorts = append(sorts, jobSort{field: name, descending: descending})
 	}
-	sorts = append(sorts, jobSort{field: "id", descending: true})
+	if _, phaseSort := seen["phase"]; phaseSort {
+		if _, explicitCreatedAt := seen["createdAt"]; !explicitCreatedAt {
+			sorts = append(sorts, jobSort{field: "createdAt", descending: true})
+		}
+	}
+	if _, explicitID := seen["id"]; !explicitID {
+		sorts = append(sorts, jobSort{field: "id", descending: true})
+	}
 	return sorts, nil
 }
 
-//nolint:misspell // Volcano exposes this phase as "Cancelled".
 func validateJobListEnums(request *jobListQuery) error {
 	for _, value := range request.JobTypes {
 		switch value {
@@ -130,11 +151,13 @@ func validateJobListEnums(request *jobListQuery) error {
 		}
 	}
 	for _, value := range request.Statuses {
-		switch value {
-		case "Prequeue", "Pending", "Aborting", "Aborted", "Running", "Restarting", "Completing",
-			"Completed", "Terminating", "Terminated", "Failed", "Deleted", "Freed", "Cancelled":
-		default:
+		if !validRawJobStatus(value) {
 			return bizerr.BadRequest.ParameterError.New("unsupported status " + strconv.Quote(value))
+		}
+	}
+	for _, value := range request.Phases {
+		if !validJobFilterPhase(value) {
+			return bizerr.BadRequest.ParameterError.New("unsupported phase " + strconv.Quote(value))
 		}
 	}
 	return nil
@@ -151,6 +174,10 @@ func findJobs(
 		Preload(query.Job.Account)
 	fields := jobSortFields()
 	for _, sort := range request.sorts {
+		if sort.field == "phase" {
+			q = q.Order(jobFilterPhaseSortExpr(sort.descending))
+			continue
+		}
 		expression := fields[sort.field]
 		if sort.descending {
 			q = q.Order(expression.Desc())
@@ -190,6 +217,13 @@ func applyJobFilters(
 	}
 	if len(request.Statuses) > 0 {
 		q = q.Where(j.Status.In(request.Statuses...))
+	}
+	if len(request.Phases) > 0 {
+		values := make([]driver.Valuer, len(request.Phases))
+		for i, phase := range request.Phases {
+			values[i] = sql.NullString{String: phase, Valid: true}
+		}
+		q = q.Where(jobFilterPhaseExpr().In(values...))
 	}
 	if request.Node != nil {
 		q = q.Where(gen.Cond(datatypes.JSONArrayQuery("nodes").Contains(*request.Node))...)
@@ -243,15 +277,22 @@ func findJobFacets(
 	if err != nil {
 		return nil, err
 	}
+	phaseRequest := jobFacetQuery(request, "phase")
+	phases, err := scanJobPhaseFacet(ctx, scope, &phaseRequest, defaultDays)
+	if err != nil {
+		return nil, err
+	}
 	result := map[string][]resputil.FacetItem{
 		"job_type": types,
 		"status":   statuses,
+		"phase":    phases,
 	}
 	if !includeOverview {
 		return result, nil
 	}
 	runningRequest := *request
 	runningRequest.Statuses = []string{"Running"}
+	runningRequest.Phases = nil
 	result["owner"], err = scanJobStringFacet(
 		ctx, scope, &runningRequest, defaultDays, &query.User.Nickname,
 	)
@@ -269,6 +310,8 @@ func jobFacetQuery(source *jobListQuery, facet string) jobListQuery {
 		request.JobTypes = nil
 	case "status":
 		request.Statuses = nil
+	case "phase":
+		request.Phases = nil
 	}
 	return request
 }

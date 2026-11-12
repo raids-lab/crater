@@ -177,7 +177,7 @@ run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host
 	GIN_MODE="$(GIN_MODE)" KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
-pre-commit-check: lint docs test-tensorboard-launcher ## Run lint, generate docs, and test the TensorBoard launcher.
+pre-commit-check: lint docs test-tensorboard-launcher test-job-phases ## Run lint, generate docs, and test the TensorBoard launcher.
 
 .PHONY: test-tensorboard-launcher
 test-tensorboard-launcher: ## Test the embedded launcher with Python 3 (standard library only).
@@ -247,3 +247,17 @@ build-storage: fmt lint ## Build storage server binary.
 	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/storage-server cmd/storage-server/main.go
 	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/model-dataset-governance cmd/model-dataset-governance/main.go
 	@echo "$(GREEN)Storage server binary built successfully: bin/storage-server$(RESET)"
+
+.PHONY: test-job-phases
+test-job-phases: ## Verify UI-phase filters and counts without external services.
+	cd internal/handler/vcjob && CRATER_PHASE_TEST_DATABASE=sqlite go test list.go phase.go phase_test.go -count=1
+
+.PHONY: test-job-phases-postgres
+test-job-phases-postgres: ## Execute the shared phase assertions and Overview SQL on isolated PostgreSQL 16.
+	@test -n "$$CRATER_TEST_POSTGRES_DSN" || (echo "Set CRATER_TEST_POSTGRES_DSN to an isolated PostgreSQL 16 test database" >&2; exit 1)
+	cd internal/handler/vcjob && CRATER_PHASE_TEST_DATABASE=postgres go test list.go phase.go phase_test.go phase_postgres_test.go -count=1 -v
+
+.PHONY: test-job-phases-postgres-performance
+test-job-phases-postgres-performance: ## Record real query plans on 10k, 100k and 1m synthetic jobs.
+	@test -n "$$CRATER_TEST_POSTGRES_DSN" || (echo "Set CRATER_TEST_POSTGRES_DSN to an isolated PostgreSQL 16 test database" >&2; exit 1)
+	cd internal/handler/vcjob && CRATER_PHASE_TEST_DATABASE=postgres go test list.go phase.go phase_test.go phase_postgres_performance_test.go -run '^TestJobPhasePostgresPerformance$$' -count=1 -v
