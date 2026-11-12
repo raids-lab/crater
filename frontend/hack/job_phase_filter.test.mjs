@@ -268,3 +268,101 @@ test('the job menu keeps all 15 candidates and zero counts under any selection',
     )
   }
 })
+
+test('Overview cards and pie use the same backend display-phase counts', () => {
+  const counts = new Map()
+  for (const fixture of fixtures) {
+    counts.set(fixture.phase, (counts.get(fixture.phase) ?? 0) + 1)
+  }
+  const response = {
+    facets: {
+      phase: Array.from(counts, ([value, count]) => ({ value, count })),
+      status: [{ value: 'Pending', count: 999 }],
+    },
+  }
+  const before = structuredClone(response)
+  const summary = toolbar.getJobOverviewSummary(response)
+  const waitingPhases = ['Pending', 'Inqueue', 'Starting']
+  const expectedWaiting = fixtures.filter(({ phase }) => waitingPhases.includes(phase)).length
+  assert.equal(summary.waitingCount, expectedWaiting)
+  assert.equal(summary.runningCount, counts.get('Running'))
+  assert.equal(summary.phases.find(({ id }) => id === 'Pending').value, counts.get('Pending'))
+  assert.ok(!summary.phases.some(({ id }) => ['Prequeue', 'Deleted', 'Freed'].includes(id)))
+  assert.equal(
+    summary.phases.reduce((total, { value }) => total + value, 0),
+    fixtures.filter(({ phase }) => !['Deleted', 'Freed'].includes(phase)).length
+  )
+  assert.deepEqual(response, before)
+  assert.deepEqual(toolbar.getJobOverviewSummary(response), summary)
+  assert.deepEqual(toolbar.getJobOverviewSummary(structuredClone(response)), summary)
+})
+
+test('Overview waiting excludes created, running, transitional and terminal stages', () => {
+  const phase = [
+    'Init',
+    'Pending',
+    'Inqueue',
+    'Starting',
+    'Running',
+    'Restarting',
+    'Completing',
+    'Aborting',
+    'Aborted',
+    'Terminating',
+    'Terminated',
+    'Completed',
+    'Failed',
+    'Deleted',
+    'Freed',
+    'FuturePhase',
+  ].map((value) => ({ value, count: 1 }))
+  const summary = toolbar.getJobOverviewSummary({ facets: { phase } })
+  assert.equal(summary.waitingCount, 3)
+  assert.equal(summary.runningCount, 1)
+  assert.equal(summary.phases.find(({ id }) => id === 'Init').value, 1)
+  assert.equal(summary.phases.find(({ id }) => id === 'FuturePhase').value, 1)
+})
+
+test('Overview empty and refreshed responses replace the previous summary', () => {
+  for (const response of [undefined, { facets: {} }, { facets: { phase: [] } }]) {
+    assert.deepEqual(toolbar.getJobOverviewSummary(response), {
+      phases: [],
+      runningCount: 0,
+      waitingCount: 0,
+    })
+  }
+  const response = { facets: { phase: [{ value: 'Pending', count: 2 }] } }
+  assert.equal(toolbar.getJobOverviewSummary(response).waitingCount, 2)
+  response.facets.phase[0].count = 1
+  assert.equal(toolbar.getJobOverviewSummary(response).waitingCount, 1)
+  assert.equal(toolbar.getJobOverviewSummary(undefined).waitingCount, 0)
+})
+
+test('Overview phase labels reuse badge translations in all four languages', async () => {
+  const response = {
+    facets: {
+      phase: ['Init', 'Pending', 'Inqueue', 'Starting', 'FuturePhase'].map((value) => ({
+        value,
+        count: 1,
+      })),
+    },
+  }
+  for (const locale of ['zhCN', 'enUS', 'ja', 'ko']) {
+    await i18next.changeLanguage(locale)
+    for (const item of toolbar.getJobOverviewSummary(response).phases) {
+      const phase = item.id === 'Init' ? api.JobPhase.Init : item.id
+      assert.equal(item.label, badge.getJobPhaseLabel(phase).label)
+    }
+  }
+})
+
+test('Overview connects its cards and pie to the phase summary without changing refresh scopes', () => {
+  const source = readFileSync(path.join(root, 'src/routes/portal/overview/index.tsx'), 'utf8')
+  assert.match(source, /getJobOverviewSummary\(jobSummaryFacetsQuery\.data\)/)
+  assert.doesNotMatch(source, /facets\.status/)
+  assert.match(source, /value: runningCount/)
+  assert.match(source, /value: waitingCount/)
+  assert.match(source, /data=\{jobStatus\}/)
+  assert.match(source, /buildFacetQueryKey\('overview-job-summary', overviewSummaryParams\)/)
+  assert.match(source, /apiJobAllFacets\(overviewSummaryParams, signal\)/)
+})

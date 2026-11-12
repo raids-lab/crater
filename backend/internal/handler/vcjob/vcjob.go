@@ -559,12 +559,14 @@ type (
 //	@Param			days		query	int	false	"Number of days to look back, -1 for all"
 //	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue" Enums(Init,Pending,Inqueue,Starting,Running,Restarting,Completing,Completed,Aborting,Aborted,Terminating,Terminated,Failed,Deleted,Freed) collectionFormat(multi)
 //	@Param			node		query	string	false	"Node name"
 //	@Success		200	{object}	resputil.Response[resputil.Page[JobResp]]	"Volcano Job List"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs [get]
+//
+//nolint:lll // Swag requires full parameter enum annotations on one line.
 func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 	mgr.listJobs(c, -1, selfJobScope(c))
 }
@@ -584,12 +586,14 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 //	@Param			search		query	string	false	"Search jobs"
 //	@Param			job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param			status		query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue" Enums(Init,Pending,Inqueue,Starting,Running,Restarting,Completing,Completed,Aborting,Aborted,Terminating,Terminated,Failed,Deleted,Freed) collectionFormat(multi)
 //	@Param			node		query	string	false	"Node name"
 //	@Success		200		{object}	resputil.Response[resputil.Page[JobResp]]	"admin get Volcano Job List"
 //	@Failure		400		{object}	resputil.Response[any]	"admin Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/all [get]
+//
+//nolint:lll // Swag requires full parameter enum annotations on one line.
 func (mgr *VolcanojobMgr) GetAllJobsInDays(c *gin.Context) {
 	mgr.listJobs(c, allJobsDefaultDays, jobListScope{})
 }
@@ -624,10 +628,12 @@ func (mgr *VolcanojobMgr) listJobs(c *gin.Context, defaultDays int, scope jobLis
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue" Enums(Init,Pending,Inqueue,Starting,Running,Restarting,Completing,Completed,Aborting,Aborted,Terminating,Terminated,Failed,Deleted,Freed) collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
 //	@Router		/v1/vcjobs/facets [get]
+//
+//nolint:lll // Swag requires full parameter enum annotations on one line.
 func (mgr *VolcanojobMgr) GetSelfJobFacets(c *gin.Context) {
 	mgr.listJobFacets(c, -1, selfJobScope(c), false)
 }
@@ -643,10 +649,12 @@ func (mgr *VolcanojobMgr) GetSelfJobFacets(c *gin.Context) {
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue" Enums(Init,Pending,Inqueue,Starting,Running,Restarting,Completing,Completed,Aborting,Aborted,Terminating,Terminated,Failed,Deleted,Freed) collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
 //	@Router		/v1/vcjobs/all/facets [get]
+//
+//nolint:lll // Swag requires full parameter enum annotations on one line.
 func (mgr *VolcanojobMgr) GetAllJobFacets(c *gin.Context) {
 	mgr.listJobFacets(c, allJobsDefaultDays, jobListScope{}, true)
 }
@@ -663,10 +671,12 @@ func (mgr *VolcanojobMgr) GetAllJobFacets(c *gin.Context) {
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue" Enums(Init,Pending,Inqueue,Starting,Running,Restarting,Completing,Completed,Aborting,Aborted,Terminating,Terminated,Failed,Deleted,Freed) collectionFormat(multi)
 //	@Param		node	query	string	false	"Node name"
 //	@Success	200	{object}	resputil.Response[resputil.FacetResponse]
 //	@Router		/v1/vcjobs/user/{username}/facets [get]
+//
+//nolint:lll // Swag requires full parameter enum annotations on one line.
 func (mgr *VolcanojobMgr) GetUserJobFacets(c *gin.Context) {
 	scope, ok := resolveJobUserScope(c)
 	if !ok {
@@ -829,7 +839,7 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 //	@Param			search		query		string				false	"Search jobs"
 //	@Param			job_type	query		[]string			false	"Job types" collectionFormat(multi)
 //	@Param			status		query		[]string			false	"Job statuses" collectionFormat(multi)
-//	@Param		phase	query	[]string	false	"UI phases AND status. Init encodes empty. Pending includes legacy Prequeue" collectionFormat(multi)
+//	@Param		phase	query	[]string	false	"UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue" Enums(Init,Pending,Inqueue,Starting,Running,Restarting,Completing,Completed,Aborting,Aborted,Terminating,Terminated,Failed,Deleted,Freed) collectionFormat(multi)
 //	@Param			node		query		string				false	"Node name"
 //	@Success		200			{object}	resputil.Response[resputil.Page[JobResp]]	"User's Job List"
 //	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
@@ -837,6 +847,8 @@ func (mgr *VolcanojobMgr) GetUserJobBillingInDays(c *gin.Context) {
 //	@Failure		404			{object}	resputil.Response[any]	"User not found"
 //	@Failure		500			{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/user/{username} [get]
+//
+//nolint:lll // Swag requires full parameter enum annotations on one line.
 func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
 	scope, ok := resolveJobUserScope(c)
 	if !ok {

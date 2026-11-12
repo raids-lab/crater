@@ -25,6 +25,7 @@ const (
 	allJobsDefaultDays  = 7
 	userJobsDefaultDays = 30
 	jobMaxSearchRunes   = 128
+	jobMaxPhaseValues   = 20
 )
 
 type jobListScope struct {
@@ -59,6 +60,12 @@ func bindJobListQuery(c *gin.Context, withSort bool) (jobListQuery, error) {
 	var request jobListQuery
 	if err := c.ShouldBindQuery(&request); err != nil {
 		return jobListQuery{}, bizerr.BadRequest.ParameterError.Wrap(err, "invalid job list query")
+	}
+	if len(request.Phases) > 0 {
+		request.Phases = strings.SplitN(strings.Join(request.Phases, ","), ",", jobMaxPhaseValues+1)
+		if len(request.Phases) > jobMaxPhaseValues {
+			return jobListQuery{}, bizerr.BadRequest.ParameterError.New("phase accepts at most " + strconv.Itoa(jobMaxPhaseValues) + " values")
+		}
 	}
 	request.Search = strings.TrimSpace(request.Search)
 	if utf8.RuneCountInString(request.Search) > jobMaxSearchRunes {

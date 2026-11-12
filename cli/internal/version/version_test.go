@@ -154,8 +154,8 @@ func TestFileContractCompatibility(t *testing.T) {
 }
 
 func TestUserContainerPermissionContractCompatibility(t *testing.T) {
-	if APIVersion < 6 || MinSupportedBackendAPIVersion != 3 {
-		t.Fatalf("user container permission contract = %d, minimum backend = %d, want >=6/3",
+	if APIVersion != 6 || MinSupportedBackendAPIVersion != 3 {
+		t.Fatalf("user container permission contract = %d, minimum backend = %d, want 6/3",
 			APIVersion, MinSupportedBackendAPIVersion)
 	}
 	for _, backendVersion := range []int{3, 4, 5} {
@@ -174,12 +174,5 @@ func TestTensorboardLogDirContractCompatibility(t *testing.T) {
 		if got := EvaluateCompatibility(backendVersion, 3); got != CompatibilityCompatible {
 			t.Fatalf("backend API %d with minimum CLI 3: got %s, want compatible", backendVersion, got)
 		}
-	}
-}
-
-func TestJobPhaseFilterContractVersion(t *testing.T) {
-	if APIVersion != 7 || MinSupportedBackendAPIVersion != 3 {
-		t.Fatalf("job phase filter contract = %d, minimum peer = %d, want 7/3",
-			APIVersion, MinSupportedBackendAPIVersion)
 	}
 }

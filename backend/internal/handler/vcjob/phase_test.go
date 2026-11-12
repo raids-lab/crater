@@ -22,13 +22,16 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -38,9 +41,21 @@ type phaseFixture struct {
 	Phase         string  `json:"phase"`
 }
 
+const phaseTestPostgresDialect = "postgres"
+
 func phaseTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	dialector := sqlite.Open(":memory:")
+	timestampType := "datetime"
+	if os.Getenv("CRATER_PHASE_TEST_DATABASE") == phaseTestPostgresDialect {
+		dsn := os.Getenv("CRATER_TEST_POSTGRES_DSN")
+		if dsn == "" {
+			t.Fatal("CRATER_TEST_POSTGRES_DSN must point to an isolated PostgreSQL 16 test database")
+		}
+		dialector = postgres.Open(dsn)
+		timestampType = "timestamptz"
+	}
+	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,10 +69,26 @@ func phaseTestDB(t *testing.T) *gorm.DB {
 		previous := query.Job.WithContext(t.Context()).UnderlyingDB()
 		t.Cleanup(func() { query.SetDefault(previous) })
 	}
+	if db.Name() == phaseTestPostgresDialect {
+		var version int
+		if err := db.Raw("SHOW server_version_num").Scan(&version).Error; err != nil {
+			t.Fatal(err)
+		}
+		if version/10000 != 16 {
+			t.Fatalf("PostgreSQL 16 is required, server_version_num=%d", version)
+		}
+		db = db.Begin()
+		if db.Error != nil {
+			t.Fatal(db.Error)
+		}
+		t.Cleanup(func() { _ = db.Rollback().Error })
+	}
+	// PostgreSQL fixtures shadow application tables on this transaction's pinned
+	// connection. Rollback removes them without changing persistent schemas.
 	for _, statement := range []string{
-		"CREATE TABLE jobs (id integer primary key, status text, pod_group_phase text, user_id integer, account_id integer, job_type text, name text, job_name text, queue text, creation_timestamp datetime, deleted_at datetime)",
-		"CREATE TABLE users (id integer primary key, name text, nickname text, deleted_at datetime)",
-		"CREATE TABLE accounts (id integer primary key, name text, nickname text, deleted_at datetime)",
+		"CREATE TEMP TABLE jobs (id bigint primary key, status text, pod_group_phase text, user_id bigint, account_id bigint, job_type text, name text, job_name text, queue text, nodes jsonb DEFAULT '[]', resources jsonb DEFAULT '{}', creation_timestamp " + timestampType + ", deleted_at " + timestampType + ")",
+		"CREATE TEMP TABLE users (id bigint primary key, name text, nickname text, deleted_at " + timestampType + ")",
+		"CREATE TEMP TABLE accounts (id bigint primary key, name text, nickname text, deleted_at " + timestampType + ")",
 	} {
 		if err := db.Exec(statement).Error; err != nil {
 			t.Fatal(err)
@@ -65,6 +96,75 @@ func phaseTestDB(t *testing.T) *gorm.DB {
 	}
 	query.SetDefault(db)
 	return db
+}
+
+func assertJobPhaseFacet(t *testing.T, items []resputil.FacetItem, want map[string]int64) {
+	t.Helper()
+	got := make(map[string]int64, len(items))
+	for _, item := range items {
+		if _, duplicate := got[item.Value]; duplicate {
+			t.Fatalf("duplicate facet value %q: %+v", item.Value, items)
+		}
+		got[item.Value] = item.Count
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("facet=%v want=%v", got, want)
+	}
+}
+
+func TestJobPhaseFacetsRetainAllOtherFilters(t *testing.T) {
+	db := phaseTestDB(t)
+	now := time.Now().UTC()
+	for _, row := range []struct {
+		id, userID, accountID int
+		status, group, kind   string
+		name, node            string
+		createdAt             time.Time
+		deletedAt             *time.Time
+	}{
+		{1, 1, 1, "Pending", "Pending", "custom", "needle", "node-one", now, nil},
+		{2, 1, 1, "Pending", "Inqueue", "custom", "needle", "node-one", now, nil},
+		{3, 1, 1, "Pending", "Running", "custom", "needle", "node-one", now, nil},
+		{4, 1, 1, "Prequeue", "Pending", "custom", "needle", "node-one", now, nil},
+		{5, 1, 1, "Running", "Running", "custom", "needle", "node-one", now, nil},
+		{6, 1, 1, "Completed", "Running", "custom", "needle", "node-one", now, nil},
+		{7, 1, 1, "Failed", "Running", "custom", "needle", "node-one", now, nil},
+		{8, 2, 1, "Pending", "Inqueue", "custom", "needle", "node-one", now, nil},
+		{9, 1, 2, "Pending", "Inqueue", "custom", "needle", "node-one", now, nil},
+		{10, 1, 1, "Pending", "Inqueue", "jupyter", "needle", "node-one", now, nil},
+		{11, 1, 1, "Pending", "Inqueue", "custom", "haystack", "node-one", now, nil},
+		{12, 1, 1, "Pending", "Inqueue", "custom", "needle", "node-other", now, nil},
+		{13, 1, 1, "Pending", "Inqueue", "custom", "needle", "node-one", now.AddDate(0, 0, -30), nil},
+		{14, 1, 1, "Pending", "Inqueue", "custom", "needle", "node-one", now, &now},
+		{15, 1, 1, "Pending", "Inqueue", "tensorboard", "needle", "node-one", now, nil},
+	} {
+		nodes, err := json.Marshal([]string{row.node})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Exec("INSERT INTO jobs (id,user_id,account_id,status,pod_group_phase,job_type,name,nodes,creation_timestamp,deleted_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+			row.id, row.userID, row.accountID, row.status, row.group, row.kind, row.name, string(nodes), row.createdAt, row.deletedAt).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	days, user, account, node := 7, uint(1), uint(1), "node-one"
+	request := jobListQuery{
+		Page: 1, PageSize: 1, Days: &days, Search: "needle", Node: &node,
+		JobTypes: []string{"custom"}, Statuses: []string{"Pending"}, Phases: []string{"Inqueue"},
+		sorts: []jobSort{{field: "id"}},
+	}
+	scope := jobListScope{UserID: &user, AccountID: &account}
+	rows, total, err := findJobs(t.Context(), scope, &request, 30)
+	if err != nil || total != 1 || len(rows) != 1 || rows[0].ID != 2 {
+		t.Fatalf("rows=%+v total=%d err=%v", rows, total, err)
+	}
+	facets, err := findJobFacets(t.Context(), scope, &request, 30, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertJobPhaseFacet(t, facets["phase"], map[string]int64{"Pending": 1, "Inqueue": 1, "Starting": 1})
+	assertJobPhaseFacet(t, facets["status"], map[string]int64{"Pending": 1})
+	assertJobPhaseFacet(t, facets["job_type"], map[string]int64{"custom": 1, "jupyter": 1})
 }
 
 func phaseFixtures(t *testing.T) []phaseFixture {
@@ -265,6 +365,8 @@ func TestBindJobFilterPhase(t *testing.T) {
 		invalid bool
 	}{
 		{"phase=Pending&phase=Starting", false},
+		{"phase=Pending,Inqueue", false},
+		{"phase=Pending&phase=Inqueue,Starting", false},
 		{"phase=Init", false},
 		{"status=Prequeue&phase=Pending", false},
 		{"status=" + legacyCancelled, false},
@@ -280,6 +382,10 @@ func TestBindJobFilterPhase(t *testing.T) {
 		{"sort=" + strings.Repeat("x", 4096), true},
 		{"search=" + strings.Repeat("x", 129), true},
 		{"phase=", true},
+		{"phase=Pending,", true},
+		{"phase=,Pending", true},
+		{"phase=Pending,,Inqueue", true},
+		{"phase=" + strings.TrimSuffix(strings.Repeat("Pending,", 21), ","), true},
 		{strings.TrimSuffix(strings.Repeat("phase=Pending&", 21), "&"), true},
 	} {
 		t.Run(tc.query, func(t *testing.T) {
@@ -288,6 +394,47 @@ func TestBindJobFilterPhase(t *testing.T) {
 			_, err := bindJobListQuery(ctx, true)
 			if (err != nil) != tc.invalid {
 				t.Fatalf("err=%v invalid=%v", err, tc.invalid)
+			}
+		})
+	}
+}
+
+func TestJobPhaseQueryEncodings(t *testing.T) {
+	db := phaseTestDB(t)
+	if err := db.Exec(`INSERT INTO jobs (id,status,pod_group_phase,user_id,account_id,job_type,name) VALUES
+	 (1,'Pending','Pending',1,1,'custom','pending'),
+	 (2,'Pending','Inqueue',1,1,'custom','queued'),
+	 (3,'Pending','Running',1,1,'custom','starting'),
+	 (4,'Prequeue',NULL,1,1,'custom','legacy')`).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, testCase := range []struct {
+		query string
+		want  []uint
+	}{
+		{"phase=Pending,Inqueue", []uint{1, 2, 4}},
+		{"phase=Pending&phase=Inqueue", []uint{1, 2, 4}},
+		{"status=Pending&phase=Pending,Inqueue", []uint{1, 2}},
+		{"status=Pending&phase=Pending&phase=Inqueue", []uint{1, 2}},
+		{"status=Pending&phase=Pending&phase=Inqueue,Starting", []uint{1, 2, 3}},
+	} {
+		t.Run(testCase.query, func(t *testing.T) {
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			ctx.Request = httptest.NewRequest(http.MethodGet, "/?days=-1&sort=id&"+testCase.query, http.NoBody)
+			request, err := bindJobListQuery(ctx, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rows, total, err := findJobs(t.Context(), jobListScope{}, &request, 30)
+			if err != nil {
+				t.Fatal(err)
+			}
+			ids := make([]uint, len(rows))
+			for index, row := range rows {
+				ids[index] = row.ID
+			}
+			if total != int64(len(testCase.want)) || !reflect.DeepEqual(ids, testCase.want) {
+				t.Fatalf("total=%d ids=%v want=%v", total, ids, testCase.want)
 			}
 		})
 	}

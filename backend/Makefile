@@ -250,4 +250,14 @@ build-storage: fmt lint ## Build storage server binary.
 
 .PHONY: test-job-phases
 test-job-phases: ## Verify UI-phase filters and counts without external services.
-	cd internal/handler/vcjob && go test list.go phase.go phase_test.go -count=1
+	cd internal/handler/vcjob && CRATER_PHASE_TEST_DATABASE=sqlite go test list.go phase.go phase_test.go -count=1
+
+.PHONY: test-job-phases-postgres
+test-job-phases-postgres: ## Execute the shared phase assertions and Overview SQL on isolated PostgreSQL 16.
+	@test -n "$$CRATER_TEST_POSTGRES_DSN" || (echo "Set CRATER_TEST_POSTGRES_DSN to an isolated PostgreSQL 16 test database" >&2; exit 1)
+	cd internal/handler/vcjob && CRATER_PHASE_TEST_DATABASE=postgres go test list.go phase.go phase_test.go phase_postgres_test.go -count=1 -v
+
+.PHONY: test-job-phases-postgres-performance
+test-job-phases-postgres-performance: ## Record real query plans on 10k, 100k and 1m synthetic jobs.
+	@test -n "$$CRATER_TEST_POSTGRES_DSN" || (echo "Set CRATER_TEST_POSTGRES_DSN to an isolated PostgreSQL 16 test database" >&2; exit 1)
+	cd internal/handler/vcjob && CRATER_PHASE_TEST_DATABASE=postgres go test list.go phase.go phase_test.go phase_postgres_performance_test.go -run '^TestJobPhasePostgresPerformance$$' -count=1 -v

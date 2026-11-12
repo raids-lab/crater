@@ -148,6 +148,21 @@ For local debug, put these in `backend/.debug.env` and run `make run-storage`. I
 
 The repo root `.vscode/launch.json` provides a "Backend Debug Server" configuration. Open the project at the root, set breakpoints, press `F5`, and select it. Its `cwd` is `${workspaceFolder}/backend`, `program` points to `backend/cmd/crater/main.go`, and it connects to the cluster via `KUBECONFIG`.
 
+## Job Phase Query Tests
+
+Run `make test-job-phases` for the isolated SQLite phase assertions. They cover the shared display-phase fixtures, legacy status queries, intersecting status/phase filters, facet scopes, stable ordering and pagination.
+
+For the real PostgreSQL dialect, provide `CRATER_TEST_POSTGRES_DSN` through the environment, pointing to a dedicated PostgreSQL 16 test database, then run the following targets.
+
+```bash
+make test-job-phases-postgres
+make test-job-phases-postgres-performance
+```
+
+The first target executes the same query assertions on PostgreSQL and checks Overview owner/GPU facets. Each database fixture uses temporary tables on a pinned transaction, and cleanup rolls back the transaction and closes the connection. The Backend PR Check supplies an ephemeral PostgreSQL 16 service and waits for its health check before running this target. Connection details and credentials for developer environments belong outside Git.
+
+The performance target creates 10,000, 100,000 and 1,000,000 synthetic jobs in temporary tables, with JIT disabled for reproducible comparisons. It records `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` for the existing creation-time and raw-status sorts, display-phase sorts, and scoped/unscoped phase facets. Each `PHASE_PLAN` log entry contains the dataset size, query case and complete plan for comparing execution time and index use. Run it separately from the functional CI checks when measuring performance.
+
 ## Before Submitting Backend Changes
 
 - Run the relevant `make` target, usually `make pre-commit-check` for final checks.

@@ -22,7 +22,7 @@ import { ClockIcon, FlaskConicalIcon, GpuIcon, UsersRoundIcon } from 'lucide-rea
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import JobPhaseLabel, { getJobPhaseLabel, jobPhases } from '@/components/badge/job-phase-badge'
+import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
@@ -34,7 +34,7 @@ import { BillingSummaryCards } from '@/components/custom/billing-summary-cards'
 import { TimeDistance } from '@/components/custom/time-distance'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { getHeader } from '@/components/job/overview/admin-jobs'
-import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
+import { getJobOverviewSummary, getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import { SectionCards } from '@/components/metrics/section-cards'
@@ -276,15 +276,11 @@ function Overview() {
     enabled: billingVisible,
   })
 
-  const jobStatus = (jobSummaryFacetsQuery.data?.facets.status ?? [])
-    .filter(({ value }) => value !== JobPhase.Deleted && value !== JobPhase.Freed)
-    .map(({ value, count }) => ({
-      id: value,
-      label:
-        jobPhases.find((phase) => phase.value === value)?.label ??
-        getJobPhaseLabel(value as JobPhase).label,
-      value: count,
-    }))
+  const {
+    phases: jobStatus,
+    runningCount,
+    waitingCount,
+  } = getJobOverviewSummary(jobSummaryFacetsQuery.data)
 
   const hideUsername = useAtomValue(globalHideUsername)
   const userStatus = useMemo(() => {
@@ -345,14 +341,14 @@ function Overview() {
           items={[
             {
               title: '运行中作业',
-              value: jobStatus.find(({ id }) => id === JobPhase.Running)?.value ?? 0,
+              value: runningCount,
               className: 'text-highlight-blue',
               description: '正在运行的作业数量',
               icon: FlaskConicalIcon,
             },
             {
               title: t('jobs.statuses.waiting.label'),
-              value: jobStatus.find(({ id }) => id === JobPhase.Pending)?.value ?? 0,
+              value: waitingCount,
               className: 'text-highlight-purple',
               description: t('jobs.statuses.waiting.description'),
               icon: ClockIcon,
