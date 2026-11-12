@@ -1722,6 +1722,7 @@ func main() {
 		},
 		userContainerSysAdminMigration(),
 		agentFoundationMigration(),
+		approvalOrderReviewerMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1959,6 +1960,24 @@ func userContainerSysAdminMigration() *gormigrate.Migration {
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return dropColumnIfPresent(tx, "users", &userContainerPermission{}, "ContainerSysAdminEnabled")
+		},
+	}
+}
+
+func approvalOrderReviewerMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202611121600",
+		Migrate: func(tx *gorm.DB) error {
+			// Both the old uint model and the pointer model use a nullable column.
+			// Older databases without the reviewer foreign key may contain zero IDs.
+			return tx.Table("approval_orders").
+				Where("reviewer_id = ?", model.InvalidUserID).
+				Update("reviewer_id", nil).Error
+		},
+		Rollback: func(_ *gorm.DB) error {
+			// Keep NULL: restoring zero IDs would violate the reviewer foreign key.
+			// No schema change is needed when rolling back the Go representation.
+			return nil
 		},
 	}
 }
