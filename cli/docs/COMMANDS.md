@@ -78,8 +78,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 5,
-      "min_supported_backend_api_version": 3
+      "api_version": 7,
+      "min_supported_backend_api_version": 7
     }
   }
   ```
@@ -98,10 +98,10 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **处理逻辑**：
   - 未提供 `--platform` 且没有当前激活身份时，不发起 HTTP 请求，返回 `usage_error` + `ERR_MISSING_REQUIRED_FLAG`，进程退出码为 `2`；提示用户通过 `--platform <URL>` 指定目标平台，并明确该操作无需登录。
   - 调用公开的 `GET /api/cli/compatibility` 一次，并比较 CLI / 后端各自的当前 API 版本与最低支持的对方版本。
-  - 双方均满足最低版本时成功；默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
+  - 双方均满足最低版本时成功。当前 CLI 最低要求后端 API v7，连接 v6 后端时会报告后端版本过旧。默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
   - 后端构建信息仅用于诊断和展示，不参与 API 兼容性判断。兼容性接口仅返回 API 版本字段的早期实现仍可使用；缺失的后端构建字段显示为“未知”，不会因此把响应判定为非法。
   - 明确不兼容时返回 `api_error` + `ERR_API_VERSION_MISMATCH`，进程退出码为 `4`。人类可读错误按“具体情况 / 版本信息 / 使用建议”分段展示：具体指出哪个最低版本条件不满足，列出 CLI 产品版本、CLI / 后端 API 版本和双方最低支持版本，并说明用户仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。
-  - 握手响应明确包含版本字段但值为 `0` 时，将 `0` 视为早于首个正式契约的旧版本并参与比较，而不是泛化为“兼容性信息无效”。例如后端明确报告 `apiVersion: 0` 且 CLI 最低支持后端版本为 `1` 时，按“后端版本过旧”输出上述完整诊断，并在最后的排查手段中建议降级 CLI。字段缺失或负数才视为非法响应。
+  - 握手响应明确报告版本 `0` 时，将它视为早于首个正式契约的旧版本并参与比较。例如后端明确报告 `apiVersion: 0` 时，当前 CLI 会输出“后端版本过旧”的完整诊断。字段缺失或为负数时视为非法响应。
   - 兼容性检查用于定位命令失败的原因。检查通过后，常规排障可排除 API 版本不匹配，根据实际报错检查命令输入、本地配置、认证、网络连接、平台状态或 CLI 自身的缺陷。检查提示不兼容时，结合实际报错判断故障是否由版本差异引起，再决定是否调整版本。
   - 最后的 CLI 版本调整按检测方向决定：CLI API 版本低于后端最低要求时尝试升级 CLI；后端 API 版本低于 CLI 最低要求时尝试降级 CLI；两项限制同时不满足时分别解释升级和降级可解决的约束，并提示向平台管理员确认该部署对应的 CLI 版本。
   - 该接口返回 HTTP 404 时，视为目标后端早于当前 CLI 的兼容性检查命令：返回 `api_error` + `ERR_API_VERSION_MISMATCH`，后端版本显示为未知。排除更常见原因后，最后才建议尝试降级 CLI 或联系平台管理员。原始 `http_status: 404` 与响应 `msg` 保留在错误 context 中。此特殊映射只适用于本命令，不改变其他命令的 404 语义。
@@ -114,15 +114,15 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 5,
-      "min_supported_backend_api_version": 3
+      "api_version": 7,
+      "min_supported_backend_api_version": 7
     },
     "backend": {
       "product_version": "1.1.1",
       "short_commit_sha": "f42b0c2",
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
-      "api_version": 5,
+      "api_version": 7,
       "min_supported_cli_api_version": 3
     }
   }
@@ -560,7 +560,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - 普通模式将远端 stdout、stderr 原样流式写入对应的本地流。Ctrl+C 取消返回 `cancelled`（退出码 3）；TTY 内 Ctrl+C 由远端终端处理。
 - `--json` 仅支持不带 `-t` 的执行；完成后输出一次成功信封，`data.exec` 包含 `namespace`、`pod`、`container`、`stdout`、`stderr`、`exit_code`。捕获文本输出总计最多 16 MiB，超限关闭连接并返回 `system_error`。二进制结果使用普通模式重定向保存。
 - 远端命令非零退出返回 `api_error` / `ERR_REMOTE_COMMAND_FAILED`（CLI 退出码 4），`context` 保留 `exit_code` 和目标；JSON 模式还保留已捕获的 `stdout`、`stderr`。连接中断或缺少最终退出帧均视为失败，不能推断执行成功。
-- 后端接口：`GET /api/v1/vcjobs/{name}/exec`，Bearer Header 鉴权；升级前按普通 API 返回 HTTP 错误。API v7 新增该能力，旧后端上的其它命令仍可使用，exec 的 404 保留正常 API 错误。
+- `job exec` 使用后端 API v7 引入的 `GET /api/v1/vcjobs/{name}/exec`，通过 Bearer Header 鉴权。WebSocket 升级前的 HTTP 失败按普通 API 错误返回。可运行 `crater compatibility` 检查平台版本。
 
 ### `crater job ssh <name> [--connect] [--user USER] [--identity-file FILE]`
 
@@ -951,7 +951,7 @@ This section covers account context and additional resource commands. All comman
   - `bytes`（整数）：服务端完整接收并发布的字节数。
   - `overwrite`（布尔）：本次是否显式启用了覆盖选项。
   - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
-- **兼容性**：安全上传端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 3。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **兼容性**：安全上传端点由 API 契约 2 引入。缺少该端点的 storage service 返回 404，CLI 直接返回该错误。
 - **状态**：[x] Completed
 
 ### `crater file mkdir <remote-path>`
@@ -1010,5 +1010,5 @@ This section covers account context and additional resource commands. All comman
   - 默认模式：展示已删除的规范化远端路径。
   - `--json`：stdout 仅输出成功信封；失败时 stdout 为空。
 - **`--json` 的 `data`**：`remote_path`（字符串）、`recursive`（布尔）。
-- **兼容性**：安全删除端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 3，不回退到旧 `/delete` 端点。
+- **兼容性**：CLI 调用 API 契约 2 引入的安全删除端点，并直接返回该端点的错误。
 - **状态**：[x] Completed

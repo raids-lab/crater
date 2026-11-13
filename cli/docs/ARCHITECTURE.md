@@ -125,7 +125,7 @@ WebSocket 子协议为 `crater.exec.v1`。目标选择通过 `pod`、`container`
 
 后端定期发送 ping 保持空闲会话，写操作有超时。CLI 的 stdin/尺寸同步网络写入失败会停止相应发送协程，接收侧继续读取输出和最终退出帧；本地 stdin 读取失败或用户取消仍关闭会话。断连与取消会关闭 socket、stdin pipe 和尺寸队列，取消 Kubernetes exec；CLI 完成后取消输入读取并恢复终端。JSON 捕获限制在命令层实施，普通模式流式输出。
 
-后端与 CLI 的 `APIVersion` 从 6 增至 7，新增 exec WebSocket 接口。`MinSupportedBackendAPIVersion` 和 `MinSupportedCLIAPIVersion` 均为 3。SSH 使用既有地址接口。旧后端缺少 exec 接口时返回正常的 HTTP 404。
+后端与 CLI 的 `APIVersion` 为 7。`job exec` 依赖该版本引入的 WebSocket 接口，因此 CLI 的 `MinSupportedBackendAPIVersion` 为 7。后端仍提供旧版 CLI 所需的接口，`MinSupportedCLIAPIVersion` 为 3。SSH 使用既有地址接口。`crater compatibility` 是单独执行的诊断命令，其他命令直接调用各自的接口并处理返回的错误。
 
 ## 列表分页
 
