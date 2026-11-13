@@ -21,8 +21,11 @@ import { useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 
+import { CraterAgentPanel } from '@/components/agent/crater-agent-panel'
 import { NavBreadcrumb } from '@/components/layout/app-breadcrumb'
 import { AppSidebar } from '@/components/sidebar/app-sidebar'
+
+import useIsAdmin from '@/hooks/use-admin'
 
 import { atomFixedLayout, globalSettings } from '@/utils/store'
 
@@ -40,6 +43,7 @@ interface AppLayoutProps {
 const AppLayout = ({ groups, rawPath, children }: AppLayoutProps) => {
   const fixedLayout = useAtomValue(atomFixedLayout)
   const scheduler = useAtomValue(globalSettings).scheduler
+  const isAdmin = useIsAdmin()
 
   // 特殊规则，网盘路由切换时，不启用过渡动画
   const motionKey = useMemo(() => {
@@ -89,6 +93,7 @@ const AppLayout = ({ groups, rawPath, children }: AppLayoutProps) => {
           {children}
         </motion.div>
         <WhatsNewDialog />
+        <CraterAgentPanel identity={isAdmin ? 'admin' : 'user'} />
       </SidebarInset>
     </SidebarProvider>
   )

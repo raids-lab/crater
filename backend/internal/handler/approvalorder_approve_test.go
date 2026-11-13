@@ -13,6 +13,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"k8s.io/utils/ptr"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -69,7 +70,7 @@ func TestAutoApprovalRecordsLockAndRollsBackOnInsertFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	if lock := stored.Content.Data().ApprovedLock; lock == nil || lock.DurationMinutes != 120 ||
-		stored.Status != model.ApprovalOrderStatusApproved || stored.ReviewerID != 0 {
+		stored.Status != model.ApprovalOrderStatusApproved || stored.ReviewerID != nil {
 		t.Fatalf("unexpected automatic approval: %+v, lock: %+v", stored, lock)
 	}
 	checkStoredJobLock(t, db, testApprovalJob, initial.Add(2*time.Hour))
@@ -136,7 +137,7 @@ func checkStoredApproval(t *testing.T, db *gorm.DB, id uint, expected time.Time)
 		t.Fatal(err)
 	}
 	content := order.Content.Data()
-	if order.Status != model.ApprovalOrderStatusApproved || order.ReviewerID != 9 ||
+	if order.Status != model.ApprovalOrderStatusApproved || ptr.Deref(order.ReviewerID, 0) != 9 ||
 		content.ApprovalOrderExtensionHours != 8 || content.ApprovalOrderReason != "original reason" ||
 		content.ApprovedLock == nil || !content.ApprovedLock.LockedUntil.Equal(expected) {
 		t.Fatalf("unexpected recorded approval: %+v, content: %+v", order, content)

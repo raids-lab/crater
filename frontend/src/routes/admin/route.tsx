@@ -4,6 +4,7 @@ import { Outlet, createFileRoute, redirect, useLocation } from '@tanstack/react-
 import {
   AlarmClockIcon,
   BarChartBigIcon,
+  BotIcon,
   BoxIcon,
   ClipboardCheckIcon,
   DatabaseIcon,
@@ -181,6 +182,16 @@ const useAdminSidebarGroups = (): NavGroupProps[] => {
               },
             ]
           : []),
+      ],
+    },
+    {
+      title: t('navigation.intelligentOperations'),
+      items: [
+        {
+          title: t('navigation.agentConversations'),
+          url: '/admin/agent',
+          icon: BotIcon,
+        },
       ],
     },
     {

@@ -49,8 +49,8 @@ type ApprovalOrder struct {
 	Content     datatypes.JSONType[ApprovalOrderContent] `gorm:"comment:审批订单内容"`
 	ReviewNotes string                                   `gorm:"type:varchar(512);comment:审批备注"`
 
-	CreatorID  uint `gorm:"comment:创建者ID"`
-	Creator    User `gorm:"foreignKey:CreatorID"`
-	ReviewerID uint `gorm:"comment:审批者ID"`
-	Reviewer   User `gorm:"foreignKey:ReviewerID"`
+	CreatorID  uint  `gorm:"comment:创建者ID"`
+	Creator    User  `gorm:"foreignKey:CreatorID"`
+	ReviewerID *uint `gorm:"comment:审批者ID"`
+	Reviewer   User  `gorm:"foreignKey:ReviewerID"`
 }
