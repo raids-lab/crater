@@ -462,19 +462,10 @@ func marshalYAMLWithIndent(v any, indent int) ([]byte, error) {
 
 func getJob(c context.Context, name string, token *util.JWTMessage) (*model.Job, error) {
 	j := query.Job
-	q := j.WithContext(c).
+	return vcjobservice.VisibleJobByName(c, name, *token).
 		Preload(j.Account).
 		Preload(j.User).
-		Where(j.JobName.Eq(name))
-
-	if token.RolePlatform == model.RoleAdmin {
-		return q.First()
-	} else {
-		return q.
-			Where(j.AccountID.Eq(token.AccountID)).
-			Where(j.UserID.Eq(token.UserID)).
-			First()
-	}
+		First()
 }
 
 func getPodNameAndLabelFromJob(vcjob *batch.Job) (podName string, podLabels map[string]string) {

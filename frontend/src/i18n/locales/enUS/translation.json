@@ -1,4 +1,5 @@
 {
+  "ApprovalOrderTable.actions.approveAndLock": "Approve and lock",
   "ApprovalOrderTable.actions.menuLabel": "More actions",
   "ApprovalOrderTable.actions.menuTrigger": "Open actions menu",
   "ApprovalOrderTable.actions.viewDetails": "View details",
@@ -14,6 +15,11 @@
   "ApprovalOrderTable.column.status": "Status",
   "ApprovalOrderTable.column.type": "Type",
   "ApprovalOrderTable.column.typeId": "Type ID",
+  "ApprovalOrderTable.detail.approvedLockDuration": "Approved lock duration",
+  "ApprovalOrderTable.detail.approvedLockPermanent": "Permanent",
+  "ApprovalOrderTable.detail.durationHours": "{{hours}} h",
+  "ApprovalOrderTable.detail.durationHoursMinutes": "{{hours}} h {{minutes}} min",
+  "ApprovalOrderTable.detail.durationMinutes": "{{minutes}} min",
   "ApprovalOrderTable.info.description": "View and manage my approval orders",
   "ApprovalOrderTable.info.title": "Approval Orders",
   "ApprovalOrderTable.toast.approveError": "Approval failed, please try again",

@@ -1,4 +1,5 @@
 {
+  "ApprovalOrderTable.actions.approveAndLock": "승인 및 잠금",
   "ApprovalOrderTable.actions.menuLabel": "더 많은 작업",
   "ApprovalOrderTable.actions.menuTrigger": "작업 메뉴 열기",
   "ApprovalOrderTable.actions.viewDetails": "자세히 보기",
@@ -14,6 +15,11 @@
   "ApprovalOrderTable.column.status": "상태",
   "ApprovalOrderTable.column.type": "유형",
   "ApprovalOrderTable.column.typeId": "유형 ID",
+  "ApprovalOrderTable.detail.approvedLockDuration": "승인된 잠금 기간",
+  "ApprovalOrderTable.detail.approvedLockPermanent": "영구 잠금",
+  "ApprovalOrderTable.detail.durationHours": "{{hours}}시간",
+  "ApprovalOrderTable.detail.durationHoursMinutes": "{{hours}}시간 {{minutes}}분",
+  "ApprovalOrderTable.detail.durationMinutes": "{{minutes}}분",
   "ApprovalOrderTable.info.description": "나와 관련된 승인 주문을 조회 및 관리합니다",
   "ApprovalOrderTable.info.title": "승인 주문",
   "ApprovalOrderTable.toast.approveError": "승인 실패, 다시 시도해주세요",

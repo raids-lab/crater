@@ -1,13 +1,224 @@
 package order_test
 
 import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/raids-lab/crater/cli/internal/snaptest"
 )
 
 const goldenStemOrder = "order"
+
+func TestApproveOrderSendsOneAtomicWrite(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		lang     string
+		args     []string
+		lock     *api.JobOrderLockRequest
+		approved api.ApprovedJobLock
+		want     string
+	}{
+		{
+			name:     "default requested duration",
+			lang:     "en",
+			args:     []string{"--json"},
+			approved: api.ApprovedJobLock{DurationMinutes: 180},
+			want:     `"durationMinutes": 180`,
+		},
+		{
+			name:     "whole hours",
+			lang:     "en",
+			approved: api.ApprovedJobLock{DurationMinutes: 180},
+			want:     "Approved lock: 3 h\n",
+		},
+		{
+			name:     "hours and remaining minutes",
+			lang:     "zh-CN",
+			args:     []string{"--lock", "--hours", "3", "--minutes", "30"},
+			lock:     &api.JobOrderLockRequest{Hours: 3, Minutes: 30},
+			approved: api.ApprovedJobLock{DurationMinutes: 210},
+			want:     "实际批准时长: 3 小时 30 分钟\n",
+		},
+		{
+			name:     "minutes only",
+			lang:     "zh-CN",
+			args:     []string{"--lock", "--minutes", "30"},
+			lock:     &api.JobOrderLockRequest{Minutes: 30},
+			approved: api.ApprovedJobLock{DurationMinutes: 30},
+			want:     "实际批准时长: 30 分钟\n",
+		},
+		{
+			name:     "permanent",
+			lang:     "zh-CN",
+			args:     []string{"--lock", "--permanent"},
+			lock:     &api.JobOrderLockRequest{IsPermanent: true},
+			approved: api.ApprovedJobLock{IsPermanent: true},
+			want:     "实际批准时长: 永久锁定\n",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			writes := make(chan api.ApproveJobOrderRequest, 2)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == http.MethodGet && r.URL.Path == "/api/v1/admin/approvalorder/17":
+					_, _ = io.WriteString(w, `{"code":0,"data":{"id":17,"name":"job-a","type":"job","status":"Pending"}}`)
+				case r.Method == http.MethodPut && r.URL.Path == "/api/v1/admin/approvalorder/17/approve-and-lock":
+					var req api.ApproveJobOrderRequest
+					if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+						t.Error(err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+					writes <- req
+					result := api.ApproveJobOrderResult{Message: "approved", LockMessage: "locked", ApprovedLock: tt.approved}
+					if err := json.NewEncoder(w).Encode(api.Response[api.ApproveJobOrderResult]{Data: result}); err != nil {
+						t.Error(err)
+					}
+				default:
+					t.Errorf("unexpected separate request: %s %s", r.Method, r.URL)
+					http.NotFound(w, r)
+				}
+			}))
+			t.Cleanup(server.Close)
+			env := append(snaptest.EnvMinimal(t.TempDir(), tt.lang),
+				"CRATER_TEST_SANDBOX_HTTP=passthrough", "CRATER_TEST_SANDBOX_PLATFORM_URL="+server.URL)
+			args := append([]string{"admin", "order", "approve", "17", "--review-notes", "confirmed"}, tt.args...)
+			result, err := snaptest.Run(snaptest.CraterExecutable(t), env, args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.ExitCode != 0 || !strings.Contains(result.Stdout, tt.want) {
+				t.Fatalf("approve result = %+v, want success with %q", result, tt.want)
+			}
+			if len(writes) != 1 {
+				t.Fatalf("approval writes = %d, want 1", len(writes))
+			}
+			got := <-writes
+			if got.ReviewNotes != "confirmed" || (got.Lock == nil) != (tt.lock == nil) ||
+				(got.Lock != nil && *got.Lock != *tt.lock) {
+				t.Fatalf("request = %+v, want notes and lock %+v", got, tt.lock)
+			}
+		})
+	}
+}
+
+func TestOrderReadWithResourceDetails(t *testing.T) {
+	const approvedJobOrder = `{"id":12,"name":"job-a","type":"job","status":"Approved","createdAt":"2026-11-08T01:00:00Z","reviewedAt":"2026-11-08T01:10:00Z","content":{"approvalorderExtensionHours":6,"approvedLock":{"durationMinutes":210,"lockedUntil":"2026-11-08T04:40:00Z"}}}`
+	const personalOrder = `{
+		"id":13,"name":"my-job","type":"job","status":"Approved","createdAt":"2026-11-08T01:00:00Z",
+		"content":{"approvalorderExtensionHours":6,"approvalorderReason":"need more time","approvedLock":{"durationMinutes":210}},
+		"creator":{"username":"submitter"},
+		"reviewer":{"username":"reviewer","nickname":"Review Admin"},"reviewNotes":"confirmed",
+		"extraField":"preserve in JSON"
+	}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/approvalorder/13":
+			_, _ = io.WriteString(w, `{"code":0,"data":`+personalOrder+`}`)
+		case "/api/v1/approvalorder/18":
+			_, _ = io.WriteString(w, `{"code":0,"data":{"id":18,"name":"deleted-job","type":"job","status":"Approved"}}`)
+		case "/api/v1/approvalorder":
+			_, _ = io.WriteString(w, `{"code":0,"data":[
+				`+personalOrder+`,
+				{"id":9,"name":"my-job","type":"job","status":"Approved","createdAt":"2026-11-07T01:00:00Z","content":{"approvalorderExtensionHours":8,"approvedLock":{"durationMinutes":180}}},
+				{"id":8,"name":"my-job","type":"dataset","status":"Approved","createdAt":"2026-11-06T01:00:00Z"},
+				{"id":18,"name":"deleted-job","type":"job","status":"Approved"}
+			]}`)
+		case "/api/v1/approvalorder/17":
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = io.WriteString(w, `{"code":40301,"msg":"permission denied to view this approval order"}`)
+		case "/api/v1/admin/approvalorder/17":
+			_, _ = io.WriteString(w, `{"code":0,"data":{"id":17,"name":"job-a","type":"job","status":"Pending","content":{"approvalorderTypeID":1,"approvalorderExtensionHours":8}}}`)
+		case "/api/v1/admin/approvalorder/12":
+			_, _ = io.WriteString(w, `{"code":0,"data":`+approvedJobOrder+`}`)
+		case "/api/v1/admin/approvalorder/18":
+			_, _ = io.WriteString(w, `{"code":0,"data":{"id":18,"name":"deleted-job","type":"job","status":"Approved"}}`)
+		case "/api/v1/admin/approvalorder/19":
+			_, _ = io.WriteString(w, `{"code":0,"data":{"id":19,"name":"my-dataset","type":"dataset","status":"Pending"}}`)
+		case "/api/v1/vcjobs/job-a/detail":
+			_, _ = io.WriteString(w, `{"code":0,"data":{"jobName":"job-a","username":"batch-owner","status":"Running","queue":"batch","resources":{"cpu":"8","memory":"16Gi","nvidia.com/a100":"2"}}}`)
+		case "/api/v1/vcjobs/my-job/detail":
+			_, _ = io.WriteString(w, `{"code":0,"data":{"jobName":"my-job","username":"job-owner","status":"Running","queue":"batch","resources":{"cpu":"250m","memory":"256Mi"}}}`)
+		case "/api/v1/vcjobs/deleted-job/detail":
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = io.WriteString(w, `{"code":40401,"msg":"job not found"}`)
+		case "/api/v1/approvalorder/name/job-a":
+			if r.URL.Query().Get("type") != "job" {
+				t.Errorf("job history query did not specify type=job: %s", r.URL)
+			}
+			_, _ = io.WriteString(w, `{"code":0,"data":[
+				{"id":17,"name":"job-a","type":"job","status":"Pending","createdAt":"2026-11-09T05:00:00Z","content":{"approvalorderExtensionHours":8}},
+				`+approvedJobOrder+`,
+				{"id":2,"name":"job-a","type":"dataset","status":"Approved","createdAt":"2026-11-07T01:00:00Z"}
+			]}`)
+		case "/api/v1/approvalorder/name/deleted-job":
+			_, _ = io.WriteString(w, `{"code":0,"data":[]}`)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(server.Close)
+	env := append(snaptest.EnvMinimal(t.TempDir(), "en"),
+		"CRATER_TEST_SANDBOX_HTTP=passthrough", "CRATER_TEST_SANDBOX_PLATFORM_URL="+server.URL)
+	bin := snaptest.CraterExecutable(t)
+	for _, tt := range []struct {
+		name   string
+		args   []string
+		failed bool
+		want   []string
+	}{
+		{"personal order detail is readable", []string{"order", "get", "13"}, false,
+			[]string{"ID: 13\n", "NAME: my-job\n", "STATUS: Approved\n", "Submitted by: submitter\n", "approval reason: need more time\n",
+				"Requested extension (hours): 6\n", "Approved lock: 3 h 30 min\n", "Reviewer: reviewer\n", "Review notes: confirmed\n",
+				"Job owner: job-owner\n", "Requested job resources: cpu=250m,memory=256Mi\n", "request #2, approved total: 2"}},
+		{"personal history survives unavailable job details", []string{"order", "get", "18"}, false,
+			[]string{"ID: 18\n", "Job resources unavailable", "request #1, approved total: 1"}},
+		{"personal JSON preserves the API fields", []string{"order", "get", "13", "--json"}, false,
+			[]string{`"order": {`, `"id": 13`, `"durationMinutes": 210`, `"nickname": "Review Admin"`, `"extraField": "preserve in JSON"`}},
+		{"personal text includes the administrator hint", []string{"order", "get", "17"}, true,
+			[]string{"HTTP 403", "To view this order as an administrator, run crater admin order get 17."}},
+		{"administrator hint preserves forbidden code", []string{"order", "get", "17", "--json"}, true,
+			[]string{`"code": "ERR_FORBIDDEN_403"`, `"suggested_command": "crater admin order get 17"`}},
+		{"readable job resources", []string{"admin", "order", "get", "17"}, false,
+			[]string{"Pending", "Job owner: batch-owner\n", "Job status: Running", "Requested job resources:", "16Gi", "nvidia.com/a100", "request #2", "3 h 30 min", "10m0s"}},
+		{"approved job order detail", []string{"admin", "order", "get", "12"}, false,
+			[]string{"Approved lock: 3 h 30 min\n"}},
+		{"structured job resources", []string{"admin", "order", "get", "17", "--json"}, false,
+			[]string{`"order": {`, `"job": {`, `"nvidia.com/a100": "2"`, `"currentAttempt": 2`, `"requestedHours": 6`, `"durationMinutes": 210`, `"reviewSeconds": 600`}},
+		{"missing job preserves the order", []string{"admin", "order", "get", "18", "--json"}, false,
+			[]string{`"id": 18`, `"job_error": {`, `"code": "ERR_NOT_FOUND_404"`, `"history_error":`}},
+		{"dataset order skips the job lookup", []string{"admin", "order", "get", "19", "--json"}, false,
+			[]string{`"id": 19`, `"type": "dataset"`}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := snaptest.Run(bin, env, tt.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (result.ExitCode != 0) != tt.failed {
+				t.Fatalf("exit code = %d, stderr = %s", result.ExitCode, result.Stderr)
+			}
+			got := result.Stdout
+			if tt.failed {
+				got = result.Stderr
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(got, want) {
+					t.Errorf("output is missing %q:\n%s", want, got)
+				}
+			}
+		})
+	}
+}
 
 func TestOrderSnapshotsEN(t *testing.T) {
 	runOrderSnapshots(t, "en")

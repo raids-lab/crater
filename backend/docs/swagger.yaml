@@ -43,6 +43,8 @@ definitions:
         type: string
       approvalorderTypeID:
         type: integer
+      approvedLock:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock'
     type: object
   github_com_raids-lab_crater_dao_model.ApprovalOrderStatus:
     enum:
@@ -80,6 +82,15 @@ definitions:
     x-enum-varnames:
     - ApprovalOrderTypeDataset
     - ApprovalOrderTypeJob
+  github_com_raids-lab_crater_dao_model.ApprovedJobLock:
+    properties:
+      durationMinutes:
+        type: integer
+      isPermanent:
+        type: boolean
+      lockedUntil:
+        type: string
+    type: object
   github_com_raids-lab_crater_dao_model.BuildSource:
     enum:
     - Dockerfile
@@ -834,6 +845,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.ApproveJobOrderResp'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp:
     properties:
       code:
@@ -1301,6 +1322,17 @@ definitions:
     - _
     - IngressType
     - NodePortType
+  github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration:
+    properties:
+      days:
+        type: integer
+      hours:
+        type: integer
+      isPermanent:
+        type: boolean
+      minutes:
+        type: integer
+    type: object
   github_com_raids-lab_crater_internal_util.VolumeMount:
     properties:
       datasetID:
@@ -1627,6 +1659,8 @@ definitions:
         type: string
       reviewNotes:
         type: string
+      reviewedAt:
+        type: string
       reviewer:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
       reviewerID:
@@ -1656,6 +1690,22 @@ definitions:
     required:
     - name
     - type
+    type: object
+  internal_handler.ApproveJobOrderReq:
+    properties:
+      lock:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration'
+      reviewNotes:
+        type: string
+    type: object
+  internal_handler.ApproveJobOrderResp:
+    properties:
+      approvedLock:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock'
+      lockMessage:
+        type: string
+      message:
+        type: string
     type: object
   internal_handler.AuthMethod:
     enum:
@@ -4337,11 +4387,60 @@ paths:
       summary: 管理员获取审批工单详情
       tags:
       - approvalorder
+  /v1/admin/approvalorder/{id}/approve-and-lock:
+    put:
+      consumes:
+      - application/json
+      description: 在同一事务中锁定运行中的作业、批准工单并记录实际批准时长，省略锁定参数时使用工单申请时长
+      parameters:
+      - description: 工单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 锁定时长及审核备注
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ApproveJobOrderReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 批准作业工单并锁定作业
+      tags:
+      - approvalorder
   /v1/admin/approvalorder/{id}/review:
     put:
       consumes:
       - application/json
-      description: 管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容
+      description: 审批数据集工单或拒绝、取消工单。批准作业工单使用 approve-and-lock
       parameters:
       - description: 工单ID
         in: path
@@ -7095,12 +7194,19 @@ paths:
     get:
       consumes:
       - application/json
-      description: 通过名称获取所有同名审批工单（无需身份验证）
+      description: 按名称查询当前用户可访问的作业或数据集的审批工单
       parameters:
       - description: 工单名称
         in: path
         name: name
         required: true
+        type: string
+      - description: 关联资源类型
+        enum:
+        - job
+        - dataset
+        in: query
+        name: type
         type: string
       produces:
       - application/json
@@ -7111,10 +7217,6 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp'
         "400":
           description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "404":
-          description: 工单不存在
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":

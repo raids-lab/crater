@@ -18,7 +18,6 @@ import (
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
-	"github.com/raids-lab/crater/pkg/utils"
 )
 
 const autoApprovalReason = "without review, approved by system"
@@ -53,9 +52,10 @@ func (mgr *ApprovalOrderMgr) RegisterProtected(g *gin.RouterGroup) {
 
 func (mgr *ApprovalOrderMgr) RegisterAdmin(g *gin.RouterGroup) {
 	// 管理员接口
-	g.GET("", mgr.ListAllApprovalOrders)                // 获取所有审批工单
-	g.GET("/:id", mgr.GetApprovalOrderAdmin)            // 管理员通过ID获取审批工单详情
-	g.PUT("/:id/review", mgr.ReviewApprovalOrderAdmin)  // 管理员审核审批工单
+	g.GET("", mgr.ListAllApprovalOrders)               // 获取所有审批工单
+	g.GET("/:id", mgr.GetApprovalOrderAdmin)           // 管理员通过ID获取审批工单详情
+	g.PUT("/:id/review", mgr.ReviewApprovalOrderAdmin) // 管理员审核审批工单
+	g.PUT("/:id/approve-and-lock", mgr.ApproveJobOrderAdmin)
 	g.PUT("/check", mgr.UpdateApprovalOrderByJobStatus) // 管理员检查待审批的作业锁定工单有效性
 }
 
@@ -147,8 +147,8 @@ func (mgr *ApprovalOrderMgr) cancelApprovalOrder(c *gin.Context, orderID uint, r
 	ao := query.ApprovalOrder
 
 	// 更新工单状态为取消，并添加备注说明原因
-	_, err := ao.WithContext(c).
-		Where(ao.ID.Eq(orderID)).
+	info, err := ao.WithContext(c).
+		Where(ao.ID.Eq(orderID), ao.Status.Eq(string(model.ApprovalOrderStatusPending))).
 		Updates(map[string]any{
 			"status":       string(model.ApprovalOrderStatusCancelled),
 			"review_notes": reason,
@@ -156,6 +156,9 @@ func (mgr *ApprovalOrderMgr) cancelApprovalOrder(c *gin.Context, orderID uint, r
 
 	if err != nil {
 		return fmt.Errorf("failed to update approval order status: %w", err)
+	}
+	if info.RowsAffected == 0 {
+		return bizerr.Conflict.ResourceStatusError.New("only pending approval orders can be canceled")
 	}
 
 	return nil
@@ -186,6 +189,7 @@ type ApprovalOrderResp struct {
 	Content     model.ApprovalOrderContent `json:"content"`
 	ReviewNotes string                     `json:"reviewNotes"`
 	CreatedAt   time.Time                  `json:"createdAt"`
+	ReviewedAt  *time.Time                 `json:"reviewedAt,omitempty"`
 
 	CreatorID  uint           `json:"creatorID"`
 	Creator    model.UserInfo `json:"creator"`
@@ -251,32 +255,8 @@ func unmarshalApprovalOrderContent(content datatypes.JSONType[model.ApprovalOrde
 // 新增辅助函数：将 ApprovalOrder 数组转换为 ApprovalOrderResp 数组
 func convertToApprovalOrderResps(orders []*model.ApprovalOrder) []ApprovalOrderResp {
 	var result []ApprovalOrderResp
-	for i := range orders {
-		resp := ApprovalOrderResp{
-			ID:          orders[i].ID,
-			Name:        orders[i].Name,
-			Type:        orders[i].Type,
-			Status:      orders[i].Status,
-			Content:     unmarshalApprovalOrderContent(orders[i].Content),
-			ReviewNotes: orders[i].ReviewNotes,
-			CreatedAt:   orders[i].CreatedAt,
-			CreatorID:   orders[i].CreatorID,
-			Creator: model.UserInfo{
-				Username: orders[i].Creator.Name,
-				Nickname: orders[i].Creator.Nickname,
-			},
-			ReviewerID: ptr.Deref(orders[i].ReviewerID, 0),
-		}
-
-		// 处理审批人信息
-		if orders[i].ReviewerID != nil {
-			resp.Reviewer = model.UserInfo{
-				Username: orders[i].Reviewer.Name,
-				Nickname: orders[i].Reviewer.Nickname,
-			}
-		}
-
-		result = append(result, resp)
+	for _, order := range orders {
+		result = append(result, convertToApprovalOrderResp(order))
 	}
 	return result
 }
@@ -365,47 +345,33 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		}
 	}
 
-	// 2. 检查是否满足自动审批条件
-	autoApproved := false
-
 	canAutoApprove, err := mgr.checkAutoApprovalEligibility(c, token.UserID, &req)
 	if err != nil {
-		klog.Errorf("failed to check auto approval eligibility, userID: %d, err: %v", token.UserID, err)
-		resputil.Error(c, "failed to check recent orders", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to check recent orders"))
 		return
-	}
-
-	if canAutoApprove {
-		// 尝试锁定作业
-		if err := mgr.lockJobForApproval(c, req.Name, req.ExtensionHours); err != nil {
-			klog.Errorf("failed to lock job for auto approval, jobName: %s, err: %v", req.Name, err)
-			// 锁定失败时不进行自动审批，但继续创建工单
-		} else {
-			autoApproved = true
-		}
-	}
-
-	// 3. 创建审批工单
-	orderStatus := model.ApprovalOrderStatusPending
-	orderReason := ""
-
-	// 如果满足自动审批条件，则将工单状态设置为已批准,并添加备注
-	if autoApproved {
-		orderStatus = model.ApprovalOrderStatusApproved
-		orderReason = autoApprovalReason
 	}
 
 	order := model.ApprovalOrder{
 		Name:   req.Name,
 		Type:   req.Type,
-		Status: orderStatus,
+		Status: model.ApprovalOrderStatusPending,
 		Content: datatypes.NewJSONType(model.ApprovalOrderContent{
 			ApprovalOrderTypeID:         req.TypeID,
 			ApprovalOrderExtensionHours: req.ExtensionHours,
 			ApprovalOrderReason:         req.Reason,
 		}),
-		CreatorID:   token.UserID,
-		ReviewNotes: orderReason,
+		CreatorID: token.UserID,
+	}
+	if canAutoApprove {
+		approved, err := createAutoApprovedJobOrder(c, &order)
+		if err != nil {
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to create auto-approved order"))
+			return
+		}
+		if approved {
+			resputil.Success(c, "create approvalorder successfully and auto-approved with job locked")
+			return
+		}
 	}
 
 	if err := query.ApprovalOrder.WithContext(c).Create(&order); err != nil {
@@ -414,12 +380,7 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 		return
 	}
 
-	message := "create approvalorder successfully"
-	if autoApproved {
-		message = "create approvalorder successfully and auto-approved with job locked"
-	}
-
-	resputil.Success(c, message)
+	resputil.Success(c, "create approvalorder successfully")
 }
 
 type UpdateApprovalOrder struct {
@@ -436,6 +397,20 @@ type UpdateApprovalOrder struct {
 type ReviewApprovalOrderReq struct {
 	Status      model.ApprovalOrderStatus `json:"status" binding:"required"`
 	ReviewNotes string                    `json:"reviewNotes"`
+}
+
+func (req ReviewApprovalOrderReq) validate() error {
+	switch req.Status {
+	case model.ApprovalOrderStatusApproved, model.ApprovalOrderStatusCancelled:
+		return nil
+	case model.ApprovalOrderStatusRejected:
+		if req.ReviewNotes == "" {
+			return bizerr.BadRequest.MissingParameter.New("review notes are required when rejecting an order")
+		}
+		return nil
+	default:
+		return bizerr.BadRequest.ParameterError.New("invalid review status")
+	}
 }
 
 type ApprovalOrderIDReq struct {
@@ -516,10 +491,16 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 		}),
 	}
 
-	info, err := ao.WithContext(c).Where(ao.ID.Eq(orderID.ID)).Updates(&order)
+	info, err := ao.WithContext(c).
+		Where(ao.ID.Eq(orderID.ID), ao.Status.Eq(string(model.ApprovalOrderStatusPending))).
+		Updates(&order)
 	if err != nil {
 		klog.Errorf("failed to update approval order, userID: %d, err: %v", token.UserID, err)
 		resputil.Error(c, "failed to update approval order", resputil.NotSpecified)
+		return
+	}
+	if info.RowsAffected == 0 {
+		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("only pending approval orders can be updated"))
 		return
 	}
 	klog.Infof("updated approval order successfully, affected rows: %d", info.RowsAffected)
@@ -529,7 +510,7 @@ func (mgr *ApprovalOrderMgr) UpdateApprovalOrder(c *gin.Context) {
 // swagger
 //
 //	@Summary		管理员审核审批工单
-//	@Description	管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容
+//	@Description	审批数据集工单或拒绝、取消工单。批准作业工单使用 approve-and-lock
 //	@Tags			approvalorder
 //	@Accept			json
 //	@Produce		json
@@ -565,14 +546,8 @@ func (mgr *ApprovalOrderMgr) ReviewApprovalOrderAdmin(c *gin.Context) {
 		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied: only admins can review orders"))
 		return
 	}
-	if req.Status != model.ApprovalOrderStatusApproved &&
-		req.Status != model.ApprovalOrderStatusRejected &&
-		req.Status != model.ApprovalOrderStatusCancelled {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("invalid review status"))
-		return
-	}
-	if req.Status == model.ApprovalOrderStatusRejected && req.ReviewNotes == "" {
-		resputil.HandleError(c, bizerr.BadRequest.MissingParameter.New("review notes are required when rejecting an order"))
+	if err := req.validate(); err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -590,8 +565,14 @@ func (mgr *ApprovalOrderMgr) ReviewApprovalOrderAdmin(c *gin.Context) {
 		return
 	}
 
+	if existingOrder.Type == model.ApprovalOrderTypeJob && req.Status == model.ApprovalOrderStatusApproved {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("job approvals require approve-and-lock"))
+		return
+	}
+
 	info, err := ao.WithContext(c).
-		Where(ao.ID.Eq(orderID.ID)).
+		Where(ao.ID.Eq(orderID.ID),
+			ao.Status.Eq(string(model.ApprovalOrderStatusPending)), ao.Type.Eq(string(existingOrder.Type))).
 		Updates(map[string]any{
 			"status":       req.Status,
 			"reviewer_id":  token.UserID,
@@ -604,6 +585,10 @@ func (mgr *ApprovalOrderMgr) ReviewApprovalOrderAdmin(c *gin.Context) {
 		return
 	}
 
+	if info.RowsAffected == 0 {
+		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("approval order changed before it could be reviewed"))
+		return
+	}
 	klog.Infof("reviewed approval order successfully, reviewerID: %d, orderID: %d, affected rows: %d",
 		token.UserID, orderID.ID, info.RowsAffected)
 	resputil.Success(c, "review approvalorder successfully")
@@ -665,7 +650,9 @@ func (mgr *ApprovalOrderMgr) DeleteApprovalOrder(c *gin.Context) {
 	}
 
 	// 6. 执行删除操作
-	result, err := ao.WithContext(c).Where(ao.ID.Eq(orderID.ID)).Delete(&model.ApprovalOrder{})
+	result, err := ao.WithContext(c).
+		Where(ao.ID.Eq(orderID.ID), ao.Status.Eq(string(model.ApprovalOrderStatusPending))).
+		Delete()
 	if err != nil {
 		klog.Errorf("failed to delete approval order, userID: %d, orderID: %d, err: %v", token.UserID, orderID, err)
 		resputil.Error(c, "failed to delete approval order", resputil.NotSpecified)
@@ -675,7 +662,7 @@ func (mgr *ApprovalOrderMgr) DeleteApprovalOrder(c *gin.Context) {
 	// 7. 检查是否真的删除了记录
 	if result.RowsAffected == 0 {
 		klog.Warningf("delete operation affected no records, userID: %d, orderID: %d", token.UserID, orderID)
-		resputil.Error(c, "delete failed, record not found", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("only pending approval orders can be deleted"))
 		return
 	}
 
@@ -731,64 +718,12 @@ func (mgr *ApprovalOrderMgr) GetApprovalOrder(c *gin.Context) {
 	if order.CreatorID != token.UserID {
 		klog.Warningf("user attempted to view an order not created by themselves, userID: %d, orderID: %d, creatorID: %d",
 			token.UserID, orderID.ID, order.CreatorID)
-		resputil.Error(c, "permission denied to view this approval order", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Forbidden.PermissionDenied.New("permission denied to view this approval order"))
 		return
 	}
 
 	// 5. 转换为响应格式
 	result := convertToApprovalOrderResp(order)
-	resputil.Success(c, result)
-}
-
-type ApprovalOrderNameReq struct {
-	Name string `uri:"name" binding:"required"` // 工单名称
-}
-
-// swagger
-//
-//	@Summary		通过名称获取审批工单
-//	@Description	通过名称获取所有同名审批工单（无需身份验证）
-//	@Tags			approvalorder
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			name path string true "工单名称"
-//	@Success		200	{object}	resputil.Response[[]ApprovalOrderResp]	"成功返回工单列表"
-//	@Failure		400	{object}	resputil.Response[any]	"请求参数错误"
-//	@Failure		404	{object}	resputil.Response[any]	"工单不存在"
-//	@Failure		500	{object}	resputil.Response[any]	"服务器错误"
-//	@Router			/v1/approvalorder/name/{name} [get]
-func (mgr *ApprovalOrderMgr) GetApprovalOrderByName(c *gin.Context) {
-	// 1. 获取工单名称
-	var nameReq ApprovalOrderNameReq
-	if err := c.ShouldBindUri(&nameReq); err != nil {
-		klog.Errorf("failed to bind request parameters: %v", err)
-		resputil.Error(c, "invalid request parameters", resputil.NotSpecified)
-		return
-	}
-
-	// 2. 查询指定名称的所有工单（不验证身份）
-	ao := query.ApprovalOrder
-	orders, err := ao.WithContext(c).
-		Preload(ao.Creator).  // 预加载创建人信息
-		Preload(ao.Reviewer). // 预加载审批人信息（可能为空）
-		Where(ao.Name.Eq(nameReq.Name)).
-		Order(ao.CreatedAt.Desc()). // 按创建时间倒序排列，最新的在前
-		Find()
-
-	if err != nil {
-		klog.Errorf("failed to query approval orders by name, name: %s, err: %v", nameReq.Name, err)
-		resputil.Error(c, "failed to get approval orders", resputil.NotSpecified)
-		return
-	}
-
-	// 3. 转换为响应格式（即使为空也返回空列表）
-	result := convertToApprovalOrderResps(orders)
-	if len(orders) == 0 {
-		klog.Infof("no approval orders found for name: %s", nameReq.Name)
-	} else {
-		klog.Infof("found %d approval orders for name: %s", len(result), nameReq.Name)
-	}
 	resputil.Success(c, result)
 }
 
@@ -866,6 +801,11 @@ func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 		ReviewerID: ptr.Deref(order.ReviewerID, 0),
 	}
 
+	if (order.Status == model.ApprovalOrderStatusApproved || order.Status == model.ApprovalOrderStatusRejected) &&
+		!order.UpdatedAt.IsZero() && !order.UpdatedAt.Before(order.CreatedAt) {
+		resp.ReviewedAt = &order.UpdatedAt
+	}
+
 	// 处理审批人信息
 	if order.ReviewerID != nil {
 		resp.Reviewer = model.UserInfo{
@@ -880,7 +820,7 @@ func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 // checkAutoApprovalEligibility 检查是否满足自动审批条件
 func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID uint, req *ApprovalOrderreq) (bool, error) {
 	// 只有作业类型且延长时间小于12小时才可能自动审批
-	if req.Type != model.ApprovalOrderTypeJob || req.ExtensionHours >= 12 {
+	if req.Type != model.ApprovalOrderTypeJob || req.ExtensionHours == 0 || req.ExtensionHours >= 12 {
 		return false, nil
 	}
 
@@ -906,44 +846,4 @@ func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID
 	}
 
 	return true, nil
-}
-
-// lockJobForApproval 为审批工单锁定作业
-func (mgr *ApprovalOrderMgr) lockJobForApproval(c *gin.Context, jobName string, extensionHours uint) error {
-	jobDB := query.Job
-
-	// 查找作业
-	j, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(jobName)).First()
-	if err != nil {
-		return err
-	}
-
-	// 检查是否已经永久锁定
-	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
-		return fmt.Errorf("job %s is already permanently locked", jobName)
-	}
-
-	// 检查延长小时数是否在合理范围内，防止整数溢出
-	const maxHours = 1440 // 两个月的小时数，作为合理的上限
-	if extensionHours > maxHours {
-		return fmt.Errorf("extension hours %d exceeds maximum allowed value %d", extensionHours, maxHours)
-	}
-
-	// 计算锁定时间：基于当前锁定时间或当前时间 + 延长小时数
-	lockTime := utils.GetLocalTime()
-	if j.LockedTimestamp.After(utils.GetLocalTime()) {
-		lockTime = j.LockedTimestamp
-	}
-
-	// 安全地转换为 Duration，已经确保 extensionHours 在合理范围内
-	extensionDuration := time.Duration(extensionHours) * time.Hour
-	lockTime = lockTime.Add(extensionDuration)
-
-	// 更新作业锁定时间
-	if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(jobName)).Update(jobDB.LockedTimestamp, lockTime); err != nil {
-		return err
-	}
-
-	klog.Infof("auto-locked job %s until %s", jobName, lockTime.Format("2006-01-02 15:04:05"))
-	return nil
 }

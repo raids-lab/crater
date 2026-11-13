@@ -1,7 +1,7 @@
 ---
 name: crater-cli-admin-approval-order
 description: "Crater CLI 管理员审批工单域：通过 crater admin order ... 查看、批准、拒绝、清理审批工单。仅在用户明确要求管理员审核时使用。"
-version: 0.2.0
+version: 0.3.0
 metadata:
   requires:
     bins: ["crater"]
@@ -27,11 +27,12 @@ Use this skill only for administrator approval-order workflows.
 ## Rules
 
 - Admin commands always use the `crater admin order ...` prefix. Do not use `--admin`.
+- Use `crater admin order get <id>` to inspect the job's resource requests and order history before reviewing it. History shows the current request number, each request's status, requested extension, applied lock when recorded, and time to review. With `--json`, read `data.order`, `data.job`, and `data.history`. When an enrichment is unavailable, `data.job_error` or `data.history_error` explains why.
 - `reject` requires `--review-notes`.
-- `approve --lock` first reads the order detail, locks the target job, and only then reviews the order.
-- Lock duration values must be non-negative. Unless `--permanent` is set, `--lock` requires a positive duration.
+- `approve` approves and locks a running job in one operation. It uses the requested hours by default. To override, pass `--lock` with a positive duration or `--permanent`. Read the applied lock from `data.approved_lock`.
+- Lock duration values must be non-negative. Permanent and finite durations are mutually exclusive.
 - The CLI does not send `reviewerID`; the backend derives the reviewer from the active token.
-- The review API only updates status and review notes. It does not overwrite the original order content.
+- The server preserves the original request and records the applied lock separately. Job approval requires backend API 7.
 - Lists are filtered and then locally paginated. They are sorted with pending orders first and newest orders first within each status, default to 15 records (maximum 200), and expose `data.pagination`.
 - `--creator` is admin-only and matches creator username or display name. `--search` also matches the order name and creator information.
 - Pagination, status, and type validation are aggregated. If stderr JSON contains `context.issues`, fix all fields before retrying.
