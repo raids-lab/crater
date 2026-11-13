@@ -51,6 +51,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp'
 
+import { PersonalLLMSettings } from '@/components/agent/personal-llm-settings'
 import LoadableButton from '@/components/button/loadable-button'
 import { TimeDistance } from '@/components/custom/time-distance'
 import PageTitle from '@/components/layout/page-title'
@@ -333,6 +334,9 @@ function RouteComponent() {
             </AlertDialogContent>
           </AlertDialog>
         </Card>
+        <div className="mt-6">
+          <PersonalLLMSettings />
+        </div>
       </div>
     </>
   )

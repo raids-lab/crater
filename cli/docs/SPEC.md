@@ -98,7 +98,7 @@
 
 - 接口形式未变但新增 CLI 用户可感知的错误类型、作业类型，或改变对外处理语义，使旧 CLI 可能缺失重要信息或误解结果时，也须同步提升双方 `APIVersion`；修复小 bug、纠正原本错误逻辑或恢复预期行为，以及不影响 CLI 用户的内部调整，通常不提升。按实际用户影响判断，最低支持版本仍按根规范独立决定。
 - CLI 的 `APIVersion` 与 `MinSupportedBackendAPIVersion` 定义在 `internal/version/version.go`；它们分别表示 CLI 编译时所依据的共享契约版本、CLI 能支持的最低后端契约版本。
-- 当前共享契约版本为 `5`，新增作业创建时将 `TENSORBOARD_LOGDIR` 中的 `__CRATER_JOB_NAME__` 占位符替换为实际作业名的语义；版本 `4` 已引入模型/数据集按 `name + category` 跨来源、版本复用的语义。双方最低支持版本仍为 `3`：基本请求仍兼容，不因这些可选语义变化强制淘汰版本 `3` 的 CLI 或后端；接口 URL 中的 `/api/v1` 不变。
+- 兼容性检查用于定位命令失败的原因。通过后，用户在常规排障中应能排除 API 版本不匹配。按公开命令和选项在旧版本上的实际行为判断最低支持版本，确认回退路径能按约定完成同一操作。版本值以双方源码为准，接口 URL 中的 `/api/v1` 独立维护。
 - 正式 API 契约从 `1` 开始，`0` 不得作为受支持的正式契约发布。握手接口明确返回 `0` 时，CLI 将其作为早于正式契约的旧版本参与最低版本比较，以便输出具体的不兼容条件；字段缺失或负数仍表示未知或非法。
 - 所有经统一客户端发出的请求都带 `User-Agent: crater-cli/<product-version>` 和 `X-Crater-API-Version: <APIVersion>`。两者仅用于日志与诊断，不能作为服务端兼容性判断、鉴权或强制拦截依据。
 - 只有显式执行 `crater compatibility` 时才调用一次公开的 `GET /api/cli/compatibility`。响应提供后端 `apiVersion` 与 `minSupportedCliApiVersion`，以及产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间；CLI 只使用两个 API 版本字段检查当前 CLI 是否低于后端最低要求、当前后端是否低于 CLI 最低要求。构建信息仅用于展示和排障，缺失时显示未知，不得影响兼容性结论。
