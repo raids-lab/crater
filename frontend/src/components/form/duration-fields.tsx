@@ -23,6 +23,7 @@ interface DurationFieldsProps {
   maxTotalHours?: number
   showPreview?: boolean
   jobLockPreview?: boolean
+  previewNow?: number
   className?: string
 }
 
@@ -33,6 +34,7 @@ export function DurationFields({
   maxTotalHours = 0,
   showPreview = true,
   jobLockPreview = false,
+  previewNow,
   className,
 }: DurationFieldsProps) {
   const { t, i18n } = useTranslation()
@@ -53,11 +55,11 @@ export function DurationFields({
   const preview = useMemo(() => {
     if (!showPreview || normalized.totalHours <= 0) return null
 
-    const now = new Date()
+    const now = new Date(previewNow ?? Date.now())
     const originDate = typeof origin === 'string' ? new Date(origin) : origin
     const base = originDate && (!jobLockPreview || originDate > now) ? originDate : now
     return { base, end: addHours(base, normalized.totalHours) }
-  }, [normalized.totalHours, origin, showPreview, jobLockPreview])
+  }, [normalized.totalHours, origin, showPreview, jobLockPreview, previewNow])
 
   const dateTime = jobLockPreview
     ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })

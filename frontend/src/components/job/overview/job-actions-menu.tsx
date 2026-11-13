@@ -52,7 +52,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui-custom/alert-dialog'
 
-import { IJobInfo, JobStatus, getJobStateType } from '@/services/api/vcjob'
+import { IJobInfo, JobStatus, canManageJobLock, getJobStateType } from '@/services/api/vcjob'
 
 // Link Options for portal job navigation
 const portalJobDetailLinkOptions = linkOptions({
@@ -112,9 +112,7 @@ export const JobActionsMenu = ({
   const detailLinkOptions = isAdminView ? adminJobDetailLinkOptions : portalJobDetailLinkOptions
   const shouldStop = jobInfo.status !== 'Deleted' && jobInfo.status !== 'Freed'
 
-  // Admin view: only show lock button for Running or Pending (NotStarted) jobs
-  const isPending = jobInfo.status === 'Pending' || jobStatus === JobStatus.NotStarted
-  const canLockInAdminView = isAdminView && (jobStatus === JobStatus.Running || isPending)
+  const canLockInAdminView = isAdminView && canManageJobLock(jobInfo.status)
 
   return (
     <>
@@ -162,7 +160,7 @@ export const JobActionsMenu = ({
                 )}
               </>
             )}
-            {isAdminView && canLockInAdminView && (
+            {canLockInAdminView && (
               <>
                 <DropdownMenuItem
                   onClick={handleLockClick}

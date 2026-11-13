@@ -241,6 +241,11 @@ export const getJobStateType = (phase: JobPhase): JobStatus => {
   return JobStatus.Unknown
 }
 
+export const canManageJobLock = (phase: JobPhase): boolean => {
+  const status = getJobStateType(phase)
+  return status === JobStatus.Running || status === JobStatus.NotStarted
+}
+
 export const apiJobBatchList = (params: RemoteTableParams, signal?: AbortSignal) =>
   apiV1Get<IResponse<IPage<IJobInfo>>>(JOB_URL, {
     searchParams: buildRemoteSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),

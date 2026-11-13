@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
@@ -129,7 +131,7 @@ func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("user/:username/facets", mgr.GetUserJobFacets)
 	g.GET("billing", mgr.GetAllJobBillingInDays)
 	g.GET("billing/user/:username", mgr.GetUserJobBillingInDays)
-	g.GET(":name/detail", mgr.GetJobDetail)
+	g.GET(":name/detail", mgr.AdminGetJobDetail)
 	g.GET(":name/billing", mgr.GetJobBillingDetail)
 	// delete job
 	g.DELETE(":name", mgr.AdminDeleteJob)
@@ -351,7 +353,7 @@ func (mgr *VolcanojobMgr) buildDeleteJobPlan(c *gin.Context, jobRecord *model.Jo
 	clusterJob := &batch.Job{}
 	namespace := config.GetConfig().Namespaces.Job
 	if err := mgr.client.Get(c, client.ObjectKey{Name: jobRecord.JobName, Namespace: namespace}, clusterJob); err != nil {
-		if errors.IsNotFound(err) {
+		if k8serrors.IsNotFound(err) {
 			return &deleteJobPlan{
 				shouldDeleteRecord: jobRecord.Status != model.Prequeue,
 				shouldDeleteJob:    false,
@@ -945,7 +947,6 @@ type (
 //	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500		{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/{name}/detail [get]
-//	@Router			/v1/admin/vcjobs/{name}/detail [get]
 func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 	var req JobActionReq
 	if err := c.ShouldBindUri(&req); err != nil {
@@ -961,7 +962,44 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		resputil.Error(c, err.Error(), resputil.NotSpecified)
 		return
 	}
+	writeJobDetail(c, job)
+}
 
+// AdminGetJobDetail godoc
+//
+//	@Summary		获取作业详情（管理员）
+//	@Description	按作业名称查询作业详情和锁定状态
+//	@Tags			VolcanoJob
+//	@Accept			json
+//	@Produce		json
+//	@Security		Bearer
+//	@Param			name	path		string					true	"Job Name"
+//	@Success		200		{object}	resputil.Response[any]	"作业详情（含 locked、permanentLocked 和 lockedTimestamp）"
+//	@Failure		400		{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		404		{object}	resputil.Response[any]	"Job not found"
+//	@Failure		500		{object}	resputil.Response[any]	"Database error"
+//	@Router			/v1/admin/vcjobs/{name}/detail [get]
+func (mgr *VolcanojobMgr) AdminGetJobDetail(c *gin.Context) {
+	var req JobActionReq
+	if err := c.ShouldBindUri(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "job name is required"))
+		return
+	}
+
+	token := util.GetToken(c)
+	job, err := getJob(c, req.JobName, &token)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.New("job not found"))
+		} else {
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to load job details"))
+		}
+		return
+	}
+	writeJobDetail(c, job)
+}
+
+func writeJobDetail(c *gin.Context, job *model.Job) {
 	var profileData *monitor.ProfileData
 	if job.ProfileData != nil {
 		profileData = job.ProfileData.Data()

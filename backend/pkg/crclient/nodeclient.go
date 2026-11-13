@@ -10,7 +10,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -92,8 +94,11 @@ type Pod struct {
 	Locked           bool                    `json:"locked"`
 	PermanentLocked  bool                    `json:"permanentLocked"`
 	LockedTimestamp  metav1.Time             `json:"lockedTimestamp"`
-	JobName          string                  `json:"jobName,omitempty"` // Crater job matched by the admin node endpoint.
-	// 管理员接口返回的字段（omitempty 表示字段为空时不序列化）
+
+	// The admin endpoint populates these fields when the Pod matches a Crater job.
+	JobName   string          `json:"jobName,omitempty"`
+	JobStatus *batch.JobPhase `json:"jobStatus,omitempty"`
+
 	UserName        string `json:"userName,omitempty"`        // 用户昵称（用于显示）
 	UserID          uint   `json:"userID,omitempty"`          // 用户ID（用于跳转）
 	UserRealName    string `json:"userRealName,omitempty"`    // 用户真实名称（用于tooltip）
@@ -528,6 +533,7 @@ func (nc *NodeClient) AdminGetPodsForNode(ctx context.Context, nodeName string) 
 				}
 
 				pods[i].JobName = job.JobName
+				pods[i].JobStatus = ptr.To(job.Status)
 
 				// 用户信息
 				pods[i].UserID = job.UserID

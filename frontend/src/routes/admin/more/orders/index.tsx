@@ -200,7 +200,7 @@ function RouteComponent() {
           setRejectReason('')
           setRejectDialogOpen(true)
         },
-        disabled: () => isApproving || isRejecting,
+        disabled: () => isApproving || isRejecting || isProcessingLock,
       },
     }
   }

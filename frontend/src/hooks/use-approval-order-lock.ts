@@ -36,12 +36,14 @@ export function useApprovalOrderLock() {
 
   const { mutate: approveOrder, isPending: isApprovingLock } = useMutation({
     mutationFn: (order: ApprovalOrder) => reviewApprovalOrder(order.id, { status: 'Approved' }),
-    onSuccess: (_response, order) => {
+    onSuccess: async (_response, order) => {
       toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorder', order.id] })
-      void queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
-      void queryClient.invalidateQueries({ queryKey: ['approvalorders'] })
-      void queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorder', order.id] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] }),
+        queryClient.invalidateQueries({ queryKey: ['approvalorders'] }),
+        queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] }),
+      ])
     },
     onError: showErrorToast,
   })
@@ -85,7 +87,7 @@ export function useApprovalOrderLock() {
     selectedJob: selection?.job,
     selectedExtHours,
     isDelayDialogOpen,
-    isProcessingLock: isFetchingJob || isApprovingLock,
+    isProcessingLock: isFetchingJob || isDelayDialogOpen || isApprovingLock,
     handleApproveWithDelay,
     handleDelaySuccess,
     setIsDelayDialogOpen,

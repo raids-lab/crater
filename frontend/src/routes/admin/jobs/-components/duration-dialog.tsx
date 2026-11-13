@@ -18,7 +18,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { InfoIcon, Lock, UnlockIcon } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -42,6 +42,8 @@ import { DurationFields } from '@/components/form/duration-fields'
 import { type IJobInfo, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
 
 import { showErrorToast } from '@/utils/toast'
+
+const MINUTE_MS = 60_000
 
 // Moved Zod schema to component
 const getFormSchema = (t: (key: string) => string) =>
@@ -84,20 +86,16 @@ export function DurationDialog({
   defaultHours,
 }: DurationDialogProps) {
   const { t, i18n } = useTranslation()
+  const [previewNow, setPreviewNow] = useState(() => Date.now())
   const allLocked = jobs.length > 0 && jobs.every((job) => job.locked)
   const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked)
   const mixedState = !allLocked && !allUnlocked
   const singleJob = jobs.length === 1 ? jobs[0] : undefined
   const lockEnd = Date.parse(singleJob?.lockedTimestamp ?? '')
   const alreadyPermanent = approval && singleJob?.permanentLocked
-  const isExtendDialogOpen = approval ? lockEnd > Date.now() : setExtend && allLocked
+  const isExtendDialogOpen = approval ? lockEnd > previewNow : setExtend && allLocked
   const isUnlockDialog = !approval && allLocked && !isExtendDialogOpen
   const action = isUnlockDialog ? 'unlock' : isExtendDialogOpen ? 'extend' : 'lock'
-  const title = alreadyPermanent
-    ? t('durationDialog.approval.permanentTitle')
-    : approval
-      ? t(isExtendDialogOpen ? 'durationDialog.approval.extend' : 'durationDialog.approval.lock')
-      : t(`durationDialog.title.${action}`)
 
   // Initialize form with translated schema
   const form = useForm<FormValues>({
@@ -108,6 +106,30 @@ export function DurationDialog({
       hours: defaultHours ?? 0,
     },
   })
+  const isPermanent = form.watch('isPermanent')
+  const approvalAction = isPermanent ? 'lockPermanently' : action
+  const title = alreadyPermanent
+    ? t('durationDialog.approval.permanentTitle')
+    : approval
+      ? t(`durationDialog.approval.${approvalAction}`)
+      : t(`durationDialog.title.${action}`)
+
+  useEffect(() => {
+    if (!open || !approval || alreadyPermanent) return
+
+    let timer: ReturnType<typeof setTimeout>
+    const updatePreviewTime = () => {
+      const now = Date.now()
+      setPreviewNow(now)
+
+      const nextMinute = MINUTE_MS - (now % MINUTE_MS)
+      const untilExpiry = lockEnd > now ? lockEnd - now : nextMinute
+      timer = setTimeout(updatePreviewTime, Math.min(nextMinute, untilExpiry))
+    }
+
+    updatePreviewTime()
+    return () => clearTimeout(timer)
+  }, [open, approval, alreadyPermanent, lockEnd])
 
   // Update form values when props change
   useEffect(() => {
@@ -264,7 +286,7 @@ export function DurationDialog({
                 )}
               />
 
-              {!form.watch('isPermanent') && (
+              {!isPermanent && (
                 <>
                   <DurationFields
                     value={{
@@ -276,6 +298,7 @@ export function DurationDialog({
                       form.setValue('hours', val.hours, { shouldValidate: true, shouldDirty: true })
                     }}
                     origin={isExtendDialogOpen ? jobs[0]?.lockedTimestamp : null}
+                    previewNow={approval ? previewNow : undefined}
                     jobLockPreview
                   />
                 </>

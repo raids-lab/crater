@@ -254,7 +254,7 @@ func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 // AdminGetPodsForNode godoc
 //
 //	@Summary		获取节点Pod信息（管理员）
-//	@Description	获取节点Pod信息，匹配到 Crater 作业时包含 jobName、锁定状态和用户信息
+//	@Description	获取节点Pod信息，匹配到 Crater 作业时包含 jobName、jobStatus、锁定状态和用户信息
 //	@Tags			Node
 //	@Accept			json
 //	@Produce		json
@@ -263,7 +263,7 @@ func (mgr *NodeMgr) GetPodsForNode(c *gin.Context) {
 //	@Success		200		{object}	resputil.Response[[]crclient.Pod]	"成功返回值描述"
 //	@Failure		400		{object}	resputil.Response[any]	"请求参数错误"
 //	@Failure		500		{object}	resputil.Response[any]	"其他错误"
-//	@Router			/admin/nodes/{name}/pods [get]
+//	@Router			/v1/admin/nodes/{name}/pods [get]
 func (mgr *NodeMgr) AdminGetPodsForNode(c *gin.Context) {
 	mgr.handleGetPods(c, mgr.nodeClient.AdminGetPodsForNode, "Admin Node List Pod")
 }

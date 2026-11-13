@@ -107,7 +107,7 @@ function RouteComponent() {
 
   // Fetch job detail if it's a job
   const { data: jobDetail } = useQuery({
-    queryKey: ['job', 'detail', order?.name],
+    queryKey: ['job', 'detail', order?.name, 'admin'],
     queryFn: () => apiAdminGetJobDetail(order!.name),
     select: (res) => res.data,
     enabled: !!order && order.type === 'job',

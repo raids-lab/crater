@@ -15,6 +15,7 @@
  */
 import { V1OwnerReference } from '@kubernetes/client-node'
 
+import type { JobPhase } from '@/services/api/vcjob'
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 import { IResponse } from '@/services/types'
 
@@ -67,6 +68,7 @@ export interface IClusterPodInfo {
   type?: string
   // 管理员接口返回的字段
   jobName?: string
+  jobStatus?: JobPhase
   userName?: string
   userID?: number
   userRealName?: string

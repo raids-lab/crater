@@ -69,6 +69,7 @@ import {
   apiGetNodeGPU,
   apiGetNodePods,
 } from '@/services/api/cluster'
+import { canManageJobLock } from '@/services/api/vcjob'
 
 import useIsAdmin from '@/hooks/use-admin'
 
@@ -467,8 +468,11 @@ const getColumns = (
     enableHiding: false,
     cell: ({ row }) => {
       const taskInfo = row.original
-      const { jobName, locked, permanentLocked, lockedTimestamp } = taskInfo
-      const lockTarget = jobName ? { jobName, locked, permanentLocked, lockedTimestamp } : null
+      const { jobName, jobStatus, locked, permanentLocked, lockedTimestamp } = taskInfo
+      const lockTarget =
+        jobName && jobStatus !== undefined && canManageJobLock(jobStatus)
+          ? { jobName, locked, permanentLocked, lockedTimestamp }
+          : null
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
