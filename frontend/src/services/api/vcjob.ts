@@ -69,7 +69,7 @@ export interface IJobInfo {
   resources?: Record<string, string>
   locked: boolean
   permanentLocked: boolean
-  lockedTimestamp?: string
+  lockedTimestamp?: string | null
   billedPointsTotal: number
 }
 
@@ -239,6 +239,11 @@ export const getJobStateType = (phase: JobPhase): JobStatus => {
   }
 
   return JobStatus.Unknown
+}
+
+export const canManageJobLock = (phase: JobPhase): boolean => {
+  const status = getJobStateType(phase)
+  return status === JobStatus.Running || status === JobStatus.NotStarted
 }
 
 export const apiJobBatchList = (params: RemoteTableParams, signal?: AbortSignal) =>
@@ -430,6 +435,9 @@ export interface IJupyterDetail {
   createdAt: string
   startedAt: string
   completedAt: string
+  locked: boolean
+  permanentLocked: boolean
+  lockedTimestamp?: string | null
 }
 
 export interface ISSHPortDetail {

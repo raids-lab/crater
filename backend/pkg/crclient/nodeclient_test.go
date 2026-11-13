@@ -15,11 +15,14 @@
 package crclient
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 )
 
 func TestPodInfoFromKubePodIncludesStartTime(t *testing.T) {
@@ -51,5 +54,35 @@ func TestPodInfoFromKubePodKeepsMissingStartTime(t *testing.T) {
 
 	if got := podInfoFromKubePod(pod); got.StartTime != nil {
 		t.Fatalf("StartTime = %v, want nil", got.StartTime)
+	}
+}
+
+func TestPodJobStatusJSON(t *testing.T) {
+	tests := []struct {
+		name      string
+		jobStatus *batch.JobPhase
+		want      string
+	}{
+		{name: "no matched job"},
+		{name: "job initializing", jobStatus: ptr.To(batch.JobPhase("")), want: `""`},
+		{name: "job completed", jobStatus: ptr.To(batch.Completed), want: `"Completed"`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := json.Marshal(Pod{Status: corev1.PodSucceeded, JobStatus: tc.jobStatus})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var payload map[string]json.RawMessage
+			if err := json.Unmarshal(data, &payload); err != nil {
+				t.Fatal(err)
+			}
+			if got := string(payload["jobStatus"]); got != tc.want {
+				t.Errorf("JSON jobStatus = %q, want %q", got, tc.want)
+			}
+			if got := string(payload["status"]); got != `"Succeeded"` {
+				t.Errorf("JSON status = %q, want Succeeded", got)
+			}
+		})
 	}
 }
