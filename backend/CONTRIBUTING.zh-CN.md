@@ -75,6 +75,7 @@ make run
 | `make curd` | 生成 GORM CRUD 代码 |
 | `make docs` | 生成 swag 文档 |
 | `make pre-commit-check` | 手动运行 pre-commit 检查 |
+| `make test-job-sessions` | 使用竞态检测运行隔离的 SSH/exec 与浏览器请求兼容测试 |
 | `make build` / `make build-migrate` | 构建主程序 / 迁移程序 |
 | `make run-storage` | 本地运行 storage server，默认端口为 `7320` |
 | `make build-storage` | 只构建 storage server 二进制，不启动服务 |
@@ -151,6 +152,7 @@ make build-storage
 ## 提交 Backend 改动前
 
 - 运行相关 `make` target，最终检查通常使用 `make pre-commit-check`。
+- `make test-job-sessions` 覆盖 SSH/exec 访问权限、容器选择、用户环境、流式执行及浏览器 query-token/原生 Header 解析。请求解析通过源文件独立测试，避开无关服务初始化时的数据库迁移；该检查接入 pre-commit 和后端 PR 检查，无需数据库或集群。
 - 如果 API 行为变化，确认 `swag` 注释、前端调用、CLI 行为和错误展示已对齐。
 - 如果 CLI 所用 API 变化，记录 `APIVersion` 与 `MinSupportedCLIAPIVersion` 是否调整及原因。
 - 如果作业模板 payload 变化，确认版本和兼容性决策。
