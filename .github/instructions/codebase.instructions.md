@@ -26,8 +26,9 @@ applyTo: "backend/**,frontend/**"
 - **前端多语言 / 身份**: 禁止硬编码文本，必须接入多语言方案；新增 / 修改翻译 key 必须使用英文语义 key，并放入合适 domain，不得新增中文 key；新增 / 修改可翻译文案必须同步所有语言的 `translation.json`，保证翻译准确和专有名词一致；身份判断必须用 `useIsAdmin()`。
 - **前端非幂等操作确认**: 创建、更新、删除、停止、锁定 / 解锁、配额变更等非幂等操作执行前必须有确认弹出框，说明操作对象和后果；耗时请求还须有 Loading 并禁用重复提交。
 - **前端配置说明**: 不易理解的输入项、开关或配置项须在标签 / 标题旁提供帮助图标和 hover tooltip，解释作用、适用场景、关键机制或影响。
-- **文档与配置同步**: 新功能或重大变更同步 `website/` 文档；配置结构变更同步 `charts/`，提升 `charts/crater/Chart.yaml` 的 `version` 与 `appVersion`，并保持二者为完全相同的值，同时同步 `charts/crater/README.md`；前后端 API 变化影响 Chart 应用契约时按 `charts/CONTRIBUTING.md` 提升 minor。
-- **CLI API 兼容版本**: 修改 CLI 会调用的后端 API 时，必须按根 `CONTRIBUTING.md` 记录版本决定：只有 API 契约本身变化时，后端与 CLI 的共享 `APIVersion` 才同步提升；CLI 开始依赖契约中已有能力时当前版本不变，最低支持版本只在没有回退且实际不再兼容旧版对方时独立提升至该能力首次出现的版本。诊断 Header 不得用于鉴权、强制拦截或响应分流；普通业务命令不得自动握手，兼容性检查只由显式 `crater compatibility` 命令执行。
+- **文档与配置同步**: 新功能或重大变更同步 `website/` 文档；配置结构变更同步 `charts/`，提升 `charts/crater/Chart.yaml` 的 `version` 与 `appVersion`，并保持二者为完全相同的值，同时同步 `charts/crater/README.md`。正式发版时，根据上次正式发布以来的累计变化提升三段式发布版本，包括前后端接口新增功能或行为变化；具体版本由维护者按 `charts/CONTRIBUTING.md` 决定。
+- **CLI API 兼容版本**: 按根 `CONTRIBUTING.md` 记录共享 `APIVersion` 和双方最低支持版本的决定。兼容性检查通过后，用户在常规排障中应能排除 API 版本不匹配。分别检查受影响的公开命令和选项能否在旧版本上按约定完成操作，包括新增命令和回退路径。诊断 Header 不得用于鉴权、强制拦截或响应分流。兼容性检查只由显式 `crater compatibility` 命令执行。
+- **API 行为与语义**: 接口形式不变时也须判断 CLI 用户的实际感知：新增错误类型、作业类型或改变对外处理语义，使旧 CLI 可能缺失重要信息或误解结果时，按根规范同步提升双方 `APIVersion`；修复小 bug、纠正原本错误逻辑或恢复预期行为，以及不影响 CLI 用户的内部调整，通常不提升，不把每次后端修改都视为 API 变化。
 
 ## 优化建议 (Optimization Suggestions)
 

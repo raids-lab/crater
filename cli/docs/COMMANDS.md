@@ -78,7 +78,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 4,
+      "api_version": 5,
       "min_supported_backend_api_version": 3
     }
   }
@@ -102,7 +102,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 后端构建信息仅用于诊断和展示，不参与 API 兼容性判断。兼容性接口仅返回 API 版本字段的早期实现仍可使用；缺失的后端构建字段显示为“未知”，不会因此把响应判定为非法。
   - 明确不兼容时返回 `api_error` + `ERR_API_VERSION_MISMATCH`，进程退出码为 `4`。人类可读错误按“具体情况 / 版本信息 / 使用建议”分段展示：具体指出哪个最低版本条件不满足，列出 CLI 产品版本、CLI / 后端 API 版本和双方最低支持版本，并说明用户仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。
   - 握手响应明确包含版本字段但值为 `0` 时，将 `0` 视为早于首个正式契约的旧版本并参与比较，而不是泛化为“兼容性信息无效”。例如后端明确报告 `apiVersion: 0` 且 CLI 最低支持后端版本为 `1` 时，按“后端版本过旧”输出上述完整诊断，并在最后的排查手段中建议降级 CLI。字段缺失或负数才视为非法响应。
-  - 版本诊断只提示潜在风险，不把后续业务错误直接归因于 API 版本。实际操作失败时应先根据该操作自己的报错排查命令输入、本地配置、认证、网络连接和平台状态等更常见原因，也应考虑 CLI 自身（尤其开发版本）的缺陷。只有排除这些原因且仍有证据指向 API 契约不兼容时，才把调整 CLI 版本作为最后的排查手段。
+  - 兼容性检查用于定位命令失败的原因。检查通过后，常规排障可排除 API 版本不匹配，根据实际报错检查命令输入、本地配置、认证、网络连接、平台状态或 CLI 自身的缺陷。检查提示不兼容时，结合实际报错判断故障是否由版本差异引起，再决定是否调整版本。
   - 最后的 CLI 版本调整按检测方向决定：CLI API 版本低于后端最低要求时尝试升级 CLI；后端 API 版本低于 CLI 最低要求时尝试降级 CLI；两项限制同时不满足时分别解释升级和降级可解决的约束，并提示向平台管理员确认该部署对应的 CLI 版本。
   - 该接口返回 HTTP 404 时，视为目标后端早于当前 CLI 的兼容性检查命令：返回 `api_error` + `ERR_API_VERSION_MISMATCH`，后端版本显示为未知。排除更常见原因后，最后才建议尝试降级 CLI 或联系平台管理员。原始 `http_status: 404` 与响应 `msg` 保留在错误 context 中。此特殊映射只适用于本命令，不改变其他命令的 404 语义。
   - 其他 HTTP 错误、网络失败或响应非法时保留实际错误，不伪装成版本不兼容。
@@ -566,6 +566,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - `snapshot` / `alert` / `delete`: `message`
 - **状态**: [x] Completed
 
+作业容器的 `SYS_ADMIN` 默认关闭。所有创建命令的 `--file` 请求可显式设置 `sysAdminEnabled: true`；后端在创建时核对管理员授予的当前资格，未授权时返回 403。省略或设为 `false` 不注入该权限；模板内容本身不构成授权。
+
 ### `crater job create jupyter|webide`
 - **描述**: 创建交互式作业。支持 flags 构造常用请求，也支持 `--file` 传入完整 JSON 请求体。
 - **位置参数**: 无；如果提供任何位置参数，返回 `usage_error`。
@@ -738,9 +740,31 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 
 ---
 
-## 7. Additional Read Modules
+## 7. Additional Account And Resource Modules
 
-This section records the read-only API surface covered by the CLI after the broader read-interface audit. All commands require active credentials. User-visible reads stay under their resource domain. Administrator-only reads are explicitly under `crater admin ...` and require platform administrator permissions.
+This section covers account context and additional resource commands. All commands require active credentials. User-visible commands stay under their resource domain. Administrator-only reads are explicitly under `crater admin ...` and require platform administrator permissions.
+
+### Account And Queue Context
+
+`Account`（账户）用于确定调度队列和计费归属；登录身份由 `auth` 管理。
+
+#### `crater account current`
+
+- **描述**：查询当前登录身份正在使用的账户／队列。
+- **位置参数**：无；拒绝多余位置参数。
+- **处理逻辑**：使用当前身份的 access token 请求 `GET /api/auth/check`，读取响应中的 `context`，不解码 JWT 或根据本地缓存猜测当前账户。
+- **默认输出**：平台、用户名、当前账户／队列名称和账户角色数值。
+- **`--json` 的 `data`**：`platform_url`、`username`、`context`。`context` 保留后端的 `queue`、`roleQueue`、`rolePlatform`、`accessQueue`、`accessPublic`、`space`；角色和访问模式数值保持原样，包括未知值。不输出凭据或其它认证响应字段。
+- **错误**：未登录或未保存 token 时遵循认证错误约定；后端返回空 `data`、缺少 `context` 或队列名称为空时返回 `api_error`，不报告成功。已收到 HTTP 响应时，即使 JSON 无法解码，也按实际 HTTP 状态映射错误并保留 `http_status`；无 HTTP 响应的传输失败才归为 `ERR_NETWORK_FAILURE`。
+
+#### `crater account use <name>`
+
+- **描述**：将当前登录身份切换到其所属的指定账户／队列，供后续平台命令使用。
+- **位置参数**：`<name>` 为 `account ls` 返回的精确 `name`，不是昵称或 ID；首尾空白会去掉，空值、缺参及多余参数返回 `usage_error`。非交互模式同样必须提供名称。
+- **处理逻辑**：使用当前身份的 access token 请求 `POST /api/v1/auth/switch`，请求体为 `{"queue":"<name>"}`。账户存在性和成员权限由后端校验；显式指定名称后直接切换，无额外确认。
+- **持久化**：仅在成功响应包含非空 access token，且 `context.queue` 与目标名称一致时，更新发起请求的 `(platform_url, username, method)` 对应身份的 access token；保留其它身份、激活身份与语言。后续作业、文件、资源和计费命令使用新 token。refresh token 不持久化。
+- **默认输出与 JSON**：与 `account current` 相同，展示切换后的上下文，不输出 access token 或 refresh token。
+- **错误**：API、网络或无效响应不会写入本地状态；HTTP 与解码错误遵循 `account current` 的分类规则，保留后端错误事实。凭据先在同目录的私有临时文件中完整写入、同步并关闭，再替换原状态文件；写入或替换失败时保留原文件，清理临时文件，返回 `system_error`，不输出成功结果。
 
 ### Account And Queue Reads
 - `crater account ls`: `/api/v1/accounts`.

@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/raids-lab/crater/cli/internal/api"
 	"github.com/spf13/cobra"
+
+	"github.com/raids-lab/crater/cli/internal/api"
 )
 
 func TestValidateInteractiveRequestAcceptsBackendMountDTO(t *testing.T) {
@@ -157,5 +158,32 @@ func TestJobListFilterIssuesEnforcesBackendLimits(t *testing.T) {
 	issues := jobListFilterIssues(cmd)
 	if len(issues) != 2 {
 		t.Fatalf("issues = %#v, want search and status count errors", issues)
+	}
+}
+
+func TestReadJobRequestSysAdminOptIn(t *testing.T) {
+	for _, tc := range []struct {
+		name, body       string
+		enabled, invalid bool
+	}{
+		{"omitted defaults off", `{"name":"job"}`, false, false},
+		{"explicitly off", `{"name":"job","sysAdminEnabled":false}`, false, false},
+		{"explicitly on", `{"name":"job","sysAdminEnabled":true}`, true, false},
+		{"invalid boolean", `{"name":"job","sysAdminEnabled":"true"}`, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := t.TempDir() + "/request.json"
+			if err := os.WriteFile(path, []byte(tc.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var req api.CreateDistributedJobRequest
+			err := readJSONFile(path, &req)
+			if (err != nil) != tc.invalid {
+				t.Fatalf("parse error = %v", err)
+			}
+			if !tc.invalid && req.SysAdminEnabled != tc.enabled {
+				t.Fatalf("sysAdminEnabled = %v", req.SysAdminEnabled)
+			}
+		})
 	}
 }

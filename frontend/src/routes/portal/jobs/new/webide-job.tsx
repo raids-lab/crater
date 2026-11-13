@@ -46,6 +46,7 @@ import { ImageFormField } from '@/components/form/image-form-field'
 import { OtherOptionsFormCard } from '@/components/form/other-options-form-field'
 import { ResourceFormFields } from '@/components/form/resource-form-field'
 import { TemplateInfo } from '@/components/form/template-info'
+import { TensorboardLogDirFormField } from '@/components/form/tensorboard-log-dir-form-field'
 import { MetadataFormWebIDE } from '@/components/form/types'
 import { CreateBillingBlockDialog } from '@/components/job/create-billing-block-dialog'
 import { JobSubmitButton } from '@/components/job/job-submit-button'
@@ -72,6 +73,7 @@ import {
   volumeMountsSchema,
 } from '@/utils/form'
 import { atomUserInfo } from '@/utils/store'
+import { getDefaultTensorboardLogDir, withTensorboardLogDirEnv } from '@/utils/tensorboard'
 import { showErrorToast } from '@/utils/toast'
 
 export const Route = createFileRoute('/portal/jobs/new/webide-job')({
@@ -98,7 +100,12 @@ const JupyterMarkdown = `Jupyter 为用户提供交互式的 Web 实验环境，
 
 const formSchema = z.object({
   jobName: jobNameSchema,
+  sysAdminEnabled: z.boolean().default(false),
   task: taskSchema,
+  tensorboardLogDir: z
+    .string()
+    .refine((value) => value === '' || value.startsWith('/'), t('tensorboard.jobForm.absolutePath'))
+    .optional(),
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
@@ -124,12 +131,16 @@ function RouteComponent() {
 
   const { mutate: createTask, isPending } = useMutation({
     mutationFn: (values: FormSchema) => {
+      const defaultLogDir = getDefaultTensorboardLogDir(`/home/${user?.name ?? ''}/workspace`)
+      const tensorboardLogDir = values.tensorboardLogDir?.trim() || defaultLogDir
+
       return apiWebIDECreate({
         name: values.jobName,
+        sysAdminEnabled: values.sysAdminEnabled,
         resource: convertToResourceList(values.task.resource),
         image: values.task.image,
         volumeMounts: values.volumeMounts,
-        envs: values.envs,
+        envs: withTensorboardLogDirEnv(values.envs, tensorboardLogDir),
         alertEnabled: values.alertEnabled,
         selectors: buildNodeSelectors(values.nodeSelector),
         template: exportToJsonString(MetadataFormWebIDE, values),
@@ -157,6 +168,7 @@ function RouteComponent() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       jobName: '',
+      sysAdminEnabled: false,
       task: {
         taskName: 'webide',
         replicas: 1,
@@ -182,6 +194,7 @@ function RouteComponent() {
           mountPath: `/home/${user?.name}/.ssh`,
         },
       ],
+      tensorboardLogDir: '',
       forwards: [],
       envs: [],
       alertEnabled: true,
@@ -306,6 +319,23 @@ function RouteComponent() {
                   }}
                 />
                 <ImageFormField form={form} name="task.image" />
+                <FormField
+                  control={form.control}
+                  name="tensorboardLogDir"
+                  render={({ field }) => {
+                    const defaultPath = getDefaultTensorboardLogDir(
+                      `/home/${user?.name ?? '<user>'}/workspace`,
+                      '<unique-job-name>'
+                    )
+
+                    return (
+                      <TensorboardLogDirFormField
+                        defaultPath={defaultPath}
+                        inputProps={{ ...field, value: field.value ?? '' }}
+                      />
+                    )
+                  }}
+                />
               </CardContent>
             </Card>
             <TemplateInfo
@@ -333,6 +363,7 @@ function RouteComponent() {
             <ForwardFormCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
+              sysAdminEnabledPath="sysAdminEnabled"
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"

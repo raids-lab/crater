@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -266,11 +267,11 @@ func convertToApprovalOrderResps(orders []*model.ApprovalOrder) []ApprovalOrderR
 				Username: orders[i].Creator.Name,
 				Nickname: orders[i].Creator.Nickname,
 			},
-			ReviewerID: orders[i].ReviewerID,
+			ReviewerID: ptr.Deref(orders[i].ReviewerID, 0),
 		}
 
 		// 处理审批人信息
-		if orders[i].ReviewerID != 0 {
+		if orders[i].ReviewerID != nil {
 			resp.Reviewer = model.UserInfo{
 				Username: orders[i].Reviewer.Name,
 				Nickname: orders[i].Reviewer.Nickname,
@@ -886,11 +887,11 @@ func convertToApprovalOrderResp(order *model.ApprovalOrder) ApprovalOrderResp {
 			Username: order.Creator.Name,
 			Nickname: order.Creator.Nickname,
 		},
-		ReviewerID: order.ReviewerID,
+		ReviewerID: ptr.Deref(order.ReviewerID, 0),
 	}
 
 	// 处理审批人信息
-	if order.ReviewerID != 0 {
+	if order.ReviewerID != nil {
 		resp.Reviewer = model.UserInfo{
 			Username: order.Reviewer.Name,
 			Nickname: order.Reviewer.Nickname,
@@ -923,7 +924,7 @@ func (mgr *ApprovalOrderMgr) checkAutoApprovalEligibility(c *gin.Context, userID
 	for _, order := range recentOrders {
 		if order.Type == model.ApprovalOrderTypeJob &&
 			order.Status == model.ApprovalOrderStatusApproved &&
-			order.ReviewerID == 0 {
+			ptr.Deref(order.ReviewerID, 0) == 0 {
 			return false, nil
 		}
 	}

@@ -13,15 +13,16 @@ import (
 	"github.com/raids-lab/crater/pkg/config"
 )
 
-// CheckStorageQuota checks the quota and usage currently enforced by CephFS.
-// Any provider error fails closed while quota management is enabled so stale
-// database cache entries cannot accidentally admit or reject a job.
+// CheckStorageQuota checks the enforced CephFS quota for jobs with storage mounts.
+// Jobs without storage mounts must not depend on the storage quota provider.
+// Mounted jobs fail closed on provider errors rather than use stale cache entries.
 func CheckStorageQuota(
 	username string,
+	volumeMounts []VolumeMount,
 	kubeClient kubernetes.Interface,
 	kubeConfig *rest.Config,
 ) error {
-	if !ceph.StorageQuotaEnabled() {
+	if !ceph.StorageQuotaEnabled() || len(volumeMounts) == 0 {
 		return nil
 	}
 
@@ -48,7 +49,8 @@ func CheckStorageQuota(
 		kubeClient, kubeConfig, ceph.StorageQuotaRookNamespace(), logicalPath, prefixes,
 	)
 	if err != nil {
-		return bizerr.Internal.FileSystemError.Wrap(err, "failed to read the enforced storage quota")
+		return bizerr.Internal.FileSystemError.Wrap(err,
+			"Failed to read the storage quota. "+storageQuotaRetryAdvice)
 	}
 	if quota <= 0 {
 		return nil
@@ -58,7 +60,8 @@ func CheckStorageQuota(
 		kubeClient, kubeConfig, ceph.StorageQuotaRookNamespace(), logicalPath, prefixes,
 	)
 	if err != nil {
-		return bizerr.Internal.FileSystemError.Wrap(err, "failed to read current storage usage")
+		return bizerr.Internal.FileSystemError.Wrap(err,
+			"Failed to read current storage usage. "+storageQuotaRetryAdvice)
 	}
 	klog.Infof(
 		"CheckStorageQuota: user=%q size=%d quota=%d (%.1f%%)",
@@ -74,6 +77,8 @@ func CheckStorageQuota(
 }
 
 const percentageMultiplier = 100
+
+const storageQuotaRetryAdvice = "Retry later, or remove all storage mounts and resubmit if your job does not require shared storage."
 
 // FormatStorageSize formats a byte count for user-facing quota errors.
 func FormatStorageSize(bytes int64) string {

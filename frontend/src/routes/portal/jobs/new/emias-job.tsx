@@ -94,6 +94,7 @@ export const Route = createFileRoute('/portal/jobs/new/emias-job')({
 })
 
 const formSchema = z.object({
+  sysAdminEnabled: z.boolean().default(false),
   jobName: jobNameSchema,
   task: taskSchema,
   priority: z.enum(['low', 'high'], {
@@ -162,6 +163,7 @@ function RouteComponent() {
     mutationFn: (values: FormSchema) =>
       apiTrainingCreate({
         name: values.jobName,
+        sysAdminEnabled: values.sysAdminEnabled,
         slo: values.priority === 'high' ? 1 : 0,
         resource: convertToResourceList(values.task.resource),
         image: values.task.image,
@@ -195,6 +197,7 @@ function RouteComponent() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       jobName: '',
+      sysAdminEnabled: false,
       task: {
         taskName: 'training',
         replicas: 1,
@@ -397,6 +400,7 @@ function RouteComponent() {
             <VolumeMountsCard form={form} />
             <EnvFormCard form={form} open={envOpen} setOpen={setEnvOpen} />
             <OtherOptionsFormCard
+              sysAdminEnabledPath="sysAdminEnabled"
               form={form}
               alertEnabledPath="alertEnabled"
               nodeSelectorEnablePath="nodeSelector.enable"

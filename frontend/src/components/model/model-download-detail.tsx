@@ -50,7 +50,6 @@ import ModelDownloadProgress from '@/components/model/model-download-progress'
 import ModelDownloadTokenDialog from '@/components/model/model-download-token-dialog'
 import RepositorySourceMark from '@/components/model/repository-source-mark'
 
-import { apiGetDataset } from '@/services/api/dataset'
 import {
   apiGetModelDownload,
   apiGetModelDownloadLogs,
@@ -83,19 +82,6 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
       return status === 'Downloading' || status === 'Pending' ? 3000 : false
     },
   })
-
-  const { data: resources = [] } = useQuery({
-    queryKey: ['data', download?.category || 'model'],
-    queryFn: () => apiGetDataset(),
-    select: (res) => res.data,
-    enabled: download?.status === 'Ready',
-  })
-
-  const linkedResource = resources.find(
-    (resource) =>
-      resource.type === download?.category &&
-      resource.name.toLowerCase() === download?.name.toLowerCase()
-  )
 
   const refetchDownload = async () => {
     try {
@@ -143,8 +129,8 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
   }
 
   const navigateToResourceCard = () => {
-    if (!linkedResource || !download) return
-    const params = { id: String(linkedResource.id) }
+    if (!download?.resourceId) return
+    const params = { id: String(download.resourceId) }
     if (download.category === 'dataset') {
       navigate({ to: '/portal/data/datasets/$id', params, search: { tab: '' } })
       return
@@ -182,7 +168,7 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
             }
           >
             <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
-              {download.status === 'Ready' && linkedResource && (
+              {download.status === 'Ready' && Boolean(download.resourceId) && (
                 <Button onClick={navigateToResourceCard}>
                   <BookOpenIcon className="size-4" />
                   {download.category === 'dataset'

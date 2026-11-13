@@ -24,6 +24,20 @@ type CreateTaskResp struct {
 	TaskID uint
 }
 
+// CreateJupyterJob godoc
+//
+// @Summary Create an EMIAS Jupyter job
+// @Description SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.
+// @Tags AIJob
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param job body CreateJupyterReq true "Job creation request"
+// @Success 200 {object} resputil.Response[any] "Success"
+// @Failure 400 {object} resputil.Response[any] "Invalid request"
+// @Failure 403 {object} resputil.Response[any] "SYS_ADMIN is not authorized"
+// @Failure 500 {object} resputil.Response[any] "Service error"
+// @Router /v1/aijobs/jupyter [post]
 func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	token := interutil.GetToken(c)
 	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityJobSubmission) {
@@ -84,7 +98,7 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 2. Env Vars
-	envs := vcjob.GenerateEnvs(c, token, vcReq.Envs)
+	envs := vcjob.GenerateEnvs(c, token, "", vcReq.Envs)
 	envs = append(
 		envs,
 		v1.EnvVar{Name: "GRANT_SUDO", Value: "1"},
@@ -137,10 +151,14 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 		EnableServiceLinks: ptr.To(false),
 	}
 
+	if err := service.ApplyUserJobCapabilities(c.Request.Context(), token.UserID, vcReq.SysAdminEnabled, &podSpec); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username
 
-	if err := interutil.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.kubeConfig); err != nil {
+	if err := interutil.CheckStorageQuota(token.Username, vcReq.VolumeMounts, mgr.kubeClient, mgr.kubeConfig); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -162,14 +180,15 @@ func (mgr *AIJobMgr) CreateJupyterJob(c *gin.Context) {
 // CreateCustom godoc
 //
 //	@Summary		CreateCustom a new AI job
-//	@Description	CreateCustom a new AI job by client-go
+//	@Description	SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.
 //	@Tags			AIJob
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			job	body		any						true	"CreateCustom AI Job Request"
+//	@Param			job	body		CreateAIJobReq						true	"CreateCustom AI Job Request"
 //	@Success		200	{object}	resputil.Response[any]	"CreateCustom AI Job Response"
 //	@Failure		400	{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		403	{object}	resputil.Response[any]	"SYS_ADMIN is not authorized"
 //	@Failure		500	{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/aijobs/training [post]
 func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
@@ -198,9 +217,14 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	req.WorkingDir = vcReq.WorkingDir
 
 	taskModel := model.FormatTaskAttrToModel(&req.TaskAttr)
-	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, &vcReq.CreateCustomReq)
+	podSpec, err := vcjob.GenerateCustomPodSpec(c, token, "", &vcReq.CreateCustomReq)
 	if err != nil {
 		resputil.Error(c, fmt.Sprintf("generate pod spec failed, err %v", err), resputil.NotSpecified)
+		return
+	}
+
+	if err := service.ApplyUserJobCapabilities(c.Request.Context(), token.UserID, vcReq.SysAdminEnabled, &podSpec); err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
 
@@ -212,7 +236,7 @@ func (mgr *AIJobMgr) CreateCustom(c *gin.Context) {
 	taskModel.PodTemplate = datatypes.NewJSONType(podSpec)
 	taskModel.Owner = token.Username
 
-	if err := interutil.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.kubeConfig); err != nil {
+	if err := interutil.CheckStorageQuota(token.Username, vcReq.VolumeMounts, mgr.kubeClient, mgr.kubeConfig); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}

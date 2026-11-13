@@ -124,6 +124,12 @@ export const apiGetUserJobFacets = (
     signal,
   })
 
+export const apiJobSelfList = (params: RemoteTableParams, signal?: AbortSignal) =>
+  apiV1Get<IResponse<IPage<IJobInfo>>>(JOB_URL, {
+    searchParams: buildRemoteSearchParams(toJobProtocol(params)),
+    signal,
+  })
+
 export const apiJobAllList = (params: RemoteTableParams, signal?: AbortSignal) =>
   apiV1Get<IResponse<IPage<IJobInfo>>>(`${JOB_URL}/all`, {
     searchParams: buildRemoteSearchParams(toJobProtocol(params)),
@@ -486,6 +492,7 @@ export interface IJupyterCreate {
   selectors?: NodeSelectorRequirement[]
   template: string
   alertEnabled: boolean
+  sysAdminEnabled?: boolean
   cpuPinningEnabled?: boolean
   forwards: Forward[]
 }
@@ -508,6 +515,7 @@ export interface ISparseCreate extends ITrainingCreate {
 }
 
 export interface ITensorflowCreate {
+  sysAdminEnabled?: boolean
   name: string
   tasks: {
     name: string

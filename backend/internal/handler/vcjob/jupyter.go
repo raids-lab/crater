@@ -40,7 +40,7 @@ type (
 // CreateJupyterJob godoc
 //
 //	@Summary		Create a Jupyter job
-//	@Description	Create a Jupyter job
+//	@Description	SYS_ADMIN is disabled by default. sysAdminEnabled requires current administrator authorization.
 //	@Tags			VolcanoJob
 //	@Accept			json
 //	@Produce		json
@@ -48,6 +48,7 @@ type (
 //	@Param			CreateJupyterReq	body		CreateJupyterReq		true	"Create Jupyter Job Request"
 //	@Success		200					{object}	resputil.Response[any]	"Success"
 //	@Failure		400					{object}	resputil.Response[any]	"Request parameter error"
+//	@Failure		403	{object}	resputil.Response[any]	"SYS_ADMIN is not authorized"
 //	@Failure		500					{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/vcjobs/jupyter [post]
 //
@@ -66,7 +67,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		return
 	}
 
-	if err := util.CheckStorageQuota(token.Username, mgr.kubeClient, mgr.config); err != nil {
+	if err := util.CheckStorageQuota(token.Username, req.VolumeMounts, mgr.kubeClient, mgr.config); err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -121,6 +122,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	podSpec, err := generateInteractivePodSpec(
 		c,
 		token,
+		jobName,
 		&req.CreateJobCommon,
 		req.Resource,
 		req.Image,
@@ -172,7 +174,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		},
 	}
 
-	if err = mgr.submitJob(c, token, &job); err != nil {
+	if err = mgr.submitJob(c, token, &job, req.SysAdminEnabled); err != nil {
 		handleJobSubmissionError(c, err)
 		return
 	}

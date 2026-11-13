@@ -26,6 +26,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -309,7 +310,7 @@ func TestPrepareResumeDownloadStartsSolePausedRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if download.Status != model.ModelDownloadStatusDownloading || download.JobName == "paused-job" {
+	if download.Status != model.ModelDownloadStatusPending || download.JobName == "paused-job" {
 		t.Fatalf("resumed download = status %s job %q", download.Status, download.JobName)
 	}
 
@@ -338,7 +339,10 @@ func newResumePreparationTestManager(t *testing.T, databaseName string) (*gorm.D
 		t.Fatal(err)
 	}
 	configService := service.NewConfigService(query.Use(db))
-	return db, &ModelDownloadMgr{quotaService: service.NewModelDownloadQuotaService(configService)}
+	return db, &ModelDownloadMgr{
+		quotaService: service.NewModelDownloadQuotaService(configService),
+		crClient:     fake.NewClientset(), namespace: "jobs",
+	}
 }
 
 func createResumePreparationTestDownload(
@@ -876,5 +880,46 @@ func TestDownloadRecordDeletionIsAdminOnly(t *testing.T) {
 	adminResponse := convertDownloadToResp(download, admin)
 	if !adminResponse.CanManage || !adminResponse.CanDelete || !canDeleteDownload(admin) {
 		t.Fatalf("admin permissions = %#v", adminResponse)
+	}
+}
+
+func TestPauseDownloadTransitionIsConditionalAndReleasesQuota(t *testing.T) {
+	db := newPauseDownloadTestDB(t)
+
+	download := model.ModelDownload{
+		Name: "owner/pause", Source: model.ModelSourceModelScope,
+		Category: model.DownloadCategoryModel, Revision: "main", Path: "public/Models/owner/pause",
+		Status: model.ModelDownloadStatusDownloading, JobName: "pause-job", CreatorID: 7,
+	}
+	if err := db.Create(&download).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&model.ModelDownloadSubmission{
+		UserID: 7, ModelDownloadID: download.ID,
+		Action: model.ModelDownloadSubmissionCreate, Status: model.ModelDownloadSubmissionReserved,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := pauseDownloadAndReleaseQuota(t.Context(), db, &download); err != nil {
+		t.Fatal(err)
+	}
+	var stored model.ModelDownload
+	if err := db.First(&stored, download.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status != model.ModelDownloadStatusPaused || stored.Message != "Download paused by user" {
+		t.Fatalf("unexpected paused download: %#v", stored)
+	}
+	var submission model.ModelDownloadSubmission
+	if err := db.Where("model_download_id = ?", download.ID).First(&submission).Error; err != nil {
+		t.Fatal(err)
+	}
+	if submission.Status != model.ModelDownloadSubmissionReleased || submission.CompletedAt != nil {
+		t.Fatalf("pause did not release quota reservation: %#v", submission)
+	}
+
+	if err := pauseDownloadAndReleaseQuota(t.Context(), db, &download); !errors.Is(err, bizerr.Conflict.Base) {
+		t.Fatalf("second pause error = %v, want status conflict", err)
 	}
 }

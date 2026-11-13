@@ -142,6 +142,38 @@ func modelDownloadSubmissionMigration() *gormigrate.Migration {
 	}
 }
 
+func agentFoundationMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202610291500",
+		Migrate: func(tx *gorm.DB) error {
+			for _, value := range []any{
+				&model.UserLLMConfig{},
+				&model.AgentConversation{},
+				&model.AgentRun{},
+				&model.AgentMessage{},
+			} {
+				if err := createTableIfMissing(tx, value); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			for _, value := range []any{
+				&model.AgentMessage{},
+				&model.AgentRun{},
+				&model.AgentConversation{},
+				&model.UserLLMConfig{},
+			} {
+				if err := dropTableIfPresent(tx, value); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+}
+
 func createTableIfMissing(db *gorm.DB, value any) error {
 	if db.Migrator().HasTable(value) {
 		return nil
@@ -1688,6 +1720,9 @@ func main() {
 				return dropColumnIfPresent(tx, "jobs", &Job{}, "PodGroupPhase")
 			},
 		},
+		userContainerSysAdminMigration(),
+		agentFoundationMigration(),
+		approvalOrderReviewerMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1724,6 +1759,10 @@ func main() {
 			&model.QueueQuotaLimit{},
 			&model.UserBanRecord{},
 			&model.UserSpaceSize{},
+			&model.UserLLMConfig{},
+			&model.AgentConversation{},
+			&model.AgentRun{},
+			&model.AgentMessage{},
 		)
 		if err != nil {
 			return err
@@ -1906,6 +1945,39 @@ func jobListIndexes() []jobListIndex {
 		{
 			create: `CREATE INDEX IF NOT EXISTS idx_jobs_type_creation_timestamp ON jobs (job_type, creation_timestamp DESC)`,
 			drop:   `DROP INDEX IF EXISTS idx_jobs_type_creation_timestamp`,
+		},
+	}
+}
+
+func userContainerSysAdminMigration() *gormigrate.Migration {
+	type userContainerPermission struct {
+		ContainerSysAdminEnabled bool `gorm:"not null;default:false"`
+	}
+	return &gormigrate.Migration{
+		ID: "202611021600",
+		Migrate: func(tx *gorm.DB) error {
+			return addColumnIfMissing(tx, "users", &userContainerPermission{}, "ContainerSysAdminEnabled")
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return dropColumnIfPresent(tx, "users", &userContainerPermission{}, "ContainerSysAdminEnabled")
+		},
+	}
+}
+
+func approvalOrderReviewerMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202611121600",
+		Migrate: func(tx *gorm.DB) error {
+			// Both the old uint model and the pointer model use a nullable column.
+			// Older databases without the reviewer foreign key may contain zero IDs.
+			return tx.Table("approval_orders").
+				Where("reviewer_id = ?", model.InvalidUserID).
+				Update("reviewer_id", nil).Error
+		},
+		Rollback: func(_ *gorm.DB) error {
+			// Keep NULL: restoring zero IDs would violate the reviewer foreign key.
+			// No schema change is needed when rolling back the Go representation.
+			return nil
 		},
 	}
 }
