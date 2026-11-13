@@ -44,7 +44,7 @@ export const getTensorboardStatusDescription = (
 
   switch (status) {
     case 'pending':
-      return t('jobs.statuses.pending.description')
+      return t('tensorboard.status.pendingDescription')
     case 'starting':
       return t('tensorboard.status.startingDescription')
     case 'ready':
@@ -68,7 +68,7 @@ export const getTensorboardStatusLabel = (
   switch (status) {
     case 'pending':
       return {
-        label: t('jobs.statuses.pending.label'),
+        label: t('tensorboard.status.pending'),
         color: 'text-highlight-purple bg-highlight-purple/20',
         description: getTensorboardStatusDescription(status, statusReason, t),
       }

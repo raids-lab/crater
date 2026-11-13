@@ -156,7 +156,9 @@ func TestBuildSnapshot(t *testing.T) {
 		Mock(config.GetConfig).Return(cfg).Build()
 		Mock(utils.GetLocalTime).Return(fixedNow).Build()
 
-		admittedJob := newVCJob(jobAdmitted, testNamespace, rl("cpu", "2"))
+		admittedJob := newVCJob(jobAdmitted, testNamespace, rl("cpu", "2"), func(job *batch.Job) {
+			job.CreationTimestamp = metav1.NewTime(fixedNow.Add(-50 * time.Second))
+		})
 		// Created 100s ago with a 300s tolerance: only the frozen clock keeps it from timing out.
 		pendingJob := newVCJob(jobPending, testNamespace, rl("cpu", "1"), func(job *batch.Job) {
 			job.CreationTimestamp = metav1.NewTime(fixedNow.Add(-100 * time.Second))
@@ -172,6 +174,8 @@ func TestBuildSnapshot(t *testing.T) {
 		snap, err := (&Server{reader: reader}).buildSnapshot(t.Context(), &settings{})
 		So(err, ShouldBeNil)
 		So(len(snap.views), ShouldEqual, 2)
+		// Oldest first, not name order.
+		So([]string{snap.views[0].name, snap.views[1].name}, ShouldResemble, []string{jobPending, jobAdmitted})
 		So(snap.byName, ShouldNotContainKey, "job-foreign")
 		So(snap.now, ShouldEqual, fixedNow)
 		So(snap.byName[jobAdmitted].podGroupPhase, ShouldEqual, scheduling.PodGroupInqueue)

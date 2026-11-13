@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/lru"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -25,6 +28,10 @@ const (
 	sessionStaleAfter = 2 * time.Second
 	// closeSilenceLimit: a longer silence means close notifications stopped (volcano runs a round every second).
 	closeSilenceLimit = 10 * time.Second
+	// heldWarningRefresh renews an unchanged reason within the one-hour event TTL, at the spam filter's
+	// refill rate of one event per five minutes.
+	heldWarningRefresh   = 5 * time.Minute
+	heldWarningCacheSize = 4096
 )
 
 // settings holds the admin-facing configuration a decision needs, read once per scheduling round
@@ -47,6 +54,8 @@ type sessionState struct {
 // makes a single backend replica a hard requirement.
 type Server struct {
 	reader        client.Reader
+	recorder      record.EventRecorder
+	lastWarned    *lru.Cache // job UID -> heldWarning
 	quotaService  *service.QueueQuotaService
 	configService *service.ConfigService
 	accumulator   *sessionAccumulator
@@ -63,18 +72,40 @@ type Server struct {
 
 func New(
 	reader client.Reader,
+	recorder record.EventRecorder,
 	quotaService *service.QueueQuotaService,
 	configService *service.ConfigService,
 	address string,
 ) *Server {
 	return &Server{
 		reader:        reader,
+		recorder:      recorder,
+		lastWarned:    lru.New(heldWarningCacheSize),
 		quotaService:  quotaService,
 		configService: configService,
 		accumulator:   newSessionAccumulator(),
 		address:       address,
 		logger:        ctrl.Log.WithName("volcano-extender"),
 	}
+}
+
+// heldWarning is the last reason recorded for a job; the message is fixed per reason.
+type heldWarning struct {
+	reason string
+	at     time.Time
+}
+
+// warnHeld records a job's hold reason when it changes and every heldWarningRefresh. Repeats must stop
+// here: client-go drops events once its queue is full, before its own dedup sees them.
+func (s *Server) warnHeld(job *jobView, reason, message string) {
+	now := utils.GetLocalTime()
+	if value, ok := s.lastWarned.Get(job.uid); ok {
+		if last := value.(heldWarning); last.reason == reason && now.Sub(last.at) < heldWarningRefresh {
+			return
+		}
+	}
+	s.lastWarned.Add(job.uid, heldWarning{reason: reason, at: now})
+	s.recorder.Event(job.reference(), v1.EventTypeWarning, reason, message)
 }
 
 // NeedLeaderElection is false: the endpoint must answer whenever the pod serves traffic, otherwise

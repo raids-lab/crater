@@ -21,7 +21,13 @@ import { toast } from 'sonner'
 import { getJobPhaseLabel } from '@/components/badge/job-phase-badge'
 
 import { type ApprovalOrder, reviewApprovalOrder } from '@/services/api/approvalorder'
-import { type IJobInfo, JobPhase, apiAdminGetJobList } from '@/services/api/vcjob'
+import {
+  type IJobInfo,
+  JobPhase,
+  type PodGroupPhase,
+  apiAdminGetJobList,
+  getJobDisplayPhase,
+} from '@/services/api/vcjob'
 
 // Hook 用于管理工单锁定逻辑
 export function useApprovalOrderLock() {
@@ -47,9 +53,10 @@ export function useApprovalOrderLock() {
     return String(phase).toLowerCase() === 'running'
   }
 
-  const phaseLabel = (phase: IJobInfo['status']) => {
+  const phaseLabel = (phase: IJobInfo['status'], podGroupPhase?: PodGroupPhase) => {
     const enumVal = JobPhase[phase as keyof typeof JobPhase]
-    if (enumVal !== undefined) return getJobPhaseLabel(enumVal).label
+    if (enumVal !== undefined)
+      return getJobPhaseLabel(getJobDisplayPhase(enumVal, podGroupPhase)).label
     return '未知'
   }
 
@@ -125,7 +132,9 @@ export function useApprovalOrderLock() {
       }
 
       if (!isRunningPhase(found.status)) {
-        toast.error(`该作业当前状态为 ${phaseLabel(found.status)}，无法锁定（仅运行中可锁定）`)
+        toast.error(
+          `该作业当前状态为 ${phaseLabel(found.status, found.podGroupPhase)}，无法锁定（仅运行中可锁定）`
+        )
         return null
       }
 
