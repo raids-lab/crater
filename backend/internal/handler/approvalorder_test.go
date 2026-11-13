@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,7 +18,9 @@ import (
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 func TestCreateApprovalOrderJobStatus(t *testing.T) {
@@ -234,7 +237,82 @@ func TestCreateApprovalOrderInsertFailureRollsBackLock(t *testing.T) {
 	assertApprovalOrderLockState(t, db, lockedUntil.Add(12*time.Hour), 1)
 }
 
-func sendAutoApprovalRequest(t *testing.T, hours uint, wantStatus int) {
+func TestCreateApprovalOrderLockFailureRejectsAndAllowsRetry(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		permanent  bool
+		wantStatus int
+		wantCode   bizerr.BizCode
+		wantMsg    string
+	}{
+		{"permanently locked", true, http.StatusConflict, bizerr.Conflict.ResourceStatusError, "already permanently locked"},
+		{"database update fails", false, http.StatusInternalServerError, bizerr.Internal.DatabaseError, "failed to create approval order"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := newApprovalOrderTestDB(t, batch.Running)
+			originalQuery := *query.Q
+			query.SetDefault(db)
+			t.Cleanup(func() { *query.Q = originalQuery })
+			lockedUntil := time.Now().UTC().Add(6 * time.Hour).Truncate(time.Second)
+			originalLock := lockedUntil
+			if tc.permanent {
+				originalLock = utils.GetPermanentTime()
+			}
+			if err := db.Model(&model.Job{}).Where("id = ?", 1).Update("locked_timestamp", originalLock).Error; err != nil {
+				t.Fatal(err)
+			}
+
+			updateAttempted := false
+			if !tc.permanent {
+				if err := db.Callback().Update().After("gorm:update").Register("test:fail_job_lock", func(tx *gorm.DB) {
+					if tx.Statement.Table == "jobs" {
+						updateAttempted = true
+						_ = tx.AddError(bizerr.Internal.DatabaseError.New("injected job lock update failure"))
+					}
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			recorder := sendAutoApprovalRequest(t, 12, tc.wantStatus)
+			var response resputil.Response[any]
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Code != tc.wantCode || !strings.Contains(response.Message, tc.wantMsg) {
+				t.Fatalf("response = %+v, want code %d and message containing %q", response, tc.wantCode, tc.wantMsg)
+			}
+			assertApprovalOrderLockState(t, db, originalLock, 0)
+
+			if !tc.permanent {
+				if !updateAttempted {
+					t.Fatal("job lock update failure was not injected")
+				}
+				if err := db.Callback().Update().Remove("test:fail_job_lock"); err != nil {
+					t.Fatal(err)
+				}
+			} else if err := db.Model(&model.Job{}).Where("id = ?", 1).Update("locked_timestamp", lockedUntil).Error; err != nil {
+				t.Fatal(err)
+			}
+			assertAutoApprovalRetry(t, db, lockedUntil)
+		})
+	}
+}
+
+func assertAutoApprovalRetry(t *testing.T, db *gorm.DB, lockedUntil time.Time) {
+	t.Helper()
+	sendAutoApprovalRequest(t, 12, http.StatusOK)
+	assertApprovalOrderLockState(t, db, lockedUntil.Add(12*time.Hour), 1)
+	var order model.ApprovalOrder
+	if err := db.First(&order).Error; err != nil {
+		t.Fatal(err)
+	}
+	if order.Status != model.ApprovalOrderStatusApproved || order.ReviewNotes != autoApprovalReason {
+		t.Fatalf("retry order = %+v, want automatic approval", order)
+	}
+}
+
+func sendAutoApprovalRequest(t *testing.T, hours uint, wantStatus int) *httptest.ResponseRecorder {
 	t.Helper()
 	router := gin.New()
 	router.Use(func(c *gin.Context) { util.SetJWTContext(c, util.JWTMessage{UserID: 1}) })
@@ -247,6 +325,7 @@ func sendAutoApprovalRequest(t *testing.T, hours uint, wantStatus int) {
 	if recorder.Code != wantStatus {
 		t.Fatalf("HTTP status = %d, want %d: %s", recorder.Code, wantStatus, recorder.Body.String())
 	}
+	return recorder
 }
 
 func assertApprovalOrderLockState(t *testing.T, db *gorm.DB, wantLock time.Time, wantOrders int64) {

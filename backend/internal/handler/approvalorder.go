@@ -396,6 +396,10 @@ func (mgr *ApprovalOrderMgr) CreateApprovalOrder(c *gin.Context) {
 			resputil.HandleError(c, errApprovalOrderJobInactive)
 			return
 		}
+		if errors.Is(err, bizerr.Conflict.Base) {
+			resputil.HandleError(c, err)
+			return
+		}
 		klog.Errorf("failed to create approval order, userID: %d, err: %v", token.UserID, err)
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "failed to create approval order"))
 		return
@@ -432,12 +436,10 @@ func (mgr *ApprovalOrderMgr) createApprovalOrder(
 		}
 		if canAutoApprove {
 			if err := mgr.lockJobForApproval(ctx, tx, job, order.Content.Data().ApprovalOrderExtensionHours); err != nil {
-				klog.Errorf("failed to lock job for auto approval, jobName: %s, err: %v", order.Name, err)
-				// Preserve pending orders when automatic locking is unavailable.
-			} else {
-				order.Status = model.ApprovalOrderStatusApproved
-				order.ReviewNotes = autoApprovalReason
+				return err
 			}
+			order.Status = model.ApprovalOrderStatusApproved
+			order.ReviewNotes = autoApprovalReason
 		}
 		return tx.ApprovalOrder.WithContext(ctx).Create(order)
 	})
