@@ -77,7 +77,7 @@ function useNodeNames() {
 }
 
 // NodeMultiSelect is a searchable multi-select for node scheduling constraints.
-function NodeMultiSelect({
+export function NodeMultiSelect({
   values,
   onChange,
   options,

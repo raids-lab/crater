@@ -1,6 +1,6 @@
 # crater
 
-![Version: 1.4.2](https://img.shields.io/badge/Version-1.4.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.4.2](https://img.shields.io/badge/AppVersion-1.4.2-informational?style=flat-square)
+![Version: 1.5.0](https://img.shields.io/badge/Version-1.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.5.0](https://img.shields.io/badge/AppVersion-1.5.0-informational?style=flat-square)
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
@@ -32,7 +32,7 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | agent.resources | object | `{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"128Mi"}}` | Resource requests and limits for the Agent runtime |
 | agent.secretRevision | string | `""` | Change this value after rotating an external Secret to roll both backend and Agent pods |
 | agent.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}` | Container-level security settings for the Agent runtime |
-| backendConfig | object | `{"auth":{"ldap":{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}},"normal":{"allowLogin":true,"allowRegister":true},"token":{"accessTokenSecret":"example-access-token","refreshTokenSecret":"example-refresh-token"}},"enableLeaderElection":false,"modelDownload":{"huggingFaceEndpoint":"https://huggingface.co","image":"ghcr.io/raids-lab/crater-model-downloader:v1.0.0","modelScopeEndpoint":"https://modelscope.cn"},"modelMetadata":{"huggingFaceEndpoints":["https://huggingface.co"],"logicalPublicPrefix":"public","logoAllowedHosts":["huggingface.co","cdn-avatars.huggingface.co","resouces.modelscope.cn","resources.modelscope.cn"],"maxLogoBytes":524288,"modelScopeEndpoints":["https://modelscope.cn"],"timeoutSeconds":20},"port":":8088","postgres":{"TimeZone":"Asia/Shanghai","dbname":"postgres","host":"crater-postgresql.crater-system.svc.cluster.local","password":"<MUSTEDIT>","port":5432,"sslmode":"disable","user":"postgres"},"prometheusAPI":"http://192.168.0.1:12345","registry":{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":false,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}},"schedulerExtenderPort":":8089","secrets":{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"},"smtp":{"enable":false,"host":"mail.example.com","insecureSkipVerify":false,"notify":"example@example.com","password":"<MASKED>","port":25,"user":"example"},"storage":{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"},"quota":{"cephFSCSIDriver":"","cephFSName":"cephfs","enabled":false,"provider":"auto","rookNamespace":"rook-ceph","storageServerURL":"","toolboxLabelSelector":"app=rook-ceph-tools"}}}` | Backend configuration |
+| backendConfig | object | `{"auth":{"ldap":{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}},"normal":{"allowLogin":true,"allowRegister":true},"token":{"accessTokenSecret":"example-access-token","refreshTokenSecret":"example-refresh-token"}},"enableLeaderElection":false,"kthena":{"downloaderImage":"ghcr.io/volcano-sh/downloader:v1.0.0","enabledProfiles":[],"runtimeImages":{}},"modelDownload":{"huggingFaceEndpoint":"https://huggingface.co","image":"ghcr.io/raids-lab/crater-model-downloader:v1.0.0","modelScopeEndpoint":"https://modelscope.cn"},"modelMetadata":{"huggingFaceEndpoints":["https://huggingface.co"],"logicalPublicPrefix":"public","logoAllowedHosts":["huggingface.co","cdn-avatars.huggingface.co","resouces.modelscope.cn","resources.modelscope.cn"],"maxLogoBytes":524288,"modelScopeEndpoints":["https://modelscope.cn"],"timeoutSeconds":20},"port":":8088","postgres":{"TimeZone":"Asia/Shanghai","dbname":"postgres","host":"crater-postgresql.crater-system.svc.cluster.local","password":"<MUSTEDIT>","port":5432,"sslmode":"disable","user":"postgres"},"prometheusAPI":"http://192.168.0.1:12345","registry":{"buildTools":{"proxyConfig":{"httpProxy":null,"httpsProxy":null,"noProxy":null}},"enable":false,"harbor":{"password":"<MASKED>","server":"harbor.example.com","user":"admin"}},"schedulerExtenderPort":":8089","secrets":{"imagePullSecretName":"","tlsForwardSecretName":"crater-tls-forward-secret","tlsSecretName":"crater-tls-secret"},"smtp":{"enable":false,"host":"mail.example.com","insecureSkipVerify":false,"notify":"example@example.com","password":"<MASKED>","port":25,"user":"example"},"storage":{"prefix":{"account":"accounts","public":"public","user":"users"},"pvc":{"readOnlyMany":null,"readWriteMany":"crater-rw-storage"},"quota":{"cephFSCSIDriver":"","cephFSName":"cephfs","enabled":false,"provider":"auto","rookNamespace":"rook-ceph","storageServerURL":"","toolboxLabelSelector":"app=rook-ceph-tools"}}}` | Backend configuration |
 | backendConfig.auth | object | `{"ldap":{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}},"normal":{"allowLogin":true,"allowRegister":true},"token":{"accessTokenSecret":"example-access-token","refreshTokenSecret":"example-refresh-token"}}` | Configuration for authentication methods and tokens |
 | backendConfig.auth.ldap | object | `{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}}` | LDAP authentication settings |
 | backendConfig.auth.ldap.alias | string | `""` | Short display name for this auth method in the UI (e.g., "ACT", "SJTU") The UI will append suffixes like "登录" or "统一身份认证", so keep it brief. |
@@ -61,6 +61,9 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | backendConfig.auth.token.accessTokenSecret | string | `"example-access-token"` | Secret key used to sign JWT access tokens (Required) Must be a secure, randomly generated string |
 | backendConfig.auth.token.refreshTokenSecret | string | `"example-refresh-token"` | Secret key used to sign JWT refresh tokens (Required) Must be a secure, randomly generated string |
 | backendConfig.enableLeaderElection | bool | `false` | Enable leader election for controller manager to ensure high availability Defaults to false if not specified |
+| backendConfig.kthena | object | `{"downloaderImage":"ghcr.io/volcano-sh/downloader:v1.0.0","enabledProfiles":[],"runtimeImages":{}}` | Native Kthena inference workload configuration |
+| backendConfig.kthena.downloaderImage | string | `"ghcr.io/volcano-sh/downloader:v1.0.0"` | ModelServing init-container image (independent of the Crater download-job image) |
+| backendConfig.kthena.enabledProfiles | list | `[]` | Enable distributed profiles after validating this cluster's images, storage and GPU networking. Values: vLLM/combined/ray, vLLM/disaggregated/single, vLLM/disaggregated/ray, SGLang/disaggregated/single |
 | backendConfig.modelDownload | object | `{"huggingFaceEndpoint":"https://huggingface.co","image":"ghcr.io/raids-lab/crater-model-downloader:v1.0.0","modelScopeEndpoint":"https://modelscope.cn"}` | Model download functionality configurations |
 | backendConfig.modelDownload.huggingFaceEndpoint | string | `"https://huggingface.co"` | Hugging Face Hub base URL used by model download jobs Set this to an administrator-approved mirror or gateway when the official Hub is unavailable |
 | backendConfig.modelDownload.image | string | `"ghcr.io/raids-lab/crater-model-downloader:v1.0.0"` | Container image used for model download jobs Crater's public image pins source-client versions; deployments may mirror it internally |
@@ -220,6 +223,13 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | images.storage.tag | string | `"latest"` | Storage server image tag |
 | images.tensorboard.repository | string | `"docker.io/tensorflow/tensorflow"` | TensorBoard image repository used by dynamically created panels |
 | images.tensorboard.tag | string | `"2.20.0"` | TensorBoard image tag |
+| inferenceMonitoring | object | `{"enabled":false,"interval":"30s","labels":{},"router":{"enabled":true,"port":"http","serviceSelector":{"app.kubernetes.io/component":"kthena-router"}}}` | Native inference metrics scraping (requires Prometheus Operator) |
+| inferenceMonitoring.enabled | bool | `false` | Create a PodMonitor for vLLM engine metrics in the job namespace |
+| inferenceMonitoring.interval | string | `"30s"` | Metrics scrape interval |
+| inferenceMonitoring.labels | object | `{}` | Labels used by the Prometheus instance's podMonitorSelector |
+| inferenceMonitoring.router.enabled | bool | `true` | Scrape Kthena Router for request/error rates and end-to-end latency |
+| inferenceMonitoring.router.port | string | `"http"` | Named Service port serving /metrics |
+| inferenceMonitoring.router.serviceSelector | object | `{"app.kubernetes.io/component":"kthena-router"}` | Labels of the Kthena Service exposing the Router metrics endpoint |
 | modelDatasetGovernance | object | `{"apply":false,"datasetMarkerPatterns":"","datasetsSubdirectory":"Datasets","enabled":false,"excludeDirectories":".cache,.git,.conda,node_modules,site-packages,test,tests,tmp,temp","logicalPublicPrefix":"public","maxDepth":8,"maxReadmeBytes":65536,"modelWeightPatterns":"*.safetensors,pytorch_model*.bin,model*.bin,*.gguf,tf_model.h5,flax_model.msgpack","modelsSubdirectories":[],"modelsSubdirectory":"Models","resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"scanTimeout":"30m","schedule":"30 2 * * 0","storageRoot":"/crater"}` | Reconcile public model and dataset storage with database records |
 | modelDatasetGovernance.apply | bool | `false` | Apply reconciliation results; keep false for the first validation run |
 | modelDatasetGovernance.datasetMarkerPatterns | string | `""` | Dataset marker filename patterns; empty keeps filesystem-only dataset discovery disabled |
@@ -274,3 +284,51 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | tls.forward.key | string | `"<MASKED>"` | Forward certificate private key (masked) |
 | tolerations | list | `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]` | Pod tolerations for chart Deployments |
 
+## Kthena inference permissions
+
+The backend service account can manage Kthena ModelServing, ModelServer, and ModelRoute resources and use `services/proxy` to forward inference requests through the Kubernetes API. Install the matching Kthena controllers and CRDs separately. The model-deployment feature is disabled by default; an administrator enables it in platform settings after validating the Kthena installation. Disabling the feature hides the entry points and rejects inference API access; it does not delete existing deployments or remove RBAC permissions.
+
+New deployments directly create a ModelServing and owned ModelServer/ModelRoute resources, using the v1alpha1 APIs available in Kthena v1.0.0. Only these three resource types are supported; ModelBooster management and fallback paths have been removed.
+
+Set `backendConfig.kthena.downloaderImage` to the Kthena downloader image or an internal mirror (default `ghcr.io/volcano-sh/downloader:v1.0.0`). This is separate from Crater's model-download Job image. Existing PVC models are read from their mounted paths; remote models use an init container. Roles support Entry plus Ray Workers for vLLM, or independent Prefill/Decode roles for vLLM and SGLang. vLLM P/D + Ray uses the same roles contract.
+
+The backend's existing Kthena RBAC already covers all three native resource kinds. The raw-resource endpoint returns a Kubernetes List containing the ModelServing and its owned networking resources. Deleting the ModelServing removes its children through Kubernetes garbage collection. Storage authorization and shared Crater quota admission apply before enabling inference access for users.
+
+Inference deployments use the same Volcano queue resolver and account/user queue provisioning as normal jobs. Crater writes `scheduling.volcano.sh/queue-name` on ModelServing, and Kthena generates the associated PodGroups and per-group gang resource requirements. A missing PodGroup API or a closed/mismatched user queue blocks submission. Both engine and download initialization have explicit resource budgets. Enable Crater's scheduler extender and configure the Volcano enqueue callback as described above so native ModelServing PodGroups share account/user quota with training jobs. Waiting groups retain their requested replica count and remain Pending until admitted. Admitted groups and allocated or terminating Pods count against quota; Crater also applies periodic resource billing.
+
+### Inference monitoring
+
+`inferenceMonitoring.enabled` (default `false`) creates a Prometheus Operator PodMonitor for native vLLM/SGLang entry Pods in `namespaces.job`. Set `inferenceMonitoring.labels` (default `{}`) to match the Prometheus instance's `podMonitorSelector`; `inferenceMonitoring.interval` defaults to `30s`. The Prometheus Operator CRDs must be installed before enabling it. Without the Operator, use the Pods' `prometheus.io/*` scrape annotations and retain `namespace` and `pod` labels. Avoid scraping the same Pods twice.
+
+Serving Pod billing finalizers preserve metering checkpoints through deletion. Crater must remain running to settle and release them. Billing follows existing resource prices and balance policies; request/token metrics do not incur separate charges.
+
+When resource billing is enabled, Pods start with a metering scheduling gate. Crater atomically installs a billing finalizer and removes that gate before scheduling. Use Kubernetes 1.27+ with PodSchedulingReadiness enabled and a Volcano version supporting scheduling gates (verified design baseline: v1.12.0). When the backend is unavailable, new Pods remain gated and deletion waits for billing recovery. Metering is observed every 15 seconds; settlement uses the existing billing interval. Resource-price boundaries have observation-period granularity.
+
+### Distributed serving profiles
+
+Both engines support combined single-node inference by default. Enable distributed profiles individually after configuring the runtime image, shared model access, GPU networking, and KV transfer for this cluster:
+
+```yaml
+backendConfig:
+  kthena:
+    enabledProfiles:
+      - vLLM/combined/ray
+      - vLLM/disaggregated/single
+      - vLLM/disaggregated/ray
+      - SGLang/disaggregated/single
+    runtimeImages:
+      vLLM/combined/ray:
+        - registry.example.com/inference/vllm:v0.10.0-cu128-nixl-v0.4.1-lmcache-0.3.2
+inferenceMonitoring:
+  enabled: true
+  router:
+    enabled: true
+```
+
+Each `runtimeImages` key replaces the approved images for that exact engine/layout/execution profile. Omitting the key uses the built-in pinned image; an empty list disables the profile. Use version tags or SHA-256 digests; untagged and `latest` images are rejected. The backend checks entry and worker images during create, update, resume and queued admission. The capabilities API publishes the image allowlist and fixed KV connector to the UI. Private mirrors must contain the corresponding runtime and connector packages.
+
+The UI presets pin vLLM to `ghcr.io/volcano-sh/vllm-openai:v0.10.0-cu128-nixl-v0.4.1-lmcache-0.3.2` and SGLang to `lmsysorg/sglang:v0.4.10.post2`. The launcher is embedded in Crater's generated Pod command. Ray uses TP=GPUs per node and PP=nodes per instance. vLLM P/D selects NixlConnector; SGLang P/D selects Mooncake. Network policies must allow the chosen runtime's intra-instance and KV-transfer traffic. The required pod anti-affinity uses `matchLabelKeys` for group and role-instance identity, so the cluster must support that field.
+
+ModelServer selects only entry Pods and the deployment UUID. The Router ServiceMonitor scrapes `/metrics` on the Kthena Router Service's `http` port in `kthena-system`. Set `inferenceMonitoring.router.serviceSelector` and `inferenceMonitoring.router.port` if your installation exposes metrics through a different Service. Retain the namespace and model labels. The capabilities endpoint reports configured profiles and separately checks API/RBAC access to all three native resource kinds.
+
+Private-model Secrets live in the workload namespace and carry `crater.raids.io/user-id` and `crater.raids.io/account-id` labels matching the deployment owner. The frontend submits only Secret name/key references. The backend checks ownership and key existence before preview, creation, and template updates.

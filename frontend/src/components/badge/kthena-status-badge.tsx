@@ -1,0 +1,83 @@
+import { t } from 'i18next'
+
+import { KthenaService } from '@/services/api/inference'
+
+import { PhaseBadge, PhaseBadgeData } from './phase-badge'
+
+export type KthenaDisplayState =
+  | 'suspended'
+  | 'queued'
+  | 'submitted'
+  | 'scheduling'
+  | 'deploying'
+  | 'running'
+  | 'degraded'
+  | 'failed'
+
+export const getKthenaDisplayState = (service: KthenaService): KthenaDisplayState => {
+  const phase = service.phase || 'Pending'
+  if (phase === 'Suspended') return 'suspended'
+  if (phase === 'Prequeue') return 'queued'
+  if (phase === 'Failed' || phase === 'Invalid') return 'failed'
+  if (phase === 'Degraded') return 'degraded'
+  if (phase === 'Ready' || phase === 'Active') return 'running'
+  if (phase === 'Pending') return service.resources?.length ? 'scheduling' : 'submitted'
+  return 'deploying'
+}
+
+export const getKthenaStatusLabel = (state: KthenaDisplayState): PhaseBadgeData => {
+  switch (state) {
+    case 'suspended':
+      return {
+        label: t('kthena.topology.suspended'),
+        description: t('kthena.topology.resume'),
+        color: 'bg-highlight-slate/20 text-highlight-slate',
+      }
+    case 'queued':
+      return {
+        label: t('kthena.state.queued'),
+        color: 'bg-highlight-slate/20 text-highlight-slate',
+        description: t('kthena.stateDescription.queued'),
+      }
+    case 'submitted':
+      return {
+        label: t('kthena.state.submitted'),
+        color: 'bg-highlight-slate/20 text-highlight-slate',
+        description: t('kthena.stateDescription.submitted'),
+      }
+    case 'scheduling':
+      return {
+        label: t('kthena.state.scheduling'),
+        color: 'bg-highlight-purple/20 text-highlight-purple',
+        description: t('kthena.stateDescription.scheduling'),
+      }
+    case 'deploying':
+      return {
+        label: t('kthena.state.deploying'),
+        color: 'bg-highlight-blue/20 text-highlight-blue',
+        description: t('kthena.stateDescription.deploying'),
+      }
+    case 'running':
+      return {
+        label: t('kthena.state.running'),
+        color: 'bg-highlight-blue/20 text-highlight-blue',
+        description: t('kthena.stateDescription.running'),
+      }
+    case 'degraded':
+      return {
+        label: t('kthena.state.degraded'),
+        color: 'bg-highlight-orange/20 text-highlight-orange',
+        description: t('kthena.stateDescription.degraded'),
+      }
+    case 'failed':
+      return {
+        label: t('kthena.state.failed'),
+        color: 'bg-highlight-red/20 text-highlight-red',
+        description: t('kthena.stateDescription.failed'),
+      }
+  }
+}
+
+export default function KthenaStatusBadge({ service }: { service: KthenaService }) {
+  return <PhaseBadge phase={getKthenaDisplayState(service)} getPhaseLabel={getKthenaStatusLabel} />
+}

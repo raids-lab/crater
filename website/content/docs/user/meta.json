@@ -2,6 +2,7 @@
   "pages": [
     "---作业与服务---",
     "quick-start",
+    "inference-services",
     "---镜像与数据---",
     "image",
     "...file",

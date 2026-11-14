@@ -3,6 +3,7 @@
   "pages": [
     "---Tasks & Services---",
     "quick-start",
+    "inference-services",
     "---Images & Data---",
     "image",
     "...file",
