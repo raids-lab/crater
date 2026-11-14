@@ -1,10 +1,20 @@
 import { Link } from '@tanstack/react-router'
+import { BoxIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 
 import Combobox from '@/components/form/combobox'
+import FormLabelMust from '@/components/form/form-label-must'
+import CardTitle from '@/components/label/card-title'
 
 import { ServingField, ServingSelect } from './serving-fields'
 import type { ServingFormState } from './use-serving-form'
@@ -14,34 +24,60 @@ export function ServingModelFields({ state }: { state: ServingFormState }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('kthena.form.sections.modelSource')}</CardTitle>
+        <CardTitle icon={BoxIcon}>{t('kthena.form.sections.modelSource')}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-5">
-        <ServingField
-          form={form}
-          name="name"
-          readOnly={!!state.edit}
-          label={t('kthena.form.fields.serviceName')}
-        />
-        <ServingSelect
-          form={form}
-          name="modelSource"
-          label={t('kthena.form.fields.source')}
-          options={['platform', 'external'].map((value) => ({
-            value,
-            label: t(`kthena.form.source.${value}`),
-          }))}
-        />
+        <div className="grid items-start gap-4 sm:grid-cols-2">
+          <ServingField
+            form={form}
+            name="name"
+            readOnly={!!state.edit}
+            required
+            label={t('kthena.form.fields.serviceName')}
+            description={state.edit ? undefined : t('kthena.form.nameHelp')}
+            placeholder="qwen-small"
+          />
+          <ServingSelect
+            form={form}
+            name="modelSource"
+            label={t('kthena.form.fields.source')}
+            options={['platform', 'external'].map((value) => ({
+              value,
+              label: t(`kthena.form.source.${value}`),
+            }))}
+          />
+        </div>
         {values.modelSource === 'platform' ? (
           <>
             {modelQuery.isPending ? (
-              <p role="status">{t('kthena.topology.loading')}</p>
+              <p role="status" className="text-muted-foreground text-sm">
+                {t('kthena.topology.loading')}
+              </p>
             ) : modelQuery.isError ? (
-              <div role="alert">
-                {t('kthena.topology.modelError')}
-                <Button type="button" variant="outline" onClick={() => void modelQuery.refetch()}>
+              <div
+                role="alert"
+                className="bg-muted/40 flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm"
+              >
+                <span>{t('kthena.topology.modelError')}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void modelQuery.refetch()}
+                >
                   {t('kthena.topology.retry')}
                 </Button>
+              </div>
+            ) : (modelQuery.data?.length ?? 0) === 0 ? (
+              <div className="bg-muted/40 grid gap-2 rounded-md border p-3 text-sm">
+                <p>{t('kthena.form.modelEmpty')}</p>
+                <Link
+                  to="/portal/data/models"
+                  search={{ organization: undefined }}
+                  className="text-primary w-fit underline underline-offset-4"
+                >
+                  {t('kthena.topology.saveModel')}
+                </Link>
               </div>
             ) : (
               <FormField
@@ -49,7 +85,10 @@ export function ServingModelFields({ state }: { state: ServingFormState }) {
                 name="platformModelId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('kthena.form.fields.platformModel')}</FormLabel>
+                    <FormLabel>
+                      {t('kthena.form.fields.platformModel')}
+                      <FormLabelMust />
+                    </FormLabel>
                     <FormControl>
                       <Combobox
                         items={(modelQuery.data ?? []).map((m) => ({
@@ -57,10 +96,11 @@ export function ServingModelFields({ state }: { state: ServingFormState }) {
                           label: m.name,
                         }))}
                         current={String(field.value ?? '')}
-                        handleSelect={(v) => field.onChange(Number(v))}
+                        handleSelect={(v) => field.onChange(v ? Number(v) : undefined)}
                         formTitle={t('kthena.form.fields.platformModel')}
                       />
                     </FormControl>
+                    <FormDescription>{t('kthena.form.descriptions.platformModel')}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -69,9 +109,21 @@ export function ServingModelFields({ state }: { state: ServingFormState }) {
           </>
         ) : (
           <>
-            <ServingField form={form} name="modelURI" label={t('kthena.form.fields.modelURI')} />
-            <ServingField form={form} name="modelRevision" label={t('kthena.topology.revision')} />
-            <p className="text-muted-foreground text-sm">{t('kthena.topology.uri')}</p>
+            <div className="grid items-start gap-4 sm:grid-cols-[2fr_1fr]">
+              <ServingField
+                form={form}
+                name="modelURI"
+                required
+                label={t('kthena.form.fields.modelURI')}
+                placeholder="hf://Qwen/Qwen2.5-0.5B-Instruct"
+                description={t('kthena.topology.uri')}
+              />
+              <ServingField
+                form={form}
+                name="modelRevision"
+                label={t('kthena.topology.revision')}
+              />
+            </div>
             <Link
               to="/portal/data/models"
               search={{ organization: undefined }}
@@ -81,13 +133,6 @@ export function ServingModelFields({ state }: { state: ServingFormState }) {
             </Link>
           </>
         )}
-        <ServingField
-          form={form}
-          name="servedModel"
-          readOnly={!!state.edit}
-          label={t('kthena.form.fields.servedModel')}
-        />
-        <p className="text-muted-foreground text-sm">{t('kthena.topology.routeModel')}</p>
       </CardContent>
     </Card>
   )

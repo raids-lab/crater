@@ -223,11 +223,13 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | images.storage.tag | string | `"latest"` | Storage server image tag |
 | images.tensorboard.repository | string | `"docker.io/tensorflow/tensorflow"` | TensorBoard image repository used by dynamically created panels |
 | images.tensorboard.tag | string | `"2.20.0"` | TensorBoard image tag |
-| inferenceMonitoring | object | `{"enabled":false,"interval":"30s","labels":{},"router":{"enabled":true}}` | Native inference metrics scraping (requires Prometheus Operator) |
+| inferenceMonitoring | object | `{"enabled":false,"interval":"30s","labels":{},"router":{"enabled":true,"port":"http","serviceSelector":{"app.kubernetes.io/component":"kthena-router"}}}` | Native inference metrics scraping (requires Prometheus Operator) |
 | inferenceMonitoring.enabled | bool | `false` | Create a PodMonitor for vLLM engine metrics in the job namespace |
 | inferenceMonitoring.interval | string | `"30s"` | Metrics scrape interval |
 | inferenceMonitoring.labels | object | `{}` | Labels used by the Prometheus instance's podMonitorSelector |
 | inferenceMonitoring.router.enabled | bool | `true` | Scrape Kthena Router for request/error rates and end-to-end latency |
+| inferenceMonitoring.router.port | string | `"http"` | Named Service port serving /metrics |
+| inferenceMonitoring.router.serviceSelector | object | `{"app.kubernetes.io/component":"kthena-router"}` | Labels of the Kthena Service exposing the Router metrics endpoint |
 | modelDatasetGovernance | object | `{"apply":false,"datasetMarkerPatterns":"","datasetsSubdirectory":"Datasets","enabled":false,"excludeDirectories":".cache,.git,.conda,node_modules,site-packages,test,tests,tmp,temp","logicalPublicPrefix":"public","maxDepth":8,"maxReadmeBytes":65536,"modelWeightPatterns":"*.safetensors,pytorch_model*.bin,model*.bin,*.gguf,tf_model.h5,flax_model.msgpack","modelsSubdirectories":[],"modelsSubdirectory":"Models","resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"50m","memory":"64Mi"}},"scanTimeout":"30m","schedule":"30 2 * * 0","storageRoot":"/crater"}` | Reconcile public model and dataset storage with database records |
 | modelDatasetGovernance.apply | bool | `false` | Apply reconciliation results; keep false for the first validation run |
 | modelDatasetGovernance.datasetMarkerPatterns | string | `""` | Dataset marker filename patterns; empty keeps filesystem-only dataset discovery disabled |
@@ -327,6 +329,6 @@ Each `runtimeImages` key replaces the approved images for that exact engine/layo
 
 The UI presets pin vLLM to `ghcr.io/volcano-sh/vllm-openai:v0.10.0-cu128-nixl-v0.4.1-lmcache-0.3.2` and SGLang to `lmsysorg/sglang:v0.4.10.post2`. The launcher is embedded in Crater's generated Pod command. Ray uses TP=GPUs per node and PP=nodes per instance. vLLM P/D selects NixlConnector; SGLang P/D selects Mooncake. Network policies must allow the chosen runtime's intra-instance and KV-transfer traffic. The required pod anti-affinity uses `matchLabelKeys` for group and role-instance identity, so the cluster must support that field.
 
-ModelServer selects only entry Pods and the deployment UUID. The Router ServiceMonitor selects the metrics service in `kthena-system`; retain its namespace and model labels. The capabilities endpoint reports configured profiles and separately checks API/RBAC access to all three native resource kinds. A configured profile is enabled by cluster administration, not by a synthetic health probe.
+ModelServer selects only entry Pods and the deployment UUID. The Router ServiceMonitor scrapes `/metrics` on the Kthena Router Service's `http` port in `kthena-system`. Set `inferenceMonitoring.router.serviceSelector` and `inferenceMonitoring.router.port` if your installation exposes metrics through a different Service. Retain the namespace and model labels. The capabilities endpoint reports configured profiles and separately checks API/RBAC access to all three native resource kinds.
 
 Private-model Secrets live in the workload namespace and carry `crater.raids.io/user-id` and `crater.raids.io/account-id` labels matching the deployment owner. The frontend submits only Secret name/key references. The backend checks ownership and key existence before preview, creation, and template updates.

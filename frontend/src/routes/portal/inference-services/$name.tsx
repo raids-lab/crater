@@ -1,19 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { useAtomValue } from 'jotai'
 import {
   ActivityIcon,
   AlertTriangleIcon,
   ArrowLeftIcon,
-  BracesIcon,
   CalendarIcon,
   CheckCircle2Icon,
   CopyIcon,
   CpuIcon,
+  CreditCardIcon,
+  FileSlidersIcon,
   GaugeIcon,
   MessageSquareIcon,
-  NetworkIcon,
   ServerIcon,
-  TerminalIcon,
   Trash2Icon,
   UserRoundIcon,
 } from 'lucide-react'
@@ -33,6 +33,14 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import KthenaStatusBadge from '@/components/badge/kthena-status-badge'
@@ -40,6 +48,7 @@ import ResourceBadges from '@/components/badge/resource-badges'
 import { TimeDistance } from '@/components/custom/time-distance'
 import CardTitle from '@/components/label/card-title'
 import UserLabel from '@/components/label/user-label'
+import { DetailInfo } from '@/components/layout/detail-page'
 import PageTitle from '@/components/layout/page-title'
 import NotFound from '@/components/placeholder/not-found'
 
@@ -49,27 +58,21 @@ import {
   apiGetKthenaService,
   apiRepairKthenaService,
 } from '@/services/api/inference'
+import { apiQueueList } from '@/services/api/queue'
 
 import { getServingResources } from '@/hooks/inference/format'
 import { useInferenceKeys } from '@/hooks/inference/use-inference-keys'
 
+import { atomUserContext } from '@/utils/store'
 import { showErrorToast } from '@/utils/toast'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
-import {
-  CopyValue,
-  DiagnosticCard,
-  DiagnosticSummary,
-  KthenaDetailMeta,
-  OverviewField,
-  OverviewSection,
-  ResourceCard,
-  displayAPIBaseURL,
-} from './-components/detail-parts'
+import { DiagnosticCard, DiagnosticSummary, ResourceCard } from './-components/detail-parts'
 import { InferenceMetrics } from './-components/inference-metrics'
 import { InvokeWorkspace } from './-components/invoke-workspace'
 import ResourceUsage from './-components/resource-usage'
+import { ServingRoleSummary } from './-components/serving-role-summary'
 import { ServingRuntime } from './-components/serving-runtime'
 
 export const Route = createFileRoute('/portal/inference-services/$name')({
@@ -84,6 +87,12 @@ function KthenaServiceDetailPage() {
   const { name } = Route.useParams()
   const queryClient = useQueryClient()
   const keys = useInferenceKeys()
+  const account = useAtomValue(atomUserContext)
+  const { data: accountName } = useQuery({
+    queryKey: ['queues'],
+    queryFn: apiQueueList,
+    select: ({ data }) => data.find((queue) => queue.name === account?.queue)?.nickname,
+  })
   const [deleteOpen, setDeleteOpen] = useState(false)
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: keys.detail(name),
@@ -91,12 +100,12 @@ function KthenaServiceDetailPage() {
     refetchInterval: REFETCH_INTERVAL,
   })
 
-  const [tab, setTab] = useState<{ name: string; value: string }>()
+  const [diagnosticsFor, setDiagnosticsFor] = useState<string>()
   const [repairOpen, setRepairOpen] = useState(false)
   const diagnosticsQuery = useQuery({
     queryKey: [...keys.detail(name), 'diagnostics'],
     queryFn: () => apiGetKthenaDiagnostics(name).then((res) => res.data),
-    enabled: !!data && tab?.name === name && tab.value === 'diagnostics',
+    enabled: !!data && diagnosticsFor === name,
   })
   const repair = useMutation({
     mutationFn: () => apiRepairKthenaService(name),
@@ -172,40 +181,63 @@ function KthenaServiceDetailPage() {
         </Button>
       </PageTitle>
 
-      <div className="text-muted-foreground grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
-        <KthenaDetailMeta icon={ActivityIcon} label={t('kthena.table.status')}>
-          <KthenaStatusBadge service={service} />
-        </KthenaDetailMeta>
-        <KthenaDetailMeta icon={ServerIcon} label={t('kthena.table.backend')}>
-          <span className="text-foreground font-medium">{service.backendType || '-'}</span>
-        </KthenaDetailMeta>
-        <KthenaDetailMeta icon={CheckCircle2Icon} label={t('kthena.detail.servedModel')}>
-          <span className="text-foreground truncate font-mono text-sm" title={service.servedModel}>
-            {service.servedModel || '-'}
-          </span>
-        </KthenaDetailMeta>
-        <KthenaDetailMeta icon={CpuIcon} label={t('kthena.detail.runtimeResources')}>
-          {Object.keys(workerResources).length ? (
-            <ResourceBadges resources={workerResources} />
-          ) : (
-            <span>-</span>
-          )}
-        </KthenaDetailMeta>
-        <KthenaDetailMeta icon={UserRoundIcon} label={t('kthena.table.owner')}>
-          {service.userInfo?.username ? (
-            <UserLabel info={service.userInfo} />
-          ) : (
-            <span className="truncate">{service.owner || '-'}</span>
-          )}
-        </KthenaDetailMeta>
-        <KthenaDetailMeta icon={CalendarIcon} label={t('kthena.table.createdAt')}>
-          <TimeDistance date={service.createdAt} />
-        </KthenaDetailMeta>
-      </div>
+      <DetailInfo
+        items={[
+          {
+            icon: CreditCardIcon,
+            title: t('jobs.headers.queue'),
+            value: accountName || account?.queue || '—',
+          },
+          {
+            icon: UserRoundIcon,
+            title: t('kthena.table.owner'),
+            value: service.userInfo?.username ? (
+              <UserLabel info={service.userInfo} />
+            ) : (
+              service.owner || '—'
+            ),
+          },
+          {
+            icon: ActivityIcon,
+            title: t('kthena.table.status'),
+            value: <KthenaStatusBadge service={service} />,
+          },
+          {
+            icon: CalendarIcon,
+            title: t('kthena.table.createdAt'),
+            value: <TimeDistance date={service.createdAt} />,
+          },
+          {
+            icon: ServerIcon,
+            title: t('kthena.topology.engine'),
+            value: (
+              <span className="text-foreground font-medium">{service.backendType || '—'}</span>
+            ),
+          },
+          {
+            icon: CheckCircle2Icon,
+            title: t('kthena.detail.servedModel'),
+            value: (
+              <span className="text-foreground font-mono" title={service.servedModel}>
+                {service.servedModel || '—'}
+              </span>
+            ),
+          },
+          {
+            icon: CpuIcon,
+            title: t('kthena.topology.summary'),
+            value: Object.keys(workerResources).length ? (
+              <ResourceBadges resources={workerResources} />
+            ) : (
+              '—'
+            ),
+          },
+          { icon: ServerIcon, title: t('kthena.table.queue'), value: service.queue || '—' },
+        ]}
+      />
 
       <Tabs
         key={name}
-        onValueChange={(value) => setTab({ name, value })}
         defaultValue={service.phase === 'Ready' ? 'invoke' : 'runtime'}
         className="min-w-0 gap-0"
       >
@@ -215,162 +247,138 @@ function KthenaServiceDetailPage() {
               <MessageSquareIcon className="size-4" />
               {t('kthena.detail.tabs.invoke')}
             </TabsTrigger>
-            <TabsTrigger className="tabs-trigger-underline" value="overview">
-              <NetworkIcon className="size-4" />
-              {t('kthena.detail.tabs.overview')}
-            </TabsTrigger>
             <TabsTrigger className="tabs-trigger-underline" value="runtime">
               <ServerIcon className="size-4" />
               {t('kthena.runtime.title')}
             </TabsTrigger>
-            <TabsTrigger className="tabs-trigger-underline" value="resources">
-              <BracesIcon className="size-4" />
-              {t('kthena.detail.tabs.resources')}
+            <TabsTrigger className="tabs-trigger-underline" value="configuration">
+              <FileSlidersIcon className="size-4" />
+              {t('kthena.detail.tabs.configuration')}
             </TabsTrigger>
             <TabsTrigger className="tabs-trigger-underline" value="usage">
               <GaugeIcon className="size-4" />
               {t('kthena.detail.tabs.usage')}
             </TabsTrigger>
-            <TabsTrigger className="tabs-trigger-underline" value="diagnostics">
-              <AlertTriangleIcon className="size-4" />
-              {t('kthena.detail.tabs.diagnostics')}
-            </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="overview" className="mt-0">
-          <div className="grid items-start gap-4 lg:grid-cols-2">
-            <div className="bg-card overflow-hidden rounded-xl border">
-              <OverviewSection icon={TerminalIcon} title={t('kthena.detail.invokeInfo')}>
-                <OverviewField label={t('kthena.detail.apiBase')}>
-                  <CopyValue value={displayAPIBaseURL(service)} />
-                </OverviewField>
-              </OverviewSection>
-              <OverviewSection
-                icon={NetworkIcon}
-                title={t('kthena.detail.overviewTitle')}
-                className="border-t"
-              >
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <OverviewField label={t('kthena.detail.routeModelName')}>
-                    <CopyValue value={service.access?.modelName || service.name} />
-                  </OverviewField>
-                  <OverviewField label={t('kthena.detail.servedModel')}>
-                    <CopyValue value={service.servedModel || '-'} />
-                  </OverviewField>
-                  <OverviewField label={t('kthena.detail.routeResource')}>
-                    <CopyValue
-                      value={service.access?.routeName || t('kthena.detail.waitingModelRoute')}
-                    />
-                  </OverviewField>
-                  <OverviewField label="Router">
-                    <CopyValue value={service.access?.routerService || '-'} />
-                  </OverviewField>
-                </div>
-              </OverviewSection>
-            </div>
-            <div className="bg-card overflow-hidden rounded-xl border">
-              <OverviewSection icon={ServerIcon} title={t('kthena.topology.step.roles')}>
-                <div className="grid gap-3">
-                  {service.roles.map((role) => (
-                    <div key={role.name} className="rounded-lg border p-3 text-sm">
-                      <p className="font-medium">
-                        {role.name} · {role.execution}
-                      </p>
-                      <p className="text-muted-foreground mt-1">
-                        {role.instances} × {role.nodesPerInstance} Pods · TP {role.tensorParallel} /
-                        PP {role.pipelineParallel}
-                      </p>
-                      <p className="text-muted-foreground mt-1 break-all">{role.entry.image}</p>
-                    </div>
-                  ))}
-                </div>
-              </OverviewSection>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="runtime" className="mt-0">
-          <ServingRuntime service={service} />
-        </TabsContent>
-
-        <TabsContent value="resources" className="mt-0">
+        <TabsContent value="configuration" className="mt-0 space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle icon={BracesIcon}>{t('kthena.detail.tabs.resources')}</CardTitle>
+            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle icon={ServerIcon}>{t('kthena.topology.step.roles')}</CardTitle>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    {t('kthena.detail.viewOrchestration')}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[85vh] overflow-auto sm:max-w-3xl">
+                  <DialogHeader>
+                    <DialogTitle>{t('kthena.detail.tabs.resources')}</DialogTitle>
+                    <DialogDescription>{t('kthena.detail.orchestrationHelp')}</DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {service.resources?.length ? (
+                      service.resources.map((resource) => (
+                        <ResourceCard
+                          key={`${resource.kind}/${resource.name}`}
+                          resource={resource}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-sm">
+                        {t('kthena.detail.noResources')}
+                      </p>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
-              {service.resources?.length ? (
-                service.resources.map((resource) => (
-                  <ResourceCard key={`${resource.kind}/${resource.name}`} resource={resource} />
-                ))
-              ) : (
-                <div className="text-muted-foreground text-sm">
-                  {t('kthena.detail.noResources')}
-                </div>
-              )}
+            <CardContent>
+              <ServingRoleSummary roles={service.roles} />
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="usage" className="mt-0">
+        <TabsContent value="usage" className="mt-0 space-y-4">
           <InferenceMetrics name={service.name} />
           <ResourceUsage runtimePods={service.runtimePods} />
         </TabsContent>
 
-        <TabsContent value="diagnostics" className="mt-0">
-          {diagnosticsQuery.error && <p role="alert">{diagnosticsQuery.error.message}</p>}
-          <Button variant="outline" onClick={() => void diagnosticsQuery.refetch()}>
-            {t('kthena.actions.retry')}
-          </Button>
-          {data?.diagnostics?.some((item) => item.reason === 'RoutingResourcesMissing') && (
-            <Button onClick={() => setRepairOpen(true)}>{t('kthena.actions.repair')}</Button>
-          )}
-          <AlertDialog open={repairOpen} onOpenChange={setRepairOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('kthena.actions.repair')}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t('kthena.detail.repairDescription', { name })}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t('kthena.actions.cancel')}</AlertDialogCancel>
-                <AlertDialogAction
-                  disabled={repair.isPending}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    repair.mutate()
+        <TabsContent value="runtime" className="mt-0 space-y-4">
+          <ServingRuntime service={service} />
+          <Card>
+            <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle icon={AlertTriangleIcon}>{t('kthena.detail.tabs.diagnostics')}</CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={diagnosticsQuery.isFetching}
+                  onClick={() => {
+                    setDiagnosticsFor(name)
+                    if (diagnosticsFor === name) void diagnosticsQuery.refetch()
                   }}
                 >
-                  {t('kthena.actions.confirm')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <Card>
-            <CardHeader>
-              <CardTitle icon={AlertTriangleIcon}>{t('kthena.detail.diagnosticsTitle')}</CardTitle>
+                  {t('kthena.detail.checkDiagnostics')}
+                </Button>
+                {data?.diagnostics?.some((item) => item.reason === 'RoutingResourcesMissing') && (
+                  <Button size="sm" onClick={() => setRepairOpen(true)}>
+                    {t('kthena.actions.repair')}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
-            <CardContent className="grid gap-3">
-              {service.diagnostics?.length ? (
-                <>
-                  <DiagnosticSummary diagnostics={service.diagnostics} />
-                  <div className="before:bg-border relative grid gap-3 pl-5 before:absolute before:top-1 before:bottom-1 before:left-2 before:w-px">
-                    {service.diagnostics.map((diagnostic, index) => (
-                      <DiagnosticCard
-                        key={`${diagnostic.resource}-${diagnostic.reason}-${index}`}
-                        diagnostic={diagnostic}
-                      />
-                    ))}
+            <CardContent className="space-y-3">
+              {diagnosticsQuery.error && <p role="alert">{diagnosticsQuery.error.message}</p>}
+              <AlertDialog open={repairOpen} onOpenChange={setRepairOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('kthena.actions.repair')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('kthena.detail.repairDescription', { name })}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('kthena.actions.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={repair.isPending}
+                      onClick={(event) => {
+                        event.preventDefault()
+                        repair.mutate()
+                      }}
+                    >
+                      {t('kthena.actions.confirm')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <div className="grid gap-3">
+                {service.diagnostics?.length ? (
+                  <>
+                    <DiagnosticSummary diagnostics={service.diagnostics} />
+                    <div className="before:bg-border relative grid gap-3 pl-5 before:absolute before:top-1 before:bottom-1 before:left-2 before:w-px">
+                      {service.diagnostics.map((diagnostic, index) => (
+                        <DiagnosticCard
+                          key={`${diagnostic.resource}-${diagnostic.reason}-${index}`}
+                          diagnostic={diagnostic}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-muted-foreground text-sm">
+                    {t(
+                      diagnosticsQuery.isFetching
+                        ? 'common.loading'
+                        : diagnosticsQuery.isSuccess
+                          ? 'kthena.detail.noDiagnostics'
+                          : 'kthena.detail.diagnosticsPrompt'
+                    )}
                   </div>
-                </>
-              ) : (
-                <div className="text-muted-foreground text-sm">
-                  {t('kthena.detail.noDiagnostics')}
-                </div>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

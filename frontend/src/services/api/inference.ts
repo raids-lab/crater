@@ -381,3 +381,29 @@ export const apiServingLogs = (name: string, pod: string, container: string) =>
   apiV1Get<IResponse<string>>(`kthena/inference-services/${name}/logs`, {
     searchParams: { pod, container },
   })
+
+export async function apiFollowServingLogs(
+  name: string,
+  pod: string,
+  container: string,
+  signal: AbortSignal,
+  onChunk: (chunk: string) => void
+) {
+  const response = await apiClient.get(`v1/kthena/inference-services/${name}/logs`, {
+    searchParams: { pod, container, follow: true },
+    headers: { Accept: 'text/plain' },
+    signal,
+    timeout: false,
+  })
+  if (!response.body) throw new Error('Log response has no stream')
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) return
+      onChunk(value)
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}

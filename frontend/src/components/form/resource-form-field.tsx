@@ -59,6 +59,7 @@ const blockedNonNegativeIntegerInputKeys = new Set(['-', '+', 'e', 'E', '.'])
 interface ResourceFormFieldsProps<T extends FieldValues> {
   form: UseFormReturn<T>
   allowFractionalCPUAndMemory?: boolean
+  showBillingPricePreview?: boolean
   cpuPath: FieldPath<T>
   memoryPath: FieldPath<T>
   gpuCountPath: FieldPath<T>
@@ -77,6 +78,7 @@ interface ResourceFormFieldsProps<T extends FieldValues> {
 export function ResourceFormFields<T extends FieldValues>({
   form,
   allowFractionalCPUAndMemory = false,
+  showBillingPricePreview = true,
   cpuPath,
   memoryPath,
   gpuCountPath,
@@ -304,7 +306,7 @@ export function ResourceFormFields<T extends FieldValues>({
           </SheetContent>
         </Sheet>
       </div>
-      <BillingPricePreview entries={billingEntry} />
+      {showBillingPricePreview && <BillingPricePreview entries={billingEntry} />}
     </>
   )
 }

@@ -1,10 +1,15 @@
+import { PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
-import { ServingField, ServingSelect } from './serving-fields'
+import { ServingField, ServingHelp, ServingSelect } from './serving-fields'
 import type { ServingFormState } from './use-serving-form'
+
+const selectorOperators = ['In', 'NotIn', 'Exists', 'DoesNotExist']
 
 export function ServingProfileConstraints({
   state,
@@ -20,105 +25,173 @@ export function ServingProfileConstraints({
   const profile = values.roles[index][kind]
   const [resourceName, setResourceName] = useState('')
   if (!profile) return null
+  const newResourceName = resourceName.trim()
+  const resourceExists = Object.keys(profile.extendedResources).includes(newResourceName)
+  const title = t('kthena.topology.extraConstraints')
   return (
-    <details>
-      <summary>{t('kthena.topology.extraConstraints')}</summary>
-      <div className="mt-3 grid gap-3">
-        {profile.selectors.map((selector, i) => (
-          <div key={i} className="grid gap-2 rounded border p-3">
-            <ServingField form={form} name={`${prefix}.selectors.${i}.key`} label="Label" />
-            <ServingSelect
-              form={form}
-              name={`${prefix}.selectors.${i}.operator`}
-              label="Operator"
-              options={['In', 'NotIn', 'Exists', 'DoesNotExist', 'Gt', 'Lt'].map((value) => ({
-                value,
-                label: value,
-              }))}
-            />
-            <Input
-              aria-label={t('kthena.topology.selectorValues')}
-              value={(selector.values ?? []).join(',')}
-              onChange={(e) =>
-                form.setValue(
-                  `${prefix}.selectors.${i}.values`,
-                  e.target.value ? e.target.value.split(',') : []
-                )
-              }
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() =>
-                form.setValue(
-                  `${prefix}.selectors`,
-                  profile.selectors.filter((_, n) => n !== i)
-                )
-              }
-            >
-              {t('kthena.form.template.delete')}
-            </Button>
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() =>
-            form.setValue(`${prefix}.selectors`, [
-              ...profile.selectors,
-              { key: '', operator: 'In', values: [] },
-            ])
-          }
-        >
-          {t('kthena.topology.addSelector')}
-        </Button>
+    <section className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <h5 className="text-sm font-medium">{title}</h5>
+        <ServingHelp label={title}>{t('kthena.topology.extraConstraintsHelp')}</ServingHelp>
+        <Badge variant="secondary" className="font-normal">
+          {t('kthena.topology.optional')}
+        </Badge>
+      </div>
+      <div className="grid gap-3">
+        {profile.selectors.map((selector, i) => {
+          const supported = selectorOperators.includes(selector.operator)
+          const hasValues =
+            (selector.operator !== 'Exists' && selector.operator !== 'DoesNotExist') ||
+            Boolean(selector.values?.length)
+          const valuesPath = `${prefix}.selectors.${i}.values` as const
+          return (
+            <div key={i} className="grid items-start gap-3 rounded-md border p-3 sm:grid-cols-2">
+              <ServingField
+                form={form}
+                name={`${prefix}.selectors.${i}.key`}
+                label={t('kthena.topology.selectorLabel')}
+                required
+              />
+              <ServingSelect
+                form={form}
+                name={`${prefix}.selectors.${i}.operator`}
+                label={t('kthena.topology.selectorOperator')}
+                options={[
+                  ...selectorOperators.map((value) => ({ value, label: value })),
+                  ...(!supported && selector.operator
+                    ? [{ value: selector.operator, label: selector.operator, disabled: true }]
+                    : []),
+                ]}
+                onChange={(operator) => {
+                  if (operator === 'Exists' || operator === 'DoesNotExist')
+                    form.setValue(valuesPath, [], { shouldDirty: true })
+                }}
+              />
+              {!supported && (
+                <p className="text-destructive text-sm sm:col-span-2">
+                  {t('kthena.topology.selectorUnsupported')}
+                </p>
+              )}
+              {hasValues && (
+                <FormField
+                  control={form.control}
+                  name={valuesPath}
+                  render={({ field }) => (
+                    <FormItem className="sm:col-span-2">
+                      <FormLabel>{t('kthena.topology.selectorValues')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={(field.value ?? []).join(',')}
+                          onChange={(event) => field.onChange(event.target.value.split(','))}
+                          onBlur={(event) => {
+                            field.onChange(
+                              event.target.value
+                                .split(',')
+                                .map((value) => value.trim())
+                                .filter(Boolean)
+                            )
+                            field.onBlur()
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="justify-self-end sm:col-span-2"
+                onClick={() =>
+                  form.setValue(
+                    `${prefix}.selectors`,
+                    profile.selectors.filter((_, n) => n !== i),
+                    { shouldDirty: true }
+                  )
+                }
+              >
+                {t('common.delete')}
+              </Button>
+            </div>
+          )
+        })}
         {Object.entries(profile.extendedResources).map(([key, value]) => (
-          <label key={key} className="grid gap-2 text-sm">
-            {key}
+          <div
+            key={key}
+            className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,8rem)_auto]"
+          >
+            <span className="font-mono text-sm break-all">{key}</span>
             <Input
               aria-label={key}
               value={value}
-              onChange={(e) =>
-                form.setValue(`${prefix}.extendedResources`, {
-                  ...profile.extendedResources,
-                  [key]: e.target.value,
-                })
+              onChange={(event) =>
+                form.setValue(
+                  `${prefix}.extendedResources`,
+                  { ...profile.extendedResources, [key]: event.target.value },
+                  { shouldDirty: true }
+                )
               }
             />
             <Button
               type="button"
+              size="sm"
               variant="ghost"
+              className="w-fit"
               onClick={() => {
                 const next = { ...profile.extendedResources }
                 delete next[key]
-                form.setValue(`${prefix}.extendedResources`, next)
+                form.setValue(`${prefix}.extendedResources`, next, { shouldDirty: true })
               }}
             >
-              {t('kthena.form.template.delete')}
+              {t('common.delete')}
             </Button>
-          </label>
+          </div>
         ))}
-        <Input
-          aria-label={t('kthena.topology.resourceName')}
-          placeholder="vendor.example/resource"
-          value={resourceName}
-          onChange={(e) => setResourceName(e.target.value)}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!resourceName.trim()}
-          onClick={() => {
-            form.setValue(`${prefix}.extendedResources`, {
-              ...profile.extendedResources,
-              [resourceName.trim()]: '1',
-            })
-            setResourceName('')
-          }}
-        >
-          {t('kthena.topology.addResource')}
-        </Button>
+        <div className="flex flex-wrap items-start gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              form.setValue(
+                `${prefix}.selectors`,
+                [...profile.selectors, { key: '', operator: 'In', values: [] }],
+                { shouldDirty: true }
+              )
+            }
+          >
+            <PlusIcon className="size-4" />
+            {t('kthena.topology.addSelector')}
+          </Button>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Input
+              aria-label={t('kthena.topology.resourceName')}
+              placeholder="vendor.example/resource"
+              value={resourceName}
+              className="w-full sm:w-52"
+              onChange={(event) => setResourceName(event.target.value)}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!newResourceName || resourceExists}
+              onClick={() => {
+                form.setValue(
+                  `${prefix}.extendedResources`,
+                  { ...profile.extendedResources, [newResourceName]: '1' },
+                  { shouldDirty: true }
+                )
+                setResourceName('')
+              }}
+            >
+              <PlusIcon className="size-4" />
+              {t('kthena.topology.addResource')}
+            </Button>
+          </div>
+        </div>
       </div>
-    </details>
+    </section>
   )
 }

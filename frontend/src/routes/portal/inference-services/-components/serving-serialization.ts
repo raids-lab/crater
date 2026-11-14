@@ -1,10 +1,16 @@
 import type { CreateKthenaReq, ServingPodProfile } from '@/services/api/inference'
 
-import { quantityValue } from '@/hooks/inference/format'
+import { parseQuantity, quantityValue } from '@/hooks/inference/format'
 
 import { NodeSelectorMode, buildNodeSelectors } from '@/utils/form'
 
-import { type FormSchema, type ProfileForm, defaultProfile } from './serving-form-schema'
+import {
+  type FormSchema,
+  type ProfileForm,
+  defaultProfile,
+  selectedServingImage,
+  servingParallelism,
+} from './serving-form-schema'
 
 function toProfile(p: ProfileForm): ServingPodProfile {
   const extendedResources = { ...p.extendedResources }
@@ -14,7 +20,7 @@ function toProfile(p: ProfileForm): ServingPodProfile {
     secretEnv: Object.fromEntries(
       p.secretEnvs.map((e) => [e.name, { name: e.secret, key: e.key }])
     ),
-    image: p.imageSource === 'platform' ? p.platformImage.imageLink! : p.image,
+    image: selectedServingImage(p) ?? '',
     cpu: String(p.resource.cpu),
     memory: `${p.resource.memory}Gi`,
     gpu: String(p.resource.gpu.count),
@@ -28,12 +34,12 @@ function toProfile(p: ProfileForm): ServingPodProfile {
 }
 export function toRequest(v: FormSchema): CreateKthenaReq {
   return {
-    name: v.name,
+    name: v.name.trim(),
     modelSource: v.modelSource,
-    modelRevision: v.modelSource === 'external' ? v.modelRevision : '',
+    modelRevision: v.modelSource === 'external' ? v.modelRevision.trim() : '',
     platformModelId: v.modelSource === 'platform' ? v.platformModelId : undefined,
-    modelURI: v.modelSource === 'external' ? v.modelURI : undefined,
-    servedModel: v.servedModel,
+    modelURI: v.modelSource === 'external' ? v.modelURI.trim() : undefined,
+    servedModel: v.servedModel.trim(),
     backendType: v.backendType,
     layout: v.layout,
     replicas: v.replicas,
@@ -42,9 +48,8 @@ export function toRequest(v: FormSchema): CreateKthenaReq {
       name: r.name,
       instances: r.instances,
       execution: r.execution,
-      nodesPerInstance: r.nodesPerInstance,
-      tensorParallel: r.tensorParallel,
-      pipelineParallel: r.pipelineParallel,
+      nodesPerInstance: r.execution === 'ray' ? r.nodesPerInstance : 1,
+      ...servingParallelism(r),
       entry: toProfile(r.entry),
       worker: r.execution === 'ray' && r.worker ? toProfile(r.worker) : undefined,
       engineOptions: Object.fromEntries(r.configItems.map((c) => [c.key, c.value])),
@@ -101,17 +106,23 @@ export function resourceSummary(v: FormSchema) {
   const resources: Record<string, number> = {}
   let pods = 0
   for (const r of v.roles) {
-    pods += v.replicas * r.instances * r.nodesPerInstance
+    const nodes = r.execution === 'ray' ? r.nodesPerInstance : 1
+    if ([v.replicas, r.instances, nodes].some((count) => !Number.isInteger(count) || count < 1))
+      return
+    pods += v.replicas * r.instances * nodes
     const entry = toProfile(r.entry),
       worker = toProfile(r.worker ?? r.entry)
     for (const [p, count] of [
       [entry, 1],
-      [worker, r.nodesPerInstance - 1],
+      [worker, nodes - 1],
     ] as const) {
+      if (count === 0) continue
       const multiplier = v.replicas * r.instances * count
       const profile = { cpu: p.cpu, memory: p.memory, ...p.extendedResources, [p.gpuModel]: p.gpu }
       for (const [k, q] of Object.entries(profile)) {
-        resources[k] = (resources[k] ?? 0) + quantityValue(q) * multiplier
+        const quantity = parseQuantity(q)
+        if (quantity === undefined) return
+        resources[k] = (resources[k] ?? 0) + quantity * multiplier
       }
     }
   }

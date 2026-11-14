@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 
-import { CopyButton } from '@/components/button/copy-button'
 import TooltipCopy from '@/components/label/tooltop-copy'
 
 import {
@@ -30,24 +29,6 @@ export type ChatMessage = ChatCompletionReq['messages'][number]
 export const emptyChatMessages: ChatMessage[] = []
 
 export const draftChatSessionKey = '__new__'
-
-export function KthenaDetailMeta({
-  icon: Icon,
-  label,
-  children,
-}: {
-  icon: typeof ActivityIcon
-  label: string
-  children: ReactNode
-}) {
-  return (
-    <div className="flex min-w-0 items-center">
-      <Icon className="text-muted-foreground mr-1.5 size-4 shrink-0" />
-      <span className="text-muted-foreground mr-1.5 truncate text-sm">{label}:</span>
-      <span className="min-w-0 truncate">{children}</span>
-    </div>
-  )
-}
 
 export function OverviewSection({
   icon: Icon,
@@ -93,28 +74,6 @@ export function CopyValue({ value }: { value?: string }) {
   )
 }
 
-export function InvocationValue({ label, value }: { label: string; value?: string }) {
-  const { t } = useTranslation()
-  const display = value || '-'
-  return (
-    <div className="grid min-w-0 gap-1.5">
-      <div className="text-muted-foreground text-xs font-medium">{label}</div>
-      <div className="bg-muted/35 flex min-w-0 items-center gap-1 rounded-lg border px-2.5 py-1.5">
-        <span className="min-w-0 flex-1 truncate font-mono text-xs" title={display}>
-          {display}
-        </span>
-        {display !== '-' && (
-          <CopyButton
-            content={display}
-            copyMessage={t('kthena.copy.generic', { label })}
-            className="shrink-0"
-          />
-        )}
-      </div>
-    </div>
-  )
-}
-
 export function ChatBubble({ message, muted = false }: { message: ChatMessage; muted?: boolean }) {
   const isUser = message.role === 'user'
   const content = isUser ? message.content : stripThinkBlocks(message.content)
@@ -150,26 +109,27 @@ export function ChatBubble({ message, muted = false }: { message: ChatMessage; m
 
 export function ResourceCard({ resource }: { resource: KthenaResource }) {
   const { t } = useTranslation()
+  const phase = (resource.phase || 'Pending').toLowerCase()
+  const phaseKey = phase === 'active' ? 'ready' : phase
+  const phaseLabel =
+    phaseKey === 'created' ||
+    phaseKey === 'pending' ||
+    phaseKey === 'progressing' ||
+    phaseKey === 'ready' ||
+    phaseKey === 'failed'
+      ? t(`kthena.phase.${phaseKey}`)
+      : t('kthena.phase.unknown')
   return (
     <div className="rounded-md border p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="font-medium">{resource.kind}</div>
-        <Badge variant={getResourcePhaseVariant(resource.phase)}>
-          {resource.phase || 'Pending'}
-        </Badge>
+        <Badge variant={getResourcePhaseVariant(resource.phase)}>{phaseLabel}</Badge>
       </div>
       <TooltipCopy
         name={`${resource.namespace}/${resource.name}`}
         copyMessage={t('kthena.copy.resource')}
         className="max-w-full truncate font-mono text-xs"
       />
-      {resource.conditions?.length > 0 && (
-        <div className="text-muted-foreground mt-2 line-clamp-2 text-xs">
-          {resource.conditions
-            .map((condition) => `${String(condition.type ?? '')}:${String(condition.status ?? '')}`)
-            .join(' · ')}
-        </div>
-      )}
     </div>
   )
 }

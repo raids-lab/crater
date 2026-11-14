@@ -1,8 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 import { apiGetKthenaMetrics } from '@/services/api/inference'
 
@@ -16,7 +24,10 @@ export function InferenceMetrics({ name }: { name: string }) {
     queryFn: () => apiGetKthenaMetrics(name).then((res) => res.data),
     refetchInterval: 30000,
   })
-  const metrics = data?.metrics
+  const [scope, setScope] = useState('overall')
+  const roles = Object.keys(data?.roles ?? {})
+  const selectedRole = roles.find((role) => role === scope)
+  const metrics = selectedRole ? data?.roles[selectedRole] : data?.metrics
   const format = (value: number | null | undefined, unit = '') =>
     value == null ? '—' : `${value.toLocaleString(undefined, { maximumFractionDigits: 3 })}${unit}`
   const entries = [
@@ -31,9 +42,28 @@ export function InferenceMetrics({ name }: { name: string }) {
   ]
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('kthena.metrics.title')}</CardTitle>
-        <CardDescription>{t('kthena.topology.metricBoundary')}</CardDescription>
+      <CardHeader className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1.5">
+          <CardTitle>{t('kthena.metrics.title')}</CardTitle>
+          <CardDescription>
+            {t(selectedRole ? 'kthena.metrics.roleBoundary' : 'kthena.topology.metricBoundary')}
+          </CardDescription>
+        </div>
+        {roles.length > 0 && (
+          <Select value={selectedRole ?? 'overall'} onValueChange={setScope}>
+            <SelectTrigger className="w-40" aria-label={t('kthena.metrics.scope')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="overall">{t('kthena.metrics.overall')}</SelectItem>
+              {roles.map((role) => (
+                <SelectItem key={role} value={role}>
+                  {role}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (
@@ -45,9 +75,15 @@ export function InferenceMetrics({ name }: { name: string }) {
           </div>
         )}
         {data?.monitoringError && (
-          <p role="alert" className="text-destructive">
-            {t('kthena.metrics.unavailable')}
-          </p>
+          <div
+            role="alert"
+            className="bg-muted/50 flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm"
+          >
+            <span>{t('kthena.metrics.unavailable')}</span>
+            <Button variant="ghost" size="sm" onClick={() => void refetch()}>
+              {t('common.refresh')}
+            </Button>
+          </div>
         )}
         <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {entries.map(([key, value]) => (
@@ -57,28 +93,6 @@ export function InferenceMetrics({ name }: { name: string }) {
             </div>
           ))}
         </dl>
-        {Object.entries(data?.roles ?? {}).map(([role, metrics]) => (
-          <details key={role}>
-            <summary>
-              {role} · {t('kthena.topology.roleMetrics')}
-            </summary>
-            <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              {[
-                ['requests', format(metrics.requestsPerSecond, ' req/s')],
-                ['tokens', format(metrics.tokensPerSecond, ' token/s')],
-                ['ttft', format(metrics.ttftP95Seconds, ' s')],
-                ['latency', format(metrics.latencyP95Seconds, ' s')],
-                ['waiting', format(metrics.waitingRequests)],
-                ['running', format(metrics.runningRequests)],
-              ].map(([key, value]) => (
-                <div key={key}>
-                  <dt>{t(`kthena.metrics.${key}`)}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </details>
-        ))}
         <p className="text-muted-foreground text-xs">{t('kthena.metrics.missing')}</p>
         {data?.billing.lastSettledAt && (
           <p className="text-muted-foreground text-xs">

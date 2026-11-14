@@ -8424,13 +8424,15 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Set follow=true for a plain-text stream with recent log lines and up to two minutes of updates.\nThe default returns recent log lines in a JSON response.",
                 "produces": [
-                    "application/json"
+                    "application/json",
+                    "text/plain"
                 ],
                 "tags": [
                     "kthena"
                 ],
-                "summary": "Read bounded logs from a Pod belonging to this deployment",
+                "summary": "Read or follow logs from a Pod belonging to this deployment",
                 "parameters": [
                     {
                         "type": "string",
@@ -8451,11 +8453,17 @@ const docTemplate = `{
                         "description": "Container name",
                         "name": "container",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Stream new log entries after the recent lines",
+                        "name": "follow",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "JSON snapshot schema. Follow mode returns plain text.",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
                         }

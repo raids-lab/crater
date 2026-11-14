@@ -27,7 +27,9 @@ export default function SimpleTooltip({ ariaLabel, children, tooltip }: SimpleTo
   return (
     <TooltipProvider delayDuration={50}>
       <Tooltip>
-        <TooltipTrigger aria-label={ariaLabel}>{children}</TooltipTrigger>
+        <TooltipTrigger type="button" aria-label={ariaLabel}>
+          {children}
+        </TooltipTrigger>
         <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -1,13 +1,17 @@
 import {
+  CircleAlertIcon,
+  CodeIcon,
   EraserIcon,
   MessageSquareIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
-  PlayIcon,
   PlusIcon,
+  SendHorizontalIcon,
   TerminalIcon,
   Trash2Icon,
 } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import {
   AlertDialog,
@@ -22,6 +26,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -30,7 +42,7 @@ import CardTitle from '@/components/label/card-title'
 
 import { KthenaService } from '@/services/api/inference'
 
-import { ChatBubble, InvocationValue, displayAPIBaseURL, draftChatSessionKey } from './detail-parts'
+import { ChatBubble, buildCurl, displayAPIBaseURL, draftChatSessionKey } from './detail-parts'
 import { useInvokeWorkspace } from './use-invoke-workspace'
 
 export function InvokeWorkspace({ service }: { service: KthenaService }) {
@@ -51,6 +63,8 @@ export function InvokeWorkspace({ service }: { service: KthenaService }) {
     activeSessionKey,
     displayedMessages,
     isActiveSessionPending,
+    canSend,
+    turnError,
     rawResponse,
     curl,
     startNewSession,
@@ -65,7 +79,17 @@ export function InvokeWorkspace({ service }: { service: KthenaService }) {
     submitMessage,
   } = useInvokeWorkspace(service)
   return (
-    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <Tabs defaultValue="online" className="min-w-0 gap-3">
+      <TabsList aria-label={t('kthena.detail.tabs.invoke')}>
+        <TabsTrigger value="online">
+          <MessageSquareIcon />
+          {t('kthena.detail.onlineTest')}
+        </TabsTrigger>
+        <TabsTrigger value="api">
+          <TerminalIcon />
+          {t('kthena.detail.apiCall')}
+        </TabsTrigger>
+      </TabsList>
       <AlertDialog
         open={!!sessionAction}
         onOpenChange={(open) => {
@@ -97,13 +121,13 @@ export function InvokeWorkspace({ service }: { service: KthenaService }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Card className="overflow-hidden shadow-sm">
-        <div className="flex min-h-[34rem] xl:h-[calc(100dvh-24rem)] xl:min-h-[38rem]">
+      <TabsContent forceMount value="online" className="min-w-0 data-[state=inactive]:hidden">
+        <Card className="h-[clamp(28rem,calc(100dvh-18rem),48rem)] flex-row gap-0 overflow-hidden p-0">
           <aside
             aria-label={t('kthena.chat.sessions')}
             className={[
               'bg-muted/35 hidden shrink-0 flex-col border-r transition-[width] duration-200 ease-out motion-reduce:transition-none md:flex',
-              isSessionRailCollapsed ? 'w-14' : 'w-56',
+              isSessionRailCollapsed ? 'w-14' : 'w-48 lg:w-56',
             ].join(' ')}
           >
             <div
@@ -247,30 +271,56 @@ export function InvokeWorkspace({ service }: { service: KthenaService }) {
                     )
                   })}
             </div>
-            {!isSessionRailCollapsed && (
-              <>
-                <div className="text-muted-foreground border-t px-3 py-2.5 font-mono text-xs">
-                  <div className="truncate">{service.access?.modelName || service.name}</div>
-                </div>
-              </>
-            )}
           </aside>
 
           <section className="flex min-w-0 flex-1 flex-col">
-            <header className="bg-background flex min-h-16 items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
-              <div className="min-w-0">
-                <div className="text-muted-foreground text-xs">{t('kthena.detail.onlineTest')}</div>
-                <div className="truncate text-sm font-semibold">
-                  {activeSession?.title || t('kthena.chat.untitledSession')}
-                </div>
+            <header className="flex min-h-14 items-center justify-between gap-2 border-b px-3 py-2 sm:px-5">
+              <div className="min-w-0 truncate text-sm font-semibold">
+                {activeSession?.title || t('kthena.chat.untitledSession')}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <Badge
                   variant="outline"
-                  className="hidden max-w-48 truncate font-mono text-xs sm:inline-flex"
+                  className="hidden max-w-48 font-mono text-xs lg:inline-flex"
                 >
-                  {service.access?.modelName || service.name}
+                  <span className="truncate">{service.access?.modelName || service.name}</span>
                 </Badge>
+                {rawResponse && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={t('kthena.detail.rawResponse')}
+                        title={t('kthena.detail.rawResponse')}
+                      >
+                        <CodeIcon className="size-4" />
+                        <span className="hidden sm:inline">{t('kthena.detail.rawResponse')}</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent aria-describedby={undefined} className="min-w-0 sm:max-w-3xl">
+                      <DialogHeader>
+                        <DialogTitle>{t('kthena.detail.rawResponse')}</DialogTitle>
+                      </DialogHeader>
+                      <pre className="bg-muted max-h-[65dvh] overflow-auto rounded-md p-4 text-xs">
+                        {JSON.stringify(rawResponse, null, 2)}
+                      </pre>
+                    </DialogContent>
+                  </Dialog>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  title={t('kthena.actions.clearChat')}
+                  aria-label={t('kthena.actions.clearChat')}
+                  disabled={
+                    isActiveSessionPending || isClearingSession || !displayedMessages.length
+                  }
+                  onClick={clearActiveSession}
+                >
+                  <EraserIcon className="size-4" />
+                </Button>
                 <Button
                   variant="outline"
                   size="icon"
@@ -284,7 +334,7 @@ export function InvokeWorkspace({ service }: { service: KthenaService }) {
               </div>
             </header>
 
-            <div className="bg-muted/20 flex gap-1.5 overflow-x-auto border-b p-2 md:hidden">
+            <div className="bg-muted/20 flex shrink-0 gap-1.5 overflow-x-auto border-b p-2 empty:hidden md:hidden">
               {sessions.map((session) => (
                 <div
                   key={session.sessionId}
@@ -320,12 +370,12 @@ export function InvokeWorkspace({ service }: { service: KthenaService }) {
 
             <div
               ref={messagesViewportRef}
-              className="bg-muted/15 min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8"
+              className="bg-muted/20 min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8"
               role="log"
               aria-live="polite"
             >
               {displayedMessages.length ? (
-                <div className="mx-auto flex max-w-4xl flex-col gap-6">
+                <div className="mx-auto flex max-w-3xl flex-col gap-5">
                   {displayedMessages.map((message, index) => (
                     <ChatBubble
                       key={`${activeSession?.sessionId ?? draftChatSessionKey}-${message.role}-${index}`}
@@ -345,8 +395,8 @@ export function InvokeWorkspace({ service }: { service: KthenaService }) {
                 </div>
               ) : (
                 <div className="text-muted-foreground mx-auto flex h-full max-w-md flex-col items-center justify-center gap-3 text-center">
-                  <div className="bg-background flex size-11 items-center justify-center rounded-2xl border shadow-sm">
-                    <MessageSquareIcon className="text-primary size-5" />
+                  <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg">
+                    <MessageSquareIcon className="size-5" />
                   </div>
                   <div className="text-foreground text-base font-medium">
                     {t('kthena.chat.emptyTitle')}
@@ -356,108 +406,154 @@ export function InvokeWorkspace({ service }: { service: KthenaService }) {
               )}
             </div>
 
-            <div className="bg-background border-t p-3 sm:p-4">
-              <div className="bg-background mx-auto max-w-4xl rounded-2xl border p-3 shadow-sm">
-                <Textarea
-                  ref={promptInputRef}
-                  value={prompt}
-                  onChange={(event) => setPrompt(event.target.value)}
-                  onKeyDown={(event) => {
-                    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                      event.preventDefault()
-                      submitMessage()
-                    }
-                  }}
-                  className="min-h-20 resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
-                  placeholder={t('kthena.detail.promptPlaceholder')}
-                />
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
-                  <span className="text-muted-foreground hidden min-w-0 truncate font-mono text-xs sm:block">
-                    {service.access?.modelName || service.name}
-                  </span>
-                  <div className="ml-auto flex flex-wrap gap-2">
-                    {isActiveSessionPending && (
-                      <Button
-                        variant="outline"
-                        onClick={() => controllers.current[activeSessionKey]?.abort()}
-                      >
-                        {t('kthena.actions.cancel')}
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      disabled={
-                        isActiveSessionPending ||
-                        isClearingSession ||
-                        displayedMessages.length === 0
+            <div className="border-t p-3 sm:p-4">
+              <div className="mx-auto max-w-3xl">
+                {!canSend && (
+                  <p role="status" className="text-muted-foreground mb-2 text-sm">
+                    {t('kthena.chat.notReady')}
+                  </p>
+                )}
+                {turnError && (
+                  <p role="alert" className="text-destructive mb-2 flex items-start gap-2 text-sm">
+                    <CircleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                    {turnError}
+                  </p>
+                )}
+                <div className="bg-background focus-within:border-ring rounded-lg border p-2.5">
+                  <Textarea
+                    ref={promptInputRef}
+                    value={prompt}
+                    disabled={!canSend}
+                    aria-label={t('kthena.detail.promptPlaceholder')}
+                    onChange={(event) => setPrompt(event.target.value)}
+                    onKeyDown={(event) => {
+                      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                        event.preventDefault()
+                        submitMessage()
                       }
-                      onClick={clearActiveSession}
-                    >
-                      <EraserIcon className="size-4" />
-                      {t('kthena.actions.clearChat')}
-                    </Button>
-                    <Button
-                      disabled={isActiveSessionPending || isSessionsLoading || !prompt.trim()}
-                      onClick={submitMessage}
-                    >
-                      <PlayIcon className="size-4" />
-                      {isActiveSessionPending
-                        ? t('kthena.actions.requesting')
-                        : t('kthena.actions.send')}
-                    </Button>
+                    }}
+                    className="min-h-14 resize-none border-0 bg-transparent px-1 py-0.5 shadow-none focus-visible:ring-0"
+                    placeholder={t('kthena.detail.promptPlaceholder')}
+                  />
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <kbd className="text-muted-foreground hidden px-1 text-xs sm:block">
+                      Ctrl / ⌘ + Enter
+                    </kbd>
+                    <div className="ml-auto flex flex-wrap gap-2">
+                      {isActiveSessionPending && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => controllers.current[activeSessionKey]?.abort()}
+                        >
+                          {t('kthena.actions.cancel')}
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        disabled={
+                          !canSend || isActiveSessionPending || isSessionsLoading || !prompt.trim()
+                        }
+                        onClick={submitMessage}
+                      >
+                        <SendHorizontalIcon className="size-4" />
+                        {isActiveSessionPending
+                          ? t('kthena.actions.requesting')
+                          : t('kthena.actions.send')}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-              {rawResponse && (
-                <details className="text-muted-foreground bg-muted/20 mx-auto mt-3 max-w-4xl rounded-lg border p-3 text-xs">
-                  <summary className="cursor-pointer">{t('kthena.detail.rawResponse')}</summary>
-                  <pre className="bg-background mt-3 max-h-64 overflow-auto rounded-md border p-3">
-                    {JSON.stringify(rawResponse, null, 2)}
-                  </pre>
-                </details>
-              )}
             </div>
           </section>
-        </div>
-      </Card>
+        </Card>
+      </TabsContent>
+      <TabsContent value="api" className="min-w-0">
+        <InvokeAPI
+          service={service}
+          contextCurl={displayedMessages.length || prompt.trim() ? curl : undefined}
+        />
+      </TabsContent>
+    </Tabs>
+  )
+}
 
-      <aside className="grid gap-4 xl:sticky xl:top-4">
-        <Card className="overflow-hidden shadow-sm">
-          <CardHeader className="bg-muted/20 border-b py-4">
-            <CardTitle icon={TerminalIcon}>{t('kthena.detail.invokeInfo')}</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-5 p-4">
-            <div className="grid gap-3">
-              <InvocationValue label="Crater API" value={displayAPIBaseURL(service)} />
-              <InvocationValue
-                label={t('kthena.detail.routeModelName')}
-                value={service.access?.modelName || service.name}
+function InvokeAPI({ service, contextCurl }: { service: KthenaService; contextCurl?: string }) {
+  const { t } = useTranslation()
+  const [useContext, setUseContext] = useState(false)
+  const curl =
+    (useContext && contextCurl) || buildCurl(service, [], t('kthena.detail.defaultPrompt'))
+  return (
+    <Card className="min-w-0 gap-4">
+      <CardHeader>
+        <CardTitle icon={TerminalIcon}>{t('kthena.detail.invokeInfo')}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid min-w-0 gap-5 px-4 sm:px-6">
+        <dl className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          {[
+            ['Base URL', displayAPIBaseURL(service)],
+            [t('kthena.detail.apiModel'), service.access?.modelName || service.name],
+          ].map(([label, value]) => (
+            <div key={label} className="min-w-0 space-y-1.5">
+              <dt className="text-muted-foreground text-sm font-medium">{label}</dt>
+              <dd className="bg-muted/40 flex min-h-10 items-start gap-2 rounded-md border px-3 py-2">
+                <code className="min-w-0 flex-1 self-center text-xs leading-5 [overflow-wrap:anywhere]">
+                  {value}
+                </code>
+                <CopyButton
+                  content={value}
+                  aria-label={t('kthena.detail.copyField', { field: label })}
+                  copyMessage={t('kthena.copy.generic', { label })}
+                  className="shrink-0"
+                />
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+          <span className="font-medium">{t('kthena.detail.apiAuthentication')}</span>
+          <p className="text-muted-foreground">{t('kthena.detail.invokeHint')}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-medium">{t('kthena.detail.apiEndpoints')}</span>
+          {['/chat/completions', '/completions', '/embeddings'].map((path) => (
+            <Badge key={path} variant="secondary" className="font-mono">
+              POST {path}
+            </Badge>
+          ))}
+          <span className="text-muted-foreground">{t('kthena.detail.apiEndpointsHelp')}</span>
+        </div>
+        <div className="min-w-0 space-y-2 border-t pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h3 className="text-sm font-medium">{t('kthena.detail.apiExample')}</h3>
+              <code className="text-muted-foreground text-xs">POST /chat/completions</code>
+            </div>
+            <div className="flex items-center gap-2">
+              {contextCurl && (
+                <Button
+                  variant={useContext ? 'secondary' : 'ghost'}
+                  size="sm"
+                  aria-pressed={useContext}
+                  onClick={() => setUseContext((previous) => !previous)}
+                >
+                  {t('kthena.detail.curlContext')}
+                </Button>
+              )}
+              <CopyButton
+                variant="outline"
+                content={curl}
+                aria-label={t('kthena.detail.copyField', { field: 'curl' })}
+                copyMessage={t('kthena.copy.generic', { label: 'curl' })}
               />
             </div>
-            <div className="min-w-0 border-t pt-4">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="font-mono text-xs font-medium">curl</div>
-                  <div className="text-muted-foreground mt-0.5 text-xs">
-                    {t('kthena.detail.curlContext')}
-                  </div>
-                </div>
-                <CopyButton
-                  content={curl}
-                  copyMessage={t('kthena.copy.generic', { label: 'curl' })}
-                  className="bg-muted hover:bg-muted-foreground/10 shrink-0 rounded-md border"
-                />
-              </div>
-              <pre className="bg-muted/60 text-foreground max-h-52 overflow-auto rounded-lg border p-3 font-mono text-xs leading-5 whitespace-pre">
-                {curl}
-              </pre>
-            </div>
-            <p className="text-muted-foreground bg-muted/30 rounded-lg border px-3 py-2.5 text-xs leading-5">
-              {t('kthena.detail.invokeHint')}
-            </p>
-          </CardContent>
-        </Card>
-      </aside>
-    </div>
+          </div>
+          <pre className="bg-muted/50 max-h-72 overflow-y-auto rounded-lg border p-4 font-mono text-xs leading-6 [overflow-wrap:anywhere] whitespace-pre-wrap">
+            <code>{curl}</code>
+          </pre>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

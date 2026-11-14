@@ -253,7 +253,9 @@ export const apiClient = ky.create({
       async (request, options, response) => {
         // 如果响应成功，直接返回
         if (response.ok) {
-          return response
+          // Ky passes a clone to this hook. Cancel its unused branch so streamed responses stay bounded.
+          void response.body?.cancel().catch(() => {})
+          return
         }
 
         // 处理错误响应

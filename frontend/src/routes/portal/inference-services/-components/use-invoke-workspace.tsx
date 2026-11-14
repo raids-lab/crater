@@ -49,6 +49,7 @@ export function useInvokeWorkspace(service: KthenaService) {
     Record<string, ChatCompletionResp | undefined>
   >({})
   const [pendingBySession, setPendingBySession] = useState<Record<string, boolean>>({})
+  const [errorBySession, setErrorBySession] = useState<Record<string, string | undefined>>({})
   const [pendingMessageBySession, setPendingMessageBySession] = useState<
     Record<string, ChatMessage | undefined>
   >({})
@@ -101,6 +102,11 @@ export function useInvokeWorkspace(service: KthenaService) {
   )
   const isActiveSessionPending = Boolean(pendingBySession[activeSessionKey])
   const rawResponse = responseBySession[activeSessionKey]
+  const canSend =
+    Boolean(service.access.routeName && service.access.serverName) &&
+    (service.phase === 'Ready' ||
+      service.phase === 'Active' ||
+      (service.phase === 'Degraded' && (service.readyReplicas ?? 0) > 0))
   const pendingMessages = useMemo(
     () =>
       prompt.trim()
@@ -140,6 +146,7 @@ export function useInvokeWorkspace(service: KthenaService) {
   const startNewSession = () => {
     if (pendingBySession[draftChatSessionKey]) return
     delete retryTurn.current[draftChatSessionKey]
+    setErrorBySession((current) => ({ ...current, [draftChatSessionKey]: undefined }))
     setActiveSessionID(null)
     setPrompt('')
     focusPromptInput()
@@ -219,6 +226,7 @@ export function useInvokeWorkspace(service: KthenaService) {
       )
     },
     onMutate: ({ sessionKey, content }) => {
+      setErrorBySession((current) => ({ ...current, [sessionKey]: undefined }))
       setPendingBySession((current) => ({ ...current, [sessionKey]: true }))
       setStreamedBySession((current) => ({ ...current, [sessionKey]: '' }))
       setPendingMessageBySession((current) => ({
@@ -240,7 +248,11 @@ export function useInvokeWorkspace(service: KthenaService) {
       if (context?.sessionKey === activeSessionKey) {
         setPrompt(variables.content)
       }
-      if (!(error instanceof Error && error.name === 'AbortError')) showErrorToast(error)
+      if (error instanceof Error && error.name === 'AbortError') return
+      setErrorBySession((current) => ({
+        ...current,
+        [variables.sessionKey]: t('kthena.chat.sendError'),
+      }))
     },
     onSettled: (_data, _error, _variables, context) => {
       const sessionKey = context?.sessionKey
@@ -267,7 +279,7 @@ export function useInvokeWorkspace(service: KthenaService) {
   } | null>(null)
   const submitMessage = () => {
     const content = prompt.trim()
-    if (!content || isActiveSessionPending || isSessionsLoading) return
+    if (!content || !canSend || isActiveSessionPending || isSessionsLoading) return
     setPrompt('')
     setResponseBySession((current) => {
       const next = { ...current }
@@ -305,6 +317,8 @@ export function useInvokeWorkspace(service: KthenaService) {
     activeSessionKey,
     displayedMessages,
     isActiveSessionPending,
+    canSend,
+    turnError: errorBySession[activeSessionKey],
     rawResponse,
     curl,
     startNewSession,

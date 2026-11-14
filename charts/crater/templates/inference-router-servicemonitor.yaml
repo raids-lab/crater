@@ -15,9 +15,9 @@ spec:
       - kthena-system
   selector:
     matchLabels:
-      app.kubernetes.io/component: kthena-router-metrics
+      {{- toYaml .Values.inferenceMonitoring.router.serviceSelector | nindent 6 }}
   endpoints:
-    - port: metrics
+    - port: {{ .Values.inferenceMonitoring.router.port | quote }}
       path: /metrics
       interval: {{ .Values.inferenceMonitoring.interval | quote }}
 {{- end }}

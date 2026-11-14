@@ -207,6 +207,11 @@ func kthenaResourceFromObject(kind string, obj *unstructured.Unstructured) Kthen
 	if nativePhase := kthena.Phase(obj); nativePhase != "" {
 		phase = nativePhase
 	}
+	if phase == "" && len(conditions) == 0 && (kind == kthenaKindModelServer || kind == kthenaKindModelRoute) {
+		// These objects may have no status subresource. Their existence is observable;
+		// request readiness is determined separately from the deployment and its Pods.
+		phase = "Created"
+	}
 	if phase == "" {
 		phase = conditionPhase(conditions)
 	}

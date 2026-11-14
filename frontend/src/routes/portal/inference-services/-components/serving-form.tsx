@@ -1,6 +1,7 @@
-import { Loader2Icon, RocketIcon } from 'lucide-react'
+import { ArrowLeftIcon, ArrowRightIcon, Loader2Icon, RocketIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui-custom/alert-dialog'
 
+import { cn } from '@/lib/utils'
+
+import { ServingEnvironmentFields } from './serving-environment-fields'
 import { formSchema } from './serving-form-schema'
 import { ServingModelFields } from './serving-model-fields'
 import { ServingPresets } from './serving-presets'
@@ -52,93 +56,164 @@ export function ServingForm() {
     templateDescription,
     setTemplateDescription,
     form,
-    createService,
+    confirmCreate,
     isPending,
     isSavingUserTemplate,
     deleteUserTemplate,
     isDeletingUserTemplate,
-    onSubmit,
+    submitForm,
     submitUserTemplate,
   } = state
-  const validation = formSchema.safeParse(state.values)
-  const showErrors = Object.keys(form.formState.errors).length > 0
+  const {
+    step,
+    furthestStep,
+    goToStep,
+    hasStepError,
+    stepError,
+    edit,
+    preflight,
+    sourceLoading,
+    sourceError,
+  } = state
+  const title = t(edit ? 'kthena.form.editTitle' : 'kthena.form.title')
+  const busy = isPending || preflight.isPending
+  const configuringResources = step === 2
+  if (sourceLoading || sourceError) {
+    return (
+      <div className="grid gap-4">
+        <PageTitle title={title} />
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-3">
+            {sourceError ? (
+              <>
+                <p role="alert" className="text-destructive text-sm">
+                  {sourceError.message}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void state.cloneQuery.refetch()}
+                >
+                  {t('common.refresh')}
+                </Button>
+              </>
+            ) : (
+              <p role="status" className="text-muted-foreground flex items-center gap-2 text-sm">
+                <Loader2Icon className="size-4 animate-spin" />
+                {t('common.loading')}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col gap-4">
+      <form noValidate onSubmit={submitForm} className="flex min-w-0 flex-1 flex-col gap-4">
         <PageTitle
-          title={t('kthena.form.title')}
+          title={title}
           description={
             clone
               ? t('kthena.form.cloneDescription', { name: clone })
               : t('kthena.form.description')
           }
         >
-          <FormImportButton
-            metadata={{ type: 'serving', version: '2' }}
-            form={form}
-            dataProcessor={(data) => formSchema.parse(data)}
-          />
-          <FormExportButton metadata={{ type: 'serving', version: '2' }} form={form} />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-fit sm:justify-end sm:gap-3">
+            {!state.edit && <ServingPresets state={state} />}
+            {!edit && (
+              <FormImportButton
+                metadata={{ type: 'serving', version: '2' }}
+                form={form}
+                dataProcessor={(data) => formSchema.parse(data)}
+              />
+            )}
+            <FormExportButton metadata={{ type: 'serving', version: '2' }} form={form} />
+          </div>
         </PageTitle>
 
-        {state.edit ? (
+        {state.edit && (
           <p className="text-muted-foreground text-sm">{t('kthena.topology.editHelp')}</p>
-        ) : (
-          <ServingPresets state={state} />
         )}
 
-        <nav aria-label={t('kthena.topology.steps')} className="flex flex-wrap gap-2">
-          {['model', 'topology', 'roles', 'preview'].map((step, index) => (
-            <Button
-              key={step}
-              type="button"
-              variant={state.step === index ? 'default' : 'outline'}
-              disabled={index > state.step}
-              onClick={() => state.setStep(index)}
-              aria-current={state.step === index ? 'step' : undefined}
-            >
-              {index + 1}. {t(`kthena.topology.step.${step}`)}
-            </Button>
-          ))}
-        </nav>
-        {showErrors && !validation.success && (
-          <ul role="alert" className="text-destructive list-inside list-disc text-sm">
-            {validation.error.issues.map((issue, i) => (
-              <li key={i}>
-                {issue.path.join('.')}：{issue.message}
-              </li>
+        <nav aria-label={t('kthena.topology.steps')} className="border-b">
+          <div className="flex gap-5 overflow-x-auto sm:gap-6">
+            {['model', 'topology', 'roles', 'preview'].map((step, index) => (
+              <button
+                key={step}
+                type="button"
+                className="tabs-trigger-underline shrink-0"
+                data-state={state.step === index ? 'active' : 'inactive'}
+                disabled={index > furthestStep || busy}
+                onClick={() => void goToStep(index)}
+                aria-current={state.step === index ? 'step' : undefined}
+              >
+                {index + 1}. {t(`kthena.topology.step.${step}`)}
+              </button>
             ))}
-          </ul>
-        )}
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="min-w-0">
-            {state.step === 0 && <ServingModelFields state={state} />}
-            {state.step === 1 && <ServingTopologyFields state={state} />}
-            {state.step === 2 && <ServingRoleFields state={state} />}
-            {state.step === 3 && <ServingPreflightSummary state={state} />}
           </div>
-          <ServingSummary state={state} />
+        </nav>
+        {hasStepError && (
+          <p
+            role="alert"
+            className="border-destructive/25 bg-destructive/5 text-destructive rounded-md border px-3 py-2 text-sm"
+          >
+            {stepError || t('kthena.form.checkFields')}
+          </p>
+        )}
+        <div
+          className={cn(
+            'grid items-start gap-4 md:gap-6',
+            configuringResources
+              ? 'lg:grid-cols-3'
+              : 'lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)]'
+          )}
+        >
+          <div className={cn('min-w-0', configuringResources && 'lg:col-span-2')}>
+            {step === 0 && <ServingModelFields state={state} />}
+            {step === 1 && <ServingTopologyFields state={state} />}
+            {configuringResources && <ServingRoleFields state={state} />}
+            {step === 3 && <ServingPreflightSummary state={state} />}
+          </div>
+          <div
+            className={cn(
+              'grid min-w-0 gap-4 md:gap-6',
+              !configuringResources && 'lg:sticky lg:top-4'
+            )}
+          >
+            <ServingSummary state={state} />
+            {configuringResources && <ServingEnvironmentFields state={state} />}
+          </div>
         </div>
-        <div className="bg-background sticky bottom-0 z-10 flex justify-end gap-3 border-t py-4">
-          {state.step > 0 && (
-            <Button variant="outline" type="button" onClick={() => state.setStep(state.step - 1)}>
-              {t('kthena.topology.previous')}
+        <div className="bg-background sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t py-4">
+          <p className="text-muted-foreground text-sm tabular-nums">{step + 1} / 4</p>
+          <div className="flex gap-2">
+            {step > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void goToStep(step - 1)}
+              >
+                <ArrowLeftIcon className="size-4" />
+                {t('kthena.topology.previous')}
+              </Button>
+            )}
+            <Button type="submit" disabled={busy}>
+              {preflight.isPending || isPending ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : step === 3 && state.previewCurrent && !edit ? (
+                <RocketIcon className="size-4" />
+              ) : null}
+              {step < 2
+                ? t('kthena.topology.next')
+                : step === 2 || !state.previewCurrent
+                  ? t('kthena.topology.check')
+                  : t(edit ? 'common.saveChanges' : 'kthena.form.submit')}
+              {step < 2 && <ArrowRightIcon className="size-4" />}
             </Button>
-          )}
-          {state.step < 3 ? (
-            <Button
-              type="button"
-              disabled={state.preflight.isPending}
-              onClick={() => void state.next()}
-            >
-              {t(state.step === 2 ? 'kthena.topology.check' : 'kthena.topology.next')}
-            </Button>
-          ) : (
-            <Button type="submit" disabled={isPending || state.preflight.isPending}>
-              <RocketIcon className="size-4" />
-              {t(state.previewCurrent ? 'kthena.form.submit' : 'kthena.topology.check')}
-            </Button>
-          )}
+          </div>
         </div>
       </form>
 
@@ -150,7 +225,9 @@ export function ServingForm() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('kthena.form.confirmTitle')}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t(edit ? 'kthena.form.editConfirm' : 'kthena.form.confirmTitle')}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingCreate?.name} · {state.preview?.queue} · {state.preview?.pods} Pods
               <span className="block break-all">
@@ -166,7 +243,7 @@ export function ServingForm() {
               disabled={isPending}
               onClick={(event) => {
                 event.preventDefault()
-                if (pendingCreate) createService(pendingCreate)
+                confirmCreate()
               }}
             >
               {t('kthena.actions.confirm')}

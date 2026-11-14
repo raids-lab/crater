@@ -9831,6 +9831,9 @@ paths:
       - kthena
   /v1/kthena/inference-services/{name}/logs:
     get:
+      description: |-
+        Set follow=true for a plain-text stream with recent log lines and up to two minutes of updates.
+        The default returns recent log lines in a JSON response.
       parameters:
       - description: Deployment
         in: path
@@ -9846,16 +9849,21 @@ paths:
         in: query
         name: container
         type: string
+      - description: Stream new log entries after the recent lines
+        in: query
+        name: follow
+        type: boolean
       produces:
       - application/json
+      - text/plain
       responses:
         "200":
-          description: OK
+          description: JSON snapshot schema. Follow mode returns plain text.
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string'
       security:
       - Bearer: []
-      summary: Read bounded logs from a Pod belonging to this deployment
+      summary: Read or follow logs from a Pod belonging to this deployment
       tags:
       - kthena
   /v1/kthena/inference-services/{name}/metrics:

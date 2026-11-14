@@ -1,9 +1,9 @@
 import type { KthenaService } from '@/services/api/inference'
 
 // Kubernetes quantities use decimal SI for CPU and binary or decimal SI for memory.
-export function quantityValue(value: string): number {
+export function parseQuantity(value: string): number | undefined {
   const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))([eE][+-]?\d+|[numkKMGTPE]i?)?$/.exec(value.trim())
-  if (!match) throw new Error(`Invalid resource quantity: ${value}`)
+  if (!match) return undefined
   const suffix = match[2] || ''
   const powers: Record<string, number> = {
     n: 1e-9,
@@ -23,10 +23,16 @@ export function quantityValue(value: string): number {
     Pi: 1024 ** 5,
     Ei: 1024 ** 6,
   }
-  return (
+  const quantity =
     Number(match[1]) *
     (suffix ? (/^[eE][+-]?\d+$/.test(suffix) ? 10 ** Number(suffix.slice(1)) : powers[suffix]) : 1)
-  )
+  return Number.isFinite(quantity) ? quantity : undefined
+}
+
+export function quantityValue(value: string): number {
+  const quantity = parseQuantity(value)
+  if (quantity === undefined) throw new Error(`Invalid resource quantity: ${value}`)
+  return quantity
 }
 
 export const shellQuote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'"
