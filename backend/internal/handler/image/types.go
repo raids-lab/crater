@@ -158,17 +158,19 @@ type (
 	}
 
 	GetKanikoResponse struct {
-		ID            uint              `json:"ID"`
-		ImageLink     string            `json:"imageLink"`
-		Status        model.BuildStatus `json:"status"`
-		BuildSource   model.BuildSource `json:"buildSource"`
-		CreatedAt     time.Time         `json:"createdAt"`
-		ImagePackName string            `json:"imagepackName"`
-		Description   string            `json:"description"`
-		Dockerfile    string            `json:"dockerfile"`
-		PodName       string            `json:"podName"`
-		PodNameSpace  string            `json:"podNameSpace"`
-		NodeName      string            `json:"nodeName"`
+		CanManage        bool              `json:"canManage"`
+		CanViewBuildLogs bool              `json:"canViewBuildLogs"`
+		ID               uint              `json:"ID"`
+		ImageLink        string            `json:"imageLink"`
+		Status           model.BuildStatus `json:"status"`
+		BuildSource      model.BuildSource `json:"buildSource"`
+		CreatedAt        time.Time         `json:"createdAt"`
+		ImagePackName    string            `json:"imagepackName"`
+		Description      string            `json:"description"`
+		Dockerfile       string            `json:"dockerfile"`
+		PodName          string            `json:"podName"`
+		PodNameSpace     string            `json:"podNameSpace"`
+		NodeName         string            `json:"nodeName"`
 	}
 
 	GetKanikoPodResponse struct {
