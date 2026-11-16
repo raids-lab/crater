@@ -84,7 +84,7 @@ func TestImageBuildDetailHTTP(t *testing.T) {
 		mgr.RegisterProtected(router.Group("/api/v1/images"))
 		mgr.RegisterAdmin(router.Group("/api/v1/admin/images", middleware.AuthAdmin()))
 		w := httptest.NewRecorder()
-		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, http.NoBody))
 		return w
 	}
 	for _, tt := range []struct {
