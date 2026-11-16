@@ -13,6 +13,7 @@ import (
 	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 )
 
@@ -202,45 +203,70 @@ func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kani
 	return flag, errorMsg
 }
 
-// GetKanikoByImagePackName godoc
+// UserGetKanikoByImagePackName godoc
 //
-//	@Summary		获取imagepack的详细信息
-//	@Description	获取imagepackname，搜索到imagepack
-//	@Tags			ImagePack
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			name	query	string	true	"获取ImagePack的name"
-//	@Router			/v1/images/getbyname [GET]
-func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
+// @Summary Get a visible image build
+// @Description Owners receive full build details. Public and shared image readers receive configuration without pod or node information.
+// @Tags ImagePack
+// @Produce json
+// @Security Bearer
+// @Param name query string true "Image build name"
+// @Success 200 {object} resputil.Response[GetKanikoResponse]
+// @Failure 400,403,404,500 {object} resputil.Response[any]
+// @Router /v1/images/getbyname [get]
+func (mgr *ImagePackMgr) UserGetKanikoByImagePackName(c *gin.Context) {
+	mgr.getKanikoByImagePackName(c, false)
+}
+
+// AdminGetKanikoByImagePackName godoc
+//
+// @Summary Get any image build as an administrator
+// @Description Returns full build configuration and pod information through the admin route.
+// @Tags ImagePack
+// @Produce json
+// @Security Bearer
+// @Param name query string true "Image build name"
+// @Success 200 {object} resputil.Response[GetKanikoResponse]
+// @Failure 400,403,404,500 {object} resputil.Response[any]
+// @Router /v1/admin/images/getbyname [get]
+func (mgr *ImagePackMgr) AdminGetKanikoByImagePackName(c *gin.Context) {
+	mgr.getKanikoByImagePackName(c, true)
+}
+
+func (mgr *ImagePackMgr) getKanikoByImagePackName(c *gin.Context, admin bool) {
 	var req GetKanikoRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
-		resputil.BadRequestError(c, msg)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "Image build name is required"))
 		return
 	}
-	kaniko, err := mgr.findCurrentUserKaniko(c, req.ImagePackName, 0)
+	token := util.GetToken(c)
+	kaniko, canManage, err := service.NewImageBuildDetailService(query.Q).Get(
+		c, req.ImagePackName, token.UserID, token.AccountID, admin,
+	)
 	if err != nil {
-		msg := fmt.Sprintf("fetch kaniko by name failed, err %v", err)
-		resputil.BadRequestError(c, msg)
+		resputil.HandleError(c, err)
 		return
 	}
-
-	podName, podNameSpace, nodeName := mgr.getPodName(c, kaniko.ID)
-	getKanikoResponse := GetKanikoResponse{
-		ID:            kaniko.ID,
-		ImageLink:     kaniko.ImageLink,
-		Status:        kaniko.Status,
-		BuildSource:   kaniko.BuildSource,
-		CreatedAt:     kaniko.CreatedAt,
-		ImagePackName: kaniko.ImagePackName,
-		Description:   *kaniko.Description,
-		Dockerfile:    *kaniko.Dockerfile,
-		PodName:       podName,
-		PodNameSpace:  podNameSpace,
-		NodeName:      nodeName,
+	response := GetKanikoResponse{
+		ID:               kaniko.ID,
+		ImageLink:        kaniko.ImageLink,
+		Status:           kaniko.Status,
+		BuildSource:      kaniko.BuildSource,
+		CreatedAt:        kaniko.CreatedAt,
+		ImagePackName:    kaniko.ImagePackName,
+		CanManage:        canManage,
+		CanViewBuildLogs: canManage,
 	}
-	resputil.Success(c, getKanikoResponse)
+	if kaniko.Description != nil {
+		response.Description = *kaniko.Description
+	}
+	if kaniko.Dockerfile != nil {
+		response.Dockerfile = *kaniko.Dockerfile
+	}
+	if canManage {
+		response.PodName, response.PodNameSpace, response.NodeName = mgr.getBuildPodName(c, kaniko.ImagePackName)
+	}
+	resputil.Success(c, response)
 }
 
 // GetKanikoTemplateByImagePackName godoc
@@ -328,8 +354,12 @@ func (mgr *ImagePackMgr) getPodName(c *gin.Context, kanikoID uint) (name, ns, no
 		resputil.BadRequestError(c, msg)
 		return "", UserNameSpace, ""
 	}
+	return mgr.getBuildPodName(c, kaniko.ImagePackName)
+}
+
+func (mgr *ImagePackMgr) getBuildPodName(c *gin.Context, imagePackName string) (name, ns, nodeName string) {
 	var pod *corev1.Pod
-	pod, err = mgr.imagepackClient.GetImagePackPod(c, kaniko.ImagePackName, UserNameSpace)
+	pod, err := mgr.imagepackClient.GetImagePackPod(c, imagePackName, UserNameSpace)
 	if err != nil || pod == nil {
 		return "", UserNameSpace, ""
 	}

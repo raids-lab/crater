@@ -685,6 +685,8 @@
   "gpuAnalysis.toolbar.filters.status": "Review Status",
   "gpuAnalysis.toolbar.searchPlaceholder": "Search job name or username...",
   "grafanaIframe.title": "grafana",
+  "imageBuild.detail.loadError": "Unable to load image details",
+  "imageBuild.detail.retry": "Retry",
   "imageFormField.comboboxFormTitle": "Image",
   "imageFormField.label": "Container Image",
   "imageItem.tooltip.createdOn": "Created on",

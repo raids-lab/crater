@@ -51,16 +51,18 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui-custom/alert-dialog'
 
-import { KanikoInfoResponse, apiUserRemoveKanikoList } from '@/services/api/imagepack'
-import { queryBuildDetail } from '@/services/query/image'
+import { apiAdminDeleteKanikoList } from '@/services/api/admin/imagepack'
+import { KanikoDetailResponse, apiUserRemoveKanikoList } from '@/services/api/imagepack'
+import { buildDetailKey, queryBuildDetail } from '@/services/query/image'
 
 import useIsAdmin from '@/hooks/use-admin'
 
 import { shortenImageName } from '@/utils/formatter'
 import { logger } from '@/utils/loglevel'
+import { showErrorToast } from '@/utils/toast'
 
 type KanikoCard = React.ComponentProps<typeof Card> & {
-  kanikoInfo?: KanikoInfoResponse
+  kanikoInfo?: KanikoDetailResponse
   name?: string
 }
 
@@ -72,7 +74,7 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
   // 统一的移除函数(删除和取消都使用这个)
   const { mutate: removeKaniko, isPending } = useMutation({
     mutationFn: (params: { id: number; isCancel?: boolean; name?: string }) =>
-      apiUserRemoveKanikoList([params.id]),
+      (isAdmin ? apiAdminDeleteKanikoList : apiUserRemoveKanikoList)([params.id]),
     onSuccess: async (_, variables) => {
       // 只在取消操作时等待1.5秒让后端有足够时间更新数据
       if (variables.isCancel) {
@@ -81,28 +83,22 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
 
       if (variables.isCancel) {
         // 取消操作:刷新当前页面数据
-        await queryClient.invalidateQueries({ queryKey: ['imagepack', 'get'] })
+        await queryClient.invalidateQueries({
+          queryKey: ['imagepack', 'get', isAdmin ? 'admin' : 'user'],
+        })
         toast.success('已取消构建任务')
       } else {
         // 删除操作:先移除查询缓存,再导航到列表页
         // 移除当前镜像的查询缓存,避免路由卸载时重新获取已删除的数据
         if (variables.name) {
-          queryClient.removeQueries({ queryKey: ['imagepack', 'get', variables.name] })
+          queryClient.removeQueries({ queryKey: buildDetailKey(variables.name, isAdmin) })
         }
         const targetPath = isAdmin ? '/admin/env/registry' : '/portal/env/registry'
         await navigate({ to: targetPath })
         toast.success('镜像已删除')
       }
     },
-    onError: (err, variables) => {
-      if (variables.isCancel) {
-        logger.error('取消镜像构建失败', err)
-        toast.error('取消失败,请稍后重试')
-      } else {
-        logger.error('删除镜像失败', err)
-        toast.error('删除失败,请稍后重试')
-      }
-    },
+    onError: showErrorToast,
   })
 
   if (!kanikoInfo) {
@@ -121,6 +117,11 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
   return (
     <DetailPage
       {...props}
+      currentTab={
+        props.currentTab === 'info' && (kanikoInfo.canViewBuildLogs !== true || !kanikoInfo.podName)
+          ? undefined
+          : props.currentTab
+      }
       header={
         <PageTitle
           title={kanikoInfo.description}
@@ -152,7 +153,7 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
               </Button>
             )}
 
-            {shouldShowCancel && (
+            {kanikoInfo.canManage === true && shouldShowCancel && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <div>
@@ -188,7 +189,7 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            {shouldShowDelete && (
+            {kanikoInfo.canManage === true && shouldShowDelete && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <div>
@@ -265,7 +266,7 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
               ]}
             />
           ),
-          hidden: kanikoInfo?.podName === '',
+          hidden: kanikoInfo.canViewBuildLogs !== true || !kanikoInfo.podName,
         },
         {
           key: 'dockerfile',
@@ -292,7 +293,8 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
 }
 
 const RegistryDetail = ({ name, ...props }: DetailPageCoreProps & { name: string }) => {
-  const { data: kanikoInfo } = useQuery(queryBuildDetail(name))
+  const isAdmin = useIsAdmin()
+  const { data: kanikoInfo } = useQuery(queryBuildDetail(name, isAdmin))
 
   return <RegistryInfo kanikoInfo={kanikoInfo} name={name} {...props} />
 }

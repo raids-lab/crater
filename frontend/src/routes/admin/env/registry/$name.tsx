@@ -1,17 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import RegistryDetail from '@/components/image/registry/registry-detail'
+import RegistryDetailError from '@/components/image/registry/registry-detail-error'
 import { detailLinkOptions, detailValidateSearch } from '@/components/layout/detail-page'
-import NotFound from '@/components/placeholder/not-found'
 
 import { queryBuildDetail } from '@/services/query/image'
 
 export const Route = createFileRoute('/admin/env/registry/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
-  errorComponent: () => <NotFound />,
+  errorComponent: RegistryDetailError,
   loader: async ({ params, context: { queryClient } }) => {
-    const { data } = await queryClient.ensureQueryData(queryBuildDetail(params.name))
+    const { data } = await queryClient.ensureQueryData(queryBuildDetail(params.name, true))
     return {
       crumb: data?.description || params.name,
     }
