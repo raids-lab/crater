@@ -103,6 +103,30 @@ CLI 与 Crater 平台之间的请求、响应解析与传输层异常，集中�
 
 该模式禁止访问外部网络、真实 Crater 平台以及测试启动前已存在的有状态本地服务。fixture 的响应必须由测试代码固定且不依赖机器外部状态；运行快照的环境必须支持测试进程 loopback bind 和 CLI 子进程 loopback connect。
 
+## 作业连接与命令执行
+
+`job ssh --connect` 通过统一 session/API 客户端取得 SSH 地址，再以独立 argv 调用本机 OpenSSH。容器 sshd 负责认证和登录环境。`job ssh` 默认打印地址。交互前检查 TTY、选项和本机依赖。
+
+`cmd/job_exec.go` 负责 argv 校验、可取消的 stdin、本地终端 raw 模式与恢复、尺寸变化和输出。`internal/api/job_exec.go` 负责 Bearer Header 鉴权的 WebSocket 握手、协议帧和流生命周期；不访问本地凭据、不输出用户消息。省略命令时进入用户 shell；显式命令保留 argv，不依赖节点架构或 GPU 厂商。测试沙箱的 HTTP 失败模拟仍通过统一客户端；WebSocket 的 `passthrough` 同样限制为测试管理的 loopback fixture。
+
+后端 `GET /api/v1/vcjobs/{name}/exec` 在升级连接前检查当前用户与项目、读取 live Volcano Job，并用 live UID 的 controller owner reference 校验 Pod 归属。该 GET 具有执行副作用，认证中间件会按写操作重新验证账户权限。`internal/service/vcjob/exec.go` 选择运行中容器；`pkg/jobexec` 转发 Kubernetes exec 流，不更改已有浏览器终端协议。`pkg/jobsession` 拥有exec 的 POSIX 会话脚本、账户解析、用户切换和限时环境探测。非 TTY 命令探测出的环境值通过 Kubernetes stdin 的私有前缀传递，包装器按字节长度读取后再把剩余 stdin 交给用户命令；环境值不进入 exec URL、日志或 CLI 响应。TTY 命令由用户登录 shell 加载配置后执行安全引用的 argv，不向 PTY 发送环境前缀，避免回显或 canonical 输入处理泄漏环境。
+
+SSH 的访问策略保留平台管理员权限，exec 始终要求当前账户中本人拥有；两者在读取 live 资源前通过 `CheckSessionAccess` 校验。SSH 根据首个 task 模板的主容器名选择目标，不因 Pod 注入 sidecar 而要求额外参数。网页终端保留原有 query-token 和 `op:stdin/resize` 协议，不接入新的 exec 协议。
+
+WebSocket 子协议为 `crater.exec.v1`。目标选择通过 `pod`、`container` query 发送；token 使用 Header、命令使用首帧，均不写入 URL。JSON 帧如下：
+
+| 方向 | type | 载荷与含义 |
+|---|---|---|
+| CLI → 后端 | `start` | `command` 为原始 argv 数组（空数组表示交互 shell，要求 stdin/tty），`env_mode` 为 `user`（默认）或 `container`，`stdin`、`tty` 为布尔值，`cols`、`rows` 为可选初始尺寸；10 秒内发送，帧最大 1 MiB。 |
+| 后端 → CLI | `ready` | 服务端确认的 `namespace`、`pod`、`container`，在输出之前发送。 |
+| CLI → 后端 | `stdin`、`eof`、`resize` | `stdin.data` 为 Base64 字节；`eof` 只关闭输入；`resize` 提供正数 `cols`、`rows`。 |
+| 后端 → CLI | `stdout`、`stderr` | `data` 为 Base64 字节，保留二进制内容与跨帧 UTF-8；TTY 模式输出合并。 |
+| 后端 → CLI | `exit`、`error` | `exit.exit_code` 为命令状态，包含零；`error.message` 为平台执行错误。关闭连接不等于成功。 |
+
+后端定期发送 ping 保持空闲会话，写操作有超时。CLI 的 stdin/尺寸同步网络写入失败会停止相应发送协程，接收侧继续读取输出和最终退出帧；本地 stdin 读取失败或用户取消仍关闭会话。断连与取消会关闭 socket、stdin pipe 和尺寸队列，取消 Kubernetes exec；CLI 完成后取消输入读取并恢复终端。JSON 捕获限制在命令层实施，普通模式流式输出。
+
+后端与 CLI 的 `APIVersion` 为 7。`job exec` 依赖该版本引入的 WebSocket 接口，因此 CLI 的 `MinSupportedBackendAPIVersion` 为 7。后端仍提供旧版 CLI 所需的接口，`MinSupportedCLIAPIVersion` 为 3。SSH 使用既有地址接口。`crater compatibility` 是单独执行的诊断命令，其他命令直接调用各自的接口并处理返回的错误。
+
 ## 列表分页
 
 列表分页由 `internal/api` 的传输模型与 `cmd` 的公共展示 helper 两层协作：
