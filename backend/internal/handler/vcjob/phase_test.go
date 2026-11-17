@@ -337,9 +337,18 @@ func TestJobSelfPhaseScope(t *testing.T) {
 	if err := db.Exec("INSERT INTO jobs (id,status,pod_group_phase,user_id,account_id,job_type,name) VALUES (1,'Pending','Running',1,1,'custom','one'),(2,'Pending','Running',2,1,'custom','two'),(3,'Pending','Running',1,2,'custom','other-account')").Error; err != nil {
 		t.Fatal(err)
 	}
-	for _, userID := range []uint{1, 2} {
+	for _, tc := range []struct {
+		userID, accountID uint
+		wantID            uint
+		wantCount         int
+	}{
+		{1, 1, 1, 1},
+		{2, 1, 2, 1},
+		{1, 2, 3, 1},
+		{2, 2, 0, 0},
+	} {
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
-		util.SetJWTContext(c, util.JWTMessage{UserID: userID, AccountID: 1, RolePlatform: model.RoleUser, RoleAccount: model.RoleUser})
+		util.SetJWTContext(c, util.JWTMessage{UserID: tc.userID, AccountID: tc.accountID, RolePlatform: model.RoleUser, RoleAccount: model.RoleUser})
 		scope := selfJobScope(c)
 		days := -1
 		sorts, err := parseJobSort("phase,id")
@@ -348,12 +357,19 @@ func TestJobSelfPhaseScope(t *testing.T) {
 		}
 		request := jobListQuery{Page: 1, PageSize: 1, Days: &days, Phases: []string{"Starting"}, sorts: sorts}
 		rows, total, err := findJobs(t.Context(), scope, &request, 30)
-		if err != nil || total != 1 || len(rows) != 1 || rows[0].UserID != userID || rows[0].AccountID != 1 {
-			t.Fatalf("user=%d rows=%+v total=%d err=%v", userID, rows, total, err)
+		wantCount := tc.wantCount
+		if err != nil || total != int64(wantCount) || len(rows) != wantCount {
+			t.Fatalf("scope=%+v rows=%+v total=%d err=%v", tc, rows, total, err)
+		}
+		if wantCount == 1 && (rows[0].ID != tc.wantID || rows[0].UserID != tc.userID || rows[0].AccountID != tc.accountID) {
+			t.Fatalf("scope=%+v returned another user's or account's job: %+v", tc, rows[0])
 		}
 		facets, err := findJobFacets(t.Context(), scope, &request, 30, false)
-		if err != nil || len(facets["phase"]) != 1 || facets["phase"][0].Count != 1 {
-			t.Fatalf("user=%d facets=%+v err=%v", userID, facets, err)
+		if err != nil || len(facets["phase"]) != wantCount {
+			t.Fatalf("scope=%+v facets=%+v err=%v", tc, facets, err)
+		}
+		if wantCount == 1 && facets["phase"][0].Count != 1 {
+			t.Fatalf("scope=%+v facet count includes unauthorized jobs: %+v", tc, facets)
 		}
 	}
 }
@@ -367,6 +383,12 @@ func TestBindJobFilterPhase(t *testing.T) {
 		{"phase=Pending&phase=Starting", false},
 		{"phase=Pending,Inqueue", false},
 		{"phase=Pending&phase=Inqueue,Starting", false},
+		{"phase=Pending&phase=Pending", false},
+		{"phase=" + strings.TrimSuffix(strings.Repeat("Pending,", 20), ","), false},
+		{strings.TrimSuffix(strings.Repeat("phase=Pending&", 20), "&"), false},
+		{"phase=Pending&phase=", true},
+		{"phase=Pending&phase=Unknown", true},
+		{"phase=%20Pending", true},
 		{"phase=Init", false},
 		{"status=Prequeue&phase=Pending", false},
 		{"status=" + legacyCancelled, false},
@@ -389,11 +411,18 @@ func TestBindJobFilterPhase(t *testing.T) {
 		{strings.TrimSuffix(strings.Repeat("phase=Pending&", 21), "&"), true},
 	} {
 		t.Run(tc.query, func(t *testing.T) {
-			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
 			ctx.Request = httptest.NewRequest(http.MethodGet, "/?"+tc.query, http.NoBody)
 			_, err := bindJobListQuery(ctx, true)
 			if (err != nil) != tc.invalid {
 				t.Fatalf("err=%v invalid=%v", err, tc.invalid)
+			}
+			if tc.invalid {
+				resputil.HandleError(ctx, err)
+				if recorder.Code != http.StatusBadRequest {
+					t.Fatalf("invalid query returned HTTP %d, want 400", recorder.Code)
+				}
 			}
 		})
 	}
@@ -414,6 +443,8 @@ func TestJobPhaseQueryEncodings(t *testing.T) {
 	}{
 		{"phase=Pending,Inqueue", []uint{1, 2, 4}},
 		{"phase=Pending&phase=Inqueue", []uint{1, 2, 4}},
+		{"phase=Pending&phase=Pending", []uint{1, 4}},
+		{"phase=Completed", []uint{}},
 		{"status=Pending&phase=Pending,Inqueue", []uint{1, 2}},
 		{"status=Pending&phase=Pending&phase=Inqueue", []uint{1, 2}},
 		{"status=Pending&phase=Pending&phase=Inqueue,Starting", []uint{1, 2, 3}},
