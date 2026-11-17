@@ -55,6 +55,32 @@ func TestJobPhasePostgresOverviewFacets(t *testing.T) {
 	assertJobPhaseFacet(t, facets["owner"], map[string]int64{"User One": 1})
 	assertJobPhaseFacet(t, facets["gpu_resource"], map[string]int64{"a100": 2})
 
+	for _, tc := range []struct {
+		name             string
+		statuses, phases []string
+		wantRunning      bool
+	}{
+		{"waiting phase", nil, []string{"Pending"}, false},
+		{"completed status", []string{"Completed"}, nil, false},
+		{"mixed phases", nil, []string{"Pending", "Running"}, true},
+		{"mixed statuses", []string{"Completed", "Running"}, nil, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			filtered := request
+			filtered.Statuses, filtered.Phases = tc.statuses, tc.phases
+			summary, err := findJobFacets(t.Context(), scope, &filtered, 30, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			owners, resources := map[string]int64{}, map[string]int64{}
+			if tc.wantRunning {
+				owners["User One"], resources["a100"] = 1, 2
+			}
+			assertJobPhaseFacet(t, summary["owner"], owners)
+			assertJobPhaseFacet(t, summary["gpu_resource"], resources)
+		})
+	}
+
 	request.Search = "no-matching-job"
 	facets, err = findJobFacets(t.Context(), scope, &request, 30, true)
 	if err != nil {

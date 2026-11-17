@@ -290,16 +290,14 @@ func findJobFacets(
 	if !includeOverview {
 		return result, nil
 	}
-	runningRequest := *request
-	runningRequest.Statuses = []string{"Running"}
-	runningRequest.Phases = nil
+	// Running-only summaries still honor the requested status and phase filters.
 	result["owner"], err = scanJobStringFacet(
-		ctx, scope, &runningRequest, defaultDays, &query.User.Nickname,
+		ctx, scope, request, defaultDays, &query.User.Nickname, query.Job.Status.Eq("Running"),
 	)
 	if err != nil {
 		return nil, err
 	}
-	result["gpu_resource"], err = scanJobGPUResourceFacet(ctx, scope, &runningRequest, defaultDays)
+	result["gpu_resource"], err = scanJobGPUResourceFacet(ctx, scope, request, defaultDays)
 	return result, err
 }
 
@@ -322,12 +320,14 @@ func scanJobStringFacet(
 	request *jobListQuery,
 	defaultDays int,
 	group *field.String,
+	conditions ...gen.Condition,
 ) ([]resputil.FacetItem, error) {
 	rows := make([]struct {
 		Value string
 		Count int64
 	}, 0)
 	err := applyJobFilters(ctx, scope, request, defaultDays).
+		Where(conditions...).
 		Select(group.As("value"), query.Job.ID.Count().As("count")).
 		Group(group).
 		Order(query.Job.ID.Count().Desc(), group.Asc()).
@@ -350,6 +350,7 @@ func scanJobGPUResourceFacet(
 ) ([]resputil.FacetItem, error) {
 	items := make([]resputil.FacetItem, 0)
 	err := applyJobFilters(ctx, scope, request, defaultDays).
+		Where(query.Job.Status.Eq("Running")).
 		UnderlyingDB().
 		Joins("CROSS JOIN LATERAL jsonb_each_text(jobs.resources) AS resource(key, value)").
 		Where("resource.key LIKE ?", "nvidia.com/%").

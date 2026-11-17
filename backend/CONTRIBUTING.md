@@ -12,6 +12,7 @@ Use this file when you change handlers, services, DAO/model code, database migra
 
 - **Go**: `backend/go.mod` currently requires `1.25.4`. Before running backend build, test, or local-run targets, check `go version`. You can use [gvm](https://github.com/moovweb/gvm) (recommended `v1.0.22`) and run `gvm applymod` in the directory containing `go.mod`, or install Go directly.
 - **kubectl**: required, recommended `v1.33`. Running the project needs a Kubernetes cluster; Kind or Minikube is fine for test/learning.
+- Keep Go sources and shell scripts in LF form, as enforced by `.gitattributes`. The job-session shell scripts are embedded in the backend binary and executed in Linux containers, including when the binary is built on Windows.
 
 When installing Go directly you may need:
 
