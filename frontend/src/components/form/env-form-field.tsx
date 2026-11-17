@@ -18,7 +18,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { CirclePlus, GlobeIcon, XIcon } from 'lucide-react'
-import { ArrayPath, UseFormReturn, useFieldArray } from 'react-hook-form'
+import { ArrayPath, FieldValues, UseFormReturn, useFieldArray } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -31,34 +31,21 @@ import FormLabelMust from '@/components/form/form-label-must'
 
 import { cn } from '@/lib/utils'
 
-export function EnvFormCard<
-  T extends {
-    envs: Array<{ name: string; value: string }>
-  },
->({
+export function EnvFormCard<T extends FieldValues>({
   form,
   open,
   setOpen,
   className,
   cardTitle = '环境变量',
+  envPath = 'envs',
 }: {
   form: UseFormReturn<T>
   open: boolean
   setOpen: (open: boolean) => void
   className?: string
   cardTitle?: string
+  envPath?: string
 }) {
-  const { t } = useTranslation()
-  // Field array for environment variables
-  const {
-    fields: envFields,
-    append: envAppend,
-    remove: envRemove,
-  } = useFieldArray({
-    name: 'envs' as ArrayPath<T>,
-    control: form.control,
-  })
-
   return (
     <AccordionCard
       cardTitle={cardTitle}
@@ -67,68 +54,96 @@ export function EnvFormCard<
       setOpen={setOpen}
       className={className}
     >
-      <div className="mt-3 space-y-5">
-        {envFields.map((field, index) => (
-          <div key={field.id}>
-            <Separator className={cn('mb-5', index === 0 && 'hidden')} />
-            <div className="space-y-5">
-              <FormField
-                control={form.control}
-                name={`envs.${index}.name`}
-                render={({ field }) => (
-                  <FormItem className="relative">
-                    <button
-                      onClick={() => envRemove(index)}
-                      className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
-                    >
-                      <XIcon className="size-4" />
-                      <span className="sr-only">{t('envFormCard.closeButton')}</span>
-                    </button>
-                    <FormLabel>
-                      {t('envFormCard.variableName', { index: index + 1 })}
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Input {...field} className="font-mono" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name={`envs.${index}.value`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {t('envFormCard.variableValue', { index: index + 1 })}
-                      <FormLabelMust />
-                    </FormLabel>
-                    <FormControl>
-                      <Input {...field} className="font-mono" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-        ))}
-        <Button
-          type="button"
-          variant="secondary"
-          className="w-full"
-          onClick={() =>
-            envAppend({
-              name: '',
-              value: '',
-            })
-          }
-        >
-          <CirclePlus className="size-4" />
-          {t('envFormCard.addButton', { cardTitle })}
-        </Button>
-      </div>
+      <EnvFormFields form={form} envPath={envPath} label={cardTitle} className="mt-3" />
     </AccordionCard>
+  )
+}
+
+export function EnvFormFields<T extends FieldValues>({
+  form,
+  envPath,
+  label,
+  className,
+}: {
+  form: UseFormReturn<T>
+  envPath: string
+  label: string
+  className?: string
+}) {
+  const { t } = useTranslation()
+  // Field array for environment variables
+  const {
+    fields: envFields,
+    append: envAppend,
+    remove: envRemove,
+  } = useFieldArray({
+    name: envPath as ArrayPath<T>,
+    control: form.control,
+  })
+
+  return (
+    <div className={cn('space-y-5', className)}>
+      {envFields.map((field, index) => (
+        <div key={field.id}>
+          <Separator className={cn('mb-5', index === 0 && 'hidden')} />
+          <div className="space-y-5">
+            <FormField
+              control={form.control}
+              name={`${envPath}.${index}.name`}
+              render={({ field }) => (
+                <FormItem className="relative">
+                  <button
+                    type="button"
+                    onClick={() => envRemove(index)}
+                    className="data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute -top-1.5 right-0 rounded-sm opacity-50 transition-opacity hover:opacity-100 focus:outline-hidden disabled:pointer-events-none"
+                  >
+                    <XIcon className="size-4" />
+                    <span className="sr-only">{t('envFormCard.closeButton')}</span>
+                  </button>
+                  <FormLabel>
+                    {t('envFormCard.variableName', { index: index + 1 })}
+                    <FormLabelMust />
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} className="font-mono" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={`${envPath}.${index}.value`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {t('envFormCard.variableValue', { index: index + 1 })}
+                    <FormLabelMust />
+                  </FormLabel>
+                  <FormControl>
+                    <Input {...field} className="font-mono" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="secondary"
+        className="w-full"
+        onClick={() =>
+          envAppend({
+            name: '',
+            value: '',
+          })
+        }
+      >
+        <CirclePlus className="size-4" />
+        {t('envFormCard.addButton', { cardTitle: label })}
+      </Button>
+    </div>
   )
 }

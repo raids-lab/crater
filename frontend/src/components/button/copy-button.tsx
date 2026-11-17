@@ -30,7 +30,14 @@ type CopyButtonProps = React.ComponentProps<'button'> &
     copyMessage?: string
   }
 
-export function CopyButton({ className, variant, size, content, copyMessage }: CopyButtonProps) {
+export function CopyButton({
+  className,
+  variant,
+  size,
+  content,
+  copyMessage,
+  'aria-label': ariaLabel = 'Copy to clipboard',
+}: CopyButtonProps) {
   const { isCopied, handleCopy } = useCopyToClipboard({
     text: content,
     copyMessage,
@@ -43,7 +50,7 @@ export function CopyButton({ className, variant, size, content, copyMessage }: C
       className={cn('relative h-6 w-6 cursor-pointer', className)}
       type="button"
       onFocus={(e) => e.preventDefault()}
-      aria-label="Copy to clipboard"
+      aria-label={ariaLabel}
       tooltipContent={'复制'}
       onClick={handleCopy}
     >

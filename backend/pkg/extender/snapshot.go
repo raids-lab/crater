@@ -90,6 +90,9 @@ func (s *Server) buildSnapshot(ctx context.Context, current *settings) (*snapsho
 			snap.usageByOwner[key] = utils.SumResources(snap.usageByOwner[key], view.resources)
 		}
 	}
+	if err := s.addServingViews(ctx, snap, &groups, namespace); err != nil {
+		return nil, err
+	}
 	return snap, nil
 }
 

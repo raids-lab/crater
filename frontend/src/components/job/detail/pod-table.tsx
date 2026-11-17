@@ -15,11 +15,8 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
-import { useAtomValue } from 'jotai'
 import { EthernetPort, GaugeIcon, LogsIcon, SquareTerminalIcon, TerminalIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
-
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 
 import NodeBadges from '@/components/badge/node-badges'
 import PodPhaseLabel, { podPhases } from '@/components/badge/pod-phase-badge'
@@ -30,7 +27,6 @@ import LogDialog from '@/components/codeblock/log-dialog'
 import { NamespacedName } from '@/components/codeblock/pod-container-dialog'
 import TerminalDialog from '@/components/codeblock/terminal-dialog'
 import TooltipCopy from '@/components/label/tooltop-copy'
-import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
 import Nothing from '@/components/placeholder/nothing'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
@@ -38,9 +34,8 @@ import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import { PodDetail, apiJobGetPods } from '@/services/api/vcjob'
 
-import { configGrafanaJobAtom } from '@/utils/store/config'
-
 import PodIngressDialog from './ingress'
+import { PodMonitorSheet, PodMonitorTarget } from './pod-monitor'
 
 interface PodTableProps {
   jobName: string
@@ -82,10 +77,6 @@ const toolbarConfig: DataTableToolbarConfig = {
     },
   ],
   getHeader: getHeader,
-}
-
-const getPodMonitorUrl = (baseURL: string, pod: PodDetail) => {
-  return `${baseURL}?orgId=1&refresh=5s&var-node_name=${pod.nodename}&var-pod_name=${pod.name}&var-gpu=All&from=now-15m&to=now`
 }
 
 const PodInfo = ({
@@ -155,9 +146,7 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
   const [showLog, setShowLog] = useState<NamespacedName>()
   const [showTerminal, setShowTerminal] = useState<NamespacedName>()
   const [showIngress, setShowIngress] = useState<NamespacedName>()
-  const [showMonitor, setShowMonitor] = useState(false)
-  const grafanaJob = useAtomValue(configGrafanaJobAtom)
-  const [grafanaUrl, setGrafanaUrl] = useState<string>('')
+  const [monitorPod, setMonitorPod] = useState<PodMonitorTarget>()
 
   const query = useQuery({
     queryKey: ['job', 'detail', jobName, 'pods'],
@@ -180,8 +169,7 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
               className="text-foreground hover:text-primary cursor-pointer font-mono hover:no-underline"
               variant="link"
               onClick={() => {
-                setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod))
-                setShowMonitor(true)
+                setMonitorPod({ name: pod.name, nodeName: pod.nodename })
               }}
             >
               {pod.name}
@@ -270,8 +258,7 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
                 className="h-8 w-8"
                 disabled={pod.phase !== 'Running'}
                 onClick={() => {
-                  setGrafanaUrl(getPodMonitorUrl(grafanaJob.pod, pod))
-                  setShowMonitor(true)
+                  setMonitorPod({ name: pod.name, nodeName: pod.nodename })
                 }}
                 tooltipContent="资源监控"
               >
@@ -297,7 +284,7 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
         },
       },
     ],
-    [grafanaJob.pod]
+    []
   )
 
   if (query.isLoading) {
@@ -332,16 +319,7 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
         userName={userName}
         jobType={jobType}
       />
-      <Sheet open={showMonitor} onOpenChange={setShowMonitor}>
-        <SheetContent className="sm:max-w-4xl">
-          <SheetHeader>
-            <SheetTitle>资源监控</SheetTitle>
-          </SheetHeader>
-          <div className="h-[calc(100vh-6rem)] w-full px-4">
-            <GrafanaIframe baseSrc={grafanaUrl} />
-          </div>
-        </SheetContent>
-      </Sheet>
+      <PodMonitorSheet pod={monitorPod} onClose={() => setMonitorPod(undefined)} />
     </>
   )
 }

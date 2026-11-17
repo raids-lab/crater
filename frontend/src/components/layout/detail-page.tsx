@@ -54,6 +54,20 @@ interface DetailInfoProps {
   className?: string
 }
 
+export function DetailInfo({ items }: { items: DetailInfoProps[] }) {
+  return (
+    <div className="text-muted-foreground grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
+      {items.map(({ icon: Icon, title, value, className }) => (
+        <div key={title} className={cn('flex min-w-0 items-center', className)}>
+          <Icon className="text-muted-foreground mr-1.5 size-4 shrink-0" />
+          <span className="text-muted-foreground mr-1.5 truncate text-sm">{title}:</span>
+          <span className="min-w-0 truncate">{value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export interface DetailPageCoreProps {
   currentTab?: string
   setCurrentTab?: (tab: string) => void
@@ -125,15 +139,7 @@ export default function DetailPage({
     <div className="flex h-full w-full flex-col gap-6 overflow-hidden">
       <div className="shrink-0 space-y-6">
         {header}
-        <div className="text-muted-foreground grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
-          {info.map((data, index) => (
-            <div key={index} className={cn('flex min-w-0 items-center', data.className)}>
-              <data.icon className="text-muted-foreground mr-1.5 size-4 shrink-0" />
-              <span className="text-muted-foreground mr-1.5 truncate text-sm">{data.title}:</span>
-              <span className="min-w-0 truncate">{data.value}</span>
-            </div>
-          ))}
-        </div>
+        <DetailInfo items={info} />
       </div>
       <Tabs
         className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
