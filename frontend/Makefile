@@ -101,7 +101,7 @@ test-model-download: ## Check shared model/dataset download result warnings.
 	node --test hack/model_download_result.test.mjs
 
 .PHONY: test-tensorboard-templates
-test-tensorboard-templates: ## Check compatibility of saved job and TensorBoard templates.
+test-tensorboard-templates: ## Check saved job template compatibility, including TensorBoard log directories.
 	node --test hack/tensorboard_template_migration.test.mjs
 
 .PHONY: lint
