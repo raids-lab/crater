@@ -717,6 +717,8 @@
   "gpuAnalysis.toolbar.filters.status": "Review Status",
   "gpuAnalysis.toolbar.searchPlaceholder": "Search job name or username...",
   "grafanaIframe.title": "grafana",
+  "imageBuild.detail.loadError": "イメージの詳細を読み込めませんでした",
+  "imageBuild.detail.retry": "再試行",
   "imageFormField.comboboxFormTitle": "イメージ",
   "imageFormField.label": "コンテナイメージ",
   "imageItem.tooltip.createdOn": "作成日",

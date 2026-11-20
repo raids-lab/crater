@@ -16,7 +16,12 @@
 import { apiV1Get, apiV1Post } from '@/services/client'
 import { IResponse } from '@/services/types'
 
-import { ListImageResponse, ListKanikoResponse, UpdateDescription } from '../imagepack'
+import {
+  KanikoDetailResponse,
+  ListImageResponse,
+  ListKanikoResponse,
+  UpdateDescription,
+} from '../imagepack'
 
 export const apiAdminImagePublicStatusChange = async (id: number) => {
   const response = await apiV1Post<IResponse<string>>('admin/images/change', id)
@@ -26,7 +31,7 @@ export const apiAdminImagePublicStatusChange = async (id: number) => {
 export const apiAdminListImage = () => apiV1Get<IResponse<ListImageResponse>>('admin/images/image')
 
 export const apiAdminDeleteKanikoList = (idList: number[]) =>
-  apiV1Post<IResponse<string>>('admin/images/deletekaniko', {
+  apiV1Post<IResponse<string>>('admin/images/remove', {
     idList,
   })
 
@@ -43,3 +48,8 @@ export const apiAdminChangeImagePublicStatus = (id: number) =>
 
 export const apiAdminChangeImageDescription = (data: UpdateDescription) =>
   apiV1Post<IResponse<string>>('admin/images/description', data)
+
+export const apiAdminGetKaniko = (name: string) =>
+  apiV1Get<IResponse<KanikoDetailResponse>>(
+    `admin/images/getbyname?name=${encodeURIComponent(name)}`
+  )

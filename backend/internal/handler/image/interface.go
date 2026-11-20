@@ -45,7 +45,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.DELETE("/image/:id", mgr.DeleteImageByID)
 
 	g.GET("/available", mgr.ListAvailableImages)
-	g.GET("/getbyname", mgr.GetKanikoByImagePackName)
+	g.GET("/getbyname", mgr.UserGetKanikoByImagePackName)
 	g.POST("/quota", mgr.UpdateProjectQuota)
 
 	g.GET("/podname", mgr.GetImagepackPodName)
@@ -69,6 +69,7 @@ func (mgr *ImagePackMgr) RegisterProtected(g *gin.RouterGroup) {
 }
 
 func (mgr *ImagePackMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/getbyname", mgr.AdminGetKanikoByImagePackName)
 	g.GET("/kaniko", mgr.AdminListKaniko)
 	g.GET("/image", mgr.AdminListImage)
 	g.POST("/deleteimage", mgr.AdminDeleteImageByIDList)

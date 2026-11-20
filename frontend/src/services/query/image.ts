@@ -17,13 +17,17 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { ComboboxItem } from '@/components/form/combobox'
 
+import { apiAdminGetKaniko } from '@/services/api/admin/imagepack'
 import { ImageInfoResponse, apiUserGetKaniko } from '@/services/api/imagepack'
 import { JobType, apiJTaskImageList } from '@/services/api/vcjob'
 
-export const queryBuildDetail = (name: string) =>
+export const buildDetailKey = (name: string, isAdmin: boolean) =>
+  ['imagepack', 'get', isAdmin ? 'admin' : 'user', name] as const
+
+export const queryBuildDetail = (name: string, isAdmin = false) =>
   queryOptions({
-    queryKey: ['imagepack', 'get', name],
-    queryFn: () => apiUserGetKaniko(`${name}`),
+    queryKey: buildDetailKey(name, isAdmin),
+    queryFn: () => (isAdmin ? apiAdminGetKaniko(name) : apiUserGetKaniko(name)),
     select: (res) => res.data,
     enabled: !!name,
     retry: false,
