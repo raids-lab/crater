@@ -57,6 +57,31 @@ config-unlink: ## Remove configuration symlinks (only symlinks, not regular file
 config-restore: ## Restore configuration files from .bak backups
 	@bash hack/config.sh restore
 
+##@ Crater-Agent local deployment
+
+.PHONY: agent-local-up
+agent-local-up: ## Run production-style containers against the configured external cluster.
+	@bash hack/local/crater-agent-up.sh
+
+.PHONY: agent-local-smoke
+agent-local-smoke: ## Verify the production-style local Agent stack.
+	@bash hack/local/crater-agent-smoke.sh
+
+.PHONY: agent-local-down
+agent-local-down: ## Stop the production-style local Agent stack.
+	@bash hack/local/crater-agent-down.sh
+
+.PHONY: agent-kind-up
+agent-kind-up: ## Build and deploy Crater with Crater-Agent to a local Kind cluster.
+	@bash hack/kind/crater-agent-up.sh
+
+.PHONY: agent-kind-smoke
+agent-kind-smoke: ## Verify the local Crater-Agent deployment.
+	@bash hack/kind/crater-agent-smoke.sh
+
+.PHONY: agent-kind-down
+agent-kind-down: ## Delete the local Crater-Agent Kind cluster.
+	@bash hack/kind/crater-agent-down.sh
+
 # 默认目标
 .DEFAULT_GOAL := help
-

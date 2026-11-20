@@ -142,6 +142,38 @@ func modelDownloadSubmissionMigration() *gormigrate.Migration {
 	}
 }
 
+func agentFoundationMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202610291500",
+		Migrate: func(tx *gorm.DB) error {
+			for _, value := range []any{
+				&model.UserLLMConfig{},
+				&model.AgentConversation{},
+				&model.AgentRun{},
+				&model.AgentMessage{},
+			} {
+				if err := createTableIfMissing(tx, value); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+		Rollback: func(tx *gorm.DB) error {
+			for _, value := range []any{
+				&model.AgentMessage{},
+				&model.AgentRun{},
+				&model.AgentConversation{},
+				&model.UserLLMConfig{},
+			} {
+				if err := dropTableIfPresent(tx, value); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+}
+
 func createTableIfMissing(db *gorm.DB, value any) error {
 	if db.Migrator().HasTable(value) {
 		return nil
@@ -1689,6 +1721,8 @@ func main() {
 			},
 		},
 		userContainerSysAdminMigration(),
+		agentFoundationMigration(),
+		approvalOrderReviewerMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1725,6 +1759,10 @@ func main() {
 			&model.QueueQuotaLimit{},
 			&model.UserBanRecord{},
 			&model.UserSpaceSize{},
+			&model.UserLLMConfig{},
+			&model.AgentConversation{},
+			&model.AgentRun{},
+			&model.AgentMessage{},
 		)
 		if err != nil {
 			return err
@@ -1922,6 +1960,24 @@ func userContainerSysAdminMigration() *gormigrate.Migration {
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return dropColumnIfPresent(tx, "users", &userContainerPermission{}, "ContainerSysAdminEnabled")
+		},
+	}
+}
+
+func approvalOrderReviewerMigration() *gormigrate.Migration {
+	return &gormigrate.Migration{
+		ID: "202611121600",
+		Migrate: func(tx *gorm.DB) error {
+			// Both the old uint model and the pointer model use a nullable column.
+			// Older databases without the reviewer foreign key may contain zero IDs.
+			return tx.Table("approval_orders").
+				Where("reviewer_id = ?", model.InvalidUserID).
+				Update("reviewer_id", nil).Error
+		},
+		Rollback: func(_ *gorm.DB) error {
+			// Keep NULL: restoring zero IDs would violate the reviewer foreign key.
+			// No schema change is needed when rolling back the Go representation.
+			return nil
 		},
 	}
 }

@@ -16,9 +16,15 @@ package version
 
 import "testing"
 
+func TestJobExecContractVersion(t *testing.T) {
+	if APIVersion != 7 || MinSupportedCLIAPIVersion != 3 {
+		t.Fatalf("job exec contract = %d, minimum CLI = %d, want 7/3", APIVersion, MinSupportedCLIAPIVersion)
+	}
+}
+
 func TestUserContainerPermissionContractVersion(t *testing.T) {
-	if APIVersion != 6 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("user container permission contract = %d, minimum CLI = %d, want 6/3",
+	if APIVersion < 6 || MinSupportedCLIAPIVersion != 3 {
+		t.Fatalf("user container permission contract = %d, minimum CLI = %d, want >=6/3",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}
 }

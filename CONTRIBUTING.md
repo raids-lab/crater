@@ -380,22 +380,25 @@ Which commits start which publish workflows, and which artifacts those workflows
 
 This contract applies only to APIs consumed by the independently distributed CLI. The administrator-deployed frontend is outside its scope.
 
+The compatibility check helps users diagnose command failures. When it passes, users should be able to rule out an API version mismatch in routine troubleshooting and focus on the actual error, such as invalid input, insufficient permissions, a network issue, or the state of the platform. Set the supported version range so this conclusion holds for the CLI's documented operations under normal conditions.
+
 - Backend constants live in `backend/internal/version/api.go`; CLI constants live in `cli/internal/version/version.go`.
 - `APIVersion` is one shared, monotonically increasing API-contract counter. Backend and CLI must carry the same current value after an API contract consumed by the CLI changes.
 - Behavior and semantics count even when paths and request/response shapes stay the same: new error or job types, or changes to user-visible processing that could leave an older CLI missing important information or misinterpreting results, require a shared `APIVersion` increment. Small bug fixes that correct faulty logic or restore intended behavior, and internal changes without meaningful CLI-visible impact, normally do not. Judge the actual user impact rather than treating every backend edit as an API change.
 - Version `1` is the first published contract. Value `0` must not be published as a supported contract. If a handshake explicitly reports `0`, the CLI treats it as a pre-contract legacy version so it can explain which minimum-version check fails; a missing version field or a negative value remains invalid or unknown.
 - Each side independently owns the minimum peer it needs: the backend owns `MinSupportedCLIAPIVersion`; the CLI owns `MinSupportedBackendAPIVersion`. They need not be equal and must not be raised merely because `APIVersion` changes.
-- Raise a minimum only when that side cannot complete the affected operation with an older peer and no fallback remains. Set it to the first peer API version that provides the required contract.
+- Judge each minimum by the actual behavior of the affected commands and options with an older peer. If a known contract difference causes a documented operation to fail or produce an incorrect result and there is no equivalent fallback, raise that side's minimum to the first peer API version that provides the required contract. A fallback preserves compatibility when it completes the same operation with its documented behavior.
 - Every PR changing an API used by the CLI must state the version decision in its description or verification notes, including “unchanged” with a reason.
 
-| Change | `APIVersion` | Minimum peer version |
+The table illustrates how to apply this principle. Base each decision on the actual behavior of the affected operations.
+
+| Example change | `APIVersion` | Minimum peer version |
 |--------|--------------|----------------------|
 | Backend implementation only, small bug fixes restoring intended behavior, frontend-only API, or CLI-local behavior | Unchanged | Unchanged |
-| Add an endpoint, field, or optional semantic consumed by the CLI | Increment on backend and CLI | Usually unchanged |
-| CLI-visible behavioral or semantic changes, such as new error/job types or changed user-visible processing | Increment on backend and CLI | Usually unchanged; assess each side's fallback separately |
-| Change/remove a CLI-consumed path, method, required field, field type, meaning, authorization requirement, or response structure | Increment on backend and CLI | Raise only on the side that cannot support the older peer |
+| Add a CLI command that can only run through a new backend endpoint | Increment on backend and CLI | Raise the CLI's minimum backend version to the version that adds the endpoint. Keep the backend's minimum CLI version if older CLI commands still work as documented |
+| Add a field or behavior that the CLI can handle with the same documented result on an older peer | Increment on backend and CLI if the CLI-consumed contract changes | Unchanged for the side that preserves the documented result |
+| Change/remove a CLI-consumed path, method, required field, field type, meaning, authorization requirement, or response structure | Increment on backend and CLI | Raise the minimum on each side where the change prevents the documented operation from completing correctly with the older peer |
 | CLI begins requiring a capability already present in the backend API contract | Unchanged | If there is no fallback, raise the CLI's minimum backend version to the API version that first provided the capability |
-| Add a CLI fallback or keep an existing capability optional | Unchanged unless the backend API contract itself changes | Do not raise the minimum |
 
 The CLI sends `User-Agent: crater-cli/<product-version>` and `X-Crater-API-Version: <APIVersion>`. These headers are untrusted diagnostic metadata: the backend must not use them for authorization, compatibility decisions, response-shape switching, or mandatory rejection. Only the explicit `crater compatibility` diagnostic calls public `GET /api/cli/compatibility`; ordinary business commands do not perform a handshake and must not be gated by compatibility results.
 

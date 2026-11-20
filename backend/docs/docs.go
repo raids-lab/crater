@@ -839,6 +839,96 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/agent/conversations": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent Admin"
+                ],
+                "summary": "List all Agent conversations",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Username, nickname, user ID, or title",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "identityScope",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentConversationPage"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/agent/conversations/{id}/messages": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent Admin"
+                ],
+                "summary": "Get Agent conversation messages as an administrator",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentUIMessage"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/approvalorder": {
             "get": {
                 "security": [
@@ -4213,6 +4303,398 @@ const docTemplate = `{
                         "description": "Other errors",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agent/chat": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Chat with Crater-Agent",
+                "parameters": [
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "X-Crater-Agent-Identity",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Agent chat request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.agentChatReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agent/conversations": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "List Agent conversations",
+                "parameters": [
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "X-Crater-Agent-Identity",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentConversationSummary"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agent/conversations/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Rename an Agent conversation",
+                "parameters": [
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "X-Crater-Agent-Identity",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New conversation title",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.renameAgentConversationReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Delete an Agent conversation",
+                "parameters": [
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "X-Crater-Agent-Identity",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agent/conversations/{id}/messages": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Get Agent conversation messages",
+                "parameters": [
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "X-Crater-Agent-Identity",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentUIMessage"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agent/llm-config": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the masked personal configuration and whether a platform fallback is available.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Get personal LLM configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Update personal LLM configuration",
+                "parameters": [
+                    {
+                        "description": "Personal LLM configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.updatePersonalLLMConfigReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Delete personal LLM configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agent/llm-config/test": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Test personal LLM configuration",
+                "parameters": [
+                    {
+                        "description": "Personal LLM configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.updatePersonalLLMConfigReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agent/title": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Generate an Agent conversation title",
+                "parameters": [
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "X-Crater-Agent-Identity",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Title generation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.generateAgentTitleReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_generateAgentTitleResp"
                         }
                     }
                 }
@@ -10614,6 +11096,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vcjobs/{name}/exec": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.\nEmpty command opens a user login shell with stdin/tty.\nenv_mode=user (default) loads user shell configuration; container skips probing.\nNon-TTY commands use a bounded environment probe; TTY commands use the user login shell.\nExec resolves HOME and shell from the task account. Byte payloads use Base64 JSON strings.",
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Open a user shell or execute argv in your current-project job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform job name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pod name; required for multiple pods",
+                        "name": "pod",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Container name; required for multiple regular containers",
+                        "name": "container",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "WebSocket exec session",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid target or subprotocol",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Job is outside the current user/project",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or pod not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Container is not running",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Platform failure",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vcjobs/{name}/pods": {
             "get": {
                 "security": [
@@ -10768,21 +11323,18 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "开启 SSH",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns the address and port for native sshd login.\nPlatform administrators retain access to other users' jobs; ordinary users require ownership in the current project.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "VolcanoJob"
                 ],
-                "summary": "开启 SSH",
+                "summary": "Enable SSH access",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Job Name",
+                        "description": "Platform job name",
                         "name": "name",
                         "in": "path",
                         "required": true
@@ -10790,19 +11342,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "SSH开启成功",
+                        "description": "SSH endpoint",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo"
+                        }
+                    },
+                    "403": {
+                        "description": "Job is outside the current user/project",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
-                    "400": {
-                        "description": "Request parameter error",
+                    "404": {
+                        "description": "Job, pod or SSH service not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Job or container is not running",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "Other errors",
+                        "description": "SSH service or session setup failed",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -11755,6 +12319,42 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentConversationSummary": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentConversationSummary"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentUIMessage": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentUIMessage"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod": {
             "type": "object",
             "properties": {
@@ -11962,6 +12562,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_JobResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentConversationPage": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentConversationPage"
                 },
                 "msg": {
                     "type": "string"
@@ -12478,6 +13093,36 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_generateAgentTitleResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.generateAgentTitleResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.personalLLMConfigResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_tool_PodIngress": {
             "type": "object",
             "properties": {
@@ -12553,6 +13198,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_vcjob.SSHInfo"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-map_string_string": {
             "type": "object",
             "properties": {
@@ -12582,6 +13242,126 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "github_com_raids-lab_crater_internal_service.AdminAgentConversationPage": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentConversationSummary"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AdminAgentConversationSummary": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "integer"
+                },
+                "customTitle": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "identityScope": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentIdentity"
+                },
+                "messageCount": {
+                    "type": "integer"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "integer"
+                },
+                "userId": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentConversationSummary": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "integer"
+                },
+                "customTitle": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentIdentity": {
+            "type": "string",
+            "enum": [
+                "user",
+                "admin"
+            ],
+            "x-enum-varnames": [
+                "AgentIdentityUser",
+                "AgentIdentityAdmin"
+            ]
+        },
+        "github_com_raids-lab_crater_internal_service.AgentUIMessage": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "parts": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.LLMConfigSource": {
+            "type": "string",
+            "enum": [
+                "personal",
+                "platform"
+            ],
+            "x-enum-varnames": [
+                "LLMConfigSourcePersonal",
+                "LLMConfigSourcePlatform"
+            ]
         },
         "github_com_raids-lab_crater_internal_service.ResourceLimitCheckResult": {
             "type": "object",
@@ -14720,6 +15500,23 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.agentChatReq": {
+            "type": "object",
+            "properties": {
+                "conversationId": {
+                    "type": "string"
+                },
+                "message": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentUIMessage"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "parentMessageId": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.cancelSharedQueueReq": {
             "type": "object",
             "required": [
@@ -14747,6 +15544,85 @@ const docTemplate = `{
                 },
                 "userID": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.generateAgentTitleReq": {
+            "type": "object",
+            "properties": {
+                "conversationId": {
+                    "type": "string"
+                },
+                "firstMessage": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.generateAgentTitleResp": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.personalLLMConfigResp": {
+            "type": "object",
+            "properties": {
+                "apiKey": {
+                    "type": "string"
+                },
+                "baseUrl": {
+                    "type": "string"
+                },
+                "effectiveSource": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.LLMConfigSource"
+                },
+                "modelName": {
+                    "type": "string"
+                },
+                "personalConfigured": {
+                    "type": "boolean"
+                },
+                "platformConfigured": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_handler.renameAgentConversationReq": {
+            "type": "object",
+            "required": [
+                "title"
+            ],
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "maxLength": 320
+                }
+            }
+        },
+        "internal_handler.updatePersonalLLMConfigReq": {
+            "type": "object",
+            "required": [
+                "apiKey",
+                "baseUrl",
+                "modelName"
+            ],
+            "properties": {
+                "apiKey": {
+                    "type": "string",
+                    "maxLength": 8192
+                },
+                "baseUrl": {
+                    "type": "string",
+                    "maxLength": 1024
+                },
+                "modelName": {
+                    "type": "string",
+                    "maxLength": 256
+                },
+                "validate": {
+                    "type": "boolean"
                 }
             }
         },
@@ -15664,6 +16540,17 @@ const docTemplate = `{
                 },
                 "port": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler_vcjob.SSHInfo": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
                 }
             }
         },

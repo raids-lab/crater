@@ -216,6 +216,30 @@ export const apiClient = createSessionClient({
   },
 })
 
+export const apiFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const request = input instanceof Request ? input : undefined
+  const rawURL = request?.url ?? input.toString()
+  const parsedURL = new URL(rawURL, window.location.origin)
+  if (!parsedURL.pathname.startsWith('/api/')) {
+    throw new TypeError('apiFetch only supports Crater API URLs')
+  }
+
+  const relativeURL = `${parsedURL.pathname.slice('/api/'.length)}${parsedURL.search}`
+  const requestInit: RequestInit = request
+    ? {
+        method: request.method,
+        headers: request.headers,
+        body:
+          request.method === 'GET' || request.method === 'HEAD'
+            ? undefined
+            : await request.clone().arrayBuffer(),
+        signal: request.signal,
+        ...init,
+      }
+    : { ...init }
+  return apiClient(relativeURL, { ...requestInit, timeout: false })
+}
+
 /**
  * 通用 API 请求方法，处理错误并返回统一的响应格式
  */
@@ -353,12 +377,6 @@ export const apiXMLPut = async <T>(
 
     xhr.open('PUT', fullUrl)
 
-    // 设置认证头
-    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-    }
-
     // 监听上传进度
     if (onProgress) {
       xhr.upload.addEventListener('progress', (e) => {
@@ -405,7 +423,12 @@ export const apiXMLPut = async <T>(
     xhr.timeout = 30000 // 30秒超时
 
     // 发送请求
-    xhr.send(body)
+    void apiClient
+      .withAccessToken((token) => {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+        xhr.send(body)
+      })
+      .catch(reject)
   })
 }
 
@@ -425,12 +448,6 @@ export const apiXMLDownload = async (
 
     xhr.open('GET', fullUrl)
     xhr.responseType = 'blob'
-
-    // 设置认证头
-    const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-    }
 
     // 监听下载进度
     if (onProgress) {
@@ -478,6 +495,11 @@ export const apiXMLDownload = async (
     xhr.timeout = 600000 // 600秒超时（下载可能需要更长时间）
 
     // 发送请求
-    xhr.send()
+    void apiClient
+      .withAccessToken((token) => {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+        xhr.send()
+      })
+      .catch(reject)
   })
 }

@@ -2,37 +2,25 @@ package middleware
 
 import (
 	"errors"
-	"net/http"
-	"strings"
 
-	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
-
-	"github.com/gin-gonic/gin"
-
-	"github.com/raids-lab/crater/internal/resputil"
 )
 
 func AuthProtected(userBanService *service.UserBanService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var authToken string
-		// if request type is websocket, read token from string
-		if c.Request.Header.Get("Upgrade") == "websocket" {
-			authToken = c.Query("token")
-		} else {
-			authHeader := c.Request.Header.Get("Authorization")
-			t := strings.Fields(authHeader)
-			if len(t) != 2 || !strings.EqualFold(t[0], "Bearer") {
-				resputil.HTTPError(c, http.StatusUnauthorized, "Invalid token", resputil.TokenInvalid)
-				c.Abort()
-				return
-			}
-			authToken = t[1]
+		authToken, err := protectedRequestToken(c)
+		if err != nil {
+			resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("Invalid token"))
+			c.Abort()
+			return
 		}
 		token, err := util.GetTokenMgr().CheckToken(authToken)
 		if err != nil {

@@ -1,0 +1,29 @@
+---
+title: Crater-Agent
+description: Configure and use the Crater platform assistant
+---
+
+Crater-Agent is the assistant built into Crater. The current version provides platform guidance and basic conversation while preserving each user's conversation history. Questions about live jobs, images, logs, or cluster state are queried only after the corresponding platform tool is explicitly available, and the assistant never bypasses page permissions.
+
+## Open the assistant
+
+The Crater-Agent launcher appears in the lower-right corner by default. The side panel supports creating, renaming, deleting, and stopping conversations.
+
+Turning off the floating launcher in personal settings hides this button without disabling Agent entry points provided by other pages.
+
+## Configure a personal model
+
+In **Personal LLM Configuration**, enter an OpenAI-compatible API base URL, model name, and API key. Crater validates the connection before encrypting the API key. The complete key is never returned after it is saved.
+
+- A complete personal configuration takes precedence over the platform default.
+- The same login user shares one personal model configuration across portal and admin views.
+- Portal and admin conversation histories remain separate.
+- Removing the personal configuration restores the administrator-managed platform default.
+
+Personal endpoints must be publicly reachable over HTTPS. Do not configure an untrusted model service or send passwords, tokens, or other secrets in a conversation.
+
+## Conversations and data
+
+Conversation titles, messages, and generation status are stored in the Crater database and remain available after a refresh or device change. Administrators can review Agent conversations as part of platform administration, so use Crater-Agent only for platform-related content.
+
+AI-generated content may be inaccurate. For resource changes or other high-risk operations, rely on the target, permissions, and confirmation details displayed by the platform.

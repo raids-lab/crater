@@ -49,6 +49,21 @@ CHECKS_RUN=0
 
 unset $(git rev-parse --local-env-vars)
 
+# Check if there are Crater-Agent-related changes
+if echo "$STAGED_FILES" | grep -q "^crater-agent/"; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🤖 Crater-Agent Checks"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if (cd crater-agent && make pre-commit-check); then
+        echo "✅ Crater-Agent checks passed!"
+        CHECKS_RUN=1
+    else
+        echo "❌ Crater-Agent checks failed!"
+        exit 1
+    fi
+fi
+
 # Check if there are website-related changes
 if echo "$STAGED_FILES" | grep -q "^website/"; then
     echo ""

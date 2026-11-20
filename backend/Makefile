@@ -177,11 +177,17 @@ run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host
 	GIN_MODE="$(GIN_MODE)" KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
-pre-commit-check: lint docs test-tensorboard-launcher ## Run lint, generate docs, and test the TensorBoard launcher.
+pre-commit-check: lint docs test-tensorboard-launcher test-job-sessions ## Run lint, docs, launcher and isolated job session tests.
 
 .PHONY: test-tensorboard-launcher
 test-tensorboard-launcher: ## Test the embedded launcher with Python 3 (standard library only).
 	python3 -B -m unittest discover -s internal/service/tensorboard -p 'launcher_test.py' -v
+
+.PHONY: test-job-sessions
+test-job-sessions: ## Test job sessions and browser/native request compatibility without infrastructure.
+	go test -race ./pkg/jobsession ./pkg/jobexec ./internal/service/vcjob
+	# Test request parsing separately from service initialization and its database migration.
+	go test -race ./internal/middleware/jwt_request.go ./internal/middleware/jwt_request_test.go
 
 ##@ Build
 

@@ -65,8 +65,9 @@ crater auth ls --json
 
 - 成功输出会被写到 stdout，且是纯 JSON。
 - `--json` 会强制 `--no-interactive`。
-- `--json` 可以出现在参数序列任意位置。
+- `--json` 可以出现在 `--` 分隔符之前的参数序列任意位置；`job exec` 的 `--` 之后全部参数属于容器内命令。
 - 成功体使用顶层信封，业务数据在 `data` 内。
+- `job exec --json` 完成后一次性返回捕获的输出；`job exec -t` 与 `job ssh --connect` 要求交互终端，不能使用 `--json` 或 `--no-interactive`。普通 exec 模式将远端 stderr 原样写到本地 stderr，即使命令最终成功。
 
 ## `--no-interactive`
 

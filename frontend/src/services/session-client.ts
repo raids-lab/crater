@@ -99,7 +99,7 @@ export function createSessionClient(settings: SessionOptions) {
     }
     return owner.refreshing
   }
-  return basic.extend({
+  const client = basic.extend({
     hooks: {
       beforeRequest: [
         (request, options) => {
@@ -163,6 +163,18 @@ export function createSessionClient(settings: SessionOptions) {
           return response
         },
       ],
+    },
+  })
+  return Object.assign(client, {
+    // WebSockets and progress-aware XHRs cannot use the normal response hooks.
+    // Validate through those hooks first, then start with the same session's token.
+    async withAccessToken<T>(start: (token: string) => T, options?: { signal?: AbortSignal }) {
+      const owner = currentSession()
+      const response = await client.get('auth/check', options).json<{ data: unknown }>()
+      options?.signal?.throwIfAborted()
+      if (currentSession() !== owner) throw new Error('Session changed before starting request')
+      if (!response.data || !owner.access) throw new Error('No authenticated session available')
+      return start(owner.access)
     },
   })
 }

@@ -1,0 +1,42 @@
+{{- if .Values.agent.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: crater-agent
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: crater-agent
+spec:
+  podSelector:
+    matchLabels:
+      app: crater-agent
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: crater-backend
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: crater-backend
+      ports:
+        - protocol: TCP
+          port: 8088
+    - to:
+        - namespaceSelector:
+            {{- toYaml .Values.agent.networkPolicy.dnsNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.agent.networkPolicy.dnsPodSelector | nindent 12 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}
