@@ -10148,7 +10148,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10182,6 +10182,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -10253,7 +10280,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10281,6 +10308,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -10319,6 +10373,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -10360,6 +10415,33 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node name",
                         "name": "node",
@@ -10383,6 +10465,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -10421,6 +10504,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -10715,7 +10825,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -10743,6 +10853,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -10793,6 +10930,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -10838,6 +10976,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
