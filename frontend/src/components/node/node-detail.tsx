@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useQuery } from '@tanstack/react-query'
+import { DurationDialog, type JobLockTarget } from '@/routes/admin/jobs/-components/duration-dialog'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Column, ColumnDef, Row } from '@tanstack/react-table'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { useAtomValue } from 'jotai'
 import { EllipsisVerticalIcon as DotsHorizontalIcon } from 'lucide-react'
-import { LockIcon } from 'lucide-react'
 import {
   BotIcon,
   BoxIcon,
@@ -31,10 +31,13 @@ import {
   Grid,
   InfoIcon,
   Layers,
+  LockIcon,
+  LogsIcon,
   MemoryStickIcon as Memory,
   NetworkIcon,
   ServerIcon,
   TagIcon,
+  UnlockIcon,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -66,6 +69,7 @@ import {
   apiGetNodeGPU,
   apiGetNodePods,
 } from '@/services/api/cluster'
+import { canManageJobLock } from '@/services/api/vcjob'
 
 import useIsAdmin from '@/hooks/use-admin'
 
@@ -84,7 +88,7 @@ import PageTitle from '../layout/page-title'
 import NodeInfoTab from './node-info-tab'
 import { NodeAnnotations, NodeLabels, NodeTaints } from './node-mark'
 
-const formatLockDate = (timestamp?: string) => {
+const formatLockDate = (timestamp?: string | null) => {
   const date = new Date(timestamp ?? Date.now())
   return format(date, 'M月d日 HH:mm', { locale: zhCN })
 }
@@ -183,11 +187,14 @@ const getHeader = (name: string, t: (key: string) => string): string => {
   }
 }
 
+type NodeJobLockSelection = { job: JobLockTarget; extend: boolean }
+
 const getColumns = (
   isAdminView: boolean,
   nodeName: string,
   handleShowPodLog: (namespacedName: PodNamespacedName) => void,
   handleShowMonitor: (pod: IClusterPodInfo) => void,
+  handleJobLock: (selection: NodeJobLockSelection) => void,
   t: (key: string) => string,
   navigate: ReturnType<typeof useNavigate>
 ): ColumnDef<IClusterPodInfo>[] => [
@@ -233,7 +240,7 @@ const getColumns = (
 
       // 从 ownerReference 获取作业名称
       const jobOwner = row.original.ownerReference?.find((owner) => owner.kind === 'Job')
-      const jobName = jobOwner?.name
+      const jobName = row.original.jobName ?? jobOwner?.name
       const hasJobName = !!jobName
 
       return (
@@ -461,6 +468,11 @@ const getColumns = (
     enableHiding: false,
     cell: ({ row }) => {
       const taskInfo = row.original
+      const { jobName, jobStatus, locked, permanentLocked, lockedTimestamp } = taskInfo
+      const lockTarget =
+        jobName && jobStatus !== undefined && canManageJobLock(jobStatus)
+          ? { jobName, locked, permanentLocked, lockedTimestamp }
+          : null
       return (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -474,6 +486,7 @@ const getColumns = (
               {t('nodeDetail.actions.operations')}
             </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => handleShowMonitor(taskInfo)}>
+              {isAdminView && <GaugeIcon />}
               {t('nodeDetail.actions.monitor')}
             </DropdownMenuItem>
             {isAdminView && (
@@ -485,8 +498,31 @@ const getColumns = (
                   })
                 }
               >
+                <LogsIcon />
                 {t('nodeDetail.actions.logs')}
               </DropdownMenuItem>
+            )}
+            {isAdminView && lockTarget && (
+              <>
+                <DropdownMenuItem
+                  onSelect={() => handleJobLock({ job: lockTarget, extend: false })}
+                >
+                  {locked ? <UnlockIcon /> : <LockIcon />}
+                  {t(
+                    locked
+                      ? 'adminJobOverview.actions.dropdown.unlock'
+                      : 'adminJobOverview.actions.dropdown.lock'
+                  )}
+                </DropdownMenuItem>
+                {locked && !permanentLocked && (
+                  <DropdownMenuItem
+                    onSelect={() => handleJobLock({ job: lockTarget, extend: true })}
+                  >
+                    <LockIcon />
+                    {t('adminJobOverview.actions.dropdown.extend')}
+                  </DropdownMenuItem>
+                )}
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -502,6 +538,8 @@ type NodeDetailProps = DetailPageCoreProps & {
 export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const grafanaNode = useAtomValue(configGrafanaNodeAtom)
+  const queryClient = useQueryClient()
+  const [jobLock, setJobLock] = useState<NodeJobLockSelection | null>(null)
   const [showLogPod, setShowLogPod] = useState<NamespacedName>()
   const [showMonitor, setShowMonitor] = useState(false)
   const [grafanaUrl, setGrafanaUrl] = useState<string>(grafanaJob.pod)
@@ -549,6 +587,7 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
           )
           setShowMonitor(true)
         },
+        setJobLock,
         t,
         navigate
       ),
@@ -685,6 +724,25 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
                   </div>
                 </SheetContent>
               </Sheet>
+              {isAdminView && jobLock && (
+                <DurationDialog
+                  jobs={[jobLock.job]}
+                  open
+                  setOpen={(open) => {
+                    if (!open) setJobLock(null)
+                  }}
+                  setExtend={jobLock.extend}
+                  onSuccess={() => {
+                    void queryClient.invalidateQueries({
+                      queryKey: ['nodes', nodeName, 'pods'],
+                    })
+                    void queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-jobs'] })
+                    void queryClient.invalidateQueries({
+                      queryKey: ['job', 'detail', jobLock.job.jobName],
+                    })
+                  }}
+                />
+              )}
             </>
           ),
           scrollable: true,

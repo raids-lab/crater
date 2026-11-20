@@ -15,55 +15,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/admin/nodes/{name}/pods": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "获取节点Pod信息，包含作业和用户信息",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Node"
-                ],
-                "summary": "获取节点Pod信息（管理员）",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "节点名称",
-                        "name": "name",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "成功返回值描述",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod"
-                        }
-                    },
-                    "400": {
-                        "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "500": {
-                        "description": "其他错误",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
         "/auth/check": {
             "get": {
                 "security": [
@@ -2002,6 +1953,55 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "排空节点失败",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/nodes/{name}/pods": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "获取节点Pod信息，匹配到 Crater 作业时包含 jobName、jobStatus、锁定状态和用户信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Node"
+                ],
+                "summary": "获取节点Pod信息（管理员）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "节点名称",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功返回值描述",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_pkg_crclient_Pod"
+                        }
+                    },
+                    "400": {
+                        "description": "请求参数错误",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "其他错误",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -4301,6 +4301,61 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/vcjobs/{name}/detail": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "按作业名称查询作业详情和锁定状态",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "获取作业详情（管理员）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Job Name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "作业详情（含 locked、permanentLocked 和 lockedTimestamp）",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Request parameter error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Job not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Database error",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -11005,7 +11060,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "调用k8s get crd",
+                "description": "按作业名称查询作业详情和锁定状态",
                 "consumes": [
                     "application/json"
                 ],
@@ -11015,7 +11070,7 @@ const docTemplate = `{
                 "tags": [
                     "VolcanoJob"
                 ],
-                "summary": "获取jupyter详情",
+                "summary": "获取作业详情",
                 "parameters": [
                     {
                         "type": "string",
@@ -11027,7 +11082,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "任务描述",
+                        "description": "作业详情（含 locked、permanentLocked 和 lockedTimestamp）",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -13626,6 +13681,13 @@ const docTemplate = `{
                 "ip": {
                     "type": "string"
                 },
+                "jobName": {
+                    "description": "The admin endpoint populates these fields when the Pod matches a Crater job.",
+                    "type": "string"
+                },
+                "jobStatus": {
+                    "$ref": "#/definitions/volcano_sh_apis_pkg_apis_batch_v1alpha1.JobPhase"
+                },
                 "locked": {
                     "type": "boolean"
                 },
@@ -13674,7 +13736,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "userName": {
-                    "description": "管理员接口返回的字段（omitempty 表示字段为空时不序列化）",
+                    "description": "用户昵称（用于显示）",
                     "type": "string"
                 },
                 "userRealName": {

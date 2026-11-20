@@ -84,7 +84,7 @@ function RouteComponent() {
     selectedJob,
     selectedExtHours,
     isDelayDialogOpen,
-    isFetchingJob,
+    isProcessingLock,
     handleApproveWithDelay,
     handleDelaySuccess,
     setIsDelayDialogOpen,
@@ -191,7 +191,7 @@ function RouteComponent() {
           }
         },
         label: order.type === 'job' ? '批准并锁定' : '批准',
-        disabled: () => isApproving || isRejecting || isFetchingJob,
+        disabled: () => isApproving || isRejecting || isProcessingLock,
       },
       reject: {
         show: isPending,
@@ -200,7 +200,7 @@ function RouteComponent() {
           setRejectReason('')
           setRejectDialogOpen(true)
         },
-        disabled: () => isApproving || isRejecting,
+        disabled: () => isApproving || isRejecting || isProcessingLock,
       },
     }
   }
@@ -309,7 +309,7 @@ function RouteComponent() {
           open={isDelayDialogOpen}
           setOpen={setIsDelayDialogOpen}
           onSuccess={handleDelaySuccess}
-          setExtend={selectedJob.locked}
+          approval
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}
         />
