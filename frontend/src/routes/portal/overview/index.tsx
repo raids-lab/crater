@@ -279,7 +279,9 @@ function Overview() {
       .filter(({ value }) => value !== JobPhase.Deleted && value !== JobPhase.Freed)
       .map(({ value, count }) => ({
         id: value,
-        label: getJobPhaseLabel(value as JobPhase).label,
+        label:
+          jobPhases.find((x) => x.value === value)?.label ??
+          getJobPhaseLabel(value as JobPhase).label,
         value: count,
       }))
   }, [jobSummaryFacetsQuery.data])
@@ -349,10 +351,10 @@ function Overview() {
               icon: FlaskConicalIcon,
             },
             {
-              title: t('jobs.statuses.pending.label'),
+              title: t('jobs.statuses.waiting.label'),
               value: jobStatus.find(({ id }) => id === JobPhase.Pending)?.value ?? 0,
               className: 'text-highlight-purple',
-              description: t('jobs.statuses.pending.description'),
+              description: t('jobs.statuses.waiting.description'),
               icon: ClockIcon,
             },
             {
