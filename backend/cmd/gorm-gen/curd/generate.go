@@ -31,6 +31,7 @@ func main() {
 		model.AccountDataset{},
 		model.UserDataset{},
 		model.Resource{},
+		model.ResourceUsageDaily{},
 		model.Job{},
 		model.Image{},
 		model.Kaniko{},

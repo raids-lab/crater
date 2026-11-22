@@ -40,6 +40,7 @@ var (
 	QueueQuotaLimit         *queueQuotaLimit
 	Resource                *resource
 	ResourceNetwork         *resourceNetwork
+	ResourceUsageDaily      *resourceUsageDaily
 	ResourceVGPU            *resourceVGPU
 	SystemConfig            *systemConfig
 	User                    *user
@@ -74,6 +75,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	QueueQuotaLimit = &Q.QueueQuotaLimit
 	Resource = &Q.Resource
 	ResourceNetwork = &Q.ResourceNetwork
+	ResourceUsageDaily = &Q.ResourceUsageDaily
 	ResourceVGPU = &Q.ResourceVGPU
 	SystemConfig = &Q.SystemConfig
 	User = &Q.User
@@ -109,6 +111,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		QueueQuotaLimit:         newQueueQuotaLimit(db, opts...),
 		Resource:                newResource(db, opts...),
 		ResourceNetwork:         newResourceNetwork(db, opts...),
+		ResourceUsageDaily:      newResourceUsageDaily(db, opts...),
 		ResourceVGPU:            newResourceVGPU(db, opts...),
 		SystemConfig:            newSystemConfig(db, opts...),
 		User:                    newUser(db, opts...),
@@ -145,6 +148,7 @@ type Query struct {
 	QueueQuotaLimit         queueQuotaLimit
 	Resource                resource
 	ResourceNetwork         resourceNetwork
+	ResourceUsageDaily      resourceUsageDaily
 	ResourceVGPU            resourceVGPU
 	SystemConfig            systemConfig
 	User                    user
@@ -182,6 +186,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		QueueQuotaLimit:         q.QueueQuotaLimit.clone(db),
 		Resource:                q.Resource.clone(db),
 		ResourceNetwork:         q.ResourceNetwork.clone(db),
+		ResourceUsageDaily:      q.ResourceUsageDaily.clone(db),
 		ResourceVGPU:            q.ResourceVGPU.clone(db),
 		SystemConfig:            q.SystemConfig.clone(db),
 		User:                    q.User.clone(db),
@@ -226,6 +231,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		QueueQuotaLimit:         q.QueueQuotaLimit.replaceDB(db),
 		Resource:                q.Resource.replaceDB(db),
 		ResourceNetwork:         q.ResourceNetwork.replaceDB(db),
+		ResourceUsageDaily:      q.ResourceUsageDaily.replaceDB(db),
 		ResourceVGPU:            q.ResourceVGPU.replaceDB(db),
 		SystemConfig:            q.SystemConfig.replaceDB(db),
 		User:                    q.User.replaceDB(db),
@@ -260,6 +266,7 @@ type queryCtx struct {
 	QueueQuotaLimit         IQueueQuotaLimitDo
 	Resource                IResourceDo
 	ResourceNetwork         IResourceNetworkDo
+	ResourceUsageDaily      IResourceUsageDailyDo
 	ResourceVGPU            IResourceVGPUDo
 	SystemConfig            ISystemConfigDo
 	User                    IUserDo
@@ -294,6 +301,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		QueueQuotaLimit:         q.QueueQuotaLimit.WithContext(ctx),
 		Resource:                q.Resource.WithContext(ctx),
 		ResourceNetwork:         q.ResourceNetwork.WithContext(ctx),
+		ResourceUsageDaily:      q.ResourceUsageDaily.WithContext(ctx),
 		ResourceVGPU:            q.ResourceVGPU.WithContext(ctx),
 		SystemConfig:            q.SystemConfig.WithContext(ctx),
 		User:                    q.User.WithContext(ctx),

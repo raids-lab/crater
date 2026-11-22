@@ -1723,6 +1723,47 @@ func main() {
 		userContainerSysAdminMigration(),
 		agentFoundationMigration(),
 		approvalOrderReviewerMigration(),
+		{
+			ID: "202611220001",
+			Migrate: func(tx *gorm.DB) error {
+				type ResourceUsageDaily struct {
+					StatDate              time.Time `gorm:"type:date;primaryKey;comment:统计日期(UTC)"`
+					UserID                uint      `gorm:"primaryKey;autoIncrement:false;index:idx_daily_usage_user;comment:用户ID"`
+					AccountID             uint      `gorm:"primaryKey;autoIncrement:false;index:idx_daily_usage_account;comment:账户ID"`
+					ResourceName          string    `gorm:"type:varchar(255);primaryKey;comment:资源名称(空串表示日进度标记)"`
+					UsageSeconds          float64   `gorm:"type:numeric(30,9);not null;comment:分配用量(资源单位秒)"`
+					EffectiveUsageSeconds float64   `gorm:"type:numeric(30,9);not null;comment:估算有效用量(资源单位秒)"`
+					ProfiledUsageSeconds  float64   `gorm:"type:numeric(30,9);not null;comment:已评估分配用量(资源单位秒)"`
+					CoveredUntil          time.Time `gorm:"not null;comment:统计覆盖截止时间"`
+					IsComplete            bool      `gorm:"not null;default:false;comment:当日统计是否完成"`
+
+					UpdatedAt time.Time `gorm:"not null;autoUpdateTime:false;comment:统计水位更新时间"`
+				}
+				if !tx.Migrator().HasTable("resource_usage_daily") {
+					if err := tx.Table("resource_usage_daily").Migrator().CreateTable(&ResourceUsageDaily{}); err != nil {
+						return err
+					}
+				}
+				config := model.CronJobConfig{
+					Name:    "aggregate-resource-usage-daily",
+					Type:    model.CronJobTypePatrolFunc,
+					Spec:    "CRON_TZ=UTC */20 * * * *",
+					Status:  model.CronJobConfigStatusIdle,
+					Config:  datatypes.JSON(`{}`),
+					EntryID: -1,
+				}
+				return tx.Where("name = ?", config.Name).FirstOrCreate(&config).Error
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := tx.Where("name = ?", "aggregate-resource-usage-daily").Unscoped().Delete(&model.CronJobConfig{}).Error; err != nil {
+					return err
+				}
+				if tx.Migrator().HasTable("resource_usage_daily") {
+					return tx.Migrator().DropTable("resource_usage_daily")
+				}
+				return nil
+			},
+		},
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1735,6 +1776,7 @@ func main() {
 			&model.AccountDataset{},
 			&model.UserDataset{},
 			&model.Resource{},
+			&model.ResourceUsageDaily{},
 			&model.Job{},
 			&model.AITask{},
 			&model.Kaniko{},
@@ -1841,6 +1883,14 @@ func main() {
 
 		// 5. create initial cronjob configs
 		initialCronJobConfigs := []*model.CronJobConfig{
+			{
+				Name:    "aggregate-resource-usage-daily",
+				Type:    model.CronJobTypePatrolFunc,
+				Spec:    "CRON_TZ=UTC */20 * * * *",
+				Status:  model.CronJobConfigStatusIdle,
+				Config:  datatypes.JSON(`{}`),
+				EntryID: -1,
+			},
 			{
 				Name:    "clean-long-time-job",
 				Type:    model.CronJobTypeCleanerFunc,

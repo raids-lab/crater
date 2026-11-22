@@ -101,6 +101,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 	registerConfig.AgentConfigService = service.NewAgentConfigService(query.GetDB(), registerConfig.ConfigService)
 	registerConfig.AgentConversationService = service.NewAgentConversationService(query.GetDB())
 	registerConfig.BillingService = service.NewBillingService(query.Q)
+	registerConfig.StatisticsService = service.NewStatisticsService(query.Q)
 	registerConfig.QueueQuotaService = service.NewQueueQuotaService(query.Q, registerConfig.ConfigService)
 	registerConfig.UserBanService = service.NewUserBanService(query.Q)
 
@@ -118,6 +119,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 		registerConfig.PrometheusClient,
 		registerConfig.GpuAnalysisService,
 		registerConfig.BillingService,
+		registerConfig.StatisticsService,
 	)
 
 	registerConfig.ConfigService.SetCronJobManager(registerConfig.CronJobManager)

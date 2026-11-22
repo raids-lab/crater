@@ -57,6 +57,7 @@ type RegisterConfig struct {
 	AgentConversationService *service.AgentConversationService
 	QueueQuotaService        *service.QueueQuotaService
 	BillingService           *service.BillingService
+	StatisticsService        *service.StatisticsService
 	GpuAnalysisService       *service.GpuAnalysisService
 	UserBanService           *service.UserBanService
 }
