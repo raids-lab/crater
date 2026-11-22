@@ -4,7 +4,6 @@ package middleware
 
 import (
 	"errors"
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -16,13 +15,9 @@ func protectedRequestToken(c *gin.Context) (string, error) {
 	if strings.EqualFold(c.Request.Header.Get("Upgrade"), "websocket") && header == "" {
 		return c.Query("token"), nil
 	}
-	parts := strings.Split(header, " ")
-	if len(parts) < 2 || parts[0] != "Bearer" {
+	parts := strings.Fields(header)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 		return "", errors.New("invalid bearer authorization")
 	}
 	return parts[1], nil
-}
-
-func requiresFreshPermissions(c *gin.Context) bool {
-	return c.Request.Method != http.MethodGet || c.FullPath() == "/api/v1/vcjobs/:name/exec"
 }

@@ -1,7 +1,6 @@
 package resputil
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -45,30 +44,34 @@ func logServerError(err error, bErr *bizerr.BizError) {
 }
 
 func httpStatusFromError(err error) int {
-	switch {
-	case errors.Is(err, bizerr.BadRequest.Base):
-		return http.StatusBadRequest
-	case errors.Is(err, bizerr.Auth.Base):
-		return http.StatusUnauthorized
-	case errors.Is(err, bizerr.Forbidden.Base):
-		return http.StatusForbidden
-	case errors.Is(err, bizerr.MethodNotAllowed.Base):
-		return http.StatusMethodNotAllowed
-	case errors.Is(err, bizerr.NotFound.Base):
-		return http.StatusNotFound
-	case errors.Is(err, bizerr.Conflict.Base):
-		return http.StatusConflict
-	case errors.Is(err, bizerr.PayloadTooLarge.Base):
-		return http.StatusRequestEntityTooLarge
-	case errors.Is(err, bizerr.RateLimit.Base):
-		return http.StatusTooManyRequests
-	case errors.Is(err, bizerr.Internal.Base):
+	bErr, ok := bizerr.FromError(err)
+	if !ok {
 		return http.StatusInternalServerError
-	case errors.Is(err, bizerr.BadGateway.Base):
+	}
+	switch bErr.Code.Group() {
+	case http.StatusBadRequest:
+		return http.StatusBadRequest
+	case http.StatusUnauthorized:
+		return http.StatusUnauthorized
+	case http.StatusForbidden:
+		return http.StatusForbidden
+	case http.StatusMethodNotAllowed:
+		return http.StatusMethodNotAllowed
+	case http.StatusNotFound:
+		return http.StatusNotFound
+	case http.StatusConflict:
+		return http.StatusConflict
+	case http.StatusRequestEntityTooLarge:
+		return http.StatusRequestEntityTooLarge
+	case http.StatusTooManyRequests:
+		return http.StatusTooManyRequests
+	case http.StatusInternalServerError:
+		return http.StatusInternalServerError
+	case http.StatusBadGateway:
 		return http.StatusBadGateway
-	case errors.Is(err, bizerr.ServiceError.Base):
+	case http.StatusServiceUnavailable:
 		return http.StatusServiceUnavailable
-	case errors.Is(err, bizerr.GatewayTimeout.Base):
+	case http.StatusGatewayTimeout:
 		return http.StatusGatewayTimeout
 	default:
 		return http.StatusInternalServerError
