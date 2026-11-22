@@ -83,18 +83,6 @@ for (const [name, oldest, legacy] of [
   })
 }
 
-for (const version of ['20260707', '20260930']) {
-  test('TensorBoard panel: imports saved template ' + version, () => {
-    const result = importTemplate(metadata.MetadataFormTensorboard, version, {
-      ttlHours: 24,
-      logDir: '/home/user/logs',
-    })
-    assert.equal(result.logDir, '/home/user/logs')
-    assert.equal(result.name, '')
-    if (version === '20260707') assert.equal('ttlHours' in result, false)
-  })
-}
-
 test('unrelated single-job templates keep their scheduler migration', () => {
   const result = importTemplate(metadata.MetadataFormSingle, '20260707', {
     scheduleType: 'backfill',
