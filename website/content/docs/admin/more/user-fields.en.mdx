@@ -1,0 +1,75 @@
+---
+title: User fields and sign-in times
+description: Configure user table columns, editable fields, and localized labels independently of authentication.
+---
+
+<ChartBadge />
+
+User management presentation is configured under `backendConfig.userFields`, independently of LDAP or local authentication. LDAP mappings select directory attributes; presentation settings control how stored profile data is shown.
+
+## Configuration example
+
+Merge this fragment into your Helm values, apply it through your normal deployment process, and restart the backend. After reloading the frontend, the identity and sign-in time columns appear, the advisor label becomes “Supervisor” in English, and the phone input is hidden.
+
+```yaml
+backendConfig:
+  userFields:
+    identity:
+      showInTable: true
+      showInForm: true
+      labels:
+        zh: 身份
+        en: Position
+        ja: 身分・職位
+        ko: 신분/직책
+    teacher:
+      labels:
+        zh: 直属领导
+        en: Supervisor
+    phone:
+      showInForm: false
+    createdAt:
+      showInTable: true
+    lastLoginAt:
+      showInTable: true
+```
+
+Configure the LDAP identity source separately. If the directory stores a position in `title`, set `backendConfig.auth.ldap.attributeMapping.identity: title`. This profile field does not affect permission roles.
+
+## Default behavior
+
+Omitting `userFields` or setting it to `{}` preserves the existing page. Each field’s `showInTable` and `showInForm` independently override the defaults below; omitted options retain their defaults.
+
+| Field | Table | Edit form |
+| --- | --- | --- |
+| `nickname` | Hidden | Shown |
+| `email` | Hidden | Shown |
+| `identity` | Hidden | Hidden |
+| `group` | Shown | Shown |
+| `teacher` | Shown | Shown |
+| `phone` | Hidden | Shown |
+| `expiredAt` | Hidden | Hidden |
+| `createdAt` | Hidden | Hidden |
+| `lastLoginAt` | Hidden | Hidden |
+
+- `showInTable: false` removes the column and its entry in the column selector.
+- Attributes hidden from the form are preserved when other profile fields are edited.
+- Missing LDAP mappings, empty user values, or a different authentication method do not automatically hide columns.
+- System columns such as username, permissions, status, bans, and actions are not controlled by these settings.
+- `expiredAt`, `createdAt`, and `lastLoginAt` are read-only and cannot set `showInForm: true`.
+- Hiding fields changes presentation only; it does not change permissions or filter API responses.
+
+## Localized labels
+
+Use `zh`, `en`, `ja`, and `ko` as label keys, or a locale such as `en-US`. Labels resolve from the exact current locale to its base language, then to the built-in translation. Blank labels also fall back. Headers, column selectors, and edit forms share this rule.
+
+## Time semantics and upgrades
+
+- Registration time is when the Crater login profile was created. For LDAP users, this is their first automatic registration in Crater, not their directory creation time.
+- Last sign-in time updates only after a successful LDAP login, local login, or automatically established signup session. Failed login, token refresh, session restoration, and project switching do not update it.
+- Historical last sign-in times remain unknown until the next successful login and display as `—`. Empty or invalid dates also display as `—`.
+- The upgrade adds nullable `users.last_login_at` without guessing historical values. The Helm backend Pod’s `migration` init container runs migrations before startup. Other deployment methods must run the existing migration process first.
+
+## Loading failures
+
+A retry action appears if field settings cannot load. User-list or balance failures show an error; the table refresh button reloads the relevant data.

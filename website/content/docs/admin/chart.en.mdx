@@ -53,6 +53,7 @@ Crater is a comprehensive AI development platform designed for Kubernetes, provi
 | Parameter | Type | Default | Description |
 |-----|------|---------|-------------|
 | backendConfig.port | string | `":8088"` | Backend API service listening port |
+| backendConfig.userFields | object | `{}` | User management presentation; see [user fields](./more/user-fields). |
 | backendConfig.enableLeaderElection | bool | `false` | Whether to enable Leader election (for HA deployment) |
 | backendConfig.modelDownload.image | string | `"ghcr.io/raids-lab/crater-model-downloader:v1.0.0"` | Container image used for model and dataset download jobs |
 | backendConfig.modelDownload.huggingFaceEndpoint | string | `"https://huggingface.co"` | Hugging Face Hub URL used by download jobs; it may be replaced with an administrator-approved mirror |
@@ -108,6 +109,7 @@ Crater is a comprehensive AI development platform designed for Kubernetes, provi
 | backendConfig.auth.ldap.server.baseDN | string | `"..."` | Base DN for user search |
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | LDAP attribute name for username |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | LDAP attribute name for display name |
+| backendConfig.auth.ldap.attributeMapping.identity | string | `""` | LDAP attribute for profile identity or position; empty disables synchronization. |
 | backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID acquisition strategy**: options `default`, `ldap`, `rid`, `external` (deprecated) |
 | backendConfig.auth.ldap.uid.rid.offset | int | `10000` | UID/GID calculation offset when source is `rid` (UID/GID = RID + offset) |
 | backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | LDAP attribute storing the user's binary SID when source is `rid` (used to compute UID) |

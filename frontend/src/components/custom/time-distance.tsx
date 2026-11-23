@@ -30,7 +30,7 @@ export const TimeDistance = ({ date, className }: { date?: string; className?: s
   const [locale, setLocale] = useState<Locale>(zhCN)
 
   useEffect(() => {
-    switch (i18n.language) {
+    switch (i18n.language.split(/[-_]/)[0].toLowerCase()) {
       case 'zh':
         setLocale(zhCN)
         break

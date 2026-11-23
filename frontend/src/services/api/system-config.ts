@@ -2,6 +2,7 @@
 import { apiV1Delete, apiV1Get, apiV1Post, apiV1Put } from '@/services/client'
 
 import { IResponse } from '../types'
+import type { UserFields } from '../user-fields'
 
 export interface ILLMConfig {
   baseUrl: string
@@ -172,3 +173,6 @@ export const apiAdminGrantAllUsersExtraBalance = (data: IGrantAllUsersExtraBalan
     'admin/system-config/billing/extra-balance-all',
     data
   )
+
+export const apiGetUserFields = () =>
+  apiV1Get<IResponse<UserFields>>('admin/system-config/user-fields')

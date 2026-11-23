@@ -42,6 +42,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.ImageQuota = field.NewInt64(tableName, "image_quota")
 	_user.SpaceQuota = field.NewInt64(tableName, "space_quota")
 	_user.ExtraBalance = field.NewInt64(tableName, "extra_balance")
+	_user.LastLoginAt = field.NewTime(tableName, "last_login_at")
 	_user.LastEmailVerifiedAt = field.NewTime(tableName, "last_email_verified_at")
 	_user.BannedTimestamp = field.NewTime(tableName, "banned_timestamp")
 	_user.BanRestrictions = field.NewField(tableName, "ban_restrictions")
@@ -81,6 +82,7 @@ type user struct {
 	ImageQuota               field.Int64  // 用户在镜像仓库的配额
 	SpaceQuota               field.Int64  // User storage quota in bytes
 	ExtraBalance             field.Int64  // 用户额外点数余额(内部微点, 充值/奖励)
+	LastLoginAt              field.Time   // 最后一次成功登录时间
 	LastEmailVerifiedAt      field.Time   // 最后一次邮箱验证时间
 	BannedTimestamp          field.Time   // 用户封禁截止时间，晚于当前时间表示封禁中
 	BanRestrictions          field.Field  // 最近一次封禁配置的限制内容，仅在封禁截止时间有效时生效
@@ -118,6 +120,7 @@ func (u *user) updateTableName(table string) *user {
 	u.ImageQuota = field.NewInt64(table, "image_quota")
 	u.SpaceQuota = field.NewInt64(table, "space_quota")
 	u.ExtraBalance = field.NewInt64(table, "extra_balance")
+	u.LastLoginAt = field.NewTime(table, "last_login_at")
 	u.LastEmailVerifiedAt = field.NewTime(table, "last_email_verified_at")
 	u.BannedTimestamp = field.NewTime(table, "banned_timestamp")
 	u.BanRestrictions = field.NewField(table, "ban_restrictions")
@@ -161,6 +164,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["image_quota"] = u.ImageQuota
 	u.fieldMap["space_quota"] = u.SpaceQuota
 	u.fieldMap["extra_balance"] = u.ExtraBalance
+	u.fieldMap["last_login_at"] = u.LastLoginAt
 	u.fieldMap["last_email_verified_at"] = u.LastEmailVerifiedAt
 	u.fieldMap["banned_timestamp"] = u.BannedTimestamp
 	u.fieldMap["ban_restrictions"] = u.BanRestrictions

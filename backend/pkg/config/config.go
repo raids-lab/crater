@@ -87,6 +87,9 @@ func (c *TensorboardConfig) logSummary() {
 }
 
 type Config struct {
+	// UserFields controls user management presentation independently of authentication.
+	UserFields map[string]UserFieldConfig `json:"userFields"`
+
 	// EnableLeaderElection enables leader election for controller manager to ensure high availability.
 	// Optional: Defaults to false if not specified.
 	EnableLeaderElection bool `json:"enableLeaderElection"`
@@ -392,6 +395,8 @@ type Config struct {
 				DisplayName string `json:"displayName"`
 				// Email maps to user's email.
 				Email string `json:"email"`
+				// Identity maps to an optional profile identity or position, not an authorization role.
+				Identity string `json:"identity"`
 				// Teacher maps to user's teacher/advisor.
 				Teacher string `json:"teacher"`
 				// Group maps to user's group.
@@ -480,6 +485,7 @@ type Config struct {
 //nolint:gocyclo // This is long but simple.
 func (c *Config) ValidateConfig() error {
 	var errors []string
+	errors = append(errors, c.validateUserFields()...)
 
 	// Validate basic required fields
 	if c.Host == "" {

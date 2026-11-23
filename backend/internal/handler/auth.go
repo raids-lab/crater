@@ -334,7 +334,7 @@ func loadLoginContext(c context.Context, user *model.User, projectID uint) (Acco
 	return accountContext, claims, nil
 }
 
-func (mgr *AuthMgr) respondLogin(c *gin.Context, user *model.User, projectID uint) {
+func (mgr *AuthMgr) respondLogin(c *gin.Context, user *model.User, projectID uint, recordLogin bool) {
 	accountContext, claims, err := loadLoginContext(c, user, projectID)
 	if err != nil {
 		resputil.HandleError(c, err)
@@ -346,6 +346,15 @@ func (mgr *AuthMgr) respondLogin(c *gin.Context, user *model.User, projectID uin
 			"platform "+
 			"administrator."))
 		return
+	}
+	if recordLogin {
+		now := time.Now().UTC()
+		u := query.User
+		if _, err := u.WithContext(c).Where(u.ID.Eq(user.ID)).UpdateColumn(u.LastLoginAt, now); err != nil {
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "The successful login could not be recorded. Retry or contact the platform administrator."))
+			return
+		}
+		user.LastLoginAt = &now
 	}
 	attributes := user.Attributes.Data()
 	attributes.ID, attributes.Name = user.ID, user.Name
@@ -422,7 +431,7 @@ func (mgr *AuthMgr) Login(c *gin.Context) {
 			"platform administrator."))
 		return
 	}
-	mgr.respondLogin(c, user, 0)
+	mgr.respondLogin(c, user, 0, true)
 }
 
 func loginQueueError(err error) error {
@@ -510,6 +519,7 @@ func (mgr *AuthMgr) syncUserAttributes(
 		}
 	}
 
+	syncPtrField(&currentAttr.Identity, newAttr.Identity, &changed)
 	syncPtrField(&currentAttr.Teacher, newAttr.Teacher, &changed)
 	syncPtrField(&currentAttr.Group, newAttr.Group, &changed)
 	syncPtrField(&currentAttr.Phone, newAttr.Phone, &changed)
@@ -949,6 +959,9 @@ func (mgr *AuthMgr) prepareLDAPAttributes(cfg *config.Config) []string {
 	if mapping.Email != "" {
 		attributes = append(attributes, mapping.Email)
 	}
+	if mapping.Identity != "" {
+		attributes = append(attributes, mapping.Identity)
+	}
 	if mapping.Teacher != "" {
 		attributes = append(attributes, mapping.Teacher)
 	}
@@ -996,6 +1009,9 @@ func (mgr *AuthMgr) populateUserAttributes(cfg *config.Config, username string, 
 	}
 	if mapping.Email != "" {
 		attr.Email = ptr.To(entry.GetAttributeValue(mapping.Email))
+	}
+	if mapping.Identity != "" {
+		attr.Identity = ptr.To(entry.GetAttributeValue(mapping.Identity))
 	}
 	if mapping.Teacher != "" {
 		attr.Teacher = ptr.To(entry.GetAttributeValue(mapping.Teacher))
@@ -1086,7 +1102,7 @@ func (mgr *AuthMgr) Signup(c *gin.Context) {
 		return
 	}
 
-	mgr.respondLogin(c, user, 0)
+	mgr.respondLogin(c, user, 0, true)
 }
 
 type (
@@ -1163,7 +1179,7 @@ func (mgr *AuthMgr) SwitchQueue(c *gin.Context) {
 		resputil.HandleError(c, loginQueueError(err))
 		return
 	}
-	mgr.respondLogin(c, user, project.ID)
+	mgr.respondLogin(c, user, project.ID, false)
 }
 
 func invalidPlatformSpaceName(name string) bool {

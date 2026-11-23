@@ -69,6 +69,8 @@ type AdminUpdateUserAttributesReq struct {
 }
 
 type UserResp struct {
+	CreatedAt                time.Time                               `json:"createdAt"`
+	LastLoginAt              *time.Time                              `json:"lastLoginAt"`
 	ContainerSysAdminEnabled bool                                    `json:"containerSysAdminEnabled"`
 	ID                       uint                                    `json:"id"`                        // 用户ID
 	Name                     string                                  `json:"name"`                      // 用户名称
@@ -179,7 +181,7 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 // ListUser godoc
 //
 //	@Summary		列出用户信息
-//	@Description	列出用户信息（包含私人配额）
+//	@Description	列出用户信息（包含私人配额、平台注册时间 createdAt 和可空的最后登录时间 lastLoginAt）
 //	@Tags			User
 //	@Accept			json
 //	@Produce		json
@@ -191,7 +193,7 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	u := query.User
 	users, err := u.WithContext(c).
-		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.ContainerSysAdminEnabled, u.BannedTimestamp, u.BanRestrictions).
+		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.ContainerSysAdminEnabled, u.BannedTimestamp, u.BanRestrictions, u.CreatedAt, u.LastLoginAt).
 		Order(u.ID.Desc()).
 		Find()
 	if err != nil {
@@ -206,6 +208,8 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 		}
 		banned := service.IsUserBanned(users[i].BannedTimestamp)
 		resp = append(resp, UserResp{
+			CreatedAt:                users[i].CreatedAt,
+			LastLoginAt:              users[i].LastLoginAt,
 			ContainerSysAdminEnabled: users[i].ContainerSysAdminEnabled,
 			ID:                       users[i].ID,
 			Name:                     users[i].Name,

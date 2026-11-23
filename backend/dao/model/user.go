@@ -31,6 +31,7 @@ type UserAttribute struct {
 	Nickname string `json:"nickname,omitempty"` // 昵称，如果没有指定，则与账号相同
 
 	Email     *string `json:"email,omitempty"`     // 邮箱
+	Identity  *string `json:"identity,omitempty"`  // 身份或职务（与权限角色无关）
 	Teacher   *string `json:"teacher,omitempty"`   // 老师
 	Group     *string `json:"group,omitempty"`     // 课题组
 	ExpiredAt *string `json:"expiredAt,omitempty"` // 过期时间
@@ -70,6 +71,7 @@ type User struct {
 	ImageQuota          int64                                   `gorm:"type:bigint;default:-1;comment:用户在镜像仓库的配额"`
 	SpaceQuota          int64                                   `gorm:"type:bigint;default:-1;comment:User storage quota in bytes"`
 	ExtraBalance        int64                                   `gorm:"type:bigint;not null;default:0;comment:用户额外点数余额(内部微点, 充值/奖励)"`
+	LastLoginAt         *time.Time                              `gorm:"comment:最后一次成功登录时间"`
 	LastEmailVerifiedAt *time.Time                              `gorm:"comment:最后一次邮箱验证时间"`
 	BannedTimestamp     *time.Time                              `gorm:"index;comment:用户封禁截止时间，晚于当前时间表示封禁中"`
 	BanRestrictions     datatypes.JSONType[UserBanRestrictions] `gorm:"type:jsonb;not null;default:'{}';comment:最近一次封禁配置的限制内容，仅在封禁截止时间有效时生效"`

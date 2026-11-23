@@ -3867,6 +3867,30 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/system-config/user-fields": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "Get authentication-independent user field presentation",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_github_com_raids-lab_crater_pkg_config_UserFieldPresentation"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/users": {
             "get": {
                 "security": [
@@ -3874,7 +3898,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "列出用户信息（包含私人配额）",
+                "description": "列出用户信息（包含私人配额、平台注册时间 createdAt 和可空的最后登录时间 lastLoginAt）",
                 "consumes": [
                     "application/json"
                 ],
@@ -11925,6 +11949,10 @@ const docTemplate = `{
                     "description": "ID",
                     "type": "integer"
                 },
+                "identity": {
+                    "description": "身份或职务（与权限角色无关）",
+                    "type": "string"
+                },
                 "name": {
                     "description": "账号",
                     "type": "string"
@@ -13213,6 +13241,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-map_string_github_com_raids-lab_crater_pkg_config_UserFieldPresentation": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/map_string_github_com_raids-lab_crater_pkg_config.UserFieldPresentation"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-map_string_string": {
             "type": "object",
             "properties": {
@@ -13447,6 +13490,23 @@ const docTemplate = `{
                 "FileType",
                 "DataType"
             ]
+        },
+        "github_com_raids-lab_crater_pkg_config.UserFieldPresentation": {
+            "type": "object",
+            "properties": {
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "showInForm": {
+                    "type": "boolean"
+                },
+                "showInTable": {
+                    "type": "boolean"
+                }
+            }
         },
         "github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail": {
             "type": "object",
@@ -13860,6 +13920,10 @@ const docTemplate = `{
                 "id": {
                     "description": "ID",
                     "type": "integer"
+                },
+                "identity": {
+                    "description": "身份或职务（与权限角色无关）",
+                    "type": "string"
                 },
                 "name": {
                     "description": "账号",
@@ -15393,6 +15457,9 @@ const docTemplate = `{
                 "containerSysAdminEnabled": {
                     "type": "boolean"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "extraBalance": {
                     "description": "用户额外点数",
                     "type": "number"
@@ -15400,6 +15467,9 @@ const docTemplate = `{
                 "id": {
                     "description": "用户ID",
                     "type": "integer"
+                },
+                "lastLoginAt": {
+                    "type": "string"
                 },
                 "name": {
                     "description": "用户名称",
@@ -16584,6 +16654,12 @@ const docTemplate = `{
                 "workingDir": {
                     "type": "string"
                 }
+            }
+        },
+        "map_string_github_com_raids-lab_crater_pkg_config.UserFieldPresentation": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/github_com_raids-lab_crater_pkg_config.UserFieldPresentation"
             }
         },
         "map_string_string": {

@@ -53,6 +53,7 @@ Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GP
 | 参数 | 类型 | 默认值 | 描述 |
 |-----|------|---------|-------------|
 | backendConfig.port | string | `":8088"` | 后端 API 服务监听端口 |
+| backendConfig.userFields | object | `{}` | 用户管理展示配置；参见[用户字段说明](./more/user-fields)。 |
 | backendConfig.enableLeaderElection | bool | `false` | 是否启用 Leader 选举（用于高可用部署） |
 | backendConfig.modelDownload.image | string | `"ghcr.io/raids-lab/crater-model-downloader:v1.0.0"` | 模型和数据集下载作业使用的容器镜像 |
 | backendConfig.modelDownload.huggingFaceEndpoint | string | `"https://huggingface.co"` | 下载作业使用的 Hugging Face Hub 地址，可替换为管理员认可的镜像站 |
@@ -108,6 +109,7 @@ Crater 是一个专为 Kubernetes 设计的综合性 AI 开发平台，提供 GP
 | backendConfig.auth.ldap.server.baseDN | string | `"..."` | 用户搜索的 Base DN |
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | 用户名对应的 LDAP 属性名 |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | 显示名称对应的 LDAP 属性名 |
+| backendConfig.auth.ldap.attributeMapping.identity | string | `""` | 身份或职务的 LDAP 属性名；空值表示不启用该属性同步。 |
 | backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID 获取策略**：可选 `default`, `ldap`, `rid`, `external` (弃用) |
 | backendConfig.auth.ldap.uid.rid.offset | int | `10000` | 当 source 为 `rid` 时的 UID/GID 计算偏移量（UID/GID = RID + offset） |
 | backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | 当 source 为 `rid` 时，存储用户二进制 SID 的 LDAP 属性名（用于计算 UID） |

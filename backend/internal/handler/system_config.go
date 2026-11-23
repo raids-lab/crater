@@ -52,6 +52,7 @@ func (mgr *SystemConfigMgr) RegisterProtected(g *gin.RouterGroup) {
 }
 
 func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/user-fields", mgr.GetUserFields)
 	// 路由组: /v1/admin/system-config
 	g.GET("/llm", mgr.GetLLMConfig)
 	g.PUT("/llm", mgr.UpdateLLMConfig)

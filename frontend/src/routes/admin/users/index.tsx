@@ -26,6 +26,7 @@ import {
 import { UserBanStatusBadge } from '@/components/badge/user-ban-status-badge'
 import UserRoleBadge from '@/components/badge/user-role-badge'
 import UserStatusBadge from '@/components/badge/user-status-badge'
+import { TimeDistance } from '@/components/custom/time-distance'
 import { UserPointsTooltip } from '@/components/custom/user-points-tooltip'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
@@ -53,6 +54,9 @@ import { Role } from '@/services/api/auth'
 import { apiAdminGetUserBillingSummary } from '@/services/api/billing'
 import { apiAdminGetBillingStatus } from '@/services/api/system-config'
 import { USER_BAN_STATUS_REFETCH_INTERVAL } from '@/services/api/user-ban'
+import { userFieldKeys, visibleUserFields } from '@/services/user-fields'
+
+import { useUserFields } from '@/hooks/use-user-fields'
 
 import { atomUserInfo } from '@/utils/store'
 import { showErrorToast } from '@/utils/toast'
@@ -66,21 +70,25 @@ export const Route = createFileRoute('/admin/users/')({
   component: UserList,
 })
 
-const roles = [
-  { label: '管理员', value: Role.Admin.toString() },
-  { label: '普通用户', value: Role.User.toString() },
-]
+const roles = [Role.Admin, Role.User].map((role) => ({ value: role.toString() }))
 
-const createToolbarConfig = (t: TFunction): DataTableToolbarConfig => ({
-  filterInput: { placeholder: '搜索用户名', key: 'name' },
+const createToolbarConfig = (
+  t: TFunction,
+  labels: Record<string, string>
+): DataTableToolbarConfig => ({
+  filterInput: { placeholder: t('userFields.searchPlaceholder'), key: 'name' },
   filterOptions: [
-    { key: 'role', title: '权限', option: roles },
+    {
+      key: 'role',
+      title: t('userTable.headers.role'),
+      option: roles.map((role) => ({ ...role, label: t(`userTable.roles.${role.value}`) })),
+    },
     {
       key: 'status',
-      title: '状态',
+      title: t('userTable.headers.status'),
       option: [
-        { label: '已激活', value: ProjectStatus.Active.toString() },
-        { label: '已禁用', value: ProjectStatus.Inactive.toString() },
+        { label: t('userFields.status.active'), value: ProjectStatus.Active.toString() },
+        { label: t('userFields.status.inactive'), value: ProjectStatus.Inactive.toString() },
       ],
     },
     {
@@ -92,21 +100,23 @@ const createToolbarConfig = (t: TFunction): DataTableToolbarConfig => ({
       ],
     },
   ],
-  getHeader: (key) => {
-    const headers: Record<string, string> = {
-      name: '用户',
-      group: '组别',
-      teacher: '导师',
-      role: '权限',
-      status: '状态',
+  getHeader: (key) =>
+    labels[key] ??
+    {
+      name: t('userTable.headers.name'),
+      role: t('userTable.headers.role'),
+      status: t('userTable.headers.status'),
       banned: t('userBan.status.header'),
-    }
-    return headers[key] ?? key
-  },
+      totalAvailable: t('userTable.headers.totalPoints'),
+    }[key] ??
+    key,
 })
 
 function UserList() {
   const { t } = useTranslation()
+  const fieldQuery = useUserFields()
+  const { fields, label: fieldLabel } = fieldQuery
+  const fieldLabels = Object.fromEntries(userFieldKeys.map((key) => [key, fieldLabel(key)]))
   const queryClient = useQueryClient()
   const userInfo = useAtomValue(atomUserInfo)
   const [editUser, setEditUser] = useState<AdminUserRow | null>(null)
@@ -116,7 +126,7 @@ function UserList() {
   const [banUser, setBanUser] = useState<AdminUserRow | null>(null)
   const [banDialogOpen, setBanDialogOpen] = useState(false)
   const [banDialogMode, setBanDialogMode] = useState<UserBanDialogMode>('ban')
-  const toolbarConfig = useMemo(() => createToolbarConfig(t), [t])
+  const toolbarConfig = createToolbarConfig(t, fieldLabels)
 
   const { data: billingStatus } = useQuery({
     queryKey: ['admin', 'system-config', 'billing-status'],
@@ -133,6 +143,8 @@ function UserList() {
         containerSysAdminEnabled: item.containerSysAdminEnabled,
         id: item.id,
         name: item.name,
+        createdAt: item.createdAt,
+        lastLoginAt: item.lastLoginAt,
         role: item.role.toString(),
         status: item.status.toString(),
         banned: item.banned,
@@ -150,32 +162,57 @@ function UserList() {
     enabled: billingEnabled,
   })
 
+  const refetchUsers = userQuery.refetch
+  const refetchBilling = billingSummaryQuery.refetch
+
   const mergedUserQuery = useMemo(
     () =>
       ({
-        data: (userQuery.data ?? []).map((user) => {
-          const summary = (billingSummaryQuery.data ?? []).find((item) => item.userId === user.id)
-          return {
-            ...user,
-            extraBalance: summary?.extraBalance ?? user.extraBalance,
-            periodFreeTotal: summary?.periodFreeTotal ?? 0,
-            totalIssueAmount: summary?.totalIssueAmount ?? 0,
-            totalAvailable: summary?.totalAvailable ?? 0,
+        data: (billingEnabled && billingSummaryQuery.isError ? [] : (userQuery.data ?? [])).map(
+          (user) => {
+            const summary = (billingSummaryQuery.data ?? []).find((item) => item.userId === user.id)
+            return {
+              ...user,
+              extraBalance: summary?.extraBalance ?? user.extraBalance,
+              periodFreeTotal: summary?.periodFreeTotal ?? 0,
+              totalIssueAmount: summary?.totalIssueAmount ?? 0,
+              totalAvailable: summary?.totalAvailable ?? 0,
+            }
           }
-        }),
-        isLoading: userQuery.isLoading || (billingEnabled && billingSummaryQuery.isLoading),
+        ),
+        isLoading:
+          fieldQuery.isPending ||
+          userQuery.isLoading ||
+          (billingEnabled && billingSummaryQuery.isLoading),
+        isError: userQuery.isError || (billingEnabled && billingSummaryQuery.isError),
+        error: userQuery.isError
+          ? new Error(t('userFields.loadUsersError'))
+          : billingEnabled && billingSummaryQuery.isError
+            ? new Error(t('userFields.loadBillingError'))
+            : null,
         dataUpdatedAt: Math.max(userQuery.dataUpdatedAt, billingSummaryQuery.dataUpdatedAt),
-        refetch: userQuery.refetch,
+        refetch: async () => {
+          const [result] = await Promise.all([
+            refetchUsers(),
+            ...(billingEnabled ? [refetchBilling()] : []),
+          ])
+          return result
+        },
       }) as unknown as UseQueryResult<AdminUserRow[], Error>,
     [
       billingEnabled,
+      t,
+      fieldQuery.isPending,
       billingSummaryQuery.data,
       billingSummaryQuery.dataUpdatedAt,
       billingSummaryQuery.isLoading,
+      billingSummaryQuery.isError,
+      refetchBilling,
       userQuery.data,
       userQuery.dataUpdatedAt,
       userQuery.isLoading,
-      userQuery.refetch,
+      userQuery.isError,
+      refetchUsers,
     ]
   )
 
@@ -209,20 +246,26 @@ function UserList() {
           />
         ),
       },
-      {
-        accessorKey: 'group',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={t('userTable.headers.group')} />
-        ),
-        cell: ({ row }) => <div>{row.original.attributes.group}</div>,
-      },
-      {
-        accessorKey: 'teacher',
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={t('userTable.headers.teacher')} />
-        ),
-        cell: ({ row }) => <div>{row.original.attributes.teacher}</div>,
-      },
+      ...visibleUserFields(fields, 'showInTable').map(
+        (key): ColumnDef<AdminUserRow> => ({
+          id: key,
+          accessorFn: (row) =>
+            key === 'createdAt' || key === 'lastLoginAt' ? row[key] : row.attributes[key],
+          header: ({ column }) => <DataTableColumnHeader column={column} title={fieldLabel(key)} />,
+          cell: ({ getValue }) => {
+            const value = getValue<string | undefined>()
+            if (!value) return <span className="text-muted-foreground">—</span>
+            if (key === 'createdAt' || key === 'lastLoginAt' || key === 'expiredAt') {
+              return Number.isFinite(Date.parse(value)) ? (
+                <TimeDistance date={value} />
+              ) : (
+                <span className="text-muted-foreground">—</span>
+              )
+            }
+            return <div>{value}</div>
+          },
+        })
+      ),
       {
         accessorKey: 'role',
         header: ({ column }) => (
@@ -403,13 +446,23 @@ function UserList() {
       },
     })
     return baseColumns
-  }, [billingEnabled, deleteUser, t, updateRole, userInfo?.name])
+  }, [billingEnabled, deleteUser, t, updateRole, userInfo?.name, fields, fieldLabel])
+
+  if (fieldQuery.isError) {
+    return (
+      <div role="alert" className="space-y-2 p-6">
+        <p>{t('userFields.loadError')}</p>
+        <Button onClick={() => void fieldQuery.refetch()}>{t('userFields.retry')}</Button>
+      </div>
+    )
+  }
 
   return (
     <>
       <DataTable
         info={{ title: t('userTable.title'), description: t('userTable.description') }}
         storageKey="admin_user"
+        withI18n
         query={mergedUserQuery}
         columns={columns}
         toolbarConfig={toolbarConfig}

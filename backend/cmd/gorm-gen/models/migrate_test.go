@@ -170,3 +170,49 @@ func TestStorageQuotaMigrationAndRollback(t *testing.T) {
 		t.Fatal("user_space_sizes remains after rollback")
 	}
 }
+
+func TestUserLastLoginMigration(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := db.Exec(`CREATE TABLE users (id integer primary key, name text, created_at datetime)`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`INSERT INTO users (id, name, created_at) VALUES (1, 'historical-user', '2020-01-01')`).Error; err != nil {
+		t.Fatal(err)
+	}
+	migration := userLastLoginMigration()
+	for range 2 {
+		if err := migration.Migrate(db); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var oldUser struct {
+		Name        string
+		LastLoginAt *string
+	}
+	if err := db.Table("users").First(&oldUser).Error; err != nil {
+		t.Fatal(err)
+	}
+	if oldUser.Name != "historical-user" || oldUser.LastLoginAt != nil {
+		t.Fatal("migration changed historical data or guessed login time")
+	}
+	for range 2 {
+		if err := migration.Rollback(db); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if db.Migrator().HasColumn("users", "last_login_at") {
+		t.Fatal("rollback kept the login column")
+	}
+	var count int64
+	if err := db.Table("users").Count(&count).Error; err != nil || count != 1 {
+		t.Fatal("rollback lost existing users")
+	}
+}

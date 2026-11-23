@@ -13,7 +13,8 @@
     "test:auth": "node --experimental-strip-types --test tests/auth-errors.test.mjs tests/session-client.test.mjs tests/auth-login.test.mjs tests/terminal-session.test.mjs tests/session-transports.test.mjs",
     "fix": "eslint . --fix",
     "eslint": "eslint . --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:user-fields": "node --experimental-strip-types --test tests/user-fields.test.mjs"
   },
   "dependencies": {
     "@ai-sdk/react": "4.0.97",

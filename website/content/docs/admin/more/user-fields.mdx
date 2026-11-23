@@ -1,0 +1,75 @@
+---
+title: 用户字段与登录时间
+description: 独立配置用户管理的展示列、编辑字段和多语言名称。
+---
+
+<ChartBadge />
+
+用户管理的展示配置位于 `backendConfig.userFields`，与 LDAP 或本地认证方式独立。LDAP 映射决定读取哪些目录属性，展示配置决定如何显示已保存的用户资料。
+
+## 配置示例
+
+将以下片段合并到 Helm values 中，按现有流程应用并重启后端。前端重新加载后，身份、注册时间和最后登录时间列将显示；导师显示为“直属领导”，电话输入项隐藏。
+
+```yaml
+backendConfig:
+  userFields:
+    identity:
+      showInTable: true
+      showInForm: true
+      labels:
+        zh: 身份
+        en: Position
+        ja: 身分・職位
+        ko: 신분/직책
+    teacher:
+      labels:
+        zh: 直属领导
+        en: Supervisor
+    phone:
+      showInForm: false
+    createdAt:
+      showInTable: true
+    lastLoginAt:
+      showInTable: true
+```
+
+LDAP 的身份属性来源单独配置。例如目录使用 `title` 存储身份或职务时，配置 `backendConfig.auth.ldap.attributeMapping.identity: title`。该字段不影响用户权限角色。
+
+## 默认行为
+
+省略 `userFields` 或设置为 `{}` 会保留原有页面。每个字段的 `showInTable` 和 `showInForm` 分别覆盖下表默认值，省略的选项保持默认。
+
+| 字段 | 表格 | 编辑表单 |
+| --- | --- | --- |
+| `nickname` | 隐藏 | 显示 |
+| `email` | 隐藏 | 显示 |
+| `identity` | 隐藏 | 隐藏 |
+| `group` | 显示 | 显示 |
+| `teacher` | 显示 | 显示 |
+| `phone` | 隐藏 | 显示 |
+| `expiredAt` | 隐藏 | 隐藏 |
+| `createdAt` | 隐藏 | 隐藏 |
+| `lastLoginAt` | 隐藏 | 隐藏 |
+
+- `showInTable: false` 会移除该列及列选择器中的对应选项。
+- 表单未显示的属性在编辑其他资料时保留原值。
+- 未配置 LDAP 映射、单个用户值为空或切换认证方式，都不会自动隐藏列。
+- 用户名、权限、状态、封禁及操作等系统列不由此配置控制。
+- `expiredAt`、`createdAt`、`lastLoginAt` 为只读字段，不允许设置 `showInForm: true`。
+- 隐藏字段仅改变界面展示，不改变权限或过滤接口返回的数据。
+
+## 多语言列名
+
+推荐使用 `zh`、`en`、`ja`、`ko` 作为 `labels` 的键，也支持 `en-US` 等语言区域键。界面优先使用当前语言区域的名称，其次使用基本语言名称，最后回退到内置翻译；空白名称也会回退。表头、列选择器和编辑表单使用相同的名称规则。
+
+## 时间含义与升级
+
+- 注册时间是 Crater 平台账号创建时间。LDAP 首次登录自动创建平台账号时记录，不代表目录账号的创建时间。
+- 最后登录时间只在 LDAP 登录、本地登录或注册后自动建立会话成功时更新。登录失败、刷新 token、恢复会话和切换项目均不更新。
+- 旧用户的最后登录时间在下次成功登录前未知，显示为 `—`。异常或空日期也显示为 `—`。
+- 升级会增加可空的 `users.last_login_at`，不回填猜测的历史值。Helm 后端 Pod 的 `migration` init 容器会在服务启动前执行迁移；非 Helm 部署须先按原有流程完成数据库迁移。
+
+## 加载失败
+
+字段配置加载失败时，用户管理页面显示重试入口。用户列表或点数加载失败时，页面显示错误提示；点击表格刷新按钮会重新加载相关数据。

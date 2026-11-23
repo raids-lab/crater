@@ -1723,6 +1723,7 @@ func main() {
 		userContainerSysAdminMigration(),
 		agentFoundationMigration(),
 		approvalOrderReviewerMigration(),
+		userLastLoginMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1978,6 +1979,22 @@ func approvalOrderReviewerMigration() *gormigrate.Migration {
 			// Keep NULL: restoring zero IDs would violate the reviewer foreign key.
 			// No schema change is needed when rolling back the Go representation.
 			return nil
+		},
+	}
+}
+
+// A dedicated nullable column keeps historical users unknown until their next login.
+func userLastLoginMigration() *gormigrate.Migration {
+	type User struct {
+		LastLoginAt *time.Time `gorm:"comment:最后一次成功登录时间"`
+	}
+	return &gormigrate.Migration{
+		ID: "202611150001",
+		Migrate: func(tx *gorm.DB) error {
+			return addColumnIfMissing(tx, "users", &User{}, "LastLoginAt")
+		},
+		Rollback: func(tx *gorm.DB) error {
+			return dropColumnIfPresent(tx, "users", &User{}, "LastLoginAt")
 		},
 	}
 }

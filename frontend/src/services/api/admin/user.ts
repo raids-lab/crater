@@ -31,6 +31,7 @@ export interface IUserAttributes {
   name: string
   nickname: string
   email?: string
+  identity?: string // Profile identity or position; independent of permission role
   teacher?: string
   group?: string
   expiredAt?: string
@@ -45,6 +46,8 @@ export interface IAdminUpdateUserAttributesReq extends IUserAttributes {
 }
 
 export interface IUser {
+  createdAt: string
+  lastLoginAt?: string | null
   containerSysAdminEnabled: boolean
   id: number
   name: string

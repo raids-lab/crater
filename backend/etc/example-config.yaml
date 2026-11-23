@@ -276,6 +276,9 @@ auth:
       displayName: displayName
       # Email attribute (mapped to UserAttribute.email)
       email: mail
+      # Optional identity/position attribute (mapped to UserAttribute.identity, not permission role)
+      # Leave empty to disable synchronization; e.g. configure an AD extension attribute.
+      identity: ""
       # Teacher/Advisor attribute (mapped to UserAttribute.teacher)
       teacher: description
       # Group/Department attribute (mapped to UserAttribute.group)
@@ -320,3 +323,7 @@ auth:
     # Allow users to login with normal authentication when LDAP is enabled
     # Optional: Defaults to true if not specified
     allowLogin: true
+
+# User management presentation, independent of LDAP/local/future SSO authentication.
+# Empty preserves existing columns/forms. See docs/zh-CN/user-fields.md for examples.
+userFields: {}
