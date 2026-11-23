@@ -351,7 +351,8 @@ func (mgr *AuthMgr) respondLogin(c *gin.Context, user *model.User, projectID uin
 		now := time.Now().UTC()
 		u := query.User
 		if _, err := u.WithContext(c).Where(u.ID.Eq(user.ID)).UpdateColumn(u.LastLoginAt, now); err != nil {
-			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "The successful login could not be recorded. Retry or contact the platform administrator."))
+			resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err,
+				"The successful login could not be recorded. Retry or contact the platform administrator."))
 			return
 		}
 		user.LastLoginAt = &now

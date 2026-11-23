@@ -484,8 +484,7 @@ type Config struct {
 //
 //nolint:gocyclo // This is long but simple.
 func (c *Config) ValidateConfig() error {
-	var errors []string
-	errors = append(errors, c.validateUserFields()...)
+	errors := c.validateUserFields()
 
 	// Validate basic required fields
 	if c.Host == "" {

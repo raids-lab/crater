@@ -68,6 +68,10 @@ func (mgr *SystemConfigMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("/pod-bandwidth", mgr.GetAdminPodBandwidthConfig)
 	g.PUT("/pod-bandwidth", mgr.UpdateAdminPodBandwidthConfig)
 
+	mgr.registerBillingAdminRoutes(g)
+}
+
+func (mgr *SystemConfigMgr) registerBillingAdminRoutes(g *gin.RouterGroup) {
 	g.GET("/billing", mgr.GetBillingStatus)
 	g.PUT("/billing", mgr.SetBillingStatus)
 	g.POST("/billing/reconcile", mgr.TriggerBillingBaseLoop)

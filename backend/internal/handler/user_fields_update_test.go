@@ -28,32 +28,7 @@ func TestUserFieldsAdminUpdatePreservesConcurrentLogin(t *testing.T) {
 	}
 	latestLogin := time.Date(2026, 11, 15, 9, 0, 0, 0, time.UTC)
 	const concurrentBalance int64 = 500
-	concurrentChange := false
-	// Reproduce independent login/role/balance changes immediately before the
-	// profile update is written; it must update only the intended columns.
-	const callback = "test:concurrent_user_changes"
-	if err := db.Callback().Update().Before("gorm:update").Register(callback, func(tx *gorm.DB) {
-		if tx.Statement.Table != "users" || concurrentChange {
-			return
-		}
-		concurrentChange = true
-		update := tx.Session(&gorm.Session{NewDB: true}).Model(&model.User{}).
-			Where("id = ?", user.ID).UpdateColumns(map[string]any{
-			"last_login_at": latestLogin,
-			"role":          model.RoleAdmin,
-			"extra_balance": concurrentBalance,
-		})
-		if update.Error != nil {
-			t.Error(update.Error)
-		}
-	}); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := db.Callback().Update().Remove(callback); err != nil {
-			t.Error(err)
-		}
-	})
+	concurrentChange := simulateConcurrentUserChanges(t, db, user.ID, latestLogin, concurrentBalance)
 	profile.Nickname = "Edited name"
 	body, err := json.Marshal(profile)
 	if err != nil {
@@ -71,10 +46,46 @@ func TestUserFieldsAdminUpdatePreservesConcurrentLogin(t *testing.T) {
 	if err := db.First(&stored, user.ID).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !concurrentChange || stored.LastLoginAt == nil || !stored.LastLoginAt.Equal(latestLogin) ||
+	if !*concurrentChange || stored.LastLoginAt == nil || !stored.LastLoginAt.Equal(latestLogin) ||
 		stored.Role != model.RoleAdmin || stored.ExtraBalance != concurrentBalance {
 		t.Fatal("profile update overwrote concurrent login time, role, or balance")
 	}
+	requireSavedUserProfile(t, &stored, user, &profile)
+}
+
+func simulateConcurrentUserChanges(t *testing.T, db *gorm.DB, userID uint, latestLogin time.Time, concurrentBalance int64) *bool {
+	t.Helper()
+	concurrentChange := false
+	// Reproduce independent login/role/balance changes immediately before the
+	// profile update is written; it must update only the intended columns.
+	const callback = "test:concurrent_user_changes"
+	if err := db.Callback().Update().Before("gorm:update").Register(callback, func(tx *gorm.DB) {
+		if tx.Statement.Table != "users" || concurrentChange {
+			return
+		}
+		concurrentChange = true
+		update := tx.Session(&gorm.Session{NewDB: true}).Model(&model.User{}).
+			Where("id = ?", userID).UpdateColumns(map[string]any{
+			"last_login_at": latestLogin,
+			"role":          model.RoleAdmin,
+			"extra_balance": concurrentBalance,
+		})
+		if update.Error != nil {
+			t.Error(update.Error)
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Callback().Update().Remove(callback); err != nil {
+			t.Error(err)
+		}
+	})
+	return &concurrentChange
+}
+
+func requireSavedUserProfile(t *testing.T, stored, user *model.User, profile *model.UserAttribute) {
+	t.Helper()
 	attributes := stored.Attributes.Data()
 	if stored.Nickname != profile.Nickname || attributes.Nickname != profile.Nickname ||
 		attributes.Identity == nil || *attributes.Identity != *profile.Identity ||

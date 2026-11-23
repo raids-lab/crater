@@ -193,7 +193,8 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	u := query.User
 	users, err := u.WithContext(c).
-		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.ContainerSysAdminEnabled, u.BannedTimestamp, u.BanRestrictions, u.CreatedAt, u.LastLoginAt).
+		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes,
+			u.ContainerSysAdminEnabled, u.BannedTimestamp, u.BanRestrictions, u.CreatedAt, u.LastLoginAt).
 		Order(u.ID.Desc()).
 		Find()
 	if err != nil {
