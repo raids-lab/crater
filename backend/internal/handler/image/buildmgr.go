@@ -120,7 +120,7 @@ func (mgr *ImagePackMgr) handleImageBuildRemoval(c *gin.Context, isAdminMode boo
 	} else if isAdminMode {
 		resputil.Success(c, "remove kaniko encountered some errors")
 	} else {
-		resputil.Error(c, "failed to remove kaniko", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.ServiceError.New("Failed to remove image builds."))
 	}
 }
 
