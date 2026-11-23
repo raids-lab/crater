@@ -61,7 +61,8 @@ type (
 	}
 
 	DeleteKanikoByIDListRequest struct {
-		IDList []uint `json:"idList" binding:"required"`
+		IDList []uint                  `json:"idList" binding:"required"`
+		Action imageBuildRemovalAction `json:"action,omitempty" binding:"omitempty,oneof=cancel delete" enums:"cancel,delete"`
 	}
 
 	DeleteImageByIDRequest struct {

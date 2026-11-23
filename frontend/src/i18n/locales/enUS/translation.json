@@ -717,6 +717,7 @@
   "gpuAnalysis.toolbar.filters.status": "Review Status",
   "gpuAnalysis.toolbar.searchPlaceholder": "Search job name or username...",
   "grafanaIframe.title": "grafana",
+  "imageBuild.detail.accessDenied": "You do not have permission to view this image",
   "imageBuild.detail.loadError": "Unable to load image details",
   "imageBuild.detail.retry": "Retry",
   "imageFormField.comboboxFormTitle": "Image",

@@ -15,6 +15,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
+import { useAtomValue } from 'jotai'
 import {
   ActivityIcon,
   Clock,
@@ -39,6 +40,7 @@ import DetailPageLog from '@/components/codeblock/detail-page-log'
 import { TimeDistance } from '@/components/custom/time-distance'
 import DetailPage, { DetailPageCoreProps } from '@/components/layout/detail-page'
 import PageTitle from '@/components/layout/page-title'
+import Loading from '@/components/placeholder/loading-spinner'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,28 +55,44 @@ import {
 
 import { apiAdminDeleteKanikoList } from '@/services/api/admin/imagepack'
 import { KanikoDetailResponse, apiUserRemoveKanikoList } from '@/services/api/imagepack'
+import { getApiErrorData } from '@/services/client'
+import { ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
 import { buildDetailKey, queryBuildDetail } from '@/services/query/image'
 
 import useIsAdmin from '@/hooks/use-admin'
 
 import { shortenImageName } from '@/utils/formatter'
 import { logger } from '@/utils/loglevel'
+import { atomUserContext } from '@/utils/store'
 import { showErrorToast } from '@/utils/toast'
 
+import RegistryDetailError from './registry-detail-error'
+
 type KanikoCard = React.ComponentProps<typeof Card> & {
-  kanikoInfo?: KanikoDetailResponse
-  name?: string
+  kanikoInfo: KanikoDetailResponse
+  name: string
+  account?: string
 }
 
-function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreProps & KanikoCard) {
+function RegistryInfo({
+  kanikoInfo,
+  name: imageName,
+  account,
+  ...props
+}: DetailPageCoreProps & KanikoCard) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isAdmin = useIsAdmin()
 
+  const queryKey = buildDetailKey(imageName, isAdmin, account)
+
   // 统一的移除函数(删除和取消都使用这个)
   const { mutate: removeKaniko, isPending } = useMutation({
-    mutationFn: (params: { id: number; isCancel?: boolean; name?: string }) =>
-      (isAdmin ? apiAdminDeleteKanikoList : apiUserRemoveKanikoList)([params.id]),
+    mutationFn: (params: { id: number; isCancel: boolean }) =>
+      (isAdmin ? apiAdminDeleteKanikoList : apiUserRemoveKanikoList)(
+        [params.id],
+        params.isCancel ? 'cancel' : 'delete'
+      ),
     onSuccess: async (_, variables) => {
       // 只在取消操作时等待1.5秒让后端有足够时间更新数据
       if (variables.isCancel) {
@@ -83,27 +101,24 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
 
       if (variables.isCancel) {
         // 取消操作:刷新当前页面数据
-        await queryClient.invalidateQueries({
-          queryKey: ['imagepack', 'get', isAdmin ? 'admin' : 'user'],
-        })
+        await queryClient.invalidateQueries({ queryKey })
         toast.success('已取消构建任务')
       } else {
         // 删除操作:先移除查询缓存,再导航到列表页
         // 移除当前镜像的查询缓存,避免路由卸载时重新获取已删除的数据
-        if (variables.name) {
-          queryClient.removeQueries({ queryKey: buildDetailKey(variables.name, isAdmin) })
-        }
+        queryClient.removeQueries({ queryKey })
         const targetPath = isAdmin ? '/admin/env/registry' : '/portal/env/registry'
         await navigate({ to: targetPath })
         toast.success('镜像已删除')
       }
     },
-    onError: showErrorToast,
+    onError: async (error) => {
+      showErrorToast(error)
+      if (getApiErrorData(error)?.code === ERROR_RESOURCE_STATUS_ERROR) {
+        await queryClient.invalidateQueries({ queryKey })
+      }
+    },
   })
-
-  if (!kanikoInfo) {
-    return null
-  }
 
   // 判断是否应该显示删除按钮（Finished、Failed、Canceled状态）
   const shouldShowDelete =
@@ -180,7 +195,7 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
                       className="bg-amber-600 hover:bg-amber-700"
                       disabled={isPending}
                       onClick={() => {
-                        removeKaniko({ id: kanikoInfo.ID, isCancel: true, name: imageName })
+                        removeKaniko({ id: kanikoInfo.ID, isCancel: true })
                       }}
                     >
                       {isPending ? '取消中...' : '确认取消'}
@@ -212,7 +227,7 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
                       variant="destructive"
                       disabled={isPending}
                       onClick={() => {
-                        removeKaniko({ id: kanikoInfo.ID, isCancel: false, name: imageName })
+                        removeKaniko({ id: kanikoInfo.ID, isCancel: false })
                       }}
                     >
                       {isPending ? '删除中...' : '删除'}
@@ -294,9 +309,19 @@ function RegistryInfo({ kanikoInfo, name: imageName, ...props }: DetailPageCoreP
 
 const RegistryDetail = ({ name, ...props }: DetailPageCoreProps & { name: string }) => {
   const isAdmin = useIsAdmin()
-  const { data: kanikoInfo } = useQuery(queryBuildDetail(name, isAdmin))
+  const account = useAtomValue(atomUserContext)?.queue
+  const { data: kanikoInfo, error, refetch } = useQuery(queryBuildDetail(name, isAdmin, account))
 
-  return <RegistryInfo kanikoInfo={kanikoInfo} name={name} {...props} />
+  if (error) {
+    return <RegistryDetailError error={error} onRetry={() => void refetch()} />
+  }
+  if (!kanikoInfo) {
+    return <Loading />
+  }
+
+  return (
+    <RegistryInfo key={account} kanikoInfo={kanikoInfo} name={name} account={account} {...props} />
+  )
 }
 
 export default RegistryDetail

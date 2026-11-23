@@ -2994,6 +2994,21 @@ definitions:
     - label
     - value
     type: object
+  internal_handler_image.DeleteKanikoByIDListRequest:
+    properties:
+      action:
+        allOf:
+        - $ref: '#/definitions/internal_handler_image.imageBuildRemovalAction'
+        enum:
+        - cancel
+        - delete
+      idList:
+        items:
+          type: integer
+        type: array
+    required:
+    - idList
+    type: object
   internal_handler_image.GetKanikoResponse:
     properties:
       ID:
@@ -3059,6 +3074,14 @@ definitions:
       taskType:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
     type: object
+  internal_handler_image.imageBuildRemovalAction:
+    enum:
+    - cancel
+    - delete
+    type: string
+    x-enum-varnames:
+    - cancelImageBuild
+    - deleteImageBuild
   internal_handler_operations.OperationLogResp:
     properties:
       created_at:
@@ -4965,19 +4988,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: 管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      description: Cancel active builds or delete terminal builds as an administrator.
+        Omit action to choose by status.
       parameters:
-      - description: 镜像构建任务ID列表
+      - description: Build IDs and optional action
         in: body
-        name: idList
+        name: request
         required: true
         schema:
-          items:
-            type: integer
-          type: array
+          $ref: '#/definitions/internal_handler_image.DeleteKanikoByIDListRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 管理员模式下删除或取消镜像制作任务（批量）
@@ -8277,19 +8303,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: 根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      description: Cancel active builds or delete terminal builds. Omit action to
+        choose by status.
       parameters:
-      - description: 镜像构建任务ID列表
+      - description: Build IDs and optional action
         in: body
-        name: idList
+        name: request
         required: true
         schema:
-          items:
-            type: integer
-          type: array
+          $ref: '#/definitions/internal_handler_image.DeleteKanikoByIDListRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 删除或取消镜像制作任务（批量）

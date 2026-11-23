@@ -6,15 +6,18 @@ import { detailLinkOptions, detailValidateSearch } from '@/components/layout/det
 
 import { queryBuildDetail } from '@/services/query/image'
 
+import { atomUserContext } from '@/utils/store'
+
 export const Route = createFileRoute('/portal/env/registry/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
   errorComponent: RegistryDetailError,
-  loader: async ({ params, context: { queryClient } }) => {
-    const { data } = await queryClient.ensureQueryData(queryBuildDetail(params.name, false))
-    return {
-      crumb: data?.description || params.name,
+  loader: ({ params, context: { queryClient, store } }) => {
+    const account = store.get(atomUserContext)?.queue
+    if (account) {
+      void queryClient.prefetchQuery(queryBuildDetail(params.name, false, account))
     }
+    return { crumb: params.name }
   },
 })
 

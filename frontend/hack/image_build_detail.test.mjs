@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { QueryClient } from '@tanstack/react-query'
+import * as reactQuery from '@tanstack/react-query'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
@@ -21,6 +21,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import ts from 'typescript'
 
 const require = createRequire(import.meta.url)
+const { QueryClient, isCancelledError } = reactQuery
 const compile = async (path, dependencies) => {
   const source = await readFile(new URL(path, import.meta.url), 'utf8')
   const { outputText } = ts.transpileModule(source, {
@@ -39,13 +40,20 @@ const compile = async (path, dependencies) => {
   return module.exports
 }
 
-test('preloading user and admin details keeps permissions in separate caches', async () => {
+test('image detail caches keep account and admin permissions separate', async () => {
   const calls = []
+  let context = { queue: 'account-a' }
+  let permitted = true
+  const forbidden = Object.assign(new Error('Permission denied'), { httpStatus: 403 })
   const { queryBuildDetail } = await compile('../src/services/query/image.ts', {
+    '@tanstack/react-query': reactQuery,
+    jotai: { getDefaultStore: () => ({ get: () => context }) },
+    '@/utils/store': { atomUserContext: Symbol() },
     '@/services/api/imagepack': {
       apiUserGetKaniko: async (name) => {
-        calls.push(['user', name])
-        return { data: { canManage: false } }
+        calls.push([context.queue, name])
+        if (!permitted) throw forbidden
+        return { data: { canManage: false, dockerfile: 'FROM private-image' } }
       },
     },
     '@/services/api/admin/imagepack': {
@@ -58,19 +66,32 @@ test('preloading user and admin details keeps permissions in separate caches', a
   })
   const client = new QueryClient()
   try {
-    const userOptions = queryBuildDetail('public-build', false)
-    const adminOptions = queryBuildDetail('public-build', true)
+    const accountA = queryBuildDetail('shared-build', false, 'account-a')
+    const accountB = queryBuildDetail('shared-build', false, 'account-b')
+    const adminOptions = queryBuildDetail('shared-build', true)
     await client.ensureQueryData(adminOptions)
-    const user = await client.ensureQueryData(userOptions)
+    const user = await client.ensureQueryData(accountA)
     assert.equal(user.data.canManage, false)
     assert.equal(client.getQueryData(adminOptions.queryKey).data.canManage, true)
+
+    context = { queue: 'account-b' }
+    permitted = false
+    assert.equal(client.getQueryData(accountB.queryKey), undefined)
+    await assert.rejects(client.fetchQuery(accountA), isCancelledError)
+    assert.equal(client.getQueryState(accountA.queryKey).status, 'success')
+    await assert.rejects(client.ensureQueryData(accountB), forbidden)
+    assert.equal(client.getQueryData(accountA.queryKey).data.dockerfile, 'FROM private-image')
+    assert.equal(client.getQueryData(accountB.queryKey), undefined)
     assert.deepEqual(calls, [
-      ['admin', 'public-build'],
-      ['user', 'public-build'],
+      ['admin', 'shared-build'],
+      ['account-a', 'shared-build'],
+      ['account-b', 'shared-build'],
     ])
-    client.removeQueries({ queryKey: userOptions.queryKey })
-    assert.equal(client.getQueryData(userOptions.queryKey), undefined)
-    assert.equal(client.getQueryData(adminOptions.queryKey).data.canManage, true)
+
+    context = { queue: 'account-a' }
+    await assert.rejects(client.fetchQuery(accountA), forbidden)
+    assert.equal(client.getQueryState(accountA.queryKey).error, forbidden)
+    assert.equal(client.getQueryData(accountA.queryKey).data.dockerfile, 'FROM private-image')
   } finally {
     client.clear()
   }
@@ -96,6 +117,8 @@ test('detail error shows 404 only for missing resources and preserves API error 
       data: { code: status * 100 + 1, msg: 'Backend explanation' },
     })
     const html = renderToStaticMarkup(DetailError({ error }))
+    const title = status === 403 ? 'accessDenied' : 'loadError'
+    assert.ok(html.includes(`imageBuild.detail.${title}`))
     assert.match(html, /Backend explanation/)
     assert.match(html, new RegExp(`HTTP ${status}`))
     assert.match(html, /imageBuild.detail.retry/)

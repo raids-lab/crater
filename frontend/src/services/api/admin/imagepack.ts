@@ -17,6 +17,7 @@ import { apiV1Get, apiV1Post } from '@/services/client'
 import { IResponse } from '@/services/types'
 
 import {
+  ImageBuildRemovalAction,
   KanikoDetailResponse,
   ListImageResponse,
   ListKanikoResponse,
@@ -30,9 +31,10 @@ export const apiAdminImagePublicStatusChange = async (id: number) => {
 
 export const apiAdminListImage = () => apiV1Get<IResponse<ListImageResponse>>('admin/images/image')
 
-export const apiAdminDeleteKanikoList = (idList: number[]) =>
+export const apiAdminDeleteKanikoList = (idList: number[], action: ImageBuildRemovalAction) =>
   apiV1Post<IResponse<string>>('admin/images/remove', {
     idList,
+    action,
   })
 
 export const apiAdminListKaniko = () =>

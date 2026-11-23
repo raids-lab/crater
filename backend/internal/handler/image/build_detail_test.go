@@ -15,7 +15,9 @@
 package image
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -35,6 +37,8 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/crclient"
+	"github.com/raids-lab/crater/pkg/imageregistry"
+	"github.com/raids-lab/crater/pkg/packer"
 )
 
 //nolint:gocyclo // Sequential HTTP cases verify identity boundaries, field isolation and database failures.
@@ -125,7 +129,7 @@ func TestImageBuildDetailHTTP(t *testing.T) {
 		path   string
 		status int
 	}{
-		{"/api/v1/admin/images/getbyname?name=build", http.StatusUnauthorized},
+		{"/api/v1/admin/images/getbyname?name=build", http.StatusForbidden},
 		{"/api/v1/images/getbyname", http.StatusBadRequest},
 		{"/api/v1/images/getbyname?name=missing", http.StatusNotFound},
 	} {
@@ -148,4 +152,107 @@ func TestImageBuildDetailHTTP(t *testing.T) {
 	if w.Code != http.StatusInternalServerError || strings.Contains(w.Body.String(), "database is closed") {
 		t.Fatalf("database: %d %s", w.Code, w.Body)
 	}
+}
+
+func TestImageBuildRemovalAction(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{IgnoreRelationshipsWhenMigrating: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := db.AutoMigrate(&model.Kaniko{}, &model.Image{}); err != nil {
+		t.Fatal(err)
+	}
+	q := query.Use(db)
+	oldKaniko, oldImage := query.Kaniko, query.Image
+	query.Kaniko, query.Image = &q.Kaniko, &q.Image
+	t.Cleanup(func() { query.Kaniko, query.Image = oldKaniko, oldImage })
+
+	for _, tc := range []struct {
+		name       string
+		action     string
+		status     model.BuildStatus
+		admin      bool
+		httpStatus int
+		jobCalls   int
+		imageCalls int
+	}{
+		{"admin cannot cancel finished build", "cancel", model.BuildJobFinished, true, http.StatusConflict, 0, 0},
+		{"owner cannot cancel finished build", "cancel", model.BuildJobFinished, false, http.StatusConflict, 0, 0},
+		{"cancel running build", "cancel", model.BuildJobRunning, true, http.StatusOK, 1, 0},
+		{"delete rejects running build", "delete", model.BuildJobRunning, true, http.StatusConflict, 0, 0},
+		{"delete finished build", "delete", model.BuildJobFinished, true, http.StatusOK, 0, 1},
+		{"legacy remove deletes finished build", "", model.BuildJobFinished, true, http.StatusOK, 0, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			build := model.Kaniko{UserID: 1, ImagePackName: tc.name, ImageLink: "image:tag", Status: tc.status}
+			if err := db.Create(&build).Error; err != nil {
+				t.Fatal(err)
+			}
+			image := model.Image{UserID: build.UserID, ImagePackName: &build.ImagePackName, ImageLink: build.ImageLink}
+			if err := db.Create(&image).Error; err != nil {
+				t.Fatal(err)
+			}
+			job, registry := &imageBuildRemovalPacker{}, &imageBuildRemovalRegistry{}
+			mgr := &ImagePackMgr{imagePacker: job, imageRegistry: registry}
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				util.SetJWTContext(c, util.JWTMessage{UserID: build.UserID})
+				c.Next()
+			})
+			route := mgr.UserRemoveKanikoByID
+			if tc.admin {
+				route = mgr.AdminRemoveKanikoByIDList
+			}
+			router.POST("/remove", route)
+			payload := fmt.Sprintf(`{"idList":[%d]}`, build.ID)
+			if tc.action != "" {
+				payload = fmt.Sprintf(`{"idList":[%d],"action":%q}`, build.ID, tc.action)
+			}
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/remove", strings.NewReader(payload)))
+			if w.Code != tc.httpStatus || job.calls != tc.jobCalls || registry.calls != tc.imageCalls {
+				t.Fatalf("HTTP %d, Kubernetes calls %d, registry calls %d: %s", w.Code, job.calls, registry.calls, w.Body)
+			}
+			assertImageBuildRemovalRecords(t, db, build.ID, image.ID, int64(1-tc.imageCalls))
+		})
+	}
+}
+
+func assertImageBuildRemovalRecords(t *testing.T, db *gorm.DB, buildID, imageID uint, want int64) {
+	t.Helper()
+	for _, row := range []struct {
+		model any
+		id    uint
+	}{{&model.Kaniko{}, buildID}, {&model.Image{}, imageID}} {
+		var count int64
+		if err := db.Model(row.model).Where("id = ?", row.id).Count(&count).Error; err != nil || count != want {
+			t.Fatalf("model %T has %d rows, want %d (error: %v)", row.model, count, want, err)
+		}
+	}
+}
+
+type imageBuildRemovalPacker struct {
+	packer.ImagePackerInterface
+	calls int
+}
+
+func (p *imageBuildRemovalPacker) DeleteJob(context.Context, string, string) error {
+	p.calls++
+	return nil
+}
+
+type imageBuildRemovalRegistry struct {
+	imageregistry.ImageRegistryInterface
+	calls int
+}
+
+func (r *imageBuildRemovalRegistry) DeleteImageFromProject(context.Context, string) error {
+	r.calls++
+	return nil
 }

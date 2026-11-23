@@ -717,6 +717,7 @@
   "gpuAnalysis.toolbar.filters.status": "审核状态",
   "gpuAnalysis.toolbar.searchPlaceholder": "搜索作业名称、用户名...",
   "grafanaIframe.title": "grafana",
+  "imageBuild.detail.accessDenied": "无权查看镜像详情",
   "imageBuild.detail.loadError": "镜像详情加载失败",
   "imageBuild.detail.retry": "重试",
   "imageFormField.comboboxFormTitle": "镜像",

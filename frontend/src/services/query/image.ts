@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { queryOptions } from '@tanstack/react-query'
+import { CancelledError, queryOptions } from '@tanstack/react-query'
+import { getDefaultStore } from 'jotai'
 
 import { ComboboxItem } from '@/components/form/combobox'
 
@@ -21,15 +22,34 @@ import { apiAdminGetKaniko } from '@/services/api/admin/imagepack'
 import { ImageInfoResponse, apiUserGetKaniko } from '@/services/api/imagepack'
 import { JobType, apiJTaskImageList } from '@/services/api/vcjob'
 
-export const buildDetailKey = (name: string, isAdmin: boolean) =>
-  ['imagepack', 'get', isAdmin ? 'admin' : 'user', name] as const
+import { atomUserContext } from '@/utils/store'
 
-export const queryBuildDetail = (name: string, isAdmin = false) =>
+export const buildDetailKey = (name: string, isAdmin: boolean, account?: string) =>
+  [
+    'imagepack',
+    'get',
+    isAdmin ? 'admin' : 'user',
+    isAdmin ? null : (account ?? null),
+    name,
+  ] as const
+
+export const queryBuildDetail = (name: string, isAdmin: boolean, account?: string) =>
   queryOptions({
-    queryKey: buildDetailKey(name, isAdmin),
-    queryFn: () => (isAdmin ? apiAdminGetKaniko(name) : apiUserGetKaniko(name)),
+    queryKey: buildDetailKey(name, isAdmin, account),
+    queryFn: async ({ signal }) => {
+      if (isAdmin) return apiAdminGetKaniko(name)
+
+      const store = getDefaultStore()
+      const context = store.get(atomUserContext)
+      // Account switching can refetch the old query before React observes the new key.
+      if (!account || context?.queue !== account) throw new CancelledError({ revert: true })
+
+      const response = await apiUserGetKaniko(name, signal)
+      if (store.get(atomUserContext) !== context) throw new CancelledError({ revert: true })
+      return response
+    },
     select: (res) => res.data,
-    enabled: !!name,
+    enabled: !!name && (isAdmin || !!account),
     retry: false,
     staleTime: 0,
   })

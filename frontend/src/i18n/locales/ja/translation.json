@@ -717,6 +717,7 @@
   "gpuAnalysis.toolbar.filters.status": "Review Status",
   "gpuAnalysis.toolbar.searchPlaceholder": "Search job name or username...",
   "grafanaIframe.title": "grafana",
+  "imageBuild.detail.accessDenied": "イメージの詳細を表示する権限がありません",
   "imageBuild.detail.loadError": "イメージの詳細を読み込めませんでした",
   "imageBuild.detail.retry": "再試行",
   "imageFormField.comboboxFormTitle": "イメージ",
