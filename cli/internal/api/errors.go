@@ -1,13 +1,29 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+)
 
 // RequestError 表示已收到 HTTP 响应但请求未成功，供命令层映射为 *clierror.Error（含 http_status、crater_code、msg）。
 type RequestError struct {
-	HTTPStatus int
-	CraterCode int
-	Msg        string
+	HTTPStatus    int
+	CraterCode    int
+	Msg           string
+	DuringRefresh bool
 }
+
+// ShouldSignInAgain distinguishes credential failures from other HTTP 401s.
+func (e *RequestError) ShouldSignInAgain() bool {
+	return e.HTTPStatus == http.StatusUnauthorized &&
+		(e.DuringRefresh || e.CraterCode == tokenExpiredCode || e.CraterCode == tokenInvalidCode)
+}
+
+// SessionStateError indicates a failed check or update of saved credentials.
+type SessionStateError struct{ Cause error }
+
+func (e *SessionStateError) Error() string { return e.Cause.Error() }
+func (e *SessionStateError) Unwrap() error { return e.Cause }
 
 func (e *RequestError) Error() string {
 	if e.Msg != "" {
