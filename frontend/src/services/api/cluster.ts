@@ -29,6 +29,11 @@ export enum NodeRole {
 export enum NodeStatus {
   Ready = 'Ready',
   NotReady = 'NotReady',
+  Unknown = 'Unknown',
+  MemoryPressure = 'MemoryPressure',
+  DiskPressure = 'DiskPressure',
+  PIDPressure = 'PIDPressure',
+  NetworkUnavailable = 'NetworkUnavailable',
   Unschedulable = 'Unschedulable',
   Occupied = 'Occupied',
 }

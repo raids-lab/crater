@@ -15,21 +15,20 @@
  */
 import { linkOptions } from '@tanstack/react-router'
 import { ColumnDef } from '@tanstack/react-table'
-import { format } from 'date-fns'
-import { type Locale, zhCN } from 'date-fns/locale'
-import React, { type FC, useMemo } from 'react'
+import { type Locale } from 'date-fns/locale'
+import { type FC, useMemo } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-import NodeStatusBadge, { nodeStatuses } from '@/components/badge/node-status-badge'
+import { nodeStatuses } from '@/components/badge/node-status-badge'
 import TooltipLink from '@/components/label/tooltip-link'
 import TooltipCopy from '@/components/label/tooltop-copy'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 import { MetricMeter } from '@/components/ui-custom/metric-meter'
 
-import { IClusterNodeTaint, INodeBriefInfo, NodeStatus } from '@/services/api/cluster'
+import { INodeBriefInfo, JoinTaint, NodeRole } from '@/services/api/cluster'
 
 import {
   V1ResourceList,
@@ -40,6 +39,8 @@ import {
 import { cn } from '@/lib/utils'
 
 import AcceleratorBadge from '../badge/accelerator-badge'
+import { NodeStatusCell } from './node-status-cell'
+import { deriveNodeStatus, getNodeStatusSeverity, getNodeStatusTags } from './node-status-utils'
 
 // 资源使用情况计算结果接口
 export interface ResourceUsageInfo {
@@ -359,56 +360,52 @@ export const getNodeColumns = (
       accessorKey: 'role',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'角色'} />,
       cell: ({ row }) => {
-        const status = row.original.status
-        const taints = row.original.taints || []
-
-        // 如果状态为"occupied"，提取占用的账户名
-        let accountInfo = null
-        if (status === NodeStatus.Occupied && getNicknameByName) {
-          const occupiedAccount = taints.find((t: IClusterNodeTaint) =>
-            t.key.startsWith('crater.raids.io/account')
-          )?.value
-
-          if (occupiedAccount) {
-            // 获取账户昵称
-            const nickname = getNicknameByName(occupiedAccount)
-            accountInfo = nickname ? `${nickname}` : occupiedAccount
-          }
-        }
-
-        // 过滤taints，如果状态是"occupied"
-        const displayTaints =
-          status === NodeStatus.Occupied
-            ? taints.filter((taint: IClusterNodeTaint) =>
-                taint.key.includes('crater.raids.io/account')
-              )
-            : taints
+        const role = row.getValue<NodeRole>('role')
+        const taints = row.original.taints ?? []
+        const { exclusives } = deriveNodeStatus(row.original)
+        const accounts = exclusives.flatMap(({ account }) => (account ? [account] : []))
+        const [firstAccount, ...otherAccounts] = accounts
         return (
           <div className="flex flex-row items-center justify-start gap-1">
-            {/* 如果有账户信息，显示一个单独的提示 */}
-            {status === NodeStatus.Occupied && accountInfo ? (
-              <Badge variant="destructive" className="font-mono font-normal">
-                {accountInfo}
-              </Badge>
+            {firstAccount ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="text-highlight-yellow bg-highlight-yellow/20 max-w-28 cursor-help truncate border-none font-normal"
+                    tabIndex={0}
+                  >
+                    <span className="truncate">
+                      {getNicknameByName?.(firstAccount) || firstAccount}
+                    </span>
+                    {otherAccounts.length > 0 && (
+                      <span className="shrink-0">+{otherAccounts.length}</span>
+                    )}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div>账户：{accounts.join('、')}</div>
+                  <div>角色：{role}</div>
+                </TooltipContent>
+              </Tooltip>
             ) : (
               <Badge
-                variant={row.getValue('role') === 'control-plane' ? 'default' : 'secondary'}
+                variant={role === NodeRole.ControlPlane ? 'default' : 'secondary'}
                 className="font-mono font-normal"
               >
-                {row.getValue('role')}
+                {role}
               </Badge>
             )}
 
-            {/* 原有的taints提示 */}
-            {row.original.taints && displayTaints.length > 0 && status !== NodeStatus.Occupied && (
+            {taints.length > 0 && (
               <Tooltip>
-                <TooltipTrigger className="bg-highlight-slate flex size-4 items-center justify-center rounded-full text-xs text-white">
-                  {displayTaints.length}
+                <TooltipTrigger className="bg-highlight-slate flex size-4 shrink-0 items-center justify-center rounded-full text-xs text-white hover:cursor-help">
+                  {taints.length}
                 </TooltipTrigger>
                 <TooltipContent className="font-mono">
-                  {displayTaints.map((taint: IClusterNodeTaint, index: number) => (
+                  {taints.map((taint, index) => (
                     <p key={index} className="text-xs">
-                      {taint.key}={taint.value}:{taint.effect}
+                      {JoinTaint(taint)}
                     </p>
                   ))}
                 </TooltipContent>
@@ -421,99 +418,18 @@ export const getNodeColumns = (
     {
       accessorKey: 'status',
       header: ({ column }) => <DataTableColumnHeader column={column} title={'状态'} />,
-      cell: ({ row }) => {
-        const status = row.getValue<string>('status')
-        const taints = row.original.taints || []
-        const annotations = row.original.annotations || {}
-        const unschedulableReason = annotations['crater.raids.io/unschedulable-reason']
-        const unschedulableOperator = annotations['crater.raids.io/unschedulable-operator']
-        const occupiedReason = annotations['crater.raids.io/taint-reason-occupied']
-        const occupiedOperator = annotations['crater.raids.io/taint-operator-occupied']
-
-        // 判断是否为不可调度（基于 taint 或 status 文本）
-        const isUnschedulable =
-          taints.some((t: IClusterNodeTaint) =>
-            t.key.includes('node.kubernetes.io/unschedulable')
-          ) ||
-          String(status).toLowerCase().includes('unschedulable') ||
-          String(status).includes('不可调度')
-
-        // 获取对应 taint 的 timeAdded
-        let timeAdded: string | undefined
-        if (status === NodeStatus.Occupied) {
-          const occupiedTaint = taints.find(
-            (t: IClusterNodeTaint) => t.key === 'crater.raids.io/account'
-          )
-          timeAdded = occupiedTaint?.timeAdded
-        } else if (isUnschedulable) {
-          const unschedulableTaint = taints.find(
-            (t: IClusterNodeTaint) => t.key === 'node.kubernetes.io/unschedulable'
-          )
-          timeAdded = unschedulableTaint?.timeAdded
+      cell: ({ row }) => <NodeStatusCell node={row.original} locale={locale} />,
+      // 一个节点可同时拥有多个独立状态标签，筛选时命中任一选中标签即可
+      getUniqueValues: (node) => getNodeStatusTags(node),
+      filterFn: (row, _columnId, filterValue: unknown) => {
+        if (!Array.isArray(filterValue) || filterValue.length === 0) {
+          return true
         }
-
-        let tooltipContent: React.ReactNode
-        if (status === NodeStatus.Occupied) {
-          // 已占用：显示操作员和原因（多行格式）
-          const operatorLine = occupiedOperator || null
-          const reasonLine = occupiedReason || null
-          const timeLine = timeAdded
-            ? format(new Date(timeAdded), 'PPPp', { locale: locale || zhCN })
-            : null
-
-          tooltipContent = (
-            <div className="flex flex-col gap-0.5">
-              {operatorLine && <div>操作者：{operatorLine}</div>}
-              {reasonLine && <div>原因：{reasonLine}</div>}
-              {timeLine && <div>时间：{timeLine}</div>}
-            </div>
-          )
-        } else if (isUnschedulable) {
-          // 不可调度：显示操作员和原因（多行格式）
-          const operatorLine = unschedulableOperator || null
-          const reasonLine = unschedulableReason || null
-          const timeLine = timeAdded
-            ? format(new Date(timeAdded), 'PPPp', { locale: locale || zhCN })
-            : null
-
-          tooltipContent = (
-            <div className="flex flex-col gap-0.5">
-              {operatorLine && <div>操作者：{operatorLine}</div>}
-              {reasonLine && <div>原因：{reasonLine}</div>}
-              {timeLine && <div>时间：{timeLine}</div>}
-            </div>
-          )
-        } else {
-          // 运行中：显示作业数或通用文案
-          tooltipContent = `${row.original.workloads ?? 0} 个作业正在运行`
-        }
-        return (
-          <div className="flex flex-row items-center justify-start gap-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <NodeStatusBadge status={status} disableDefaultTooltip={true} />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{tooltipContent}</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                className={cn(
-                  'bg-secondary text-secondary-foreground flex size-4 items-center justify-center rounded-full text-xs hover:cursor-help',
-                  {
-                    'bg-primary text-primary-foreground':
-                      row.original.workloads && row.original.workloads > 0,
-                  }
-                )}
-              >
-                {row.original.workloads}
-              </TooltipTrigger>
-              <TooltipContent>{row.original.workloads} 个作业正在运行</TooltipContent>
-            </Tooltip>
-          </div>
-        )
+        const tags: string[] = getNodeStatusTags(row.original)
+        return filterValue.some((value) => tags.includes(String(value)))
       },
+      sortingFn: (rowA, rowB) =>
+        getNodeStatusSeverity(rowA.original) - getNodeStatusSeverity(rowB.original),
     },
     {
       accessorKey: 'cpu',
