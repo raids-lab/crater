@@ -21,8 +21,9 @@ import (
 )
 
 const (
-	VCJOBAPIVERSION = "batch.volcano.sh/v1alpha1"
-	VCJOBKIND       = "Job"
+	VCJOBAPIVERSION  = "batch.volcano.sh/v1alpha1"
+	VCJOBKIND        = "Job"
+	LabelKeyCPUModel = "crater.raids.io/cpu-model"
 )
 
 // formatOperatorInfo 格式化操作员信息为 "昵称(@用户名)" 形式
@@ -130,6 +131,7 @@ type ClusterNodeDetail struct {
 	KubeletVersion          string                   `json:"kubeletVersion"`
 	ContainerRuntimeVersion string                   `json:"containerRuntimeVersion"`
 	KernelVersion           string                   `json:"kernelVersion"`
+	CPUModel                string                   `json:"cpuModel"`
 	Capacity                corev1.ResourceList      `json:"capacity"`
 	Allocatable             corev1.ResourceList      `json:"allocatable"`
 	Used                    corev1.ResourceList      `json:"used"`
@@ -270,6 +272,11 @@ func getNodeIP(node *corev1.Node) string {
 	return node.Status.Addresses[0].Address
 }
 
+func cpuModelFromLabels(node *corev1.Node) string {
+	// Label values use underscores because Kubernetes labels cannot contain spaces.
+	return strings.ReplaceAll(strings.TrimSpace(node.Labels[LabelKeyCPUModel]), "_", " ")
+}
+
 // ListNodes 获取所有 Node 列表
 func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 	var nodes corev1.NodeList
@@ -387,6 +394,7 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
 		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
 		KernelVersion:           node.Status.NodeInfo.KernelVersion,
+		CPUModel:                cpuModelFromLabels(node),
 		Capacity:                node.Status.Capacity,
 		Allocatable:             node.Status.Allocatable,
 		Used:                    usedResources,

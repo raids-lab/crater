@@ -252,7 +252,7 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                   <span>{t('nodeDetail.info.cpuModel')}</span>
                 </div>
                 <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
-                  {'-'}
+                  {nodeDetail.cpuModel || '-'}
                 </Badge>
               </div>
             </div>

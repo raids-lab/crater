@@ -86,6 +86,7 @@ export interface IClusterNodeDetail {
   kubeletVersion: string
   containerRuntimeVersion: string
   kernelVersion?: string
+  cpuModel?: string
   capacity?: V1ResourceList
   allocatable?: V1ResourceList
   used?: V1ResourceList
