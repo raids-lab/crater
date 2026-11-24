@@ -31,6 +31,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import LoadableButton from '@/components/button/loadable-button'
 import FormExportButton from '@/components/form/form-export-button'
 import FormImportButton from '@/components/form/form-import-button'
@@ -139,6 +145,44 @@ const dockerfileFormSchema = z.object({
 
 export type DockerfileFormValues = z.infer<typeof dockerfileFormSchema>
 
+const agentFields = defineAgentFormFields<DockerfileFormValues>()([
+  {
+    path: 'dockerfile',
+    label: 'craterAgent.formFields.dockerfile',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'description',
+    label: 'craterAgent.formFields.imageDescription',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'imageName',
+    label: 'craterAgent.formFields.imageName',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'imageTag',
+    label: 'craterAgent.formFields.imageTag',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'imageArchs',
+    label: 'craterAgent.formFields.imageArchitecture',
+    valueType: 'option-array',
+  },
+  {
+    path: 'volumeMounts',
+    label: 'craterAgent.formFields.buildMounts',
+    valueType: 'volume-mount-array',
+  },
+  { path: 'tags', label: 'craterAgent.formFields.tags', valueType: 'option-array' },
+])
+
 interface DockerfileSheetContentProps {
   closeSheet: () => void
   imagePackName?: string
@@ -164,6 +208,12 @@ function DockerfileSheetContent({
       imageArchs: [{ value: 'linux/amd64' }],
       volumeMounts: [],
     },
+  })
+
+  useAgentFormCapability({
+    capability: agentFormCapabilities.imageDockerfile,
+    fields: agentFields,
+    form,
   })
 
   const { mutate: submitDockerfileSheet, isPending } = useMutation({
@@ -237,6 +287,15 @@ function DockerfileSheetContent({
         <SandwichLayout
           footer={
             <>
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'Dockerfile 镜像辅助填写',
+                  prompt: '说明运行环境和构建目标，Agent 将生成可确认的 Dockerfile 表单建议。',
+                  route: agentFormCapabilities.imageDockerfile.route,
+                  capabilityId: agentFormCapabilities.imageDockerfile.id,
+                }}
+              />
               <FormImportButton metadata={MetadataFormDockerfile} form={form} />
               <FormExportButton metadata={MetadataFormDockerfile} form={form} />
               <LoadableButton isLoading={isPending} isLoadingText="正在提交" type="submit">

@@ -1,7 +1,8 @@
 import { useChat } from '@ai-sdk/react'
 import { useQuery } from '@tanstack/react-query'
+import { useLocation, useNavigate } from '@tanstack/react-router'
 import { DefaultChatTransport, type UIMessage } from 'ai'
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { HTTPError } from 'ky'
 import {
   BotIcon,
@@ -23,6 +24,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { Components } from 'react-markdown'
 import { toast } from 'sonner'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -38,7 +40,23 @@ import {
 } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 
+import type {
+  AgentActionContext,
+  AgentFormPatch,
+  AgentFormRuntime,
+  AgentPageContext,
+  AgentResourceContext,
+} from '@/components/agent/agent-context'
+import {
+  AgentToolCard,
+  AgentToolGroup,
+  type AgentToolPart,
+} from '@/components/agent/agent-tool-card'
 import { ConversationSidebar } from '@/components/agent/conversation-sidebar'
+import {
+  isAgentFormDestination,
+  isAgentNavigationDestination,
+} from '@/components/agent/form-capabilities'
 import { MarkdownRenderer } from '@/components/form/markdown-renderer'
 import { UserAvatar } from '@/components/user/user-avatar'
 
@@ -46,15 +64,24 @@ import {
   type AgentConversation,
   type AgentIdentity,
   agentIdentityHeader,
+  apiCancelAgentConversationRun,
   apiDeleteAgentConversation,
   apiGetAgentAvailability,
   apiGetAgentConversationMessages,
   apiGetAgentConversations,
   apiRenameAgentConversation,
+  apiSaveAgentToolOutput,
 } from '@/services/api/agent'
 import { apiFetch } from '@/services/client'
 
-import { atomAgentPanelOpen, atomAgentUserFloatingButtonEnabled, atomUserInfo } from '@/utils/store'
+import {
+  atomAgentActionContext,
+  atomAgentFormRuntime,
+  atomAgentPageResourceContext,
+  atomAgentPanelOpen,
+  atomAgentUserFloatingButtonEnabled,
+  atomUserInfo,
+} from '@/utils/store'
 
 import { cn } from '@/lib/utils'
 
@@ -66,6 +93,15 @@ const minimumPanelWidth = 560
 const maximumPanelWidth = 1100
 const bottomStickThreshold = 96
 const activeConversationCache = new Map<string, string>()
+const agentMarkdownComponents: Components = {
+  table: ({ children, className, ...props }) => (
+    <div className="border-foreground/20 w-full max-w-full min-w-0 overflow-x-auto rounded-md border">
+      <table {...props} className={cn('w-full min-w-[42rem] border-collapse', className)}>
+        {children}
+      </table>
+    </div>
+  ),
+}
 
 type PendingConversationTitle = {
   conversationID: string
@@ -77,7 +113,10 @@ type AgentSendMode = 'append' | 'replace'
 type AgentRequestContext = {
   conversationID: string
   userMessageID: string
+  userText: string
+  continuation: boolean
   finalizing: boolean
+  cancelPromise?: Promise<void>
 }
 
 type SynchronizationExpectation = {
@@ -92,6 +131,7 @@ type SynchronizeConversation = (
 ) => Promise<void>
 
 const synchronizationRetryDelays = [0, 100, 250, 500, 1_000, 1_500]
+const cancellationRetryDelays = [0, 100, 250, 500]
 
 function createConversationID() {
   return crypto.randomUUID()
@@ -210,6 +250,7 @@ function ResizeHandle({ panelWidth, setPanelWidth }: ResizeHandleProps) {
 }
 
 type ChatMessageProps = {
+  identity: AgentIdentity
   message: UIMessage
   user?: { name: string; avatar?: string }
   busy: boolean
@@ -220,9 +261,64 @@ type ChatMessageProps = {
   onEdit: (messageID: string, text: string) => void
   onCancelEdit: () => void
   onResend: (event: FormEvent) => void
+  runtime?: AgentFormRuntime
+  onNavigate: (messageID: string, part: AgentToolPart, path: string) => Promise<void>
+  onNavigateJob: (messageID: string, part: AgentToolPart, jobName: string) => Promise<void>
+  onApply: (
+    messageID: string,
+    part: AgentToolPart,
+    patches: readonly AgentFormPatch[]
+  ) => Promise<string[]>
+  onReject: (messageID: string, part: AgentToolPart) => Promise<void>
+}
+
+type AgentToolPartGroup = {
+  type: string
+  parts: AgentToolPart[]
+}
+
+const confirmationToolTypes = new Set([
+  'tool-navigate_to_page',
+  'tool-navigate_to_job_detail',
+  'tool-propose_form_patch',
+])
+
+function isConfirmationToolPart(part: AgentToolPart) {
+  return confirmationToolTypes.has(part.type)
+}
+
+function isPendingConfirmationToolPart(part: AgentToolPart) {
+  return isConfirmationToolPart(part) && part.state === 'input-available'
+}
+
+function groupAgentToolParts(parts: readonly AgentToolPart[]): AgentToolPartGroup[] {
+  const groups: AgentToolPartGroup[] = []
+  for (const part of parts) {
+    const previous = groups.at(-1)
+    if (previous && previous.type === part.type && !isConfirmationToolPart(part)) {
+      previous.parts.push(part)
+      continue
+    }
+    groups.push({ type: part.type, parts: [part] })
+  }
+  return groups
+}
+
+function confirmationLeadText(parts: readonly AgentToolPart[]) {
+  for (const part of parts) {
+    if (typeof part.input !== 'object' || part.input === null || Array.isArray(part.input)) continue
+    const input = part.input as Record<string, unknown>
+    const value =
+      part.type === 'tool-navigate_to_page' || part.type === 'tool-navigate_to_job_detail'
+        ? input.reason
+        : input.summary
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
+  return ''
 }
 
 function ChatMessage({
+  identity,
   message,
   user,
   busy,
@@ -233,11 +329,24 @@ function ChatMessage({
   onEdit,
   onCancelEdit,
   onResend,
+  runtime,
+  onNavigate,
+  onNavigateJob,
+  onApply,
+  onReject,
 }: ChatMessageProps) {
   const { t } = useTranslation()
   const text = messageText(message)
+  const toolParts = message.parts.filter((part): part is typeof part & AgentToolPart =>
+    part.type.startsWith('tool-')
+  )
+  const automaticToolPartGroups = groupAgentToolParts(
+    toolParts.filter((part) => !isConfirmationToolPart(part))
+  )
+  const confirmationToolParts = toolParts.filter(isConfirmationToolPart)
   const fromUser = message.role === 'user'
-  if (!text) return null
+  const displayText = fromUser ? text : text || confirmationLeadText(confirmationToolParts)
+  if (!displayText && toolParts.length === 0) return null
 
   if (editing) {
     return (
@@ -277,25 +386,90 @@ function ChatMessage({
 
   return (
     <div
-      className={cn('group flex items-start gap-2.5', fromUser ? 'flex-row-reverse' : 'flex-row')}
+      className={cn(
+        'group flex max-w-full min-w-0 items-start gap-2.5',
+        fromUser ? 'flex-row-reverse' : 'flex-row'
+      )}
     >
       {fromUser ? <UserAvatar user={user} className="mt-1" /> : <AgentAvatar />}
-      <div
-        className={cn(
-          'relative min-w-0',
-          fromUser ? 'max-w-[calc(100%-7.25rem)]' : 'max-w-[calc(100%-5rem)]'
-        )}
-      >
+      <div className={cn('relative min-w-0', fromUser ? 'max-w-[calc(100%_-_7.25rem)]' : 'flex-1')}>
         <div
           className={cn(
-            'rounded-2xl px-4 py-3 text-sm leading-6',
+            'max-w-full min-w-0 overflow-hidden rounded-2xl px-4 py-3 text-sm leading-6',
             fromUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
           )}
         >
+          {!fromUser && automaticToolPartGroups.length > 0 && (
+            <div className="space-y-1.5">
+              {automaticToolPartGroups.map((group) => {
+                const firstPart = group.parts[0]
+                if (!firstPart) return null
+                if (group.parts.length === 1) {
+                  return (
+                    <AgentToolCard
+                      key={firstPart.toolCallId}
+                      identity={identity}
+                      part={firstPart}
+                      runtime={runtime}
+                      busy={busy}
+                      onNavigate={(path) => onNavigate(message.id, firstPart, path)}
+                      onNavigateJob={(jobName) => onNavigateJob(message.id, firstPart, jobName)}
+                      onApply={(patches) => onApply(message.id, firstPart, patches)}
+                      onReject={() => onReject(message.id, firstPart)}
+                    />
+                  )
+                }
+                return (
+                  <AgentToolGroup key={firstPart.toolCallId} parts={group.parts}>
+                    {group.parts.map((part, index) => (
+                      <AgentToolCard
+                        key={part.toolCallId}
+                        identity={identity}
+                        part={part}
+                        sequence={index + 1}
+                        runtime={runtime}
+                        busy={busy}
+                        onNavigate={(path) => onNavigate(message.id, part, path)}
+                        onNavigateJob={(jobName) => onNavigateJob(message.id, part, jobName)}
+                        onApply={(patches) => onApply(message.id, part, patches)}
+                        onReject={() => onReject(message.id, part)}
+                      />
+                    ))}
+                  </AgentToolGroup>
+                )
+              })}
+            </div>
+          )}
           {fromUser ? (
-            <p className="whitespace-pre-wrap">{text}</p>
-          ) : (
-            <MarkdownRenderer>{text}</MarkdownRenderer>
+            <p className="wrap-anywhere whitespace-pre-wrap">{displayText}</p>
+          ) : displayText ? (
+            <div
+              className={cn(
+                'max-w-full min-w-0 wrap-anywhere [&_a]:break-all [&_pre]:max-w-full',
+                automaticToolPartGroups.length > 0 && 'mt-3'
+              )}
+            >
+              <MarkdownRenderer components={agentMarkdownComponents}>
+                {displayText}
+              </MarkdownRenderer>
+            </div>
+          ) : null}
+          {!fromUser && confirmationToolParts.length > 0 && (
+            <div className={cn('space-y-2', displayText && 'mt-3')}>
+              {confirmationToolParts.map((part) => (
+                <AgentToolCard
+                  key={part.toolCallId}
+                  identity={identity}
+                  part={part}
+                  runtime={runtime}
+                  busy={busy}
+                  onNavigate={(path) => onNavigate(message.id, part, path)}
+                  onNavigateJob={(jobName) => onNavigateJob(message.id, part, jobName)}
+                  onApply={(patches) => onApply(message.id, part, patches)}
+                  onReject={() => onReject(message.id, part)}
+                />
+              ))}
+            </div>
           )}
         </div>
         <div
@@ -323,7 +497,7 @@ function ChatMessage({
             size="icon"
             className="size-8"
             aria-label={t('craterAgent.copy')}
-            onClick={() => onCopy(text)}
+            onClick={() => onCopy(displayText)}
           >
             <CopyIcon className="size-4" />
           </Button>
@@ -343,6 +517,12 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const userID = user?.id
   const [input, setInput] = useState('')
   const [open, setOpen] = useAtom(atomAgentPanelOpen)
+  const actionContext = useAtomValue(atomAgentActionContext)
+  const clearActionContext = useSetAtom(atomAgentActionContext)
+  const formRuntime = useAtomValue(atomAgentFormRuntime)
+  const resourceContext = useAtomValue(atomAgentPageResourceContext)
+  const navigate = useNavigate()
+  const location = useLocation()
   const floatingButtonEnabled = useAtomValue(atomAgentUserFloatingButtonEnabled)
   const availabilityQuery = useQuery({
     queryKey: ['agent', 'availability'],
@@ -359,6 +539,8 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const [conversations, setConversations] = useState<AgentConversation[]>([])
   const [activeConversationID, setActiveConversationID] = useState<string>(createConversationID)
   const [requestLocked, setRequestLocked] = useState(false)
+  const [toolExecuting, setToolExecuting] = useState(false)
+  const toolExecutingRef = useRef(false)
   const [synchronizing, setSynchronizing] = useState(false)
   const [historyLoadedIdentity, setHistoryLoadedIdentity] = useState<string>()
   const viewportRef = useRef<HTMLDivElement | null>(null)
@@ -366,12 +548,29 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const pendingTitleRef = useRef<PendingConversationTitle | undefined>(undefined)
   const sendModeRef = useRef<AgentSendMode>('append')
   const activeRequestRef = useRef<AgentRequestContext | undefined>(undefined)
+  const continuedNavigationRef = useRef(new Set<string>())
   const interactionLockedRef = useRef(false)
   const navigationSequenceRef = useRef(0)
   const synchronizationSequenceRef = useRef(0)
   const synchronizeConversationRef = useRef<SynchronizeConversation>(async () => {})
   const activeConversationIDRef = useRef(activeConversationID)
   activeConversationIDRef.current = activeConversationID
+  const formRuntimeRef = useRef(formRuntime)
+  formRuntimeRef.current = formRuntime
+  const actionContextRef = useRef(actionContext)
+  actionContextRef.current = actionContext
+  const resourceContextRef = useRef(resourceContext)
+  resourceContextRef.current = resourceContext
+  const pathnameRef = useRef(location.pathname)
+  pathnameRef.current = location.pathname
+  const currentPageContextRef = useRef<() => AgentPageContext | undefined>(() => undefined)
+  currentPageContextRef.current = () =>
+    buildPageContext(
+      actionContextRef.current,
+      formRuntimeRef.current,
+      resourceContextRef.current,
+      pathnameRef.current
+    )
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -382,12 +581,19 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
         fetch: agentFetch,
         prepareSendMessagesRequest: ({ messages }) => {
           const message = messages[messages.length - 1]
-          const parentMessageID = messages.length > 1 ? messages[messages.length - 2].id : null
-          const mode = sendModeRef.current
+          const continuation = message.role === 'assistant'
+          const parentMessageID = continuation
+            ? message.id
+            : messages.length > 1
+              ? messages[messages.length - 2].id
+              : null
+          const mode = continuation ? 'continue' : sendModeRef.current
           const conversationID = activeConversationIDRef.current
           activeRequestRef.current = {
             conversationID,
             userMessageID: message.id,
+            userText: continuation ? '' : messageText(message),
+            continuation,
             finalizing: false,
           }
           sendModeRef.current = 'append'
@@ -397,6 +603,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
               parentMessageId: parentMessageID,
               mode,
               message,
+              pageContext: currentPageContextRef.current(),
             },
           }
         },
@@ -423,57 +630,126 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
         // Title generation is optional and must never interrupt the conversation.
       })
   }
-  const { messages, setMessages, sendMessage, status, stop, error, clearError } = useChat({
-    transport,
-    throttle: streamThrottleMilliseconds,
-    onFinish: ({ message, isAbort, isError }) => {
-      const request = activeRequestRef.current
-      if (!request || request.finalizing) return
-      request.finalizing = true
-      if (isAbort || isError) {
+  const { messages, setMessages, sendMessage, addToolOutput, status, stop, error, clearError } =
+    useChat({
+      transport,
+      throttle: streamThrottleMilliseconds,
+      sendAutomaticallyWhen: ({ messages }) => {
+        const last = messages.at(-1)
+        if (
+          last?.role !== 'assistant' ||
+          !currentPageContextRef.current()?.form ||
+          formRuntimeRef.current?.optionsReady() !== true ||
+          last.parts.some(
+            (part) =>
+              part.type.startsWith('tool-') &&
+              !['output-available', 'output-error'].includes((part as AgentToolPart).state)
+          )
+        ) {
+          return false
+        }
+        const navigation = last.parts.find((part) => {
+          const toolPart = part as AgentToolPart
+          return (
+            toolPart.type === 'tool-navigate_to_page' &&
+            toolPart.state === 'output-available' &&
+            isRecord(toolPart.output) &&
+            toolPart.output.status === 'accepted' &&
+            !continuedNavigationRef.current.has(`${last.id}:${toolPart.toolCallId}`)
+          )
+        }) as AgentToolPart | undefined
+        if (!navigation) return false
+        continuedNavigationRef.current.add(`${last.id}:${navigation.toolCallId}`)
+        return true
+      },
+      onFinish: ({ message, isAbort, isError }) => {
+        const request = activeRequestRef.current
+        if (!request || request.finalizing) return
+        request.finalizing = true
+        if (isAbort || isError) {
+          if (pendingTitleRef.current?.conversationID === request.conversationID) {
+            pendingTitleRef.current = undefined
+          }
+        }
+        const assistantResponseExpected =
+          messageText(message).trim().length > 0 ||
+          message.parts.some((part) => part.type.startsWith('tool-'))
+        const cancellation = isAbort
+          ? (request.cancelPromise ??
+            cancelActiveRun(request.conversationID, request.userMessageID))
+          : Promise.resolve()
+        void cancellation
+          .catch((cancelError: Error) => toast.error(cancelError.message))
+          .then(() =>
+            synchronizeConversationRef.current(
+              request.conversationID,
+              request.continuation
+                ? undefined
+                : {
+                    userMessageID: request.userMessageID,
+                    assistantResponseExpected: !isAbort && !isError && assistantResponseExpected,
+                    initialDelay: isAbort || isError ? 100 : undefined,
+                  }
+            )
+          )
+          .then(() => {
+            if (!isAbort && !isError) generatePendingConversationTitle(request.conversationID)
+          })
+          .catch((syncError: Error) => toast.error(syncError.message))
+          .finally(() => {
+            if (activeRequestRef.current === request) activeRequestRef.current = undefined
+            interactionLockedRef.current = false
+            setRequestLocked(false)
+          })
+      },
+      onError: (chatError) => {
+        const request = activeRequestRef.current
+        if (!request || request.finalizing) return
+        request.finalizing = true
         if (pendingTitleRef.current?.conversationID === request.conversationID) {
           pendingTitleRef.current = undefined
         }
+        toast.error(
+          chatError instanceof AgentRequestError && chatError.status === 409
+            ? t('craterAgent.conversationRefreshed')
+            : chatError.message
+        )
+        const conflict = chatError instanceof AgentRequestError && chatError.status === 409
+        void (request.cancelPromise ?? Promise.resolve())
+          .catch((cancelError: Error) => toast.error(cancelError.message))
+          .then(() => synchronizeConversationRef.current(request.conversationID))
+          .then(() => {
+            clearError()
+            if (conflict) {
+              setInput((current) => (current.trim() ? current : request.userText))
+            }
+          })
+          .catch((syncError: Error) => toast.error(syncError.message))
+          .finally(() => {
+            if (activeRequestRef.current === request) activeRequestRef.current = undefined
+            interactionLockedRef.current = false
+            setRequestLocked(false)
+          })
+      },
+    })
+  const cancelActiveRun = async (conversationID: string, userMessageID: string) => {
+    let lastError: Error | undefined
+    for (const delay of cancellationRetryDelays) {
+      if (delay > 0) await new Promise((resolve) => window.setTimeout(resolve, delay))
+      try {
+        const response = await apiCancelAgentConversationRun(
+          identity,
+          conversationID,
+          userMessageID
+        )
+        if (response.data) return
+        lastError = undefined
+      } catch (cancelError) {
+        lastError = cancelError instanceof Error ? cancelError : new Error(String(cancelError))
       }
-      const assistantResponseExpected = messageText(message).trim().length > 0
-      void synchronizeConversationRef
-        .current(request.conversationID, {
-          userMessageID: request.userMessageID,
-          assistantResponseExpected: !isAbort && !isError ? true : assistantResponseExpected,
-          initialDelay: isAbort || isError ? 500 : undefined,
-        })
-        .then(() => {
-          if (!isAbort && !isError) generatePendingConversationTitle(request.conversationID)
-        })
-        .catch((syncError: Error) => toast.error(syncError.message))
-        .finally(() => {
-          if (activeRequestRef.current === request) activeRequestRef.current = undefined
-          interactionLockedRef.current = false
-          setRequestLocked(false)
-        })
-    },
-    onError: (chatError) => {
-      const request = activeRequestRef.current
-      if (!request || request.finalizing) return
-      request.finalizing = true
-      if (pendingTitleRef.current?.conversationID === request.conversationID) {
-        pendingTitleRef.current = undefined
-      }
-      toast.error(
-        chatError instanceof AgentRequestError && chatError.status === 409
-          ? t('craterAgent.conversationRefreshed')
-          : chatError.message
-      )
-      void synchronizeConversationRef
-        .current(request.conversationID)
-        .catch((syncError: Error) => toast.error(syncError.message))
-        .finally(() => {
-          if (activeRequestRef.current === request) activeRequestRef.current = undefined
-          interactionLockedRef.current = false
-          setRequestLocked(false)
-        })
-    },
-  })
+    }
+    if (lastError) throw lastError
+  }
   const synchronizeConversation: SynchronizeConversation = async (conversationID, expectation) => {
     const synchronizationSequence = synchronizationSequenceRef.current + 1
     synchronizationSequenceRef.current = synchronizationSequence
@@ -512,7 +788,13 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   synchronizeConversationRef.current = synchronizeConversation
   const generating = status === 'submitted' || status === 'streaming'
   const historyLoading = open && historyLoadedIdentity !== identityCacheKey
-  const busy = generating || synchronizing || requestLocked || historyLoading
+  const busy = generating || synchronizing || requestLocked || historyLoading || toolExecuting
+  const awaitingConfirmation = messages.some((message) =>
+    message.parts.some(
+      (part) =>
+        part.type.startsWith('tool-') && isPendingConfirmationToolPart(part as AgentToolPart)
+    )
+  )
 
   useEffect(() => {
     const resizePanel = () => setPanelWidth((width) => clampPanelWidth(width))
@@ -662,7 +944,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const submit = (event: FormEvent) => {
     event.preventDefault()
     const text = input.trim()
-    if (!text || busy || interactionLockedRef.current) return
+    if (!text || busy || awaitingConfirmation || interactionLockedRef.current) return
     interactionLockedRef.current = true
     setRequestLocked(true)
     navigationSequenceRef.current += 1
@@ -683,7 +965,8 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     event.preventDefault()
     const text = editingText.trim()
     const messageIndex = messages.findIndex((message) => message.id === editingMessageID)
-    if (!text || busy || interactionLockedRef.current || messageIndex < 0) return
+    if (!text || busy || awaitingConfirmation || interactionLockedRef.current || messageIndex < 0)
+      return
     interactionLockedRef.current = true
     setRequestLocked(true)
 
@@ -752,6 +1035,96 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
       .catch(() => toast.error(t('craterAgent.copyFailed'), { position: 'bottom-right' }))
   }
 
+  const saveToolOutput = async (
+    messageID: string,
+    part: AgentToolPart,
+    output: Record<string, unknown>
+  ) => {
+    await apiSaveAgentToolOutput(identity, activeConversationID, {
+      messageId: messageID,
+      toolCallId: part.toolCallId,
+      state: 'output-available',
+      output,
+    })
+    if (activeConversationIDRef.current !== activeConversationID) return
+    await addToolOutput({
+      tool: part.type.slice('tool-'.length),
+      toolCallId: part.toolCallId,
+      output,
+    })
+  }
+
+  const withToolAction = async <T,>(action: () => Promise<T>) => {
+    if (toolExecutingRef.current || busy) throw new Error(t('craterAgent.toolFailed'))
+    toolExecutingRef.current = true
+    setToolExecuting(true)
+    try {
+      return await action()
+    } finally {
+      toolExecutingRef.current = false
+      setToolExecuting(false)
+    }
+  }
+
+  const navigateFromTool = async (messageID: string, part: AgentToolPart, path: string) => {
+    return withToolAction(async () => {
+      if (!isAgentNavigationDestination(identity, path)) {
+        throw new Error(t('craterAgent.navigationNotAllowed'))
+      }
+      await navigate({ to: path })
+      if (isAgentFormDestination(path)) {
+        const ready = await waitForFormOptions(path, formRuntimeRef)
+        if (!ready) toast.error(t('craterAgent.formOptionUnavailable'))
+      }
+      await saveToolOutput(messageID, part, { status: 'accepted', path })
+    })
+  }
+
+  const navigateToJobDetailFromTool = async (
+    messageID: string,
+    part: AgentToolPart,
+    jobName: string
+  ) => {
+    return withToolAction(async () => {
+      if (!jobName) throw new Error(t('craterAgent.navigationNotAllowed'))
+      if (identity === 'admin') {
+        await navigate({ to: '/admin/jobs/$name', params: { name: jobName } })
+      } else {
+        await navigate({ to: '/portal/jobs/detail/$name', params: { name: jobName } })
+      }
+      await saveToolOutput(messageID, part, { status: 'accepted', jobName })
+    })
+  }
+
+  const applyFormPatch = async (
+    messageID: string,
+    part: AgentToolPart,
+    patches: readonly AgentFormPatch[]
+  ) => {
+    return withToolAction(async () => {
+      const proposal = part.input as
+        | { instanceId?: string; capabilityId?: string; schemaVersion?: number }
+        | undefined
+      if (
+        !formRuntime ||
+        proposal?.instanceId !== formRuntime.instanceId ||
+        proposal?.capabilityId !== formRuntime.capability.id ||
+        proposal.schemaVersion !== formRuntime.capability.schemaVersion
+      ) {
+        throw new Error(t('craterAgent.formChanged'))
+      }
+      const changedPaths = await formRuntime.apply(patches)
+      if (changedPaths.length === 0) throw new Error(t('craterAgent.formChanged'))
+      await saveToolOutput(messageID, part, { status: 'accepted', changedPaths })
+      toast.success(t('craterAgent.formApplied'))
+      return changedPaths
+    })
+  }
+
+  const rejectTool = async (messageID: string, part: AgentToolPart) => {
+    await withToolAction(() => saveToolOutput(messageID, part, { status: 'rejected' }))
+  }
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
       stickToBottomRef.current = true
@@ -818,8 +1191,29 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
             />
           </div>
           <section className="flex min-w-0 flex-1 flex-col">
-            <ScrollArea viewportRef={viewportRef} className="min-h-0 flex-1 px-4 py-4">
-              <div className="space-y-3 pr-2">
+            {actionContext && (
+              <div className="bg-muted/50 flex items-start justify-between gap-3 border-b px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{actionContext.title}</p>
+                  <p className="text-muted-foreground mt-0.5 text-xs">{actionContext.prompt}</p>
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="size-7 shrink-0"
+                  aria-label={t('craterAgent.clearTask')}
+                  onClick={() => clearActionContext(undefined)}
+                >
+                  <XIcon />
+                </Button>
+              </div>
+            )}
+            <ScrollArea
+              viewportRef={viewportRef}
+              className="min-h-0 flex-1 px-4 py-4 [&_[data-slot=scroll-area-viewport]]:!overflow-x-hidden [&_[data-slot=scroll-area-viewport]>div]:!block [&_[data-slot=scroll-area-viewport]>div]:!w-full [&_[data-slot=scroll-area-viewport]>div]:!min-w-0"
+            >
+              <div className="w-full max-w-full min-w-0 space-y-3 overflow-x-hidden pr-2">
                 {messages.length === 0 && (
                   <div className="flex items-start gap-2.5">
                     <AgentAvatar />
@@ -831,6 +1225,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
                 {messages.map((message) => (
                   <ChatMessage
                     key={message.id}
+                    identity={identity}
                     message={message}
                     user={user}
                     busy={busy}
@@ -847,6 +1242,11 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
                       setEditingText('')
                     }}
                     onResend={resendEditedMessage}
+                    runtime={formRuntime}
+                    onNavigate={navigateFromTool}
+                    onNavigateJob={navigateToJobDetailFromTool}
+                    onApply={applyFormPatch}
+                    onReject={rejectTool}
                   />
                 ))}
                 {status === 'submitted' && (
@@ -867,13 +1267,17 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
                   value={input}
                   rows={1}
                   className="max-h-36 min-h-11 resize-none overflow-y-auto"
-                  placeholder={t('craterAgent.placeholder')}
+                  placeholder={
+                    awaitingConfirmation
+                      ? t('craterAgent.confirmationRequiredPlaceholder')
+                      : t('craterAgent.placeholder')
+                  }
                   onChange={(event) => setInput(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
                     if (event.key === 'Enter' && !event.shiftKey) {
                       event.preventDefault()
-                      if (!busy) event.currentTarget.form?.requestSubmit()
+                      if (!busy && !awaitingConfirmation) event.currentTarget.form?.requestSubmit()
                     }
                   }}
                 />
@@ -881,11 +1285,22 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
                   type={generating ? 'button' : 'submit'}
                   size="icon"
                   className="size-11 shrink-0"
-                  disabled={!generating && (busy || input.trim().length === 0)}
+                  disabled={
+                    generating
+                      ? cancelled
+                      : busy || awaitingConfirmation || input.trim().length === 0
+                  }
                   aria-label={generating ? t('craterAgent.stop') : t('craterAgent.send')}
                   onClick={
                     generating
                       ? () => {
+                          const request = activeRequestRef.current
+                          if (request && !request.cancelPromise) {
+                            request.cancelPromise = cancelActiveRun(
+                              request.conversationID,
+                              request.userMessageID
+                            )
+                          }
                           void stop()
                           setCancelled(true)
                         }
@@ -899,13 +1314,114 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
                   )}
                 </Button>
               </div>
-              <p className="text-muted-foreground mt-2 text-xs">{t('craterAgent.disclaimer')}</p>
+              <p
+                className={cn(
+                  'mt-2 text-xs',
+                  awaitingConfirmation
+                    ? 'text-blue-700 dark:text-blue-300'
+                    : 'text-muted-foreground'
+                )}
+              >
+                {awaitingConfirmation
+                  ? t('craterAgent.confirmationRequired')
+                  : t('craterAgent.disclaimer')}
+              </p>
             </form>
           </section>
         </div>
       </SheetContent>
     </Sheet>
   )
+}
+
+function buildPageContext(
+  actionContext: AgentActionContext | undefined,
+  runtime: AgentFormRuntime | undefined,
+  resourceContext: AgentResourceContext | undefined,
+  pathname: string
+): AgentPageContext | undefined {
+  const currentRuntime =
+    runtime && normalizedRoute(runtime.capability.route) === normalizedRoute(pathname)
+      ? runtime
+      : undefined
+  const currentAction =
+    actionContext && normalizedRoute(actionContext.route) === normalizedRoute(pathname)
+      ? actionContext
+      : undefined
+  const currentPageResource =
+    resourceContext && normalizedRoute(resourceContext.route) === normalizedRoute(pathname)
+      ? resourceContext
+      : undefined
+  const currentActionResource =
+    currentAction?.resource &&
+    normalizedRoute(currentAction.resource.route) === normalizedRoute(pathname)
+      ? currentAction.resource
+      : undefined
+  const currentResource = currentPageResource ?? currentActionResource
+  if (!currentAction && !currentRuntime && !currentResource) return undefined
+
+  const effectiveAction: AgentActionContext = currentAction ?? {
+    action: currentResource ? 'diagnose-job' : 'assist-form',
+    title: currentResource ? 'Job diagnosis' : currentRuntime!.capability.title,
+    prompt: currentResource
+      ? 'Diagnose the current Crater job using available read-only evidence.'
+      : 'Assist with the currently open Crater form.',
+    route: currentResource ? currentResource.route : currentRuntime!.capability.route,
+    capabilityId: currentResource ? undefined : currentRuntime!.capability.id,
+  }
+  const compatibleRuntime =
+    currentRuntime &&
+    (!effectiveAction.capabilityId || currentRuntime.capability.id === effectiveAction.capabilityId)
+      ? currentRuntime
+      : undefined
+  return {
+    route: effectiveAction.route,
+    action: effectiveAction.action,
+    title: effectiveAction.title,
+    prompt: effectiveAction.prompt,
+    form: compatibleRuntime
+      ? {
+          capabilityId: compatibleRuntime.capability.id,
+          instanceId: compatibleRuntime.instanceId,
+          schemaVersion: compatibleRuntime.capability.schemaVersion,
+          title: compatibleRuntime.capability.title,
+          fields: compatibleRuntime.fields,
+          currentValues: compatibleRuntime.snapshot(),
+          options: compatibleRuntime.options(),
+        }
+      : undefined,
+    resource:
+      effectiveAction.action === 'diagnose-job' && currentResource
+        ? {
+            kind: currentResource.kind,
+            jobName: currentResource.jobName,
+            status: currentResource.status,
+            jobType: currentResource.jobType,
+          }
+        : undefined,
+  }
+}
+
+function normalizedRoute(route: string) {
+  return route.length > 1 ? route.replace(/\/+$/, '') : route
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+async function waitForFormOptions(
+  path: string,
+  runtimeRef: { current: AgentFormRuntime | undefined }
+): Promise<boolean> {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const runtime = runtimeRef.current
+    if (runtime && normalizedRoute(runtime.capability.route) === normalizedRoute(path)) {
+      if (runtime.optionsReady()) return true
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 100))
+  }
+  return false
 }
 
 async function agentFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {

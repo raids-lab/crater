@@ -36,6 +36,12 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -116,6 +122,94 @@ const formSchema = z.object({
 })
 
 type FormSchema = z.infer<typeof formSchema>
+
+const agentFields = defineAgentFormFields<FormSchema>()([
+  {
+    path: 'jobName',
+    label: 'craterAgent.formFields.jobName',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.image.imageLink',
+    label: 'craterAgent.formFields.image',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.cpu',
+    label: 'craterAgent.formFields.cpu',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.memory',
+    label: 'craterAgent.formFields.memory',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.gpu.count',
+    label: 'craterAgent.formFields.acceleratorCount',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.gpu.model',
+    label: 'craterAgent.formFields.acceleratorModel',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.network.enabled',
+    label: 'craterAgent.formFields.enableRDMA',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.resource.network.model',
+    label: 'craterAgent.formFields.rdmaModel',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'task.workingDir',
+    label: 'craterAgent.formFields.workingDirectory',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'volumeMounts',
+    label: 'craterAgent.formFields.volumeMounts',
+    valueType: 'volume-mount-array',
+  },
+  { path: 'forwards', label: 'craterAgent.formFields.portForwarding', valueType: 'forward-array' },
+  {
+    path: 'alertEnabled',
+    label: 'craterAgent.formFields.alerts',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'cpuPinningEnabled',
+    label: 'craterAgent.formFields.cpuPinning',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'nodeSelector.enable',
+    label: 'craterAgent.formFields.restrictNodes',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'nodeSelector.mode',
+    label: 'craterAgent.formFields.nodeMode',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'nodeSelector.nodes', label: 'craterAgent.formFields.nodes', valueType: 'string-array' },
+])
 
 const dataProcessor = (data: FormSchema) => {
   // 处理镜像字段兼容性
@@ -231,6 +325,12 @@ function RouteComponent() {
     control: form.control,
   })
 
+  useAgentFormCapability({
+    capability: agentFormCapabilities.jupyterJob,
+    fields: agentFields,
+    form,
+  })
+
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
@@ -278,6 +378,15 @@ function RouteComponent() {
             tipContent={`版本 ${MetadataFormJupyter.version}`}
           >
             <div className="items-centor flex w-full flex-wrap justify-start gap-2 sm:w-fit sm:flex-nowrap sm:justify-end sm:gap-3">
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'Jupyter 作业辅助填写',
+                  prompt: '说明用途、镜像和资源需求，Agent 将生成可确认的表单修改建议。',
+                  route: agentFormCapabilities.jupyterJob.route,
+                  capabilityId: agentFormCapabilities.jupyterJob.id,
+                }}
+              />
               <FormImportButton
                 metadata={MetadataFormJupyter}
                 dataProcessor={dataProcessor}

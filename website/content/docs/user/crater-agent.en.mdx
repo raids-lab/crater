@@ -3,13 +3,19 @@ title: Crater-Agent
 description: Configure and use the Crater platform assistant
 ---
 
-Crater-Agent is the assistant built into Crater. The current version provides platform guidance and basic conversation while preserving each user's conversation history. Questions about live jobs, images, logs, or cluster state are queried only after the corresponding platform tool is explicitly available, and the assistant never bypasses page permissions.
+Crater-Agent provides platform guidance, authorized job lists and diagnostics, and node and cluster resource queries. Portal users can query only their own jobs in the active account; changing entry points does not expand permissions. Raw logs and direct job creation, stopping, or deletion are not supported.
 
 ## Open the assistant
 
 The Crater-Agent launcher appears in the lower-right corner by default. The side panel supports creating, renaming, deleting, and stopping conversations.
 
 Turning off the floating launcher in personal settings hides this button without disabling Agent entry points provided by other pages.
+
+## Queries and confirmations
+
+Ask, for example, “Analyze only my five latest failed jobs” or “How many GPUs does this node have?” Automatic queries appear as collapsed tool entries above the answer. Cards after the answer request confirmation for navigation or form changes; they never submit a form. Confirm or cancel pending cards before sending another message.
+
+When you request a new job from another page, the side panel stays open after you confirm navigation and continues with a proposal based on the new form's loaded GPU and image options. If you did not specify an image, it may suggest a suitable basic Python image from those options. Form assistance changes only allowlisted fields on the current form; reopening a form requires a new proposal. Available resources are point-in-time estimates based on requests, not live utilization or a scheduling guarantee. Historical failures must be interpreted using the evidence retained for that job.
 
 ## Configure a personal model
 

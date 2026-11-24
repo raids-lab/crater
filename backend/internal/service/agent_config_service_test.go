@@ -197,7 +197,7 @@ func TestPersonalLLMHTTPClientDisablesEnvironmentProxy(t *testing.T) {
 
 func TestAgentContextRoundTrip(t *testing.T) {
 	const secret = "this-is-a-test-secret-with-at-least-32-bytes"
-	token, err := SignAgentContext(42, AgentIdentityAdmin, secret)
+	token, err := SignAgentContext(42, 7, AgentIdentityAdmin, secret)
 	if err != nil {
 		t.Fatalf("sign context: %v", err)
 	}

@@ -177,7 +177,16 @@ run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host
 	GIN_MODE="$(GIN_MODE)" KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
-pre-commit-check: lint docs test-tensorboard-launcher test-job-sessions test-job-phases ## Run lint, docs, launcher, session and phase tests.
+pre-commit-check: lint docs test-agent-tools test-tensorboard-launcher test-job-sessions test-job-phases ## Run lint, docs, and isolated service tests.
+
+.PHONY: test-agent-tools
+test-agent-tools: ## Test Agent services without loading cluster configuration.
+	go test internal/service/agent_identity.go internal/service/agent_context.go \
+		internal/service/agent_page_context.go internal/service/agent_page_context_test.go \
+		internal/service/agent_conversation_service.go internal/service/agent_conversation_service_test.go \
+		internal/service/agent_tool_output_service.go internal/service/agent_tool_output_service_test.go \
+		internal/service/agent_platform_read_service.go internal/service/agent_platform_read_service_test.go \
+		internal/service/agent_job_diagnostic_service.go internal/service/agent_job_diagnostic_service_test.go
 
 .PHONY: test-tensorboard-launcher
 test-tensorboard-launcher: ## Test the embedded launcher with Python 3 (standard library only).

@@ -40,6 +40,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import { VolumeMountsCard } from '@/components/form/data-mount-form-field'
 import { EnvFormCard } from '@/components/form/env-form-field'
 import FormExportButton from '@/components/form/form-export-button'
@@ -245,6 +251,112 @@ const formSchema = z.object({
 
 type FormSchema = z.infer<typeof formSchema>
 
+const agentFields = defineAgentFormFields<FormSchema>()([
+  {
+    path: 'jobName',
+    label: 'craterAgent.formFields.jobName',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'ps.replicas',
+    label: 'craterAgent.formFields.psReplicas',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'ps.image.imageLink',
+    label: 'craterAgent.formFields.psImage',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'ps.resource.cpu',
+    label: 'craterAgent.formFields.psCpu',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'ps.resource.memory',
+    label: 'craterAgent.formFields.psMemory',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'ps.command',
+    label: 'craterAgent.formFields.psCommand',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.replicas',
+    label: 'craterAgent.formFields.workerReplicas',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.image.imageLink',
+    label: 'craterAgent.formFields.workerImage',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.resource.cpu',
+    label: 'craterAgent.formFields.workerCpu',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.resource.memory',
+    label: 'craterAgent.formFields.workerMemory',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.resource.gpu.count',
+    label: 'craterAgent.formFields.workerAcceleratorCount',
+    valueType: 'number',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.resource.gpu.model',
+    label: 'craterAgent.formFields.workerAcceleratorModel',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'worker.command',
+    label: 'craterAgent.formFields.workerCommand',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'volumeMounts',
+    label: 'craterAgent.formFields.volumeMounts',
+    valueType: 'volume-mount-array',
+  },
+  { path: 'forwards', label: 'craterAgent.formFields.portForwarding', valueType: 'forward-array' },
+  {
+    path: 'alertEnabled',
+    label: 'craterAgent.formFields.alerts',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'nodeSelector.enable',
+    label: 'craterAgent.formFields.restrictNodes',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'nodeSelector.mode',
+    label: 'craterAgent.formFields.nodeMode',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'nodeSelector.nodes', label: 'craterAgent.formFields.nodes', valueType: 'string-array' },
+])
+
 const dataProcessor = (data: FormSchema) => {
   // 处理镜像字段兼容性
   data.ps.image = ensureImageCompatibility(data.ps.image) as {
@@ -410,6 +522,12 @@ function RouteComponent() {
     control: form.control,
   })
 
+  useAgentFormCapability({
+    capability: agentFormCapabilities.tensorflowJob,
+    fields: agentFields,
+    form,
+  })
+
   // 2. Define a submit handler.
   const onSubmit = (values: FormSchema) => {
     // Do something with the form values.
@@ -454,6 +572,16 @@ function RouteComponent() {
             tipContent={`版本 ${MetadataFormTensorflow.version}`}
           >
             <div className="items-centor flex w-full flex-wrap justify-start gap-2 sm:w-fit sm:flex-nowrap sm:justify-end sm:gap-3">
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'TensorFlow PS 作业辅助填写',
+                  prompt:
+                    '说明参数服务器与 Worker 规模、镜像和命令，Agent 将生成可确认的表单修改建议。',
+                  route: agentFormCapabilities.tensorflowJob.route,
+                  capabilityId: agentFormCapabilities.tensorflowJob.id,
+                }}
+              />
               <FormImportButton
                 metadata={MetadataFormTensorflow}
                 dataProcessor={dataProcessor}

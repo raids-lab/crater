@@ -16,7 +16,7 @@
 // i18n-processed-v1.1.0
 import React, { JSX, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Markdown from 'react-markdown'
+import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { CopyButton } from '@/components/button/copy-button'
@@ -32,13 +32,14 @@ const highlightCache = new Map<string, any[]>()
 
 interface MarkdownRendererProps {
   children: string
+  components?: Components
 }
 
 // 使用React.memo来避免不必要的重渲染
-export const MarkdownRenderer = React.memo(({ children }: MarkdownRendererProps) => {
+export const MarkdownRenderer = React.memo(({ children, components }: MarkdownRendererProps) => {
   return (
     <div className="space-y-3">
-      <Markdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
+      <Markdown remarkPlugins={[remarkGfm]} components={{ ...COMPONENTS, ...components }}>
         {children}
       </Markdown>
     </div>

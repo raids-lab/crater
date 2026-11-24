@@ -1,9 +1,10 @@
-# Crater-Agent Foundation
+# Crater-Agent Architecture
 
 ## Scope
 
-This milestone provides authenticated, streaming model conversation and two-level
-LLM credentials. It intentionally contains no Crater business tools.
+Crater-Agent provides authenticated streaming conversation, two-level LLM
+credentials, read-only platform tools, and browser-confirmed navigation and form
+proposals. It never submits forms or mutates cluster resources autonomously.
 
 ## Request path
 
@@ -53,7 +54,8 @@ and unresolved destinations are rejected to prevent server-side network access.
 
 ## Extension boundary
 
-The current runtime always selects the `platform-guide` Skill. It combines
+The runtime selects the same read capabilities for every entry point, adding
+form proposals only when a form registers its typed field allowlist. It combines
 invariant safety instructions with curated, version-controlled user
 documentation and asks the model to answer in the user's language. Scope and
 prompt-injection handling are instruction based rather than keyword based, so
@@ -61,6 +63,20 @@ valid multilingual platform questions are not rejected by a brittle regular
 expression. Business capabilities are added through the typed tool registry in
 `crater-agent/src/tools/registry.ts`. Authorization and data ownership remain
 enforced by the Go backend.
+
+Signed context includes the login user, active account, and user/admin identity.
+Job reads enforce ownership and account scope in Go; admin queries can select
+other owners. Page context is untrusted descriptive data, not authorization.
+Queries are paginated and diagnostics are bounded; batch tools stop on abort and
+each internal read has a timeout. Capacity estimates include init-container
+requests and Pod overhead, but do not promise scheduler acceptance.
+
+Automatic tool summaries precede the answer. Navigation and form proposals are
+separate confirmation cards after it. The browser validates role-specific routes
+and form instance/schema/field compatibility before acting. Terminal tool
+results are persisted only to owned, non-superseded assistant messages; identical
+retries are idempotent, while changing an already resolved result is rejected.
+Administrative history is grouped by user and identity and remains read-only.
 
 ## Deployment
 

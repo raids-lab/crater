@@ -835,6 +835,13 @@ const docTemplate = `{
                         "description": "Agent identity scope",
                         "name": "identityScope",
                         "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -875,6 +882,63 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentUIMessage"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/agent/subjects": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent Admin"
+                ],
+                "summary": "List users with Agent conversation history",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Username, nickname, or user ID",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "identityScope",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentSubjectPage"
                         }
                     }
                 }
@@ -4844,6 +4908,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/agent/conversations/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Cancel the active Agent response",
+                "parameters": [
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "X-Crater-Agent-Identity",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Turn to cancel",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.cancelAgentRunReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-bool"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/agent/conversations/{id}/messages": {
             "get": {
                 "security": [
@@ -4882,6 +4998,61 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_github_com_raids-lab_crater_internal_service_AgentUIMessage"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/agent/conversations/{id}/tool-output": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Agent"
+                ],
+                "summary": "Save an Agent tool result",
+                "parameters": [
+                    {
+                        "enum": [
+                            "user",
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Agent identity scope",
+                        "name": "X-Crater-Agent-Identity",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Resolved tool result",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.saveAgentToolOutputReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-string"
                         }
                     }
                 }
@@ -13309,6 +13480,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-bool": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "boolean"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_dao_model_GpuAnalysis": {
             "type": "object",
             "properties": {
@@ -13438,6 +13624,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentConversationPage"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentSubjectPage": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentSubjectPage"
                 },
                 "msg": {
                     "type": "string"
@@ -14189,6 +14390,52 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_service.AdminAgentSubjectPage": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AdminAgentSubjectSummary"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AdminAgentSubjectSummary": {
+            "type": "object",
+            "properties": {
+                "conversationCount": {
+                    "type": "integer"
+                },
+                "identityScope": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentIdentity"
+                },
+                "messageCount": {
+                    "type": "integer"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "integer"
+                },
+                "userId": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_service.AgentConversationSummary": {
             "type": "object",
             "properties": {
@@ -14209,6 +14456,92 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_service.AgentFormContext": {
+            "type": "object",
+            "properties": {
+                "capabilityId": {
+                    "type": "string"
+                },
+                "currentValues": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentFormFieldDescriptor"
+                    }
+                },
+                "instanceId": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentFormOptionSet"
+                    }
+                },
+                "schemaVersion": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentFormFieldDescriptor": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "valueType": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentFormOption": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentFormOptionSet": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentFormOption"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_service.AgentIdentity": {
             "type": "string",
             "enum": [
@@ -14219,6 +14552,46 @@ const docTemplate = `{
                 "AgentIdentityUser",
                 "AgentIdentityAdmin"
             ]
+        },
+        "github_com_raids-lab_crater_internal_service.AgentPageContext": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "form": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentFormContext"
+                },
+                "prompt": {
+                    "type": "string"
+                },
+                "resource": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentResourceContext"
+                },
+                "route": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_service.AgentResourceContext": {
+            "type": "object",
+            "properties": {
+                "jobName": {
+                    "type": "string"
+                },
+                "jobType": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
         },
         "github_com_raids-lab_crater_internal_service.AgentUIMessage": {
             "type": "object",
@@ -16458,8 +16831,23 @@ const docTemplate = `{
                 "mode": {
                     "type": "string"
                 },
+                "pageContext": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service.AgentPageContext"
+                },
                 "parentMessageId": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_handler.cancelAgentRunReq": {
+            "type": "object",
+            "required": [
+                "triggerMessageId"
+            ],
+            "properties": {
+                "triggerMessageId": {
+                    "type": "string",
+                    "maxLength": 128
                 }
             }
         },
@@ -16544,6 +16932,41 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "maxLength": 320
+                }
+            }
+        },
+        "internal_handler.saveAgentToolOutputReq": {
+            "type": "object",
+            "required": [
+                "messageId",
+                "state",
+                "toolCallId"
+            ],
+            "properties": {
+                "errorText": {
+                    "type": "string",
+                    "maxLength": 2048
+                },
+                "messageId": {
+                    "type": "string",
+                    "maxLength": 128
+                },
+                "output": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "state": {
+                    "type": "string",
+                    "enum": [
+                        "output-available",
+                        "output-error"
+                    ]
+                },
+                "toolCallId": {
+                    "type": "string",
+                    "maxLength": 128
                 }
             }
         },
