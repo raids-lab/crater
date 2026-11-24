@@ -1851,6 +1851,7 @@
   "userEditDialog.teacherLabel": "지도 교수",
   "userEditDialog.teacherPlaceholder": "지도교수 이름",
   "userEditDialog.title": "사용자 정보 수정",
+  "userFields.billingUnavailable": "포인트를 불러올 수 없습니다. 재시도",
   "userFields.labels.createdAt": "가입 시간",
   "userFields.labels.email": "이메일",
   "userFields.labels.expiredAt": "만료 시간",
@@ -1860,6 +1861,7 @@
   "userFields.labels.nickname": "닉네임",
   "userFields.labels.phone": "전화번호",
   "userFields.labels.teacher": "지도교수",
+  "userFields.ldapOverwrite": "다음 LDAP 로그인 시 디렉터리 값으로 덮어씁니다",
   "userFields.loadBillingError": "사용자 포인트를 불러올 수 없습니다. 새로고침하여 다시 시도하세요.",
   "userFields.loadError": "사용자 필드 설정을 불러올 수 없습니다. 다시 시도하세요.",
   "userFields.loadUsersError": "사용자 목록을 불러올 수 없습니다. 새로고침하여 다시 시도하세요.",
@@ -1975,7 +1977,5 @@
   "用户": "User",
   "请至少选择一个分享对象": "Please select at least one share target",
   "请输入": "Please enter",
-  "账户": "Account",
-  "userFields.ldapOverwrite": "다음 LDAP 로그인 시 디렉터리 값으로 덮어씁니다",
-  "userFields.billingUnavailable": "포인트를 불러올 수 없습니다. 재시도"
+  "账户": "Account"
 }

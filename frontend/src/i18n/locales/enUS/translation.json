@@ -1854,6 +1854,7 @@
   "userEditDialog.teacherLabel": "Supervisor",
   "userEditDialog.teacherPlaceholder": "Supervisor's Name",
   "userEditDialog.title": "Edit User Information",
+  "userFields.billingUnavailable": "Points unavailable; retry",
   "userFields.labels.createdAt": "Registered at",
   "userFields.labels.email": "Email",
   "userFields.labels.expiredAt": "Expires at",
@@ -1863,6 +1864,7 @@
   "userFields.labels.nickname": "Nickname",
   "userFields.labels.phone": "Phone",
   "userFields.labels.teacher": "Advisor",
+  "userFields.ldapOverwrite": "Overwritten by the directory on the next LDAP login",
   "userFields.loadBillingError": "Unable to load user balances. Refresh to retry.",
   "userFields.loadError": "Unable to load user field settings. Please retry.",
   "userFields.loadUsersError": "Unable to load users. Refresh to retry.",
@@ -1978,7 +1980,5 @@
   "用户": "User",
   "请至少选择一个分享对象": "Please select at least one share target",
   "请输入": "Please enter",
-  "账户": "Account",
-  "userFields.ldapOverwrite": "Overwritten by the directory on the next LDAP login",
-  "userFields.billingUnavailable": "Points unavailable; retry"
+  "账户": "Account"
 }
