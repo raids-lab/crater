@@ -72,7 +72,7 @@ export const dataFormSchema = z.object({
 
 export type DataFormSchema = z.infer<typeof dataFormSchema>
 
-const agentFields = defineAgentFormFields<DataFormSchema>()([
+const sharedFileAgentFields = defineAgentFormFields<DataFormSchema>()([
   {
     path: 'datasetName',
     label: 'craterAgent.formFields.resourceName',
@@ -91,6 +91,10 @@ const agentFields = defineAgentFormFields<DataFormSchema>()([
     valueType: 'string',
     includeCurrentValue: true,
   },
+])
+
+const agentFields = defineAgentFormFields<DataFormSchema>()([
+  ...sharedFileAgentFields,
   {
     path: 'weburl',
     label: 'craterAgent.formFields.sourceURL',
@@ -140,8 +144,8 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
         type: type ?? 'dataset',
         tags: values.tags?.map((item) => item.value) ?? [],
         weburl: values.weburl,
-        ispublic: values.ispublic,
-        editable: !values.readOnly,
+        ispublic: type === 'sharefile' ? false : values.ispublic,
+        editable: type === 'sharefile' ? true : !values.readOnly,
       }),
     onSuccess: async (_, { datasetName }) => {
       await queryClient.invalidateQueries({
@@ -172,7 +176,11 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
       : type === 'sharefile'
         ? agentFormCapabilities.sharedFileCreate
         : agentFormCapabilities.datasetCreate
-  useAgentFormCapability({ capability, fields: agentFields, form })
+  useAgentFormCapability({
+    capability,
+    fields: type === 'sharefile' ? sharedFileAgentFields : agentFields,
+    form,
+  })
   useEffect(() => {
     if (type === 'sharefile') {
       form.setValue('ispublic', false)

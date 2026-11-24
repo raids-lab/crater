@@ -4,7 +4,7 @@ import type { UIMessage } from "ai";
 
 import { createChatRoutes } from "./chat.js";
 
-void test("an explicit Jupyter creation request opens the form without relying on model tool choice", async (t) => {
+void test("an explicit Jupyter creation request can use the navigation tool", async (t) => {
   const config = {
     port: 8000,
     backendInternalURL: "http://backend.invalid",
@@ -16,7 +16,18 @@ void test("an explicit Jupyter creation request opens the form without relying o
     "fetch",
     (input: string | URL | Request, init?: RequestInit) => {
       const url = input instanceof Request ? input.url : input.toString();
-      assert.ok(url.endsWith("/complete"), `unexpected model request: ${url}`);
+      if (url.endsWith("/llm/chat/completions")) {
+        return Promise.resolve(
+          new Response(
+            `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "I'll open the Jupyter form." }, finish_reason: null }] })}\n\n` +
+              `data: ${JSON.stringify({ choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "navigate-1", type: "function", function: { name: "navigate_to_page", arguments: JSON.stringify({ path: "/portal/jobs/new/jupyter-job", label: "Open Jupyter form", reason: "Prepare the requested job" }) } }] }, finish_reason: null }] })}\n\n` +
+              `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] })}\n\n` +
+              "data: [DONE]\n\n",
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+        );
+      }
+      assert.ok(url.endsWith("/complete"), `unexpected request: ${url}`);
       assert.ok(init && typeof init.body === "string");
       completions.push(
         (JSON.parse(init.body) as { message: UIMessage }).message,
@@ -65,7 +76,61 @@ void test("an explicit Jupyter creation request opens the form without relying o
   );
 });
 
-void test("a later tool-enabled turn does not replay synthetic form tool calls to a thinking model", async (t) => {
+void test("a negated Jupyter request does not bypass the model with a form navigation", async (t) => {
+  const config = {
+    port: 8000,
+    backendInternalURL: "http://backend.invalid",
+    internalToken: "isolated-test-internal-token-value",
+  };
+  let modelCalls = 0;
+  t.mock.method(globalThis, "fetch", (input: string | URL | Request) => {
+    const url = input instanceof Request ? input.url : input.toString();
+    if (url.endsWith("/llm/chat/completions")) {
+      modelCalls += 1;
+      return Promise.resolve(
+        new Response(
+          `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "Jupyter is an interactive job environment." }, finish_reason: null }] })}\n\n` +
+            `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n` +
+            "data: [DONE]\n\n",
+          { headers: { "Content-Type": "text/event-stream" } },
+        ),
+      );
+    }
+    assert.ok(url.endsWith("/complete"), `unexpected request: ${url}`);
+    return Promise.resolve(Response.json({ code: 0 }));
+  });
+  const response = await createChatRoutes(config).request("/chat", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.internalToken}`,
+      "X-Crater-Agent-Context": "signed-test-context",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      runId: "9ed49cd2-c1be-4f55-8985-032cd72b4865",
+      identityScope: "user",
+      messages: [
+        {
+          id: "no-create",
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: "Do not create a Jupyter job; just explain what it is.",
+            },
+          ],
+        },
+      ],
+    }),
+  });
+  assert.equal(response.status, 200);
+  const stream = await response.text();
+  assert.match(stream, /Jupyter is an interactive job environment/);
+  assert.doesNotMatch(stream, /navigate_to_page/);
+  assert.equal(modelCalls, 1);
+});
+
+void test("a later turn preserves assistant text and read-only evidence without replaying interaction tools", async (t) => {
   const config = {
     port: 8000,
     backendInternalURL: "http://backend.invalid",
@@ -78,13 +143,14 @@ void test("a later tool-enabled turn does not replay synthetic form tool calls t
       const url = input instanceof Request ? input.url : input.toString();
       if (url.endsWith("/llm/chat/completions")) {
         assert.ok(init && typeof init.body === "string");
-        const body = JSON.parse(init.body) as {
-          messages: { role: string; tool_calls?: unknown }[];
-        };
-        assert.ok(body.messages.every((message) => !message.tool_calls));
-        assert.ok(
-          body.messages.every((message) => message.role !== "assistant"),
-        );
+        const body = JSON.parse(init.body) as { messages: unknown[] };
+        const history = JSON.stringify(body.messages);
+        assert.match(history, /已打开表单并给出建议/);
+        assert.match(history, /job-from-read-only-result/);
+        assert.match(history, /untrusted history/);
+        assert.match(history, /accepted/);
+        assert.doesNotMatch(history, /"name":"navigate_to_page"/);
+        assert.doesNotMatch(history, /"name":"propose_form_patch"/);
         return Promise.resolve(
           new Response(
             `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "你好" }, finish_reason: null }] })}\n\n` +
@@ -134,6 +200,13 @@ void test("a later tool-enabled turn does not replay synthetic form tool calls t
               state: "output-available",
               input: { patches: [{ path: "jobName", value: "demo" }] },
               output: { status: "accepted" },
+            },
+            {
+              type: "tool-list_jobs",
+              toolCallId: "read-1",
+              state: "output-available",
+              input: { page: 1 },
+              output: { items: [{ name: "job-from-read-only-result" }] },
             },
           ],
         },
@@ -274,7 +347,7 @@ void test("stream a read tool, persist structured history, then continue the con
   assert.equal(completions[1]?.status, "completed");
 });
 
-void test("a confirmed form navigation continues the existing assistant message", async (t) => {
+void test("a confirmed form navigation requests suggestions in the user's language", async (t) => {
   const config = {
     port: 8000,
     backendInternalURL: "http://backend.invalid",
@@ -296,6 +369,11 @@ void test("a confirmed form navigation continues the existing assistant message"
         assert.equal(body.tool_choice, undefined);
         assert.equal(body.tools, undefined);
         assert.ok(body.messages?.every((message) => !message.tool_calls));
+        assert.match(
+          JSON.stringify(body.messages),
+          /用户最新一条消息的主要语言/,
+        );
+        assert.doesNotMatch(JSON.stringify(body.messages), /简短中文说明/);
         return Promise.resolve(
           Response.json({
             choices: [
@@ -304,38 +382,38 @@ void test("a confirmed form navigation continues the existing assistant message"
                 message: {
                   role: "assistant",
                   content: JSON.stringify({
-                    text: "已准备表单建议。",
-                    summary: "基础配置",
+                    text: "Form suggestions are ready.",
+                    summary: "Starter setup",
                     patches: [
                       {
                         path: "jobName",
                         value: "python-demo",
-                        reason: "短名称",
+                        reason: "Short name",
                       },
                       {
                         path: "task.resource.cpu",
                         value: 4,
-                        reason: "入门配置",
+                        reason: "Starter configuration",
                       },
                       {
                         path: "task.resource.memory",
                         value: 8,
-                        reason: "入门配置",
+                        reason: "Starter configuration",
                       },
                       {
                         path: "task.resource.gpu.count",
                         value: 1,
-                        reason: "试用 GPU",
+                        reason: "Try a GPU",
                       },
                       {
                         path: "task.resource.gpu.model",
                         value: "nvidia.com/p100",
-                        reason: "入门型号",
+                        reason: "Entry-level model",
                       },
                       {
                         path: "task.image.imageLink",
                         value: "registry.example/python-basic:latest",
-                        reason: "Python 基础镜像",
+                        reason: "Basic Python image",
                       },
                     ],
                   }),
@@ -388,7 +466,7 @@ void test("a confirmed form navigation continues the existing assistant message"
           parts: [
             {
               type: "text",
-              text: "创建 Jupyter 作业跑 Python demo，申请一张入门 GPU",
+              text: "Create a Jupyter job for a Python demo with one entry-level GPU",
             },
           ],
         },
@@ -452,7 +530,7 @@ void test("a confirmed form navigation continues the existing assistant message"
     }),
   });
   assert.equal(response.status, 200);
-  assert.match(await response.text(), /已准备表单建议/);
+  assert.match(await response.text(), /Form suggestions are ready/);
   assert.equal(completions.length, 1);
   const completion = completions[0];
   assert.ok(completion);
@@ -462,7 +540,8 @@ void test("a confirmed form navigation continues the existing assistant message"
   );
   assert.ok(
     completion.parts.some(
-      (part) => part.type === "text" && part.text === "已准备表单建议。",
+      (part) =>
+        part.type === "text" && part.text === "Form suggestions are ready.",
     ),
   );
   assert.ok(

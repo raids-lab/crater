@@ -139,14 +139,25 @@ export function useAgentFormCapability<TValues extends FieldValues>({
         }
 
         const changedPaths: FieldPath<TValues>[] = []
-        for (const { path, value } of changes) {
+        const setField = (path: FieldPath<TValues>, value: unknown) => {
           form.setValue(path, value as FieldPathValue<TValues, typeof path>, {
             shouldDirty: true,
             shouldTouch: true,
           })
           changedPaths.push(path)
         }
-        if (changedPaths.length > 0) await form.trigger(changedPaths)
+        for (const { path, value } of changes) {
+          if (!path.endsWith('.resource.gpu.model') || form.getValues(path) === value) continue
+          const resourcePath = path.slice(0, -'.gpu.model'.length)
+          setField(`${resourcePath}.network.enabled` as FieldPath<TValues>, false)
+          setField(`${resourcePath}.network.model` as FieldPath<TValues>, undefined)
+          setField(`${resourcePath}.vgpu.enabled` as FieldPath<TValues>, false)
+          setField(`${resourcePath}.vgpu.models` as FieldPath<TValues>, undefined)
+        }
+        for (const { path, value } of changes) {
+          setField(path, value)
+        }
+        if (changedPaths.length > 0) await form.trigger([...new Set(changedPaths)])
         return changedPaths
       },
     }
