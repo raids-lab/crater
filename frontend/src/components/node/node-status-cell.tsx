@@ -100,7 +100,7 @@ const SecondaryStatusPill: FC<{ status: NodeStatus; tooltip: ReactNode }> = ({
         <Badge
           variant="outline"
           className={cn(
-            'cursor-help rounded-[5px] border-none px-1.5 py-0 text-[11px] leading-4 font-medium',
+            'cursor-help rounded-full border-none px-2 py-0 text-[11px] leading-4 font-medium',
             meta.color
           )}
           tabIndex={0}
@@ -137,17 +137,19 @@ export const NodeStatusCell: FC<{
           }
         />
 
-        <Tooltip>
-          <TooltipTrigger
-            className={cn(
-              'bg-secondary text-secondary-foreground flex size-4 shrink-0 items-center justify-center rounded-full text-xs hover:cursor-help',
-              { 'bg-primary text-primary-foreground': workloads > 0 }
-            )}
-          >
-            {workloads}
-          </TooltipTrigger>
-          <TooltipContent>{workloads} 个作业正在运行</TooltipContent>
-        </Tooltip>
+        {(health.state === NodeStatus.Ready || workloads > 0) && (
+          <Tooltip>
+            <TooltipTrigger
+              className={cn(
+                'bg-secondary text-secondary-foreground flex size-4 shrink-0 items-center justify-center rounded-full text-xs hover:cursor-help',
+                { 'bg-primary text-primary-foreground': workloads > 0 }
+              )}
+            >
+              {workloads}
+            </TooltipTrigger>
+            <TooltipContent>{workloads} 个作业正在运行</TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {(pressures.length > 0 || unschedulable || occupied) && (
