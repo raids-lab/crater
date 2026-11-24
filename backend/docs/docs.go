@@ -5526,7 +5526,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute"
+                            "$ref": "#/definitions/internal_handler.UserAvatarUpdateReq"
                         }
                     }
                 ],
@@ -9703,6 +9703,30 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system-config/user-fields": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SystemConfig"
+                ],
+                "summary": "Get authentication-independent user field presentation",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_github_com_raids-lab_crater_pkg_config_UserFieldPresentation"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/tensorboard": {
             "get": {
                 "security": [
@@ -13494,16 +13518,19 @@ const docTemplate = `{
         "github_com_raids-lab_crater_pkg_config.UserFieldPresentation": {
             "type": "object",
             "properties": {
+                "editable": {
+                    "type": "boolean"
+                },
                 "labels": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     }
                 },
-                "showInForm": {
+                "ldapManaged": {
                     "type": "boolean"
                 },
-                "showInTable": {
+                "showToAll": {
                     "type": "boolean"
                 }
             }
@@ -13894,55 +13921,25 @@ const docTemplate = `{
         "internal_handler.AdminUpdateUserAttributesReq": {
             "type": "object",
             "properties": {
-                "avatar": {
-                    "description": "头像",
-                    "type": "string"
-                },
                 "containerSysAdminEnabled": {
                     "type": "boolean"
                 },
                 "email": {
-                    "description": "邮箱",
-                    "type": "string"
-                },
-                "expiredAt": {
-                    "description": "过期时间",
-                    "type": "string"
-                },
-                "gid": {
-                    "description": "GID",
                     "type": "string"
                 },
                 "group": {
-                    "description": "课题组",
                     "type": "string"
-                },
-                "id": {
-                    "description": "ID",
-                    "type": "integer"
                 },
                 "identity": {
-                    "description": "身份或职务（与权限角色无关）",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "账号",
                     "type": "string"
                 },
                 "nickname": {
-                    "description": "昵称，如果没有指定，则与账号相同",
                     "type": "string"
                 },
                 "phone": {
-                    "description": "电话",
                     "type": "string"
                 },
                 "teacher": {
-                    "description": "老师",
-                    "type": "string"
-                },
-                "uid": {
-                    "description": "UID and GID are used for Filesystem",
                     "type": "string"
                 }
             }
@@ -15295,6 +15292,14 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler.UserAvatarUpdateReq": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_handler.UserBanRecordResp": {
             "type": "object",
             "properties": {
@@ -15371,6 +15376,12 @@ const docTemplate = `{
                     "description": "创建时间",
                     "type": "string"
                 },
+                "email": {
+                    "type": "string"
+                },
+                "expiredAt": {
+                    "type": "string"
+                },
                 "extraBalance": {
                     "description": "用户额外点数",
                     "type": "number"
@@ -15383,12 +15394,21 @@ const docTemplate = `{
                     "description": "用户ID",
                     "type": "integer"
                 },
+                "identity": {
+                    "type": "string"
+                },
+                "lastLoginAt": {
+                    "type": "string"
+                },
                 "name": {
                     "description": "用户名称",
                     "type": "string"
                 },
                 "nickname": {
                     "description": "用户昵称",
+                    "type": "string"
+                },
+                "phone": {
                     "type": "string"
                 },
                 "role": {

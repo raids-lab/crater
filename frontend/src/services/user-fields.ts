@@ -9,19 +9,17 @@ export const userFieldKeys = [
   'createdAt',
   'lastLoginAt',
 ] as const
-
 export type UserFieldKey = (typeof userFieldKeys)[number]
 export type EditableUserField = Exclude<UserFieldKey, 'expiredAt' | 'createdAt' | 'lastLoginAt'>
-
 export interface UserFieldPresentation {
-  showInTable: boolean
-  showInForm: boolean
+  showToAll?: boolean
+  editable?: boolean
+  ldapManaged?: boolean
   labels?: Record<string, string>
 }
 export type UserFields = Partial<Record<UserFieldKey, UserFieldPresentation>>
 
-// Use an exact locale override first, then its base language. Never fall back to
-// an unrelated deployment label: the caller supplies the built-in translation.
+// Web and CLI use normalized locale keys in lexical order for a stable fallback.
 export function userFieldLabel(
   fields: UserFields,
   key: UserFieldKey,
@@ -31,14 +29,19 @@ export function userFieldLabel(
   const normalize = (value: string) => value.replace(/[-_]/g, '').toLowerCase()
   const locale = normalize(language)
   const base = language.split(/[-_]/)[0].toLowerCase().slice(0, 2)
-  const labels = Object.entries(fields[key]?.labels ?? {})
+  const labels = Object.entries(fields[key]?.labels ?? {}).filter(([, label]) => label.trim())
+  labels.sort(([a], [b]) => {
+    const left = normalize(a),
+      right = normalize(b)
+    return left < right ? -1 : left > right ? 1 : a < b ? -1 : a > b ? 1 : 0
+  })
   return (
-    labels.find(([lang, label]) => normalize(lang) === locale && label.trim())?.[1] ??
-    labels.find(([lang, label]) => normalize(lang) === base && label.trim())?.[1] ??
+    labels.find(([lang]) => normalize(lang) === locale)?.[1] ??
+    labels.find(([lang]) => normalize(lang) === base)?.[1] ??
+    labels[0]?.[1] ??
     fallback
   )
 }
-
-export function visibleUserFields(fields: UserFields, surface: 'showInTable' | 'showInForm') {
-  return userFieldKeys.filter((key) => fields[key]?.[surface])
+export function visibleUserFields(fields: UserFields, editableOnly = false) {
+  return userFieldKeys.filter((key) => fields[key] && (!editableOnly || fields[key]?.editable))
 }

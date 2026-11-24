@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 
@@ -80,7 +82,18 @@ func runUserLs(cmd *cobra.Command, _ []string) error {
 	users = filterAdminUsers(users, options.Search, options.Role, options.Status)
 	sortAdminUsers(users)
 	page := paginateList(users, options.ListOptions)
-	return writeListPage("users", page, options.AllPages, printUserTable)
+	if outputJSON || options.Base {
+		return writeListPage("users", page, options.AllPages, printUserTable)
+	}
+	fields, err := client.GetRaw("/v1/system-config/user-fields", nil)
+	if err != nil {
+		var requestError *api.RequestError
+		if errors.As(err, &requestError) && requestError.HTTPStatus == http.StatusNotFound {
+			return writeListPage("users", page, options.AllPages, printUserTable)
+		}
+		return cliErrFromAPI(err)
+	}
+	return writeListPage("users", page, options.AllPages, func(rows []api.AdminUser) { printUserFieldsTable(rows, rawMap(fields)) })
 }
 
 func readAdminUserListOptions(cmd *cobra.Command) (adminUserListOptions, error) {
@@ -237,7 +250,7 @@ func userStatusLabel(status uint8) string {
 }
 
 func init() {
-	userCmd.AddCommand(userGetCmd, userEmailCmd)
+	userCmd.AddCommand(userGetCmd, userEmailCmd, userFieldsCmd)
 	rootCmd.AddCommand(userCmd)
 	adminUserLsCmd.Flags().Bool("base", false, "List base user information")
 	adminUserLsCmd.Flags().String("search", "", i18n.T("flag_search"))

@@ -54,3 +54,7 @@ crater admin operation-logs --page 1 --limit 20 --json
 3. 采用公共分页的管理员 Job、镜像/构建、计费作业、工单和用户列表默认只返回 `15` 条并包含 `data.pagination`；优先逐页读取，只有明确需要完整结果时才使用 `--all-pages`。`operation-logs` 保留自己的 `--page` / `--limit` 契约，不要套用 `--page-size`。
 4. 工单的 `--creator` 仅属于 `crater admin order ls`；普通用户工单列表没有该 flag。分页与筛选值错误会聚合，读取 `context.issues` 一次修正。
 5. API 失败时根据 stderr JSON 的 `category`、`code`、`context.http_status` 判断是未登录、无权限、资源不存在还是服务端错误。
+
+## 用户字段配置
+
+用 `crater user fields --json --no-interactive` 单独获取当前启用的用户字段、名称和公开设置，再解释用户响应。字段可能改名，例如 `group` 可以表示毕业年份，不能只靠内置键名猜测含义。表格模式会读取配置，名称回退规则与 Web 相同：当前地区、基础语言、按归一化语言键字典序选其他非空名称、内置名称。`crater admin user ls --json` 只获取用户列表，保留新增响应字段，不附带配置请求；Agent 应按需先运行字段配置命令。空值不表示字段关闭。

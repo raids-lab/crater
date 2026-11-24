@@ -222,7 +222,7 @@ func (mgr *AuthMgr) Check(c *gin.Context) {
 		return
 	}
 	attributes := user.Attributes.Data()
-	attributes.ID, attributes.Name = user.ID, user.Name
+	attributes.ID, attributes.Name, attributes.Nickname = user.ID, user.Name, user.Nickname
 	resputil.Success(c, CheckResp{Context: accountContext, User: attributes, Version: GetVersionInfo()})
 }
 
@@ -358,7 +358,7 @@ func (mgr *AuthMgr) respondLogin(c *gin.Context, user *model.User, projectID uin
 		user.LastLoginAt = &now
 	}
 	attributes := user.Attributes.Data()
-	attributes.ID, attributes.Name = user.ID, user.Name
+	attributes.ID, attributes.Name, attributes.Nickname = user.ID, user.Name, user.Nickname
 	resputil.Success(c, LoginResp{
 		AccessToken: access, RefreshToken: refresh, Context: accountContext,
 		User: attributes,
@@ -476,62 +476,6 @@ func (mgr *AuthMgr) getOrCreateUser(
 	return nil, bizerr.Auth.MustRegister.New("Register a local account before signing in.")
 }
 
-func syncField[T comparable](current *T, incoming T, changed *bool) {
-	if *current != incoming {
-		*current = incoming
-		*changed = true
-	}
-}
-
-func syncPtrField[T comparable](current **T, incoming *T, changed *bool) {
-	if incoming != nil && (*current == nil || **current != *incoming) {
-		*current = incoming
-		*changed = true
-	}
-}
-
-func (mgr *AuthMgr) syncUserAttributes(
-	user *model.User,
-	currentAttr *model.UserAttribute,
-	newAttr *model.UserAttribute,
-) bool {
-	changed := false
-
-	// Ensure ID and Name are populated in Attributes JSONB
-	syncField(&currentAttr.ID, user.ID, &changed)
-	syncField(&currentAttr.Name, user.Name, &changed)
-
-	// Mandatory sync for most fields
-	if newAttr.Nickname != "" && user.Nickname != newAttr.Nickname {
-		user.Nickname = newAttr.Nickname
-		currentAttr.Nickname = newAttr.Nickname
-		changed = true
-	} else {
-		syncField(&currentAttr.Nickname, user.Nickname, &changed)
-	}
-
-	// Email protection: only sync if email is NOT verified
-	if newAttr.Email != nil && (currentAttr.Email == nil || *currentAttr.Email != *newAttr.Email) {
-		if user.LastEmailVerifiedAt == nil {
-			currentAttr.Email = newAttr.Email
-			changed = true
-		} else {
-			klog.V(LogLevelDebug).Infof("Skip syncing email for user %s because email is already verified", user.Name)
-		}
-	}
-
-	syncPtrField(&currentAttr.Identity, newAttr.Identity, &changed)
-	syncPtrField(&currentAttr.Teacher, newAttr.Teacher, &changed)
-	syncPtrField(&currentAttr.Group, newAttr.Group, &changed)
-	syncPtrField(&currentAttr.Phone, newAttr.Phone, &changed)
-	syncPtrField(&currentAttr.ExpiredAt, newAttr.ExpiredAt, &changed)
-
-	syncPtrField(&currentAttr.UID, newAttr.UID, &changed)
-	syncPtrField(&currentAttr.GID, newAttr.GID, &changed)
-
-	return changed
-}
-
 // updateUserIfNeeded updates the user attributes if they have changed from LDAP.
 func (mgr *AuthMgr) updateUserIfNeeded(
 	c context.Context,
@@ -539,24 +483,32 @@ func (mgr *AuthMgr) updateUserIfNeeded(
 	newAttr *model.UserAttribute,
 ) error {
 	currentAttr := user.Attributes.Data()
-	changed := mgr.syncUserAttributes(user, &currentAttr, newAttr)
+	previous := map[string]*string{"email": currentAttr.Email, "identity": currentAttr.Identity, "teacher": currentAttr.Teacher,
+		"group": currentAttr.Group, "phone": currentAttr.Phone, "uid": currentAttr.UID, "gid": currentAttr.GID}
+	previousExpiry := currentAttr.ExpiredAt
 
-	if !changed {
-		return nil
+	patch := map[string]any{}
+	incoming := map[string]*string{"email": newAttr.Email, "identity": newAttr.Identity, "teacher": newAttr.Teacher,
+		"group": newAttr.Group, "phone": newAttr.Phone, "uid": newAttr.UID, "gid": newAttr.GID}
+	for key, value := range incoming {
+		if value == nil || (key == "email" && user.LastEmailVerifiedAt != nil) {
+			continue
+		}
+		if old := previous[key]; old == nil || *old != *value {
+			patch[key] = *value
+		}
 	}
-
-	u := query.User
-	if _, err := u.WithContext(c).
-		Where(u.ID.Eq(user.ID)).
-		Updates(map[string]any{
-			"attributes": datatypes.NewJSONType(currentAttr),
-			"nickname":   user.Nickname,
-		}); err != nil {
+	if config.GetConfig().Auth.LDAP.AttributeMapping.ExpiredAt != "" && !ptr.Equal(previousExpiry, newAttr.ExpiredAt) {
+		patch["expiredAt"] = newAttr.ExpiredAt
+	}
+	if newAttr.Nickname != "" && newAttr.Nickname != user.Nickname {
+		patch["nickname"] = newAttr.Nickname
+	}
+	if err := service.PatchLDAPUserProfile(c, user.Name, patch); err != nil {
 		return err
 	}
-
-	user.Attributes = datatypes.NewJSONType(currentAttr)
-	return nil
+	// Reload because another writer may have updated a different JSON key.
+	return query.User.WithContext(c).UnderlyingDB().First(user, user.ID).Error
 }
 
 type (

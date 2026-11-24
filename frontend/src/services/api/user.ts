@@ -37,7 +37,12 @@ export interface IUser {
   role: Role // 用户角色
   status: ProjectStatus // 用户状态
   banned: boolean // 当前是否处于封禁状态
-  createdAt: string // 创建时间
+  createdAt?: string // 创建时间
+  lastLoginAt?: string
+  identity?: string
+  email?: string
+  phone?: string
+  expiredAt?: string
   teacher?: string // 导师
   group?: string // 课题组
   avatar?: string // 头像

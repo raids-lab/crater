@@ -324,6 +324,19 @@ auth:
     # Optional: Defaults to true if not specified
     allowLogin: true
 
-# User management presentation, independent of LDAP/local/future SSO authentication.
-# Empty preserves existing columns/forms. See docs/zh-CN/user-fields.md for examples.
-userFields: {}
+# Enabled user profile fields. An empty map disables all optional fields.
+# See website/content/docs/admin/more/user-fields.mdx.
+userFields:
+  nickname: {}
+  email: {}
+  teacher: {}
+  group: {}
+  phone: {}
+  expiredAt: {}
+  # identity:
+  #   showToAll: false
+  #   labels:
+  #     zh: 身份
+  #     en: Position
+  # createdAt: {}
+  # lastLoginAt: {}

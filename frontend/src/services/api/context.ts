@@ -76,7 +76,7 @@ export const apiContextBillingSummary = () =>
 export const apiContextJobResourceSummary = () =>
   apiV1Get<IResponse<JobResourceSummaryResp>>('context/job-resource-summary')
 
-export const apiContextUpdateUserAttributes = (data: IUserAttributes) =>
+export const apiContextUpdateUserAttributes = (data: Pick<IUserAttributes, 'avatar'>) =>
   apiV1Put<IResponse<string>>('context/attributes', data)
 
 // apiSendVerificationEmail,

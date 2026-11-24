@@ -76,3 +76,7 @@ crater pod logs my-pod main --namespace team-workloads --tail 100 --json
 6. Volcano 作业使用 `crater job`。AIJob/SPJob 读命令暂未暴露在本 Skill 中，避免错误使用不一致的后端 ID 契约。
 7. API 失败时根据 stderr JSON 的 `category`、`code`、`context.http_status` 判断是未登录、无权限、资源不存在还是服务端错误；`usage_error` 有 `context.issues` 时一次修正全部字段。
 8. 作业 `status` 为 `Pending` 时不能单独判断阶段：读取 `--json` 记录中的 `podGroupPhase`，`Pending` 为未准入、`Inqueue` 为已准入等待节点、`Running`/`Completed` 为节点已分配正在启动；这些是 PodGroup 阶段，不能作为 `--status` 的筛选值。完整状态含义见 crater-cli-job Skill 的 Job Status 一节。
+
+## 用户字段配置
+
+用 `crater user fields --json --no-interactive` 单独获取当前启用的用户字段、名称和公开设置，再解释用户响应。字段可能改名，例如 `group` 可以表示毕业年份，不能只靠内置键名猜测含义。表格模式会读取配置，名称回退规则与 Web 相同：当前地区、基础语言、按归一化语言键字典序选其他非空名称、内置名称。`crater admin user ls --json` 只获取用户列表，保留新增响应字段，不附带配置请求；Agent 应按需先运行字段配置命令。空值不表示字段关闭。

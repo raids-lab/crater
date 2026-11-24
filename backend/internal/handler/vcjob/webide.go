@@ -71,6 +71,9 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 	}
 
 	// If email alert is enabled, check if email is verified
+	if !config.GetConfig().UserFieldEnabled("email") {
+		req.AlertEnabled = false
+	}
 	if req.AlertEnabled && !utils.CheckUserEmail(c, token.UserID) {
 		resputil.Error(c, "Email not verified", resputil.UserEmailNotVerified)
 		return

@@ -78,13 +78,13 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
     isPending: fieldsPending,
     isError: fieldsError,
   } = useUserFields()
-  const formFields = visibleUserFields(fields, 'showInForm').filter(
+  const formFields = visibleUserFields(fields, true).filter(
     (key): key is EditableUserField => !['createdAt', 'lastLoginAt', 'expiredAt'].includes(key)
   )
   const queryClient = useQueryClient()
   const [pendingValues, setPendingValues] = useState<UserFormValues | null>(null)
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema(t, !!fields.email?.showInForm)),
+    resolver: zodResolver(userFormSchema(t, !!fields.email)),
     defaultValues: {
       containerSysAdminEnabled: false,
       nickname: '',
@@ -115,10 +115,13 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
     mutationFn: (values: UserFormValues) => {
       if (!user) throw new Error('No user selected')
       const updateData: IAdminUpdateUserAttributesReq = {
-        ...user.attributes,
-        containerSysAdminEnabled: values.containerSysAdminEnabled,
+        ...(form.formState.dirtyFields.containerSysAdminEnabled
+          ? { containerSysAdminEnabled: values.containerSysAdminEnabled }
+          : {}),
       }
-      for (const key of formFields) updateData[key] = values[key] ?? ''
+      for (const key of formFields) {
+        if (form.formState.dirtyFields[key]) updateData[key] = values[key] ?? ''
+      }
       return apiAdminUpdateUserAttributes(user.name, updateData)
     },
     onSuccess: () => {
@@ -158,6 +161,11 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
                         <FormControl>
                           <Input placeholder={fieldLabel(name)} {...field} />
                         </FormControl>
+                        {fields[name]?.ldapManaged && (
+                          <p className="text-muted-foreground text-xs">
+                            {t('userFields.ldapOverwrite')}
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}

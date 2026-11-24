@@ -1978,5 +1978,7 @@
   "用户": "User",
   "请至少选择一个分享对象": "Please select at least one share target",
   "请输入": "Please enter",
-  "账户": "Account"
+  "账户": "Account",
+  "userFields.ldapOverwrite": "次回の LDAP ログイン時にディレクトリの値で上書きされます",
+  "userFields.billingUnavailable": "ポイントを取得できません。再試行"
 }

@@ -318,8 +318,21 @@ frontendConfig:
 
 # -- Backend configuration
 backendConfig:
-  # -- User management field presentation overrides (independent of authentication; see docs/zh-CN/user-fields.md)
-  userFields: {}
+  # -- Enabled user fields; absent fields are disabled, disclosure is opt-in. See website/content/docs/admin/more/user-fields.mdx.
+  userFields:
+    nickname: {}
+    email: {}
+    teacher: {}
+    group: {}
+    phone: {}
+    expiredAt: {}
+    # identity:
+    #   showToAll: false
+    #   labels:
+    #     zh: 身份
+    #     en: Position
+    # createdAt: {}
+    # lastLoginAt: {}
   # -- Enable leader election for controller manager to ensure high availability
   # Defaults to false if not specified
   enableLeaderElection: false

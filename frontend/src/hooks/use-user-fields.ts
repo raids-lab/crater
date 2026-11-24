@@ -10,7 +10,7 @@ const emptyFields: UserFields = {}
 export function useUserFields() {
   const { t, i18n } = useTranslation()
   const query = useQuery({
-    queryKey: ['admin', 'system-config', 'user-fields'],
+    queryKey: ['system-config', 'user-fields'],
     queryFn: () => apiGetUserFields().then((response) => response.data),
   })
   const fields: UserFields = query.data ?? emptyFields

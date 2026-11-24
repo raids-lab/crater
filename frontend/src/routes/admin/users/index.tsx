@@ -168,23 +168,21 @@ function UserList() {
   const mergedUserQuery = useMemo(
     () =>
       ({
-        data: (billingEnabled && billingSummaryQuery.isError ? [] : (userQuery.data ?? [])).map(
-          (user) => {
-            const summary = (billingSummaryQuery.data ?? []).find((item) => item.userId === user.id)
-            return {
-              ...user,
-              extraBalance: summary?.extraBalance ?? user.extraBalance,
-              periodFreeTotal: summary?.periodFreeTotal ?? 0,
-              totalIssueAmount: summary?.totalIssueAmount ?? 0,
-              totalAvailable: summary?.totalAvailable ?? 0,
-            }
+        data: (userQuery.data ?? []).map((user) => {
+          const summary = (billingSummaryQuery.data ?? []).find((item) => item.userId === user.id)
+          return {
+            ...user,
+            extraBalance: summary?.extraBalance ?? user.extraBalance,
+            periodFreeTotal: summary?.periodFreeTotal,
+            totalIssueAmount: summary?.totalIssueAmount,
+            totalAvailable: summary?.totalAvailable,
           }
-        ),
+        }),
         isLoading:
           fieldQuery.isPending ||
           userQuery.isLoading ||
           (billingEnabled && billingSummaryQuery.isLoading),
-        isError: userQuery.isError || (billingEnabled && billingSummaryQuery.isError),
+        isError: userQuery.isError,
         error: userQuery.isError
           ? new Error(t('userFields.loadUsersError'))
           : billingEnabled && billingSummaryQuery.isError
@@ -246,7 +244,7 @@ function UserList() {
           />
         ),
       },
-      ...visibleUserFields(fields, 'showInTable').map(
+      ...visibleUserFields(fields).map(
         (key): ColumnDef<AdminUserRow> => ({
           id: key,
           accessorFn: (row) =>
@@ -309,18 +307,23 @@ function UserList() {
             title={t('userTable.headers.totalPoints', { defaultValue: '点数' })}
           />
         ),
-        cell: ({ row }) => (
-          <UserPointsTooltip
-            userName={row.original.name}
-            totalPoints={row.original.totalAvailable ?? 0}
-            extraPoints={row.original.extraBalance ?? 0}
-            periodFreePoints={row.original.periodFreeTotal ?? 0}
-            effectiveIssueAmount={row.original.totalIssueAmount ?? 0}
-            showInlineBreakdown
-            inlineVariant="minimal"
-            fetchDetail
-          />
-        ),
+        cell: ({ row }) =>
+          row.original.totalAvailable === undefined ? (
+            <Button variant="ghost" onClick={() => void refetchBilling()}>
+              {t('userFields.billingUnavailable')}
+            </Button>
+          ) : (
+            <UserPointsTooltip
+              userName={row.original.name}
+              totalPoints={row.original.totalAvailable ?? 0}
+              extraPoints={row.original.extraBalance ?? 0}
+              periodFreePoints={row.original.periodFreeTotal ?? 0}
+              effectiveIssueAmount={row.original.totalIssueAmount ?? 0}
+              showInlineBreakdown
+              inlineVariant="minimal"
+              fetchDetail
+            />
+          ),
       })
     }
 
@@ -446,7 +449,16 @@ function UserList() {
       },
     })
     return baseColumns
-  }, [billingEnabled, deleteUser, t, updateRole, userInfo?.name, fields, fieldLabel])
+  }, [
+    billingEnabled,
+    deleteUser,
+    t,
+    updateRole,
+    userInfo?.name,
+    fields,
+    fieldLabel,
+    refetchBilling,
+  ])
 
   if (fieldQuery.isError) {
     return (

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,22 +12,34 @@ import (
 	"gorm.io/datatypes"
 	v1 "k8s.io/api/core/v1"
 	apiresource "k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
+	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/alert"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/utils"
 	"github.com/raids-lab/crater/pkg/vcqueue"
 )
 
 // 邮箱验证码缓存
-var verifyCodeCache = make(map[string]string)
+type emailVerification struct {
+	Code    string
+	Email   string
+	Expires time.Time
+}
+
+const emailVerificationTTL = 10 * time.Minute
+
+var verifyCodeCache = struct {
+	sync.Mutex
+	Codes map[uint]emailVerification
+}{Codes: make(map[uint]emailVerification)}
 
 //nolint:gochecknoinits // This is the standard way to register a gin handler.
 func init() {
@@ -68,11 +81,11 @@ func (mgr *ContextMgr) RegisterAdmin(_ *gin.RouterGroup) {}
 
 type (
 	SendCodeReq struct {
-		Email string `json:"email"`
+		Email string `json:"email" binding:"required,email"`
 	}
 	CheckCodeReq struct {
-		Email string `json:"email"`
-		Code  string `json:"code"`
+		Email string `json:"email" binding:"required,email"`
+		Code  string `json:"code" binding:"required,len=6"`
 	}
 	ResourceLimitCheckReq struct {
 		RequestedResources map[string]string `json:"requestedResources"`
@@ -358,6 +371,10 @@ func (mgr *ContextMgr) GetBillingSummary(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
+type UserAvatarUpdateReq struct {
+	Avatar *string `json:"avatar,omitempty"`
+}
+
 // UpdateUserAttributes godoc
 //
 //	@Summary		Update user attributes
@@ -366,39 +383,39 @@ func (mgr *ContextMgr) GetBillingSummary(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			attributes	body		model.UserAttribute		true	"User attributes"
+//	@Param			attributes	body		UserAvatarUpdateReq		true	"User attributes"
 //	@Success		200			{object}	resputil.Response[any]	"User attributes updated"
 //	@Failure		400			{object}	resputil.Response[any]	"Request parameter error"
 //	@Failure		500			{object}	resputil.Response[any]	"Other errors"
 //	@Router			/v1/context/attributes [put]
 func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 	token := util.GetToken(c)
-	u := query.User
-
-	var attributes model.UserAttribute
-	if err := c.ShouldBindJSON(&attributes); err != nil {
-		resputil.BadRequestError(c, "Invalid request body")
+	var patch map[string]any
+	if err := c.ShouldBindJSON(&patch); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Invalid request body"))
 		return
 	}
-
-	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+	for key, value := range patch {
+		if key != "avatar" {
+			resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Only avatar can be changed here; email requires verification"))
+			return
+		}
+		if value != nil {
+			if _, ok := value.(string); !ok {
+				resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Invalid avatar"))
+				return
+			}
+		}
+	}
+	user, err := query.User.WithContext(c).Where(query.User.ID.Eq(token.UserID)).First()
 	if err != nil {
-		resputil.Error(c, "User not found", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.New("User not found"))
 		return
 	}
-
-	// Fix UID and GID are not allowed to be updated
-	oldAttributes := user.Attributes.Data()
-	attributes.ID = oldAttributes.ID
-	attributes.UID = oldAttributes.UID
-	attributes.GID = oldAttributes.GID
-
-	user.Attributes = datatypes.NewJSONType(attributes)
-	if _, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).Update(u.Attributes, user.Attributes); err != nil {
-		resputil.Error(c, fmt.Sprintf("Failed to update user attributes:  %v", err), resputil.NotSpecified)
+	if err := service.PatchUserProfile(c, user.Name, patch, nil); err != nil {
+		resputil.HandleError(c, err)
 		return
 	}
-
 	resputil.Success(c, "User attributes updated successfully")
 }
 
@@ -415,6 +432,10 @@ func (mgr *ContextMgr) UpdateUserAttributes(c *gin.Context) {
 //	@Failure		500	{object}	resputil.Response[any]	"other errors"
 //	@Router			/v1/context/email/code [post]
 func (mgr *ContextMgr) SendUserVerificationCode(c *gin.Context) {
+	if !config.GetConfig().UserFieldEnabled("email") {
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Email is disabled"))
+		return
+	}
 	token := util.GetToken(c)
 	u := query.User
 	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
@@ -430,7 +451,9 @@ func (mgr *ContextMgr) SendUserVerificationCode(c *gin.Context) {
 	receiver := user.Attributes.Data()
 	receiver.Email = &req.Email
 	verifyCode := fmt.Sprintf("%06d", getRandomCode())
-	verifyCodeCache[req.Email] = verifyCode
+	verifyCodeCache.Lock()
+	verifyCodeCache.Codes[token.UserID] = emailVerification{Code: verifyCode, Email: req.Email, Expires: time.Now().Add(emailVerificationTTL)}
+	verifyCodeCache.Unlock()
 
 	alertMgr := alert.GetAlertMgr()
 
@@ -460,9 +483,13 @@ func getRandomCode() int {
 //	@Failure		500	{object}	resputil.Response[any]	"other errors"
 //	@Router			/v1/context/email/update [post]
 func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
+	if !config.GetConfig().UserFieldEnabled("email") {
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Email is disabled"))
+		return
+	}
 	token := util.GetToken(c)
 	u := query.User
-	_, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
+	user, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).First()
 	if err != nil {
 		resputil.Error(c, "User not found", resputil.NotSpecified)
 		return
@@ -474,15 +501,23 @@ func (mgr *ContextMgr) UpdateUserEmail(c *gin.Context) {
 		return
 	}
 
-	if req.Code != verifyCodeCache[req.Email] {
+	verifyCodeCache.Lock()
+	verification, exists := verifyCodeCache.Codes[token.UserID]
+	valid := exists && req.Code != "" && req.Code == verification.Code && req.Email == verification.Email &&
+		time.Now().Before(verification.Expires)
+	if valid {
+		delete(verifyCodeCache.Codes, token.UserID)
+	}
+	verifyCodeCache.Unlock()
+	if !valid {
 		resputil.Error(c, "Wrong verification Code", resputil.NotSpecified)
 		return
 	}
 
-	// update user's LastEmailVerifiedAt
-	curTime := utils.GetLocalTime()
-	if _, err := u.WithContext(c).Where(u.ID.Eq(token.UserID)).Update(u.LastEmailVerifiedAt, curTime); err != nil {
-		klog.Error("Failed to update LastEmailVerifiedAt", err)
+	if err := service.PatchUserProfile(c, user.Name, map[string]any{"email": req.Email},
+		map[string]any{"last_email_verified_at": utils.GetLocalTime()}); err != nil {
+		resputil.HandleError(c, err)
+		return
 	}
 
 	resputil.Success(c, "User email updated successfully")

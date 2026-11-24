@@ -1302,6 +1302,10 @@ func (mgr *VolcanojobMgr) ToggleAlertState(c *gin.Context) {
 		return
 	}
 
+	if !config.GetConfig().UserFieldEnabled("email") {
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Email is disabled"))
+		return
+	}
 	preStatus := job.AlertEnabled
 	j := query.Job
 	if _, err := j.WithContext(c).Where(j.JobName.Eq(req.JobName)).Update(j.AlertEnabled, !preStatus); err != nil {

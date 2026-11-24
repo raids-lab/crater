@@ -41,7 +41,7 @@ export interface IUserAttributes {
   gid?: string
 }
 
-export interface IAdminUpdateUserAttributesReq extends IUserAttributes {
+export interface IAdminUpdateUserAttributesReq extends Partial<IUserAttributes> {
   containerSysAdminEnabled?: boolean
 }
 

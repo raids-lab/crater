@@ -1975,5 +1975,7 @@
   "用户": "User",
   "请至少选择一个分享对象": "Please select at least one share target",
   "请输入": "Please enter",
-  "账户": "Account"
+  "账户": "Account",
+  "userFields.ldapOverwrite": "다음 LDAP 로그인 시 디렉터리 값으로 덮어씁니다",
+  "userFields.billingUnavailable": "포인트를 불러올 수 없습니다. 재시도"
 }

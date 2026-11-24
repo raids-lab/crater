@@ -16,9 +16,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
-	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
 
@@ -66,20 +66,17 @@ func ApplyUserJobCapabilities(ctx context.Context, userID uint, sysAdminEnabled 
 // AdminUpdateUserAttributes updates only the intended columns in one statement.
 // An omitted grant preserves authorization for older clients editing personal information.
 func AdminUpdateUserAttributes(ctx context.Context, username string, attributes *model.UserAttribute, enabled *bool) error {
-	updates := map[string]any{
-		"attributes": datatypes.NewJSONType(*attributes),
-		"nickname":   attributes.Nickname,
-	}
-	if enabled != nil {
-		updates["container_sys_admin_enabled"] = *enabled
-	}
-	u := query.User
-	result, err := u.WithContext(ctx).Where(u.Name.Eq(username)).Updates(updates)
+	raw, err := json.Marshal(attributes)
 	if err != nil {
-		return bizerr.Internal.DatabaseError.Wrap(err, "Unable to update user attributes")
+		return err
 	}
-	if result.RowsAffected == 0 {
-		return bizerr.NotFound.DataBaseNotFound.New("User not found")
+	patch := map[string]any{}
+	if err := json.Unmarshal(raw, &patch); err != nil {
+		return err
 	}
-	return nil
+	columns := map[string]any{}
+	if enabled != nil {
+		columns["container_sys_admin_enabled"] = *enabled
+	}
+	return PatchUserProfile(ctx, username, patch, columns)
 }

@@ -13,6 +13,7 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
 )
 
 func TestUserFieldsAdminUpdatePreservesConcurrentLogin(t *testing.T) {
@@ -29,8 +30,11 @@ func TestUserFieldsAdminUpdatePreservesConcurrentLogin(t *testing.T) {
 	latestLogin := time.Date(2026, 11, 15, 9, 0, 0, 0, time.UTC)
 	const concurrentBalance int64 = 500
 	concurrentChange := simulateConcurrentUserChanges(t, db, user.ID, latestLogin, concurrentBalance)
+	previous := config.GetConfig().UserFields
+	config.GetConfig().UserFields = map[string]config.UserFieldConfig{"nickname": {}}
+	t.Cleanup(func() { config.GetConfig().UserFields = previous })
 	profile.Nickname = "Edited name"
-	body, err := json.Marshal(profile)
+	body, err := json.Marshal(map[string]string{"nickname": profile.Nickname})
 	if err != nil {
 		t.Fatal(err)
 	}

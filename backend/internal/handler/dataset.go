@@ -995,11 +995,12 @@ func (mgr *DatasetMgr) ListUserOfDataset(c *gin.Context) {
 		if err != nil {
 			resputil.Error(c, fmt.Sprintf("Can't find user :%v", err), resputil.InvalidRequest)
 		}
+		attributes := user.Attributes.Data()
 		res := UserOfDatasetResp{
 			ID:       uids[i],
 			IsOwner:  uids[i] == dataset.UserID,
 			Name:     user.Name,
-			UserInfo: user.Attributes,
+			UserInfo: datatypes.NewJSONType(visibleUserAttributes(c, user.ID, user.Nickname, &attributes)),
 		}
 		resp = append(resp, res)
 	}

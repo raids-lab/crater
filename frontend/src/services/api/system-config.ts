@@ -174,5 +174,4 @@ export const apiAdminGrantAllUsersExtraBalance = (data: IGrantAllUsersExtraBalan
     data
   )
 
-export const apiGetUserFields = () =>
-  apiV1Get<IResponse<UserFields>>('admin/system-config/user-fields')
+export const apiGetUserFields = () => apiV1Get<IResponse<UserFields>>('system-config/user-fields')

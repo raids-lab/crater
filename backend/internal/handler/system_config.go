@@ -47,6 +47,7 @@ func NewSystemConfigMgr(conf *RegisterConfig) Manager {
 func (mgr *SystemConfigMgr) GetName() string                   { return mgr.name }
 func (mgr *SystemConfigMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *SystemConfigMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET("/user-fields", mgr.GetUserFields)
 	g.GET("/billing", mgr.GetBillingStatus)
 	g.GET("/model-download-limit", mgr.GetModelDownloadLimitConfig)
 }

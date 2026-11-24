@@ -86,6 +86,9 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 	}
 
 	// 如果希望接受邮件，则需要确保邮箱已验证
+	if !config.GetConfig().UserFieldEnabled("email") {
+		req.AlertEnabled = false
+	}
 	if req.AlertEnabled && !utils.CheckUserEmail(c, token.UserID) {
 		resputil.Error(c, "Email not verified", resputil.UserEmailNotVerified)
 		return

@@ -182,9 +182,14 @@ func TestAuthenticationLocalCredentialsAndProfile(t *testing.T) {
 	if response.Data.User.Nickname != "Chosen name" {
 		t.Fatal("local login overwrote nickname")
 	}
-	user := model.User{Model: gorm.Model{ID: 1}, Name: "test", Nickname: "chosen"}
-	attributes := model.UserAttribute{UID: ptr.To("1001"), GID: ptr.To("1001")}
-	mgr.syncUserAttributes(&user, &attributes, &model.UserAttribute{GID: ptr.To("2002")})
+	uidUser, err := mgr.createUser(t.Context(), "uid-test", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mgr.updateUserIfNeeded(t.Context(), uidUser, &model.UserAttribute{GID: ptr.To("2002")}); err != nil {
+		t.Fatal(err)
+	}
+	attributes := uidUser.Attributes.Data()
 	if *attributes.GID != "2002" || *attributes.UID != "1001" {
 		t.Fatal("independent group update lost")
 	}
