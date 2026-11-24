@@ -12,7 +12,7 @@ import (
 
 var userFieldsCmd = &cobra.Command{Use: "fields", Short: "Get enabled user fields and deployment labels", Args: noArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runRawRead(cmd, rawReadSpec{PayloadKey: "fields", Path: "/v1/system-config/user-fields", Params: noParams, Table: printRawObject})
+		return runRawRead(cmd, rawReadSpec{PayloadKey: "fields", Path: api.SystemConfigPrefix + "/user-fields", Params: noParams, Table: printRawObject})
 	}}
 
 func userFieldLabel(field map[string]interface{}, locale, key string) string {

@@ -1,6 +1,6 @@
 ---
 name: crater-cli-admin-read
-version: 1.1.0
+version: 1.1.1
 description: "Crater CLI 管理员只读域：指导 AI Agent 通过 crater admin ... 查看平台级只读信息。仅当用户明确要求管理员或平台级资源时使用。"
 metadata:
   requires:

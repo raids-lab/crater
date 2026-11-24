@@ -16,8 +16,8 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	// v7 adds the optional container command execution API.
-	APIVersion = 7
+	// v8 adds user field configuration and configurable profile visibility.
+	APIVersion = 8
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
 	// v2 and older CLIs still call the removed prequeue endpoints and the dropped schedule_type filter with no fallback.

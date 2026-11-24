@@ -78,8 +78,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 7,
-      "min_supported_backend_api_version": 7
+      "api_version": 8,
+      "min_supported_backend_api_version": 8
     }
   }
   ```
@@ -98,7 +98,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **处理逻辑**：
   - 未提供 `--platform` 且没有当前激活身份时，不发起 HTTP 请求，返回 `usage_error` + `ERR_MISSING_REQUIRED_FLAG`，进程退出码为 `2`；提示用户通过 `--platform <URL>` 指定目标平台，并明确该操作无需登录。
   - 调用公开的 `GET /api/cli/compatibility` 一次，并比较 CLI / 后端各自的当前 API 版本与最低支持的对方版本。
-  - 双方均满足最低版本时成功。当前 CLI 最低要求后端 API v7，连接 v6 后端时会报告后端版本过旧。默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
+  - 双方均满足最低版本时成功。当前 CLI 最低要求后端 API v8，连接 v7 后端时会报告后端版本过旧；v8 新增用户字段配置接口，`user fields` 没有旧接口回退。默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
   - 后端构建信息仅用于诊断和展示，不参与 API 兼容性判断。兼容性接口仅返回 API 版本字段的早期实现仍可使用；缺失的后端构建字段显示为“未知”，不会因此把响应判定为非法。
   - 明确不兼容时返回 `api_error` + `ERR_API_VERSION_MISMATCH`，进程退出码为 `4`。人类可读错误按“具体情况 / 版本信息 / 使用建议”分段展示：具体指出哪个最低版本条件不满足，列出 CLI 产品版本、CLI / 后端 API 版本和双方最低支持版本，并说明用户仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。
   - 握手响应明确报告版本 `0` 时，将它视为早于首个正式契约的旧版本并参与比较。例如后端明确报告 `apiVersion: 0` 时，当前 CLI 会输出“后端版本过旧”的完整诊断。字段缺失或为负数时视为非法响应。
@@ -258,7 +258,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 在控制台以表格形式展示匹配的登录信息。
   - 标记出当前激活的 (`active`) 上下文。
 - **输出格式**:
-  - 表格形式显示: `ACTIVE`, `PLATFORM`, `USERNAME`, `METHOD`, `PRIVILEGE` (该身份在平台的权限级别)。
+  - 表格形式显示： `ACTIVE`, `PLATFORM`, `USERNAME`, `METHOD`, `PRIVILEGE` (该身份在平台的权限级别)。
 - **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目；字段与磁盘 `auth_infos` 相同，但**不含** `token`）。
 - **状态**: [x] Completed
 
@@ -833,10 +833,14 @@ This section covers account context and additional resource commands. All comman
   - `--search` 大小写不敏感地匹配展示名或平台作业名；CLI 按平台作业名、展示名、计费点数稳定排序后本地分页。
   - `page-size` 默认 `15`、最大 `200`；JSON 使用 `data.billing`，非 `--all-pages` 时同时有 `data.pagination`。
 - `crater user get <username>`, `email-verified`.
+- `crater user fields`：使用当前登录身份请求 `GET /api/v1/system-config/user-fields`，无位置参数或专用选项，不需要管理员权限。默认输出字段配置 JSON 对象；`--json` 成功信封的 `data.fields` 为该对象。仅返回已启用字段及其可选 `labels`、`showToAll`、`editable`、`ldapManaged`，空对象表示全部可配置字段关闭；用户数据为空不表示字段关闭。该命令不读取用户列表，也不写入数据。
+  - 未登录或缺少当前身份时按公共认证约定返回 `usage_error`，不发出请求；请求失败遵循公共错误与退出码约定，保留 HTTP 状态及后端业务码、消息；旧后端返回 404 时报告 `ERR_NOT_FOUND_404`，不能伪造默认配置或成功结果。普通命令不自动执行兼容性握手。
 - `crater order ls [--status STATUS] [--type TYPE] [--search TEXT] [--page N] [--page-size N] [--all-pages]`, `get <id>`, `by-name <name>`。
 - `crater admin order ls` 支持相同的本地筛选和分页，并额外支持 `--creator TEXT`。普通用户 `order ls` 不提供 creator filter；两者的 `--search` 均匹配工单名称或创建者信息。
 - 工单列表默认按 `Pending`、`Approved`、`Rejected`、`Canceled` 分组，同状态按创建时间和 ID 倒序排列。
 - `crater admin user ls [--base] [--search TEXT] [--role Guest|User|Admin] [--status Pending|Active|Inactive] [--page N] [--page-size N] [--all-pages]`；搜索覆盖用户名与显示名，默认按 ID 倒序。`--base` 与 `--role` / `--status` 互斥。
+- 管理员用户列表默认表格另读用户字段配置：保留 ID、用户名、角色、状态基础列，按字段键排序追加所有启用字段，空值显示 `—`。名称依次回退到当前地区、基础语言、按归一化语言键字典序排列的其他非空名称、内置名称。只有配置接口返回 404 时回退原表格，其他失败照常报错。
+- `crater admin user ls --json` 和 `--base` 不额外请求字段配置；JSON 保留后端用户对象的新增字段及嵌套属性，不随表格列裁剪。需要解释部署自定义字段时单独运行 `crater user fields --json`。
 - 上述工单和用户列表均先本地筛选再分页，`page-size` 默认 `15`、最大 `200`；JSON 当前页输出同时包含 `data.pagination`。
 - `crater admin billing status|jobs`, `crater admin order get <id>`, `crater admin user billing summary|accounts <username>`.
 

@@ -1,6 +1,6 @@
 ---
 name: crater-cli-read
-version: 1.3.4
+version: 1.3.5
 description: "Crater CLI 用户视图读取域：指导 AI Agent 通过 crater node、job、image、account、resource、dataset、model-download、pod 等用户可见命令查看平台只读信息。管理员视图请使用 crater-cli-admin-read。"
 metadata:
   requires:

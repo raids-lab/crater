@@ -85,7 +85,7 @@ func runUserLs(cmd *cobra.Command, _ []string) error {
 	if outputJSON || options.Base {
 		return writeListPage("users", page, options.AllPages, printUserTable)
 	}
-	fields, err := client.GetRaw("/v1/system-config/user-fields", nil)
+	fields, err := client.GetRaw(api.SystemConfigPrefix+"/user-fields", nil)
 	if err != nil {
 		var requestError *api.RequestError
 		if errors.As(err, &requestError) && requestError.HTTPStatus == http.StatusNotFound {
