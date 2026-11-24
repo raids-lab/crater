@@ -13,46 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { useTranslation } from 'react-i18next'
+
 import { ProjectStatus } from '@/services/api/account'
 
 import { PhaseBadge } from './phase-badge'
 
-export const userAccesses = [
-  {
-    value: ProjectStatus.Inactive.toString(),
-    label: '已禁用',
-    color: 'text-highlight-orange bg-highlight-orange/20',
-    description: '用户已被禁用，无法使用资源',
-  },
-  {
-    value: ProjectStatus.Active.toString(),
-    label: '已激活',
-    color: 'text-highlight-emerald bg-highlight-emerald/20',
-    description: '用户已激活，可以使用资源',
-  },
-]
-
-const getUserStatusLabel = (
-  phase: string
-): {
-  label: string
-  color: string
-  description: string
-} => {
-  const foundPhase = userAccesses.find((p) => p.value === phase)
-  if (foundPhase) {
-    return foundPhase
-  } else {
-    return {
-      label: '未知',
-      color: 'text-highlight-slate bg-highlight-slate/20',
-      description: '由于某些原因无法获取用户读写权限信息',
-    }
-  }
-}
-
 const UserStatusBadge = ({ status }: { status: string }) => {
-  return <PhaseBadge phase={status} getPhaseLabel={getUserStatusLabel} />
+  const { t } = useTranslation()
+  const phases = [
+    {
+      value: ProjectStatus.Inactive.toString(),
+      label: t('userFields.status.inactive'),
+      color: 'text-highlight-orange bg-highlight-orange/20',
+      description: t('userFields.statusDescription.inactive'),
+    },
+    {
+      value: ProjectStatus.Active.toString(),
+      label: t('userFields.status.active'),
+      color: 'text-highlight-emerald bg-highlight-emerald/20',
+      description: t('userFields.statusDescription.active'),
+    },
+  ]
+  return (
+    <PhaseBadge
+      phase={status}
+      getPhaseLabel={(phase) =>
+        phases.find((item) => item.value === phase) ?? {
+          label: t('userFields.unknown'),
+          color: 'text-highlight-slate bg-highlight-slate/20',
+          description: t('userFields.statusDescription.unknown'),
+        }
+      }
+    />
+  )
 }
 
 export default UserStatusBadge

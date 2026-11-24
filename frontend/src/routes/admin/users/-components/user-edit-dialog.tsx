@@ -41,16 +41,22 @@ import {
   IAdminUpdateUserAttributesReq,
   apiAdminUpdateUserAttributes,
 } from '@/services/api/admin/user'
+import { EditableUserField, visibleUserFields } from '@/services/user-fields'
+
+import { useUserFields } from '@/hooks/use-user-fields'
 
 import { showErrorToast } from '@/utils/toast'
 
 import { AdminUserRow } from './types'
 
-const userFormSchema = (t: (key: string) => string) =>
+const userFormSchema = (t: (key: string) => string, validateEmail: boolean) =>
   z.object({
     containerSysAdminEnabled: z.boolean(),
     nickname: z.string().optional(),
-    email: z.string().email(t('userForm.emailError')).optional().or(z.literal('')),
+    email: (validateEmail ? z.string().email(t('userForm.emailError')) : z.string())
+      .optional()
+      .or(z.literal('')),
+    identity: z.string().optional(),
     teacher: z.string().optional().or(z.literal('')),
     group: z.string().optional().or(z.literal('')),
     phone: z.string().optional().or(z.literal('')),
@@ -66,14 +72,24 @@ interface UserEditDialogProps {
 
 export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps) {
   const { t } = useTranslation()
+  const {
+    fields,
+    label: fieldLabel,
+    isPending: fieldsPending,
+    isError: fieldsError,
+  } = useUserFields()
+  const formFields = visibleUserFields(fields, true).filter(
+    (key): key is EditableUserField => !['createdAt', 'lastLoginAt', 'expiredAt'].includes(key)
+  )
   const queryClient = useQueryClient()
   const [pendingValues, setPendingValues] = useState<UserFormValues | null>(null)
   const form = useForm<UserFormValues>({
-    resolver: zodResolver(userFormSchema(t)),
+    resolver: zodResolver(userFormSchema(t, !!fields.email)),
     defaultValues: {
       containerSysAdminEnabled: false,
       nickname: '',
       email: '',
+      identity: '',
       teacher: '',
       group: '',
       phone: '',
@@ -86,6 +102,7 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
         containerSysAdminEnabled: user.containerSysAdminEnabled ?? false,
         nickname: user.attributes.nickname || '',
         email: user.attributes.email || '',
+        identity: user.attributes.identity || '',
         teacher: user.attributes.teacher || '',
         group: user.attributes.group || '',
         phone: user.attributes.phone || '',
@@ -97,7 +114,14 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
   const { mutate: updateUser, isPending } = useMutation({
     mutationFn: (values: UserFormValues) => {
       if (!user) throw new Error('No user selected')
-      const updateData: IAdminUpdateUserAttributesReq = { ...user.attributes, ...values }
+      const updateData: IAdminUpdateUserAttributesReq = {
+        ...(form.formState.dirtyFields.containerSysAdminEnabled
+          ? { containerSysAdminEnabled: values.containerSysAdminEnabled }
+          : {}),
+      }
+      for (const key of formFields) {
+        if (form.formState.dirtyFields[key]) updateData[key] = values[key] ?? ''
+      }
       return apiAdminUpdateUserAttributes(user.name, updateData)
     },
     onSuccess: () => {
@@ -126,17 +150,22 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
           <Form {...form}>
             <form onSubmit={form.handleSubmit(setPendingValues)} className="space-y-4">
               <fieldset disabled={isPending} className="space-y-4">
-                {(['nickname', 'email', 'teacher', 'group', 'phone'] as const).map((name) => (
+                {formFields.map((name) => (
                   <FormField
                     key={name}
                     control={form.control}
                     name={name}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t(`userEditDialog.${name}Label`)}</FormLabel>
+                        <FormLabel>{fieldLabel(name)}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t(`userEditDialog.${name}Placeholder`)} {...field} />
+                          <Input placeholder={fieldLabel(name)} {...field} />
                         </FormControl>
+                        {fields[name]?.ldapManaged && (
+                          <p className="text-muted-foreground text-xs">
+                            {t('userFields.ldapOverwrite')}
+                          </p>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -161,7 +190,7 @@ export function UserEditDialog({ open, onOpenChange, user }: UserEditDialogProps
                 />
               </fieldset>
               <DialogFooter>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={isPending || fieldsPending || fieldsError}>
                   {isPending ? t('common.saving') : t('common.saveChanges')}
                 </Button>
               </DialogFooter>

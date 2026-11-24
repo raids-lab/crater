@@ -117,7 +117,7 @@ const formSchema = z.object({
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
-  alertEnabled: z.boolean().default(true),
+  alertEnabled: z.boolean().default(false),
   cpuPinningEnabled: z.boolean().default(false),
   forwards: forwardsSchema,
 })
@@ -228,7 +228,7 @@ function RouteComponent() {
       ],
       tensorboardLogDir: '',
       envs: [],
-      alertEnabled: true,
+      alertEnabled: false,
       cpuPinningEnabled: false,
       nodeSelector: {
         enable: false,

@@ -1269,6 +1269,7 @@ type ProjectGetReq struct {
 }
 
 type UserProjectGetResp struct {
+	Nickname   string                                  `json:"-"`
 	ID         uint                                    `json:"id"`
 	Name       string                                  `json:"name"`
 	Role       string                                  `json:"role"`
@@ -1882,9 +1883,13 @@ func (mgr *AccountMgr) getUsersInAccount(c *gin.Context, accountID uint) ([]User
 
 	var resp []UserProjectGetResp
 	exec := u.WithContext(c).Join(uq, uq.UserID.EqCol(u.ID)).Where(uq.DeletedAt.IsNull())
-	exec = exec.Select(u.ID, u.Name, uq.Role, uq.AccessMode, u.Attributes, uq.Quota)
+	exec = exec.Select(u.ID, u.Name, u.Nickname, uq.Role, uq.AccessMode, u.Attributes, uq.Quota)
 	if err := exec.Where(uq.AccountID.Eq(accountID)).Distinct().Scan(&resp); err != nil {
 		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to get users in account")
+	}
+	for i := range resp {
+		attributes := resp[i].Attributes.Data()
+		resp[i].Attributes = datatypes.NewJSONType(visibleUserAttributes(c, resp[i].ID, resp[i].Nickname, &attributes))
 	}
 	return resp, nil
 }
@@ -1963,7 +1968,7 @@ func (mgr *AccountMgr) buildAccountBillingMemberResp(
 		IssueAmountOverride:         issueAmountOverride,
 		UserID:                      user.ID,
 		Username:                    user.Name,
-		Nickname:                    user.Attributes.Data().Nickname,
+		Nickname:                    user.Nickname,
 		PeriodFreeBalance:           service.ToDisplayPoints(userAccount.PeriodFreeBalance),
 		ExtraBalance:                service.ToDisplayPoints(user.ExtraBalance),
 		TotalAvailable:              service.ToDisplayPoints(userAccount.PeriodFreeBalance + user.ExtraBalance),

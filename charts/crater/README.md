@@ -1,6 +1,6 @@
 # crater
 
-![Version: 1.4.3](https://img.shields.io/badge/Version-1.4.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.4.3](https://img.shields.io/badge/AppVersion-1.4.3-informational?style=flat-square)
+![Version: 1.5.0](https://img.shields.io/badge/Version-1.5.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.5.0](https://img.shields.io/badge/AppVersion-1.5.0-informational?style=flat-square)
 
 A comprehensive AI development platform for Kubernetes that provides GPU resource management, containerized development environments, and workflow orchestration.
 
@@ -36,9 +36,11 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | backendConfig.auth | object | `{"ldap":{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}},"normal":{"allowLogin":true,"allowRegister":true},"token":{"accessTokenSecret":"","refreshTokenSecret":""}}` | Configuration for authentication methods and tokens |
 | backendConfig.auth.ldap | object | `{"alias":"","attributeMapping":{"displayName":"cn","email":"mail","username":"uid"},"enable":false,"help":"","server":{"address":"ldap://ldap.example.com:389","baseDN":"dc=example,dc=org","bindDN":"cn=admin,dc=example,dc=org","bindPassword":"<MUSTEDIT>"},"uid":{"ldapAttribute":{"gid":"gidNumber","uid":"uidNumber"},"rid":{"offset":10000,"pgidAttribute":"primaryGroupID","sidAttribute":"objectSid"},"source":"default"}}` | LDAP authentication settings |
 | backendConfig.auth.ldap.alias | string | `""` | Short display name for this auth method in the UI (e.g., "ACT", "SJTU") The UI will append suffixes like "登录" or "统一身份认证", so keep it brief. |
-| backendConfig.auth.ldap.attributeMapping | object | `{"displayName":"cn","email":"mail","username":"uid"}` | LDAP attribute mapping configuration |
+| backendConfig.userFields | object | `{"nickname":{},"email":{},"teacher":{},"group":{},"phone":{},"expiredAt":{}}` | Enabled profile fields. Each field supports opt-in `showToAll` and localized `labels`; `{}` disables all optional fields. |
+| backendConfig.auth.ldap.attributeMapping | object | `{"displayName":"cn","email":"mail","identity":"","username":"uid"}` | LDAP attribute mapping configuration |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | LDAP attribute for display name (Required) |
 | backendConfig.auth.ldap.attributeMapping.email | string | `"mail"` | LDAP attribute for email |
+| backendConfig.auth.ldap.attributeMapping.identity | string | `""` | LDAP attribute for profile identity/position (empty disables synchronization; independent of permission role) |
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | LDAP attribute for username |
 | backendConfig.auth.ldap.enable | bool | `false` | Enable LDAP authentication |
 | backendConfig.auth.ldap.help | string | `""` | Description shown in a tooltip for this auth method If empty, frontend shows a default description. |

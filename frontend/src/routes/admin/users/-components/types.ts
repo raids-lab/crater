@@ -1,6 +1,8 @@
 import { IUserAttributes, IUserBanRestrictions } from '@/services/api/admin/user'
 
 export interface AdminUserRow {
+  createdAt: string
+  lastLoginAt?: string | null
   containerSysAdminEnabled: boolean
   id: number
   name: string

@@ -1,0 +1,64 @@
+---
+title: 사용자 필드와 로그인 시간
+description: 프로필 활성화, 공개 범위, LDAP 동기화와 표시 이름을 설정합니다.
+---
+
+<ChartBadge />
+
+인증 방식과 독립적으로 `backendConfig.userFields` 를 설정하고 일반 배포 절차로 백엔드를 다시 시작합니다.
+
+## 설정 예
+
+설정에 포함된 필드만 활성화됩니다. 생략 또는 `{}` 는 모든 선택 필드를 비활성화합니다. 기본 values 는 nickname, email, teacher, group, phone, expiredAt 을 명시합니다. 사용자명, 권한, 상태 등의 시스템 열은 유지됩니다.
+
+```yaml
+backendConfig:
+  userFields:
+    nickname: {}
+    email: {}
+    phone: {}
+    group:
+      showToAll: true
+      labels:
+        zh: 组别
+        en: Research group
+    identity:
+      labels:
+        zh: 身份
+        en: Position
+    teacher: {}
+    expiredAt: {}
+    createdAt: {}
+    lastLoginAt: {}
+  auth:
+    ldap:
+      attributeMapping:
+        username: sAMAccountName
+        displayName: extensionAttribute4
+        email: mail
+        group: department
+        identity: title
+```
+
+
+관리자 목록은 빈 열도 유지하며 화면에서 숨길 수 있습니다. expiredAt, createdAt, lastLoginAt 은 읽기 전용입니다. `showToAll` 기본값은 `false` 입니다. 백엔드는 다른 일반 사용자의 상세, 프로젝트 회원, 데이터셋 회원 응답에서 비활성 또는 비공개 프로필을 제외합니다. 본인과 관리자는 활성 비공개 필드를 볼 수 있습니다. 일반 사용자는 자신의 아바타와 인증된 이메일만 수정합니다.
+
+## LDAP 및 저장
+
+프로필 LDAP 매핑은 활성 필드의 부분집합이어야 하며 잘못된 필드를 설정 검증에서 알려줍니다. 기존 사용자명, 표시 이름, UID/GID 는 예외입니다. department 와 title 은 배포 예이므로 실제 디렉터리 데이터를 먼저 확인합니다.
+
+매핑이 없으면 수동 값을 유지합니다. 매핑이 있으면 다음 LDAP 로그인에서 덮어쓰며 디렉터리가 비어 있으면 값을 지웁니다. 인증된 이메일은 기존 보호를 유지합니다. 관리자 편집창은 덮어쓰기를 안내합니다. 수정한 키만 전송하고 데이터베이스에서 병합하여 동시 변경을 보존합니다. 닉네임은 users.nickname 을 읽고 실제 변경 시 기존 확장 자료도 갱신하며 조회 시에는 쓰지 않습니다.
+
+## 표시 이름 및 CLI
+
+현재 로캘, 기본 언어, 다른 설정된 비어 있지 않은 이름, 내장 이름 순서로 선택합니다. 다른 언어는 하이픈과 밑줄을 제거하고 소문자로 변환한 키의 사전순이며 같으면 원래 키 순서입니다. Web 과 CLI 는 같은 규칙을 사용합니다.
+
+`crater user fields --json --no-interactive` 로 설정을 조회합니다. 일반 목록은 설정된 이름을 표시합니다. `crater admin user ls --json` 은 목록만 요청하고 새 응답 필드도 유지하므로 Agent 는 필요에 따라 설정을 먼저 조회합니다.
+
+## 이메일 및 시간
+
+email 이 없으면 이메일 입력, 인증 및 작업 알림 UI 를 숨기고 기존 작업의 메일도 서버에서 중단합니다. 새 알림은 기본적으로 꺼집니다. 저장된 이메일은 삭제하지 않습니다. `email: {}` 는 본인 인증과 알림을 허용하되 다른 사용자에게 비공개입니다.
+
+등록 시간은 LDAP 가 아닌 Crater 계정 생성 시각입니다. 마지막 로그인은 성공 로그인 또는 가입 세션에서만 갱신하며 실패, 토큰 갱신, 세션 복원, 프로젝트 전환에서는 유지합니다. 마이그레이션 202611150001 은 nullable users.last_login_at 을 추가하며 과거 기록을 추측하지 않습니다. Helm 은 migration init container 에서 실행하고 다른 배포는 시작 전에 기존 절차로 마이그레이션합니다.
+
+포인트 요청 실패 시 사용자 행과 관리 기능을 유지하고 0 대신 사용 불가 및 재시도를 표시합니다.

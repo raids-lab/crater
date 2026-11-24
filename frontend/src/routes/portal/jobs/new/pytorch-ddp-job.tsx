@@ -174,7 +174,7 @@ const formSchema = z.object({
     .optional(),
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
-  alertEnabled: z.boolean().default(true),
+  alertEnabled: z.boolean().default(false),
   nodeSelector: nodeSelectorSchema,
   forwards: forwardsSchema,
 })
@@ -318,7 +318,7 @@ function RouteComponent() {
       ],
       tensorboardLogDir: '',
       envs: [],
-      alertEnabled: true,
+      alertEnabled: false,
       nodeSelector: {
         enable: false,
         mode: NodeSelectorMode.Include,

@@ -49,6 +49,9 @@ func initAlertMgr() *alertMgr {
 }
 
 func (a *alertMgr) SendVerificationCode(ctx context.Context, code string, receiver *model.UserAttribute) error {
+	if !config.GetConfig().UserFieldEnabled("email") {
+		return nil
+	}
 	if a.err != nil {
 		return a.err
 	}
@@ -101,7 +104,7 @@ func (a *alertMgr) getJobAlertInfo(ctx context.Context, jobName string) (*JobInf
 	return &JobInformation{
 		Name:              job.Name,
 		JobName:           job.JobName,
-		Username:          job.User.Attributes.Data().Nickname,
+		Username:          job.User.Nickname,
 		jobURL:            jobURL,
 		Receiver:          receiver,
 		CreationTimestamp: job.CreationTimestamp,
@@ -119,6 +122,9 @@ func (a *alertMgr) sendJobNotification(
 	condition func(info *JobInformation) bool,
 	bodyFormatter func(info *JobInformation) string,
 ) error {
+	if !config.GetConfig().UserFieldEnabled("email") {
+		return nil
+	}
 	if a.err != nil {
 		return a.err
 	}

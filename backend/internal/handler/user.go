@@ -17,6 +17,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
@@ -63,12 +64,20 @@ func (mgr *UserMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.PUT("/:name/ban", mgr.UpdateUserBanStatus)
 }
 
+// AdminUpdateUserAttributesReq is a partial update; omitted fields are preserved.
 type AdminUpdateUserAttributesReq struct {
-	model.UserAttribute
-	ContainerSysAdminEnabled *bool `json:"containerSysAdminEnabled"`
+	Nickname                 *string `json:"nickname,omitempty"`
+	Email                    *string `json:"email,omitempty"`
+	Identity                 *string `json:"identity,omitempty"`
+	Teacher                  *string `json:"teacher,omitempty"`
+	Group                    *string `json:"group,omitempty"`
+	Phone                    *string `json:"phone,omitempty"`
+	ContainerSysAdminEnabled *bool   `json:"containerSysAdminEnabled,omitempty"`
 }
 
 type UserResp struct {
+	CreatedAt                time.Time                               `json:"createdAt"`
+	LastLoginAt              *time.Time                              `json:"lastLoginAt"`
 	ContainerSysAdminEnabled bool                                    `json:"containerSysAdminEnabled"`
 	ID                       uint                                    `json:"id"`                        // 用户ID
 	Name                     string                                  `json:"name"`                      // 用户名称
@@ -83,17 +92,22 @@ type UserResp struct {
 }
 
 type UserDetailResp struct {
-	ID           uint         `json:"id"`           // 用户ID
-	Name         string       `json:"name"`         // 用户名称
-	Nickname     string       `json:"nickname"`     // 用户昵称
-	Role         model.Role   `json:"role"`         // 用户角色
-	Status       model.Status `json:"status"`       // 用户状态
-	Banned       bool         `json:"banned"`       // 当前是否处于封禁状态
-	CreatedAt    time.Time    `json:"createdAt"`    // 创建时间
-	Teacher      *string      `json:"teacher"`      // 导师
-	Group        *string      `json:"group"`        // 课题组
-	Avatar       *string      `json:"avatar"`       // 头像
-	ExtraBalance float64      `json:"extraBalance"` // 用户额外点数
+	ID           uint         `json:"id"`                  // 用户ID
+	Name         string       `json:"name"`                // 用户名称
+	Nickname     string       `json:"nickname"`            // 用户昵称
+	Role         model.Role   `json:"role"`                // 用户角色
+	Status       model.Status `json:"status"`              // 用户状态
+	Banned       bool         `json:"banned"`              // 当前是否处于封禁状态
+	CreatedAt    *time.Time   `json:"createdAt,omitempty"` // 创建时间
+	Email        *string      `json:"email,omitempty"`
+	Identity     *string      `json:"identity,omitempty"`
+	Phone        *string      `json:"phone,omitempty"`
+	ExpiredAt    *string      `json:"expiredAt,omitempty"`
+	LastLoginAt  *time.Time   `json:"lastLoginAt,omitempty"`
+	Teacher      *string      `json:"teacher,omitempty"` // 导师
+	Group        *string      `json:"group,omitempty"`   // 课题组
+	Avatar       *string      `json:"avatar"`            // 头像
+	ExtraBalance float64      `json:"extraBalance"`      // 用户额外点数
 }
 
 type UserBillingAccountResp struct {
@@ -179,7 +193,7 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 // ListUser godoc
 //
 //	@Summary		列出用户信息
-//	@Description	列出用户信息（包含私人配额）
+//	@Description	列出用户信息（包含私人配额、平台注册时间 createdAt 和可空的最后登录时间 lastLoginAt）
 //	@Tags			User
 //	@Accept			json
 //	@Produce		json
@@ -191,7 +205,8 @@ func (mgr *UserMgr) DeleteUser(c *gin.Context) {
 func (mgr *UserMgr) ListUser(c *gin.Context) {
 	u := query.User
 	users, err := u.WithContext(c).
-		Select(u.ID, u.Name, u.Role, u.Status, u.ExtraBalance, u.Attributes, u.ContainerSysAdminEnabled, u.BannedTimestamp, u.BanRestrictions).
+		Select(u.ID, u.Name, u.Nickname, u.Role, u.Status, u.ExtraBalance, u.Attributes,
+			u.ContainerSysAdminEnabled, u.BannedTimestamp, u.BanRestrictions, u.CreatedAt, u.LastLoginAt).
 		Order(u.ID.Desc()).
 		Find()
 	if err != nil {
@@ -204,15 +219,19 @@ func (mgr *UserMgr) ListUser(c *gin.Context) {
 		if mgr.isBillingFeatureEnabled(c) {
 			extraBalance = service.ToDisplayPoints(users[i].ExtraBalance)
 		}
+		attributes := users[i].Attributes.Data()
+		attributes.Nickname = users[i].Nickname
 		banned := service.IsUserBanned(users[i].BannedTimestamp)
 		resp = append(resp, UserResp{
+			CreatedAt:                users[i].CreatedAt,
+			LastLoginAt:              users[i].LastLoginAt,
 			ContainerSysAdminEnabled: users[i].ContainerSysAdminEnabled,
 			ID:                       users[i].ID,
 			Name:                     users[i].Name,
 			Role:                     users[i].Role,
 			Status:                   users[i].Status,
 			ExtraBalance:             extraBalance,
-			Attributes:               users[i].Attributes,
+			Attributes:               datatypes.NewJSONType(attributes),
 			Banned:                   banned,
 			PermanentBanned:          service.IsUserPermanentlyBanned(users[i].BannedTimestamp),
 			BannedTimestamp:          users[i].BannedTimestamp,
@@ -366,7 +385,7 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 		Role:         user.Role,
 		Status:       user.Status,
 		Banned:       service.IsUserBanned(user.BannedTimestamp),
-		CreatedAt:    user.CreatedAt,
+		CreatedAt:    nil,
 		ExtraBalance: service.ToDisplayPoints(user.ExtraBalance),
 	}
 	if !mgr.isBillingFeatureEnabled(c) || !canViewUserExtraBalance(token, user) {
@@ -375,8 +394,32 @@ func (mgr *UserMgr) GetUser(c *gin.Context) {
 
 	// 从 Attributes 中获取需要的字段
 	data := user.Attributes.Data()
-	userResp.Teacher = data.Teacher
-	userResp.Group = data.Group
+	cfg := config.GetConfig()
+	privileged := token.RolePlatform == model.RoleAdmin || token.UserID == user.ID
+	if cfg.UserFieldVisible("teacher", privileged) {
+		userResp.Teacher = data.Teacher
+	}
+	if cfg.UserFieldVisible("group", privileged) {
+		userResp.Group = data.Group
+	}
+	if cfg.UserFieldVisible("identity", privileged) {
+		userResp.Identity = data.Identity
+	}
+	if cfg.UserFieldVisible("email", privileged) {
+		userResp.Email = data.Email
+	}
+	if cfg.UserFieldVisible("phone", privileged) {
+		userResp.Phone = data.Phone
+	}
+	if cfg.UserFieldVisible("expiredAt", privileged) {
+		userResp.ExpiredAt = data.ExpiredAt
+	}
+	if cfg.UserFieldVisible("createdAt", privileged) {
+		userResp.CreatedAt = &user.CreatedAt
+	}
+	if cfg.UserFieldVisible("lastLoginAt", privileged) {
+		userResp.LastLoginAt = user.LastLoginAt
+	}
 	userResp.Avatar = data.Avatar
 
 	klog.Infof("get user success, username: %s", name)
@@ -490,24 +533,48 @@ func (mgr *UserMgr) AdminUpdateUserAttributes(c *gin.Context) {
 		return
 	}
 	var nameReq UserNameReq
-	var req AdminUpdateUserAttributesReq
+	var req map[string]any
 	if err := c.ShouldBindUri(&nameReq); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "A username is required"))
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("A username is required"))
 		return
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "Invalid user attributes"))
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Invalid user attributes"))
 		return
 	}
-	if err := service.AdminUpdateUserAttributes(
-		c.Request.Context(), nameReq.Name, &req.UserAttribute, req.ContainerSysAdminEnabled,
-	); err != nil {
+	columns := map[string]any{}
+	if value, ok := req["containerSysAdminEnabled"]; ok {
+		enabled, valid := value.(bool)
+		if !valid {
+			resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Invalid container permission"))
+			return
+		}
+		columns["container_sys_admin_enabled"] = enabled
+		delete(req, "containerSysAdminEnabled")
+	}
+	fields := config.GetConfig().UserFieldPresentation()
+	for key, value := range req {
+		field, ok := fields[key]
+		if !ok || !field.Editable {
+			resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Field is not enabled or editable: "+key))
+			return
+		}
+		if value != nil {
+			if _, ok := value.(string); !ok {
+				resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("Expected string: "+key))
+				return
+			}
+		}
+		if key == "nickname" && value == nil {
+			req[key] = ""
+		}
+		if key == "email" {
+			columns["last_email_verified_at"] = nil
+		}
+	}
+	if err := service.PatchUserProfile(c.Request.Context(), nameReq.Name, req, columns); err != nil {
 		resputil.HandleError(c, err)
 		return
-	}
-	if req.ContainerSysAdminEnabled != nil {
-		klog.InfoS("Updated user container permission", "operator", token.Username,
-			"username", nameReq.Name, "containerSysAdminEnabled", *req.ContainerSysAdminEnabled)
 	}
 	resputil.Success(c, "User attributes updated successfully")
 }

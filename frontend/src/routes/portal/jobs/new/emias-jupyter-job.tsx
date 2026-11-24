@@ -105,7 +105,7 @@ const formSchema = z.object({
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
-  alertEnabled: z.boolean().default(true),
+  alertEnabled: z.boolean().default(false),
   forwards: forwardsSchema,
 })
 
@@ -243,7 +243,7 @@ function RouteComponent() {
         mode: NodeSelectorMode.Include,
         nodes: [],
       },
-      alertEnabled: true,
+      alertEnabled: false,
     },
   })
 

@@ -21,7 +21,7 @@ import { useMutation } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAtom } from 'jotai'
 import { MailPlusIcon, UserRoundCogIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -56,7 +56,6 @@ import LoadableButton from '@/components/button/loadable-button'
 import { TimeDistance } from '@/components/custom/time-distance'
 import PageTitle from '@/components/layout/page-title'
 
-import { IUserAttributes } from '@/services/api/admin/user'
 import {
   apiContextUpdateUserAttributes,
   apiSendVerificationEmail,
@@ -64,26 +63,15 @@ import {
 } from '@/services/api/context'
 import { apiUserEmailVerified } from '@/services/api/user'
 
+import { useUserFields } from '@/hooks/use-user-fields'
+
 import { atomUserInfo } from '@/utils/store'
 
 // Moved Zod schema to component
-function getFormSchema(t: (key: string) => string) {
+function getFormSchema() {
   return z.object({
-    nickname: z.string().min(2, {
-      message: t('userSettings.nicknameError'),
-    }),
-    email: z
-      .string()
-      .email({
-        message: t('userSettings.emailError'),
-      })
-      .optional()
-      .nullable(),
-    teacher: z.string().optional().nullable(),
-    group: z.string().optional().nullable(),
-    expiredAt: z.string().optional().nullable(),
-    phone: z.string().optional().nullable(),
-    avatar: z.string().url().optional().nullable(),
+    email: z.string().optional().nullable(),
+    avatar: z.string().url().optional().nullable().or(z.literal('')),
   })
 }
 
@@ -93,39 +81,36 @@ export const Route = createFileRoute('/portal/more/user')({
 
 function RouteComponent() {
   const { t } = useTranslation()
+  const { fields } = useUserFields()
+  const emailEnabled = !!fields.email
   const [user, setUser] = useAtom(atomUserInfo)
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || '')
   const [originalEmail, setOriginalEmail] = useState(user?.email || '')
-  const [isEmailVerified, setIsEmailVerified] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isVerifyError, setIsVerifyError] = useState(false)
   const [verificationCode, setVerificationCode] = useState('')
 
-  const formSchema = getFormSchema(t)
+  const formSchema = getFormSchema()
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      nickname: user?.nickname,
       email: user?.email || null,
-      teacher: user?.teacher || null,
-      group: user?.group || null,
-      expiredAt: user?.expiredAt || null,
-      phone: user?.phone || null,
       avatar: user?.avatar || null,
     },
   })
 
   const { data: emailVerified } = useQuery({
     queryKey: ['emailVerified'],
+    enabled: emailEnabled,
     queryFn: () => apiUserEmailVerified(),
     select: (res) => res.data,
   })
   const { mutate: updateUser } = useMutation({
-    mutationFn: (values: IUserAttributes) => apiContextUpdateUserAttributes(values),
+    mutationFn: (values: { avatar?: string }) => apiContextUpdateUserAttributes(values),
     onSuccess: (_data, values) => {
       toast.success(t('userSettings.updateSuccess'))
-      setUser((prev) => ({ ...prev, ...values, space: prev?.space || '' }))
+      setUser((prev) => (prev ? { ...prev, ...values } : prev))
     },
   })
 
@@ -147,38 +132,13 @@ function RouteComponent() {
     onSuccess: () => {
       toast.success(t('userSettings.emailVerifiedSuccess'))
       setOriginalEmail(form.getValues('email') ?? '')
-      setIsEmailVerified(true)
+      setUser((prev) => ({ ...prev!, email: form.getValues('email') ?? undefined }))
       setIsDialogOpen(false)
     },
   })
 
-  useEffect(() => {
-    if (emailVerified?.verified) {
-      return
-    }
-    setIsEmailVerified(false)
-  }, [emailVerified])
-
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!isEmailVerified && values.email !== originalEmail) {
-      form.setError('email', {
-        type: 'manual',
-        message: t('userSettings.verifyEmailFirst'),
-      })
-      return
-    }
-
-    updateUser({
-      id: user?.id || 0,
-      name: user?.name || '',
-      email: values.email ?? user?.email,
-      nickname: values.nickname ?? user?.nickname,
-      teacher: values.teacher ?? user?.teacher,
-      group: values.group ?? user?.group,
-      expiredAt: values.expiredAt ?? user?.expiredAt,
-      phone: values.phone ?? user?.phone,
-      avatar: values.avatar ?? user?.avatar,
-    })
+    updateUser({ avatar: values.avatar ?? '' })
   }
 
   return (
@@ -226,53 +186,55 @@ function RouteComponent() {
                     </AvatarFallback>
                   </Avatar>
                 </div>
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('userSettings.emailLabel')}</FormLabel>
-                      <FormControl>
-                        <div className="flex items-center space-x-2">
-                          <Input
-                            {...field}
-                            type="email"
-                            className="font-mono"
-                            value={field.value || ''}
-                            onChange={(e) => {
-                              field.onChange(e)
-                              setIsEmailVerified(false)
-                            }}
-                          />
-                          {(field.value !== originalEmail || emailVerified?.verified !== true) && (
-                            <LoadableButton
-                              isLoading={isSendVerificationPending}
-                              isLoadingText={t('userSettings.verificationLoading')}
-                              variant="secondary"
-                              type="button"
-                              onClick={() => {
-                                sendVerificationEmail(field.value || '')
+                {emailEnabled && (
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('userSettings.emailLabel')}</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center space-x-2">
+                            <Input
+                              {...field}
+                              type="email"
+                              className="font-mono"
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                field.onChange(e)
                               }}
-                            >
-                              <MailPlusIcon />
-                              {t('userSettings.verifyButton')}
-                            </LoadableButton>
+                            />
+                            {(field.value !== originalEmail ||
+                              emailVerified?.verified !== true) && (
+                              <LoadableButton
+                                isLoading={isSendVerificationPending}
+                                isLoadingText={t('userSettings.verificationLoading')}
+                                variant="secondary"
+                                type="button"
+                                onClick={() => {
+                                  sendVerificationEmail(field.value || '')
+                                }}
+                              >
+                                <MailPlusIcon />
+                                {t('userSettings.verifyButton')}
+                              </LoadableButton>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormDescription>
+                          {t('userSettings.emailDescription')}
+                          {emailVerified?.lastEmailVerifiedAt && (
+                            <span className="ml-0.5">
+                              ({t('userSettings.lastVerified')}{' '}
+                              <TimeDistance date={emailVerified.lastEmailVerifiedAt} />)
+                            </span>
                           )}
-                        </div>
-                      </FormControl>
-                      <FormDescription>
-                        {t('userSettings.emailDescription')}
-                        {emailVerified?.lastEmailVerifiedAt && (
-                          <span className="ml-0.5">
-                            ({t('userSettings.lastVerified')}{' '}
-                            <TimeDistance date={emailVerified.lastEmailVerifiedAt} />)
-                          </span>
-                        )}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </CardContent>
               <CardFooter className="px-6 pt-6">
                 <Button type="submit">

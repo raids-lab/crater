@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	// v7 adds the container command execution API.
-	APIVersion = 7
-	// job exec requires the v7 endpoint and has no equivalent fallback.
-	MinSupportedBackendAPIVersion    = 7
+	// v8 adds user field configuration and configurable profile visibility.
+	APIVersion = 8
+	// user fields requires the v8 configuration endpoint and has no equivalent fallback.
+	MinSupportedBackendAPIVersion    = 8
 	APIVersionHeader                 = "X-Crater-API-Version"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"

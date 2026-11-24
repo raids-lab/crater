@@ -1,0 +1,68 @@
+---
+title: User fields and sign-in times
+description: Configure profile enablement, disclosure, directory synchronization and localized names.
+---
+
+<ChartBadge />
+
+Configure profile fields under `backendConfig.userFields`, independently of authentication, then restart the backend through the normal deployment process.
+
+## Example
+
+A listed field is enabled; an absent field is disabled. Omission or `{}` disables all optional fields. The default values explicitly enable nickname, email, teacher, group, phone and expiration time. System columns (username, role, status, bans and actions) remain available.
+
+```yaml
+backendConfig:
+  userFields:
+    nickname: {}
+    email: {}
+    phone: {}
+    group:
+      showToAll: true
+      labels:
+        zh: 组别
+        en: Research group
+    identity:
+      labels:
+        zh: 身份
+        en: Position
+    teacher: {}
+    expiredAt: {}
+    createdAt: {}
+    lastLoginAt: {}
+  auth:
+    ldap:
+      attributeMapping:
+        username: sAMAccountName
+        displayName: extensionAttribute4
+        email: mail
+        group: department
+        identity: title
+```
+
+
+Administrators see every enabled column, including empty columns, and can hide columns locally. Expiration and creation/sign-in times are read-only; administrators can maintain other enabled fields. `showToAll` defaults to `false`. The backend omits disabled or private configurable fields from other users' detail, project membership and dataset membership responses. Administrators and the subject can read enabled private fields. Users may change only their avatar and verified email.
+
+## Directory synchronization
+
+LDAP profile mappings must be a subset of enabled fields; validation names any missing field. Existing username, display-name and UID/GID mappings are exempt. The example's `department` and `title` are deployment conventions; verify directory data first.
+
+No mapping preserves manually maintained values. A configured mapping overwrites the value at the next LDAP login, including clearing it when the directory is empty. Verified email keeps its existing protection. Directory-managed form inputs show a warning. Clients submit changed keys only; database updates merge those keys atomically to preserve concurrent edits. All nickname reads use `users.nickname`; actual changes also update the compatibility nickname in existing extension data, with no writes on reads.
+
+## Names and CLI
+
+Resolve names using exact locale, base language, another configured nonblank name, then the built-in name. Other language keys are sorted lexically after removing hyphens/underscores and lowercasing; original keys break ties. Web and CLI share this order, preserving the meaning of renamed fields.
+
+Query configuration separately with `crater user fields --json --no-interactive`. Human user-list output uses deployment labels. `crater admin user ls --json` requests only the list and preserves new response fields; agents can query field metadata first.
+
+## Email and notifications
+
+Without `email`, hide personal email/verification and job notification controls. New notifications default off, and the backend stops sending notifications even for existing jobs. Stored email is retained. `email: {}` still permits self-verification and notifications; it only defaults to private disclosure.
+
+## Times and upgrades
+
+Creation time is the Crater account creation time, not the LDAP account creation time. Last sign-in changes only after successful login or a signup session, never on failure, refresh, session restoration or project switching. Migration `202611150001` adds nullable `users.last_login_at`, leaving old values unknown. Helm runs migrations in the migration init container; other deployments must run their normal migration process first.
+
+## Failures
+
+Retry failed configuration requests. A billing request failure preserves user rows and management actions; show unavailable points with retry, never a fabricated zero.

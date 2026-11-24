@@ -1,0 +1,68 @@
+---
+title: 用户字段与登录时间
+description: 配置启用的资料字段、公开范围、LDAP 同步与多语言名称。
+---
+
+<ChartBadge />
+
+用户资料字段在 `backendConfig.userFields` 中独立配置，认证方式负责验证身份并提供映射值。按正常升级流程修改配置并重启后端。
+
+## 配置示例
+
+字段列入配置即启用，没列入就不展示，省略配置或 `{}` 表示关闭所有可配置字段。默认 values 显式启用昵称、邮箱、导师、组别、手机号和过期时间。用户名、权限、状态、封禁及操作等系统字段不受此配置控制。
+
+```yaml
+backendConfig:
+  userFields:
+    nickname: {}
+    email: {}
+    phone: {}
+    group:
+      showToAll: true
+      labels:
+        zh: 组别
+        en: Research group
+    identity:
+      labels:
+        zh: 身份
+        en: Position
+    teacher: {}
+    expiredAt: {}
+    createdAt: {}
+    lastLoginAt: {}
+  auth:
+    ldap:
+      attributeMapping:
+        username: sAMAccountName
+        displayName: extensionAttribute4
+        email: mail
+        group: department
+        identity: title
+```
+
+
+管理员列表显示全部已启用字段，整列为空时也保留，可在前端自行隐藏。`expiredAt`、`createdAt`、`lastLoginAt` 只读；其他已启用字段可由管理员维护。`showToAll` 默认 `false`，仅控制其他普通用户能否看到，后端会过滤用户详情、项目成员及数据集用户响应。管理员和本人可读取已启用的私有字段；用户只可修改自己的头像，并通过验证流程修改邮箱。
+
+## LDAP 与并发修改
+
+资料映射必须是已启用字段的子集，否则启动校验报出具体字段。用户名、显示名及 UID/GID 原有登录映射不受限制。示例中的 `department`、`title` 是部署约定，先确认目录数据再采用。
+
+没有配置映射：保留管理员填写的值。配置了映射：下次 LDAP 登录时使用目录值覆盖；目录值为空时清空平台值。已验证邮箱沿用保留机制。管理员编辑目录管理字段时会看到覆盖提示。前端只提交改动，后端只合并这些 JSON 键，避免覆盖其他人的并发修改。昵称统一读取 `users.nickname`，修改时同步已有扩展资料的兼容昵称，不在读取时补写。
+
+## 名称回退与 CLI
+
+名称按“当前地区 → 基础语言 → 其他已配置的非空名称 → 内置名称”回退。其他语言按移除 `-`/`_` 并转小写后的语言键字典序排列；归一化相同再按原键排列。Web 与 CLI 使用同一规则，避免将“毕业年份”误显示为内置“组别”。
+
+`crater user fields --json --no-interactive` 单独查询配置。普通管理员列表模式使用配置名称；`crater admin user ls --json` 只查列表并保留新增字段，Agent 可先查询配置辅助理解。
+
+## 邮箱与作业通知
+
+未启用 `email`：个人设置隐藏邮箱填写和验证入口，作业创建及详情不提供邮件通知；新作业通知默认关闭，后端也停止发送已有作业通知，邮箱历史数据不因此删除。启用 `email: {}` 则仍可验证自己的邮箱和接收通知，只是不向其他用户公开。
+
+## 时间与升级
+
+注册时间复用 `CreatedAt`，指 Crater 账号创建时间，不是 LDAP 账号创建时间。最后登录时间仅在成功登录或注册后建立会话时更新；失败、刷新 token、恢复会话和切换项目不更新。迁移 `202611150001` 新增可空的 `users.last_login_at`，旧记录不推算历史。Helm 的 migration init container 在启动前执行迁移，其他部署方式先运行现有迁移流程。
+
+## 加载失败
+
+配置加载失败提供重试；点数请求失败仍保留用户行和管理操作，点数显示暂不可用并可重试，不显示为 0。

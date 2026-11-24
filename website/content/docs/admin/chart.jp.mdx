@@ -53,6 +53,7 @@ Crater は Kubernetes 向けに設計された総合的な AI 開発プラット
 | パラメータ | 型 | デフォルト値 | 説明 |
 |-----|------|---------|-------------|
 | backendConfig.port | string | `":8088"` | バックエンド API サービスのリスニングポート |
+| backendConfig.userFields | object | `{}` | ユーザー管理の表示設定。[項目設定](./more/user-fields)を参照。 |
 | backendConfig.enableLeaderElection | bool | `false` | Leader 選挙を有効にするかどうか（高可用性デプロイ用） |
 | backendConfig.modelDownload.image | string | `"ghcr.io/raids-lab/crater-model-downloader:v1.0.0"` | モデルおよびデータセットのダウンロードジョブで使用するコンテナイメージ |
 | backendConfig.modelDownload.huggingFaceEndpoint | string | `"https://huggingface.co"` | ダウンロードジョブが使用する Hugging Face Hub の URL。管理者が承認したミラーに変更可能 |
@@ -108,6 +109,7 @@ Crater は Kubernetes 向けに設計された総合的な AI 開発プラット
 | backendConfig.auth.ldap.server.baseDN | string | `"..."` | ユーザー検索の Base DN |
 | backendConfig.auth.ldap.attributeMapping.username | string | `"uid"` | ユーザー名に対応する LDAP 属性名 |
 | backendConfig.auth.ldap.attributeMapping.displayName | string | `"cn"` | 表示名に対応する LDAP 属性名 |
+| backendConfig.auth.ldap.attributeMapping.identity | string | `""` | 身分・職位を取得する LDAP 属性。空の場合は同期しません。 |
 | backendConfig.auth.ldap.uid.source | string | `"default"` | **UID/GID 取得ポリシー**: `default`, `ldap`, `rid`, `external` (非推奨) から選択 |
 | backendConfig.auth.ldap.uid.rid.offset | int | `10000` | source が `rid` の場合の UID/GID 計算オフセット（UID/GID = RID + offset） |
 | backendConfig.auth.ldap.uid.rid.sidAttribute | string | `"objectSid"` | source が `rid` の場合、ユーザーのバイナリ SID を格納する LDAP 属性名（UID 計算に使用） |

@@ -1,0 +1,167 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-help/argv --
+crater user fields --help
+-- zh-CN/01-help/exit --
+0
+-- zh-CN/01-help/stdout --
+查看启用的用户字段及部署名称
+
+Usage:
+  crater user fields [flags]
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/01-help/stderr --
+-- zh-CN/02-fields-json/argv --
+crater user fields --json
+-- zh-CN/02-fields-json/exit --
+0
+-- zh-CN/02-fields-json/stdout --
+{
+  "data": {
+    "fields": {
+      "group": {
+        "labels": {
+          "en": "Graduation year",
+          "zh": "毕业年份"
+        },
+        "showToAll": false
+      },
+      "phone": {
+        "labels": {},
+        "showToAll": false
+      }
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/02-fields-json/stderr --
+-- zh-CN/03-fields-text/argv --
+crater user fields --no-interactive
+-- zh-CN/03-fields-text/exit --
+0
+-- zh-CN/03-fields-text/stdout --
+{
+  "group": {
+    "labels": {
+      "en": "Graduation year",
+      "zh": "毕业年份"
+    },
+    "showToAll": false
+  },
+  "phone": {
+    "labels": {},
+    "showToAll": false
+  }
+}
+-- zh-CN/03-fields-text/stderr --
+-- zh-CN/04-disabled-fields/argv --
+crater user fields --json
+-- zh-CN/04-disabled-fields/exit --
+0
+-- zh-CN/04-disabled-fields/stdout --
+{
+  "data": {
+    "fields": {}
+  },
+  "status": "OK"
+}
+-- zh-CN/04-disabled-fields/stderr --
+-- zh-CN/05-no-session/argv --
+crater user fields --json
+-- zh-CN/05-no-session/exit --
+2
+-- zh-CN/05-no-session/stdout --
+-- zh-CN/05-no-session/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_NOT_FOUND",
+  "message": "未找到当前激活的账号"
+}
+-- zh-CN/06-old-backend/argv --
+crater user fields --json
+-- zh-CN/06-old-backend/exit --
+4
+-- zh-CN/06-old-backend/stdout --
+-- zh-CN/06-old-backend/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_NOT_FOUND_404",
+  "message": "请求失败（HTTP 404）：field configuration unavailable",
+  "context": {
+    "crater_code": 1,
+    "http_status": 404,
+    "msg": "field configuration unavailable"
+  }
+}
+-- zh-CN/07-admin-table/argv --
+crater admin user ls --no-interactive
+-- zh-CN/07-admin-table/exit --
+0
+-- zh-CN/07-admin-table/stdout --
+ID	名称	角色	状态	毕业年份	手机号
+1	alice	普通用户	已激活	2029	—
+第 1 页，共 1 条
+-- zh-CN/07-admin-table/stderr --
+-- zh-CN/08-admin-json/argv --
+crater admin user ls --json
+-- zh-CN/08-admin-json/exit --
+0
+-- zh-CN/08-admin-json/stdout --
+{
+  "data": {
+    "pagination": {
+      "page": 1,
+      "page_size": 15,
+      "total": 1
+    },
+    "users": [
+      {
+        "id": 1,
+        "name": "alice",
+        "nickname": "Alice",
+        "role": 2,
+        "status": 2,
+        "newField": {
+          "kept": true
+        },
+        "attributes": {
+          "group": "2029",
+          "phone": null
+        }
+      }
+    ]
+  },
+  "status": "OK"
+}
+-- zh-CN/08-admin-json/stderr --
+-- zh-CN/09-admin-fallback/argv --
+crater admin user ls --no-interactive
+-- zh-CN/09-admin-fallback/exit --
+0
+-- zh-CN/09-admin-fallback/stdout --
+ID       名称                     昵称                     角色       状态      
+1        alice                    Alice                    普通用户   已激活    
+第 1 页，共 1 条
+-- zh-CN/09-admin-fallback/stderr --
+-- zh-CN/10-admin-config-error/argv --
+crater admin user ls --json=false --no-interactive
+-- zh-CN/10-admin-config-error/exit --
+4
+-- zh-CN/10-admin-config-error/stdout --
+-- zh-CN/10-admin-config-error/stderr --
+Error:
+  请求失败（HTTP 500）：field configuration unavailable
+-- zh-CN/11-extra-argument/argv --
+crater user fields extra --json
+-- zh-CN/11-extra-argument/exit --
+2
+-- zh-CN/11-extra-argument/stdout --
+-- zh-CN/11-extra-argument/stderr --
+{
+  "category": "usage_error",
+  "code": "ERR_INVALID_FLAG_VALUE",
+  "message": "crater user fields 的参数过多：收到 1 个，最多允许 0 个"
+}

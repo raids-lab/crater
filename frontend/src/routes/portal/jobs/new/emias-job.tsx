@@ -105,7 +105,7 @@ const formSchema = z.object({
   volumeMounts: volumeMountsSchema,
   nodeSelector: nodeSelectorSchema,
   forwards: forwardsSchema,
-  alertEnabled: z.boolean().default(true),
+  alertEnabled: z.boolean().default(false),
 })
 
 type FormSchema = z.infer<typeof formSchema>
@@ -223,7 +223,7 @@ function RouteComponent() {
         mode: NodeSelectorMode.Include,
         nodes: [],
       },
-      alertEnabled: true,
+      alertEnabled: false,
       forwards: [],
     },
   })

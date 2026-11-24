@@ -114,7 +114,7 @@ const formSchema = z.object({
   task: taskSchema,
   envs: envsSchema,
   volumeMounts: volumeMountsSchema,
-  alertEnabled: z.boolean().default(true),
+  alertEnabled: z.boolean().default(false),
   nodeSelector: nodeSelectorSchema,
   forwards: forwardsSchema,
 })
@@ -130,7 +130,7 @@ const dataProcessor = (data: FormSchema) => {
     data.forwards = []
   }
   if (data.alertEnabled === undefined) {
-    data.alertEnabled = true
+    data.alertEnabled = false
   }
   return data
 }

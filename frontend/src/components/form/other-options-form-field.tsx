@@ -16,7 +16,7 @@
 // i18n-processed-v1.1.0
 import { useQuery } from '@tanstack/react-query'
 import { CheckIcon, ChevronsUpDownIcon, CircleHelpIcon, SettingsIcon, XIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FieldPath, FieldValues, PathValue, UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 
@@ -54,6 +54,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import { apiGetNodes } from '@/services/api/cluster'
+
+import { useUserFields } from '@/hooks/use-user-fields'
 
 import { NodeSelectorMode } from '@/utils/form'
 
@@ -203,6 +205,11 @@ export function OtherOptionsFormCard<T extends FieldValues>({
   setOpen,
 }: OtherOptionsFormCardProps<T>) {
   const { t } = useTranslation()
+  const { fields } = useUserFields()
+  const emailEnabled = !!fields.email
+  useEffect(() => {
+    if (!emailEnabled) form.setValue(alertEnabledPath, false as PathValue<T, FieldPath<T>>)
+  }, [emailEnabled, form, alertEnabledPath])
   const nodeSelectorEnabled = form.watch(nodeSelectorEnablePath)
   const watchedNodeSelectorMode = form.watch(nodeSelectorModePath) as NodeSelectorMode | undefined
   const nodeSelectorMode =
@@ -223,38 +230,40 @@ export function OtherOptionsFormCard<T extends FieldValues>({
       >
         <div className="mt-3 space-y-3">
           {sysAdminEnabledPath && <JobSysAdminFormField form={form} name={sysAdminEnabledPath} />}
-          <FormField
-            control={form.control}
-            name={alertEnabledPath}
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
-                <FormLabel className="font-normal">
-                  {t('otherOptionsFormCard.receiveStatusNotifications')}
-                  <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="mb-0.5 font-semibold">
-                          {t('otherOptionsFormCard.tooltip.receiveEmailNotifications')}
-                        </p>
-                        <p>{t('otherOptionsFormCard.tooltip.notification1')}</p>
-                        <p>{t('otherOptionsFormCard.tooltip.notification2')}</p>
-                        <p>{t('otherOptionsFormCard.tooltip.notification3')}</p>
-                        <p>{t('otherOptionsFormCard.tooltip.notification4')}</p>
-                        <p>{t('otherOptionsFormCard.tooltip.notification5')}</p>
-                        <p>{t('otherOptionsFormCard.tooltip.emailSupport')}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </FormLabel>
-                <FormControl>
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          {emailEnabled && (
+            <FormField
+              control={form.control}
+              name={alertEnabledPath}
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between space-y-0 space-x-0">
+                  <FormLabel className="font-normal">
+                    {t('otherOptionsFormCard.receiveStatusNotifications')}
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CircleHelpIcon className="text-muted-foreground size-4 hover:cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="mb-0.5 font-semibold">
+                            {t('otherOptionsFormCard.tooltip.receiveEmailNotifications')}
+                          </p>
+                          <p>{t('otherOptionsFormCard.tooltip.notification1')}</p>
+                          <p>{t('otherOptionsFormCard.tooltip.notification2')}</p>
+                          <p>{t('otherOptionsFormCard.tooltip.notification3')}</p>
+                          <p>{t('otherOptionsFormCard.tooltip.notification4')}</p>
+                          <p>{t('otherOptionsFormCard.tooltip.notification5')}</p>
+                          <p>{t('otherOptionsFormCard.tooltip.emailSupport')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </FormLabel>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          )}
           {cpuPinningEnabledPath && (
             <FormField
               control={form.control}

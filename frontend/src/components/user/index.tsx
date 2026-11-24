@@ -42,8 +42,10 @@ import TensorboardPanelList from '@/components/tensorboard/tensorboard-panel-lis
 import { Role } from '@/services/api/auth'
 import { apiGetUser } from '@/services/api/user'
 import { USER_BAN_STATUS_REFETCH_INTERVAL } from '@/services/api/user-ban'
+import { visibleUserFields } from '@/services/user-fields'
 
 import useIsAdmin from '@/hooks/use-admin'
+import { useUserFields } from '@/hooks/use-user-fields'
 
 import { getUserPseudonym } from '@/utils/pseudonym'
 import { atomUserInfo, globalHideUsername } from '@/utils/store'
@@ -57,6 +59,7 @@ import { UserJobsOverview } from './user-jobs'
 
 export default function UserDetail({ name, ...props }: DetailPageCoreProps & { name: string }) {
   const { t } = useTranslation()
+  const { fields, label: fieldLabel } = useUserFields()
   const hideUsername = useAtomValue(globalHideUsername)
   const currentUser = useAtomValue(atomUserInfo)
   const grafanaUser = useAtomValue(configGrafanaUserAtom)
@@ -99,24 +102,23 @@ export default function UserDetail({ name, ...props }: DetailPageCoreProps & { n
     </div>
   )
 
-  // User basic information 保持不变
-  const info = [
-    {
-      icon: User,
-      title: t('userDetail.info.advisor.title'),
-      value: user?.teacher || t('userDetail.info.notSet'),
-    },
-    {
-      icon: Users,
-      title: t('userDetail.info.researchGroup.title'),
-      value: user?.group || t('userDetail.info.notSet'),
-    },
-    {
-      icon: Calendar,
-      title: t('userDetail.info.joinDate.title'),
-      value: <TimeDistance date={user?.createdAt} />,
-    },
-  ]
+  const privilegedProfile = isAdminView || currentUser?.name === name
+  const info = visibleUserFields(fields)
+    .filter((key) => key !== 'nickname' && (privilegedProfile || fields[key]?.showToAll))
+    .map((key) => {
+      const value = user?.[key]
+      const isTime = key === 'createdAt' || key === 'lastLoginAt' || key === 'expiredAt'
+      return {
+        icon: isTime ? Calendar : key === 'group' ? Users : User,
+        title: fieldLabel(key),
+        value:
+          isTime && value && Number.isFinite(Date.parse(value)) ? (
+            <TimeDistance date={value} />
+          ) : (
+            value || t('userDetail.info.notSet')
+          ),
+      }
+    })
 
   // Tab configuration
   const tabs = [

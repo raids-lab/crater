@@ -402,7 +402,7 @@ func assertFirstLoginProfile(t *testing.T, db *gorm.DB, userID uint) {
 	}
 	attributes := user.Attributes.Data()
 	if user.Password != nil || user.Status != model.StatusActive || user.Role != model.RoleUser ||
-		user.Nickname != "First LDAP User" || attributes.ID != userID || attributes.UID == nil || *attributes.UID != "10042" ||
+		user.Nickname != "First LDAP User" || attributes.UID == nil || *attributes.UID != "10042" ||
 		attributes.GID == nil || *attributes.GID != "10513" || attributes.Email == nil || *attributes.Email != "first-login@example.invalid" {
 		t.Fatal("LDAP account state, password policy, profile, or RID identity was not persisted correctly")
 	}

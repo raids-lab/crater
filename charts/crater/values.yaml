@@ -318,6 +318,21 @@ frontendConfig:
 
 # -- Backend configuration
 backendConfig:
+  # -- Enabled user fields; absent fields are disabled, disclosure is opt-in. See website/content/docs/admin/more/user-fields.mdx.
+  userFields:
+    nickname: {}
+    email: {}
+    teacher: {}
+    group: {}
+    phone: {}
+    expiredAt: {}
+    # identity:
+    #   showToAll: false
+    #   labels:
+    #     zh: 身份
+    #     en: Position
+    # createdAt: {}
+    # lastLoginAt: {}
   # -- Enable leader election for controller manager to ensure high availability
   # Defaults to false if not specified
   enableLeaderElection: false
@@ -547,6 +562,8 @@ backendConfig:
         displayName: "cn"
         # -- LDAP attribute for email
         email: "mail"
+        # -- LDAP attribute for profile identity/position (empty disables synchronization; independent of permission role)
+        identity: ""
       # -- UID/GID acquisition settings
       uid:
         # -- Source of UID/GID ("default", "ldap", "rid", "external")

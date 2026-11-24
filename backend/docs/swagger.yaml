@@ -304,6 +304,9 @@ definitions:
       id:
         description: ID
         type: integer
+      identity:
+        description: 身份或职务（与权限角色无关）
+        type: string
       name:
         description: 账号
         type: string
@@ -1174,6 +1177,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-map_string_github_com_raids-lab_crater_pkg_config_UserFieldPresentation:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/map_string_github_com_raids-lab_crater_pkg_config.UserFieldPresentation'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-map_string_string:
     properties:
       code:
@@ -1332,6 +1345,19 @@ definitions:
     - _
     - FileType
     - DataType
+  github_com_raids-lab_crater_pkg_config.UserFieldPresentation:
+    properties:
+      editable:
+        type: boolean
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      ldapManaged:
+        type: boolean
+      showToAll:
+        type: boolean
+    type: object
   github_com_raids-lab_crater_pkg_crclient.ClusterNodeDetail:
     properties:
       address:
@@ -1585,40 +1611,19 @@ definitions:
     type: object
   internal_handler.AdminUpdateUserAttributesReq:
     properties:
-      avatar:
-        description: 头像
-        type: string
       containerSysAdminEnabled:
         type: boolean
       email:
-        description: 邮箱
-        type: string
-      expiredAt:
-        description: 过期时间
-        type: string
-      gid:
-        description: GID
         type: string
       group:
-        description: 课题组
         type: string
-      id:
-        description: ID
-        type: integer
-      name:
-        description: 账号
+      identity:
         type: string
       nickname:
-        description: 昵称，如果没有指定，则与账号相同
         type: string
       phone:
-        description: 电话
         type: string
       teacher:
-        description: 老师
-        type: string
-      uid:
-        description: UID and GID are used for Filesystem
         type: string
     type: object
   internal_handler.ApprovalOrderResp:
@@ -2519,6 +2524,11 @@ definitions:
     required:
     - banned
     type: object
+  internal_handler.UserAvatarUpdateReq:
+    properties:
+      avatar:
+        type: string
+    type: object
   internal_handler.UserBanRecordResp:
     properties:
       action:
@@ -2570,6 +2580,10 @@ definitions:
       createdAt:
         description: 创建时间
         type: string
+      email:
+        type: string
+      expiredAt:
+        type: string
       extraBalance:
         description: 用户额外点数
         type: number
@@ -2579,11 +2593,17 @@ definitions:
       id:
         description: 用户ID
         type: integer
+      identity:
+        type: string
+      lastLoginAt:
+        type: string
       name:
         description: 用户名称
         type: string
       nickname:
         description: 用户昵称
+        type: string
+      phone:
         type: string
       role:
         allOf:
@@ -2624,12 +2644,16 @@ definitions:
         type: string
       containerSysAdminEnabled:
         type: boolean
+      createdAt:
+        type: string
       extraBalance:
         description: 用户额外点数
         type: number
       id:
         description: 用户ID
         type: integer
+      lastLoginAt:
+        type: string
       name:
         description: 用户名称
         type: string
@@ -3425,6 +3449,10 @@ definitions:
         type: string
       workingDir:
         type: string
+    type: object
+  map_string_github_com_raids-lab_crater_pkg_config.UserFieldPresentation:
+    additionalProperties:
+      $ref: '#/definitions/github_com_raids-lab_crater_pkg_config.UserFieldPresentation'
     type: object
   map_string_string:
     additionalProperties:
@@ -6174,11 +6202,25 @@ paths:
       summary: 更新调度插件配置
       tags:
       - SystemConfig
+  /v1/admin/system-config/user-fields:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_github_com_raids-lab_crater_pkg_config_UserFieldPresentation'
+      security:
+      - Bearer: []
+      summary: Get authentication-independent user field presentation
+      tags:
+      - SystemConfig
   /v1/admin/users:
     get:
       consumes:
       - application/json
-      description: 列出用户信息（包含私人配额）
+      description: 列出用户信息（包含私人配额、平台注册时间 createdAt 和可空的最后登录时间 lastLoginAt）
       produces:
       - application/json
       responses:
@@ -7202,7 +7244,7 @@ paths:
         name: attributes
         required: true
         schema:
-          $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserAttribute'
+          $ref: '#/definitions/internal_handler.UserAvatarUpdateReq'
       produces:
       - application/json
       responses:
@@ -9856,6 +9898,20 @@ paths:
       security:
       - Bearer: []
       summary: 获取模型与数据集下载额度
+      tags:
+      - SystemConfig
+  /v1/system-config/user-fields:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-map_string_github_com_raids-lab_crater_pkg_config_UserFieldPresentation'
+      security:
+      - Bearer: []
+      summary: Get authentication-independent user field presentation
       tags:
       - SystemConfig
   /v1/tensorboard:

@@ -68,7 +68,7 @@ import {
 
 import CapacityBadges from '@/components/badge/capacity-badges'
 import UserAccessBadge from '@/components/badge/user-access-badge'
-import UserRoleBadge, { userRoles } from '@/components/badge/user-role-badge'
+import UserRoleBadge, { getUserRoles } from '@/components/badge/user-role-badge'
 import { BillingInlineMeter } from '@/components/custom/billing-balance-meter'
 import SelectBox from '@/components/custom/select-box'
 import FormLabelMust from '@/components/form/form-label-must'
@@ -533,7 +533,7 @@ export function AccountMemberTable({
       {
         key: 'role',
         title: t('accountDetail.table.filter.role'),
-        option: userRoles,
+        option: getUserRoles(t),
       },
       {
         key: 'accessmode',
@@ -866,7 +866,7 @@ const ActionsCell: FC<ActionsCellProps> = ({
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuRadioGroup value={`${user.role}`}>
-                  {userRoles.map((role) => (
+                  {getUserRoles(t).map((role) => (
                     <DropdownMenuRadioItem
                       key={role.value}
                       value={`${role.value}`}

@@ -1,0 +1,64 @@
+---
+title: ユーザーフィールドとログイン時刻
+description: 資料の有効化、公開範囲、LDAP 同期と表示名を設定します。
+---
+
+<ChartBadge />
+
+`backendConfig.userFields` を認証方式と独立して設定し、通常の更新手順でバックエンドを再起動します。
+
+## 設定例
+
+記載したフィールドのみ有効です。省略または `{}` はすべての任意フィールドを無効にします。既定 values は nickname、email、teacher、group、phone、expiredAt を明記します。ユーザー名・権限・状態などのシステム列は対象外です。
+
+```yaml
+backendConfig:
+  userFields:
+    nickname: {}
+    email: {}
+    phone: {}
+    group:
+      showToAll: true
+      labels:
+        zh: 组别
+        en: Research group
+    identity:
+      labels:
+        zh: 身份
+        en: Position
+    teacher: {}
+    expiredAt: {}
+    createdAt: {}
+    lastLoginAt: {}
+  auth:
+    ldap:
+      attributeMapping:
+        username: sAMAccountName
+        displayName: extensionAttribute4
+        email: mail
+        group: department
+        identity: title
+```
+
+
+管理者一覧は空の列も含め有効な列を表示し、画面で個別に非表示にできます。expiredAt、createdAt、lastLoginAt は読み取り専用です。`showToAll` の既定値は `false`。本人と管理者以外への詳細・プロジェクトメンバー・データセットメンバー応答では、バックエンドが無効または非公開の資料を除外します。一般ユーザーが変更できるのは自分のアバターと検証済みメールのみです。
+
+## LDAP と保存
+
+資料マッピングは有効なフィールドの部分集合である必要があり、違反時は具体的な設定名を報告します。既存のユーザー名・表示名・UID/GID マッピングは対象外です。department と title は運用上の例なので実データを確認してください。
+
+マッピングがなければ手動値を保持し、あれば次回 LDAP ログインで同期します。ディレクトリ値が空なら消去します。検証済みメールの保護は維持します。管理者には次回ログイン時の上書きを案内します。変更キーだけを送信・データベース内でマージし、並行編集を保持します。ニックネームは users.nickname を参照し、変更時のみ既存拡張情報も更新します。
+
+## 翻訳と CLI
+
+表示名は現在のロケール、基底言語、他の設定済み非空名、組み込み名の順です。他の言語キーはハイフン・アンダースコアを除いて小文字化した辞書順、同じ場合は元キーの辞書順にします。Web と CLI は同じ規則です。
+
+`crater user fields --json --no-interactive` で設定を取得できます。通常一覧は設定名を利用します。`crater admin user ls --json` は一覧だけを取得し追加フィールドも保持するため、Agent は必要なら先に設定を取得します。
+
+## メールと時刻
+
+email が無効なら設定・検証・作業通知 UI を非表示にし、既存作業の通知もサーバー側で停止します。新規通知の既定はオフです。メール履歴は保持します。`email: {}` なら本人の検証と通知は利用可能で、他人には非公開です。
+
+登録時刻は Crater アカウントの作成時刻です。最終ログインは成功ログイン・登録セッション時のみ更新し、失敗・トークン更新・復元・プロジェクト切替では更新しません。移行 202611150001 で nullable users.last_login_at を追加し、旧ユーザーの履歴は推測しません。Helm は migration init container で実行し、その他は起動前に移行します。
+
+ポイント取得の失敗でもユーザー行と操作を保持し、0 でなく取得不可と再試行を表示します。

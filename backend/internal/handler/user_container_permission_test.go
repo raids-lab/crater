@@ -32,6 +32,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/config"
 )
 
 //nolint:gocyclo // Sequential HTTP cases verify grant, revoke, legacy clients and self-service isolation.
@@ -57,6 +58,9 @@ func TestAdminUserContainerPermissionAPI(t *testing.T) {
 	old := query.User
 	query.User = &q.User
 	t.Cleanup(func() { query.User = old })
+	previousFields := config.GetConfig().UserFields
+	config.GetConfig().UserFields = map[string]config.UserFieldConfig{"nickname": {}}
+	t.Cleanup(func() { config.GetConfig().UserFields = previousFields })
 	mgr := handler.NewUserMgr(&handler.RegisterConfig{})
 	ctxMgr := handler.NewContextMgr(&handler.RegisterConfig{})
 	request := func(role model.Role, method, path, body string) *httptest.ResponseRecorder {
@@ -90,13 +94,13 @@ func TestAdminUserContainerPermissionAPI(t *testing.T) {
 		enabled    bool
 	}{
 		{"ordinary user cannot grant", model.RoleUser, "/admin/users/target/attributes", `{"nickname":"unauthorized","containerSysAdminEnabled":true}`, http.StatusForbidden, false},
-		{"admin grant", model.RoleAdmin, "/admin/users/target/attributes", `{"nickname":"granted","uid":"1001","gid":"1002","containerSysAdminEnabled":true}`, http.StatusOK, true},
-		{"legacy edit preserves grant", model.RoleAdmin, "/admin/users/target/attributes", `{"nickname":"legacy","uid":"1001","gid":"1002"}`, http.StatusOK, true},
+		{"admin grant", model.RoleAdmin, "/admin/users/target/attributes", `{"nickname":"granted","containerSysAdminEnabled":true}`, http.StatusOK, true},
+		{"legacy edit preserves grant", model.RoleAdmin, "/admin/users/target/attributes", `{"nickname":"legacy"}`, http.StatusOK, true},
 		{"invalid boolean rejected", model.RoleAdmin, "/admin/users/target/attributes", `{"containerSysAdminEnabled":"true"}`, http.StatusBadRequest, true},
 		{"missing user", model.RoleAdmin, "/admin/users/missing/attributes", `{"containerSysAdminEnabled":true}`, http.StatusNotFound, true},
-		{"ordinary profile edit cannot revoke", model.RoleUser, "/context/attributes", `{"nickname":"self","uid":"9999","containerSysAdminEnabled":false}`, http.StatusOK, true},
-		{"admin revoke", model.RoleAdmin, "/admin/users/target/attributes", `{"nickname":"revoked","uid":"1001","gid":"1002","containerSysAdminEnabled":false}`, http.StatusOK, false},
-		{"ordinary profile edit cannot grant", model.RoleUser, "/context/attributes", `{"nickname":"self","containerSysAdminEnabled":true}`, http.StatusOK, false},
+		{"ordinary profile edit cannot revoke", model.RoleUser, "/context/attributes", `{"nickname":"self","uid":"9999","containerSysAdminEnabled":false}`, http.StatusBadRequest, true},
+		{"admin revoke", model.RoleAdmin, "/admin/users/target/attributes", `{"nickname":"revoked","containerSysAdminEnabled":false}`, http.StatusOK, false},
+		{"ordinary profile edit cannot grant", model.RoleUser, "/context/attributes", `{"nickname":"self","containerSysAdminEnabled":true}`, http.StatusBadRequest, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			before := load()
