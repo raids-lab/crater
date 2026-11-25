@@ -17,7 +17,7 @@ import { NodeStatus } from '@/services/api/cluster'
 
 import { PhaseBadge, type PhaseBadgeData } from './phase-badge'
 
-interface NodeStatusMeta extends PhaseBadgeData {
+interface NodeStatusMeta extends Omit<PhaseBadgeData, 'icon'> {
   value: NodeStatus
 }
 

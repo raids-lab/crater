@@ -117,11 +117,8 @@ export const NodeStatusCell: FC<{
   node: INodeBriefInfo
   locale?: Locale
 }> = ({ node, locale }) => {
-  const { health, pressures, unschedulable, exclusives } = deriveNodeStatus(node)
+  const { health, pressures, unschedulable, occupied } = deriveNodeStatus(node)
   const workloads = node.workloads ?? 0
-
-  const accounts = exclusives.flatMap(({ account }) => (account ? [account] : []))
-  const [occupied] = exclusives
 
   return (
     <div className="flex flex-col items-start gap-1">
@@ -184,13 +181,10 @@ export const NodeStatusCell: FC<{
               tooltip={
                 <TooltipLines
                   lines={[
-                    { label: '账户', value: accounts.join('、') },
+                    { label: '账户', value: occupied.account },
                     { label: '操作者', value: occupied.operator },
                     { label: '原因', value: occupied.reason },
-                    ...exclusives.map(({ account, timeAdded }) => ({
-                      label: account && accounts.length > 1 ? `时间（${account}）` : '时间',
-                      value: formatNodeStatusTime(timeAdded, locale),
-                    })),
+                    { label: '时间', value: formatNodeStatusTime(occupied.timeAdded, locale) },
                   ]}
                   fallback={getNodeStatusMeta(NodeStatus.Occupied).description}
                 />

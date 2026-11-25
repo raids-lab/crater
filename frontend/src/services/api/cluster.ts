@@ -43,6 +43,9 @@ export interface INodeBriefInfo {
   role: NodeRole
   arch: string
   status: NodeStatus
+  unschedulable?: boolean
+  readyStatus?: 'True' | 'False' | 'Unknown'
+  pressures?: NodeStatus[]
   vendor: string
   taints: IClusterNodeTaint[]
   capacity: V1ResourceList

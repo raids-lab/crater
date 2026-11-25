@@ -40,7 +40,12 @@ import { cn } from '@/lib/utils'
 
 import AcceleratorBadge from '../badge/accelerator-badge'
 import { NodeStatusCell } from './node-status-cell'
-import { deriveNodeStatus, getNodeStatusSeverity, getNodeStatusTags } from './node-status-utils'
+import {
+  deriveNodeStatus,
+  getNodeStatusSeverity,
+  getNodeStatusTags,
+  matchesNodeStatusFilter,
+} from './node-status-utils'
 
 // 资源使用情况计算结果接口
 export interface ResourceUsageInfo {
@@ -362,12 +367,10 @@ export const getNodeColumns = (
       cell: ({ row }) => {
         const role = row.getValue<NodeRole>('role')
         const taints = row.original.taints ?? []
-        const { exclusives } = deriveNodeStatus(row.original)
-        const accounts = exclusives.flatMap(({ account }) => (account ? [account] : []))
-        const [firstAccount, ...otherAccounts] = accounts
+        const account = deriveNodeStatus(row.original).occupied?.account
         return (
           <div className="flex flex-row items-center justify-start gap-1">
-            {firstAccount ? (
+            {account ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Badge
@@ -375,16 +378,11 @@ export const getNodeColumns = (
                     className="text-highlight-yellow bg-highlight-yellow/20 max-w-28 cursor-help truncate border-none font-normal"
                     tabIndex={0}
                   >
-                    <span className="truncate">
-                      {getNicknameByName?.(firstAccount) || firstAccount}
-                    </span>
-                    {otherAccounts.length > 0 && (
-                      <span className="shrink-0">+{otherAccounts.length}</span>
-                    )}
+                    <span className="truncate">{getNicknameByName?.(account) || account}</span>
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <div>账户：{accounts.join('、')}</div>
+                  <div>账户：{account}</div>
                   <div>角色：{role}</div>
                 </TooltipContent>
               </Tooltip>
@@ -421,13 +419,8 @@ export const getNodeColumns = (
       cell: ({ row }) => <NodeStatusCell node={row.original} locale={locale} />,
       // 一个节点可同时拥有多个独立状态标签，筛选时命中任一选中标签即可
       getUniqueValues: (node) => getNodeStatusTags(node),
-      filterFn: (row, _columnId, filterValue: unknown) => {
-        if (!Array.isArray(filterValue) || filterValue.length === 0) {
-          return true
-        }
-        const tags: string[] = getNodeStatusTags(row.original)
-        return filterValue.some((value) => tags.includes(String(value)))
-      },
+      filterFn: (row, _columnId, filterValue: unknown) =>
+        matchesNodeStatusFilter(row.original, filterValue),
       sortingFn: (rowA, rowB) =>
         getNodeStatusSeverity(rowA.original) - getNodeStatusSeverity(rowB.original),
     },

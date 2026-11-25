@@ -15,9 +15,6 @@
  */
 import { IClusterNodeTaint, INodeBriefInfo, NodeStatus } from '@/services/api/cluster'
 
-// 后端 GET /nodes 返回的 status 是单值（Occupied > Unschedulable > 首个为 True 的 Condition / Unknown），
-// 多个状态会互相覆盖。这里结合 taints / annotations 推导出互相独立的状态维度。
-
 export const NODE_TAINT_NOT_READY = 'node.kubernetes.io/not-ready'
 export const NODE_TAINT_UNREACHABLE = 'node.kubernetes.io/unreachable'
 export const NODE_TAINT_UNSCHEDULABLE = 'node.kubernetes.io/unschedulable'
@@ -52,7 +49,7 @@ const PRESSURE_TAINTS: ReadonlyArray<{ state: NodePressureState; taintKey: strin
 
 export interface NodeHealthInfo {
   state: NodeHealthState
-  /** 触发该状态的 K8s taint（若有） */
+  /** 与该状态对应的 K8s 污点（若有） */
   taint?: IClusterNodeTaint
 }
 
@@ -67,7 +64,7 @@ export interface NodeUnschedulableInfo {
   timeAdded?: string
 }
 
-export interface NodeExclusiveInfo {
+export interface NodeOccupiedInfo {
   /** 独占账户名；为空表示后端标记了 Occupied 但未能从 taint 中解析出账户 */
   account?: string
   reason?: string
@@ -79,12 +76,15 @@ export interface DerivedNodeStatus {
   health: NodeHealthInfo
   pressures: NodePressureInfo[]
   unschedulable: NodeUnschedulableInfo | null
-  exclusives: NodeExclusiveInfo[]
+  occupied: NodeOccupiedInfo | null
   /** 按展示顺序排列的所有状态标签，供筛选 / 计数使用 */
   tags: NodeStatusTag[]
 }
 
-type NodeStatusSource = Pick<INodeBriefInfo, 'status' | 'taints' | 'annotations'>
+type NodeStatusSource = Pick<
+  INodeBriefInfo,
+  'status' | 'readyStatus' | 'unschedulable' | 'pressures' | 'taints' | 'annotations'
+>
 
 const nonEmpty = (value?: string | null): string | undefined => {
   const trimmed = value?.trim()
@@ -93,35 +93,46 @@ const nonEmpty = (value?: string | null): string | undefined => {
 
 const findTaint = (taints: IClusterNodeTaint[], key: string) => taints.find((t) => t.key === key)
 
-const deriveHealth = (status: string, taints: IClusterNodeTaint[]): NodeHealthInfo => {
+const deriveHealth = (node: NodeStatusSource, taints: IClusterNodeTaint[]): NodeHealthInfo => {
   const notReadyTaint = findTaint(taints, NODE_TAINT_NOT_READY)
-  if (notReadyTaint || status === NodeStatus.NotReady) {
+  const unreachableTaint = findTaint(taints, NODE_TAINT_UNREACHABLE)
+  switch (node.readyStatus) {
+    case 'True':
+      return { state: NodeStatus.Ready }
+    case 'False':
+      return { state: NodeStatus.NotReady, taint: notReadyTaint }
+    case 'Unknown':
+      return { state: NodeStatus.Unknown, taint: unreachableTaint }
+  }
+  if (notReadyTaint || node.status === NodeStatus.NotReady) {
     return { state: NodeStatus.NotReady, taint: notReadyTaint }
   }
-  const unreachableTaint = findTaint(taints, NODE_TAINT_UNREACHABLE)
-  if (unreachableTaint || status === NodeStatus.Unknown) {
+  if (unreachableTaint || node.status === NodeStatus.Unknown) {
     return { state: NodeStatus.Unknown, taint: unreachableTaint }
   }
   return { state: NodeStatus.Ready }
 }
 
-const derivePressures = (status: string, taints: IClusterNodeTaint[]): NodePressureInfo[] =>
+const derivePressures = (node: NodeStatusSource, taints: IClusterNodeTaint[]): NodePressureInfo[] =>
   PRESSURE_TAINTS.flatMap(({ state, taintKey }) => {
     const taint = findTaint(taints, taintKey)
-    return taint || status === state ? [{ state, taint }] : []
+    return node.pressures?.includes(state) || node.status === state || taint
+      ? [{ state, taint }]
+      : []
   })
 
 const deriveUnschedulable = (
-  status: string,
+  node: NodeStatusSource,
   taints: IClusterNodeTaint[],
   annotations: Record<string, string>
 ): NodeUnschedulableInfo | null => {
-  // 保持原有判定：基于 taint 或 status 文本
-  const unschedulableTaint = taints.find((t) => t.key.includes(NODE_TAINT_UNSCHEDULABLE))
+  const unschedulableTaint = taints.find(
+    (t) => t.key === NODE_TAINT_UNSCHEDULABLE && t.effect === 'NoSchedule'
+  )
   const isUnschedulable =
-    !!unschedulableTaint ||
-    status.toLowerCase().includes('unschedulable') ||
-    status.includes('不可调度')
+    typeof node.unschedulable === 'boolean'
+      ? node.unschedulable
+      : !!unschedulableTaint || node.status === NodeStatus.Unschedulable
   if (!isUnschedulable) {
     return null
   }
@@ -132,58 +143,54 @@ const deriveUnschedulable = (
   }
 }
 
-const deriveExclusives = (
-  status: string,
+const deriveOccupied = (
+  status: NodeStatus,
   taints: IClusterNodeTaint[],
   annotations: Record<string, string>
-): NodeExclusiveInfo[] => {
-  const reason = nonEmpty(annotations[NODE_ANNOTATION_OCCUPIED_REASON])
-  const operator = nonEmpty(annotations[NODE_ANNOTATION_OCCUPIED_OPERATOR])
-
-  // 与后端 isNodeOccupied 一致：crater.raids.io/account=<name>:NoSchedule
-  const seen = new Set<string>()
-  const exclusives: NodeExclusiveInfo[] = []
-  for (const taint of taints) {
-    const account = nonEmpty(taint.value)
-    if (taint.key !== NODE_TAINT_ACCOUNT || taint.effect !== 'NoSchedule' || !account) {
-      continue
-    }
-    if (seen.has(account)) {
-      continue
-    }
-    seen.add(account)
-    exclusives.push({ account, reason, operator, timeAdded: taint.timeAdded })
+): NodeOccupiedInfo | null => {
+  const taint = taints.find((t) => t.key === NODE_TAINT_ACCOUNT && t.effect === 'NoSchedule')
+  const account = nonEmpty(taint?.value)
+  if (!account && status !== NodeStatus.Occupied) {
+    return null
   }
-
-  if (exclusives.length === 0 && status === NodeStatus.Occupied) {
-    exclusives.push({ reason, operator })
+  return {
+    account,
+    reason: nonEmpty(annotations[NODE_ANNOTATION_OCCUPIED_REASON]),
+    operator: nonEmpty(annotations[NODE_ANNOTATION_OCCUPIED_OPERATOR]),
+    timeAdded: taint?.timeAdded,
   }
-  return exclusives
 }
 
 export function deriveNodeStatus(node: NodeStatusSource): DerivedNodeStatus {
-  const status = String(node.status ?? '')
   const taints = node.taints ?? []
   const annotations = node.annotations ?? {}
 
-  const health = deriveHealth(status, taints)
-  const pressures = derivePressures(status, taints)
-  const unschedulable = deriveUnschedulable(status, taints, annotations)
-  const exclusives = deriveExclusives(status, taints, annotations)
+  const health = deriveHealth(node, taints)
+  const pressures = derivePressures(node, taints)
+  const unschedulable = deriveUnschedulable(node, taints, annotations)
+  const occupied = deriveOccupied(node.status, taints, annotations)
 
   const tags: NodeStatusTag[] = [health.state, ...pressures.map((p) => p.state)]
   if (unschedulable) {
     tags.push(NodeStatus.Unschedulable)
   }
-  if (exclusives.length > 0) {
+  if (occupied) {
     tags.push(NodeStatus.Occupied)
   }
 
-  return { health, pressures, unschedulable, exclusives, tags }
+  return { health, pressures, unschedulable, occupied, tags }
 }
 
 export const getNodeStatusTags = (node: NodeStatusSource): NodeStatusTag[] =>
   deriveNodeStatus(node).tags
+
+export const matchesNodeStatusFilter = (node: NodeStatusSource, filterValue: unknown): boolean => {
+  if (!Array.isArray(filterValue) || filterValue.length === 0) {
+    return true
+  }
+  const tags: string[] = getNodeStatusTags(node)
+  return filterValue.some((value) => tags.includes(String(value)))
+}
 
 const HEALTH_SEVERITY: Record<NodeHealthState, number> = {
   [NodeStatus.NotReady]: 3,
@@ -198,6 +205,6 @@ export const getNodeStatusSeverity = (node: NodeStatusSource): number => {
     HEALTH_SEVERITY[derived.health.state] * 100 +
     derived.pressures.length * 10 +
     (derived.unschedulable ? 2 : 0) +
-    (derived.exclusives.length > 0 ? 1 : 0)
+    (derived.occupied ? 1 : 0)
   )
 }
