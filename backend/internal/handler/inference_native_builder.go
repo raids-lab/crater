@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	kthenaDefaultDownloaderImage       = "ghcr.io/volcano-sh/downloader:v1.0.0"
+	kthenaDefaultDownloaderImage       = "ghcr.io/volcano-sh/downloader:v1.1.0"
+	kthenaHeadlessServicePlugin        = "headless-service"
 	kthenaEnginePort             int64 = 8000
 )
 
@@ -76,7 +77,12 @@ func buildModelServing(
 		"schedulerName":  kthenaSchedulerName,
 		"replicas":       req.Replicas,
 		"recoveryPolicy": "ServingGroupRecreate",
-		"template":       map[string]any{"gangPolicy": map[string]any{"minRoleReplicas": minimum}, "roles": roles},
+		// The immutable plugin supplies ENTRY_ADDRESS when a role has a worker template.
+		"plugins": []any{map[string]any{"name": kthenaHeadlessServicePlugin, "type": "BuiltIn"}},
+		"template": map[string]any{
+			"gangPolicy": map[string]any{"minRoleReplicas": minimum},
+			"roles":      roles,
+		},
 	}
 	return obj, nil
 }

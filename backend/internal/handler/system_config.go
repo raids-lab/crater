@@ -375,11 +375,11 @@ func (mgr *SystemConfigMgr) SetKthenaInferenceStatus(c *gin.Context) {
 		return
 	}
 
-	action := "disabled"
 	if *req.Enabled {
-		action = "enabled"
+		resputil.Success(c, "Kthena inference feature enabled")
+		return
 	}
-	resputil.Success(c, "Kthena inference feature "+action)
+	resputil.Success(c, "Kthena inference feature disabled")
 }
 
 // GetSchedulerExtenderConfig godoc

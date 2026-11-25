@@ -225,10 +225,17 @@ func (mgr *KthenaMgr) UserPreviewServing(c *gin.Context) {
 }
 
 // Revalidate a queued or suspended deployment against current administrator policy.
-func (mgr *KthenaMgr) validateStoredServing(ctx context.Context, obj *unstructured.Unstructured, token util.JWTMessage) error {
+func (mgr *KthenaMgr) validateStoredServing(
+	ctx context.Context, obj *unstructured.Unstructured, token util.JWTMessage, replicas int64,
+) error {
 	d, err := kthena.ReadDeployment(obj)
 	if err != nil {
 		return err
+	}
+	if replicas > d.Replicas {
+		if err := validateServingRayNetworking(obj, d.Roles); err != nil {
+			return err
+		}
 	}
 	req := &CreateKthenaReq{BackendType: d.Engine, Layout: d.Layout, Roles: d.Roles}
 	if err := validateServingCapability(req); err != nil {

@@ -3,7 +3,9 @@ title: Model Deployments
 description: Create, inspect, and use Kthena online inference services.
 ---
 
-After installing the Kthena controllers and CRDs, an administrator can enable model deployments in the AI tab of platform settings. The feature is disabled by default. Disabling it hides the entry points and rejects inference API access; it does not delete existing deployments. Contact your administrator if the entry point is unavailable.
+After installing the Kthena v1.1.0 controllers, Router, and CRDs, an administrator can enable model deployments in the AI tab of platform settings. The feature is disabled by default. Disabling it hides the entry points and closes inference API access while preserving existing deployments. Contact your administrator if the entry point is unavailable.
+
+When upgrading from Kthena v1.0.0, clone any existing Ray deployment that lacks the `headless-service` plugin. Wait for the replacement to become Ready and switch clients to its new route before deleting the old deployment. [Kthena upgrade notes](https://github.com/volcano-sh/kthena/releases/tag/v1.1.0#upgrade-notes)
 
 ## Create and inspect a deployment
 

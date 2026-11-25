@@ -184,7 +184,9 @@ export const PodTable = ({ jobName, userName, jobType }: PodTableProps) => {
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title={getHeader('phase')} />
         ),
-        cell: ({ row }) => <PodPhaseLabel podPhase={row.getValue('phase')} />,
+        cell: ({ row }) => (
+          <PodPhaseLabel podPhase={row.getValue('phase')} nodeName={row.original.nodename} />
+        ),
         filterFn: (row, id, value) => {
           return (value as string[]).includes(row.getValue(id))
         },

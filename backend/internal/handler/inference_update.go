@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"reflect"
+	"slices"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -155,6 +156,9 @@ func (mgr *KthenaMgr) prepareServingUpdate(
 			"engine, layout, port and served model are immutable; clone for a new routing contract",
 		)
 	}
+	if err := validateServingRayNetworking(obj, req.Roles); err != nil {
+		return err
+	}
 	req.BillingGate = mgr.billing != nil && mgr.billing.IsFeatureEnabled(ctx)
 	desired, err := buildModelServing(req, token, mgr.namespace, mgr.downloaderImage)
 	if err != nil {
@@ -167,15 +171,10 @@ func (mgr *KthenaMgr) prepareServingUpdate(
 	if err := validateServingUpdate(obj, desired, old, newDeployment, req); err != nil {
 		return err
 	}
-	// Retain the deployment identity and its reservation. Template UUIDs must not
-	// change during rolling updates or the existing ModelServer would lose Pods.
-	if err := retainServingIdentity(obj, desired); err != nil {
+	// Update the roles in place so the immutable plugin chain stays intact.
+	if err := replaceServingRoles(obj, desired); err != nil {
 		return err
 	}
-	if err := unstructured.SetNestedField(desired.Object, old.Replicas, "spec", "replicas"); err != nil {
-		return err
-	}
-	obj.Object["spec"] = desired.Object["spec"]
 	updateServingAnnotations(obj, desired, old.Replicas, req.Replicas)
 	return nil
 }
@@ -201,28 +200,46 @@ func validateServingUpdate(
 	}
 	return nil
 }
-func retainServingIdentity(obj, desired *unstructured.Unstructured) error {
-	labels := desired.GetLabels()
-	labels[kthena.PodDeploymentLabel] = obj.GetLabels()[kthena.PodDeploymentLabel]
-	desired.SetLabels(labels)
-	roles, _, _ := unstructured.NestedSlice(desired.Object, "spec", "template", "roles")
+func replaceServingRoles(obj, desired *unstructured.Unstructured) error {
+	deploymentID := obj.GetLabels()[kthena.PodDeploymentLabel]
+	roles, _, err := unstructured.NestedSlice(desired.Object, "spec", "template", "roles")
+	if err != nil {
+		return err
+	}
 	for _, raw := range roles {
 		role := raw.(map[string]any)
 		for _, key := range []string{"entryTemplate", "workerTemplate"} {
 			if _, ok := role[key]; ok {
+				// Keep the new Pods on the existing ModelServer's deployment selector.
 				if err := unstructured.SetNestedField(
-					role, labels[kthena.PodDeploymentLabel], key, "metadata", "labels", kthena.PodDeploymentLabel,
+					role, deploymentID, key, "metadata", "labels", kthena.PodDeploymentLabel,
 				); err != nil {
 					return err
 				}
 			}
 		}
 	}
-	if err := unstructured.SetNestedSlice(desired.Object, roles, "spec", "template", "roles"); err != nil {
+	return unstructured.SetNestedSlice(obj.Object, roles, "spec", "template", "roles")
+}
+
+func validateServingRayNetworking(obj *unstructured.Unstructured, roles []kthena.RoleSpec) error {
+	if !slices.ContainsFunc(roles, func(role kthena.RoleSpec) bool {
+		return role.Execution == kthena.ExecutionRay
+	}) {
+		return nil
+	}
+	plugins, _, err := unstructured.NestedSlice(obj.Object, "spec", "plugins")
+	if err != nil {
 		return err
 	}
-	return nil
+	for _, raw := range plugins {
+		if plugin, ok := raw.(map[string]any); ok && plugin["name"] == kthenaHeadlessServicePlugin {
+			return nil
+		}
+	}
+	return bizerr.Conflict.ResourceStatusError.New("clone this deployment to enable Kthena's headless-service plugin for Ray")
 }
+
 func equalServingResources(a, b corev1.ResourceList) bool {
 	if len(a) != len(b) {
 		return false
@@ -243,7 +260,7 @@ func (mgr *KthenaMgr) prepareServingScale(
 	replicas int64,
 	annotations map[string]string,
 ) (int64, error) {
-	if err := mgr.validateStoredServing(ctx, obj, token); err != nil {
+	if err := mgr.validateStoredServing(ctx, obj, token, replicas); err != nil {
 		return 0, err
 	}
 	ctx = service.ExcludeServingReservation(ctx, string(obj.GetUID()))

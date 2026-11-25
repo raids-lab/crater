@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -75,6 +76,7 @@ func TestConcurrentWorkloadsCannotOversubscribeQuota(t *testing.T) {
 			requests = append(requests, vcjobRequest(name))
 		}
 		s := seededServer(newSnapshot(views...))
+		s.recorder = record.NewFakeRecorder(candidates)
 		start := make(chan struct{})
 		votes := make(chan int, candidates)
 		var waiting sync.WaitGroup
@@ -95,6 +97,9 @@ func TestConcurrentWorkloadsCannotOversubscribeQuota(t *testing.T) {
 		}
 		if accepted != 1 {
 			t.Fatalf("concurrent admissions = %d, want exactly one CPU reserved", accepted)
+		}
+		if events := recordedEvents(s); len(events) != candidates-1 {
+			t.Fatalf("quota warnings = %d, want %d", len(events), candidates-1)
 		}
 	})
 }
@@ -131,9 +136,18 @@ func TestServingPodGroupsShareQuotaWithJobs(t *testing.T) {
 		if got := s.decide(t.Context(), servingRequest(&groups.Items[0])); got.status != voteAbstain {
 			t.Fatalf("first serving group vote = %+v, want one available CPU admitted", got)
 		}
-		for _, req := range []*requestJobInfo{servingRequest(&groups.Items[1]), vcjobRequest(jobB)} {
-			if got := s.decide(t.Context(), req); got.status != voteReject || fieldValue(got, fieldCause) != causeQuota {
+		for _, test := range []struct {
+			request    *requestJobInfo
+			wantEvents int
+		}{
+			{request: servingRequest(&groups.Items[1]), wantEvents: 0},
+			{request: vcjobRequest(jobB), wantEvents: 1},
+		} {
+			if got := s.decide(t.Context(), test.request); got.status != voteReject || fieldValue(got, fieldCause) != causeQuota {
 				t.Fatalf("quota vote = %+v, want rejection after serving group reservation", got)
+			}
+			if events := recordedEvents(s); len(events) != test.wantEvents {
+				t.Fatalf("quota events = %v, want %d", events, test.wantEvents)
 			}
 		}
 	})

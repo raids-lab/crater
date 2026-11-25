@@ -93,6 +93,11 @@ func TestKthenaNativeResourceContract(t *testing.T) {
 	if backend.Replicas != int64(2) {
 		t.Fatalf("backend = %v", backend)
 	}
+	plugins, _, err := unstructured.NestedSlice(serving.Object, "spec", "plugins")
+	wantPlugins := []any{map[string]any{"name": "headless-service", "type": "BuiltIn"}}
+	if err != nil || !reflect.DeepEqual(plugins, wantPlugins) {
+		t.Fatalf("plugins = %v, err = %v, want %v", plugins, err, wantPlugins)
+	}
 	roles, _, _ := unstructured.NestedSlice(serving.Object, "spec", "template", "roles")
 	role := roles[0].(map[string]any)
 	spec, _, _ := unstructured.NestedMap(role, "entryTemplate", "spec")
@@ -118,6 +123,9 @@ func TestKthenaNativeResourceContract(t *testing.T) {
 		t.Fatalf("pod = %+v", pod)
 	}
 	download := pod.InitContainers[0]
+	if download.Image != "ghcr.io/volcano-sh/downloader:v1.1.0" {
+		t.Fatalf("unexpected downloader image %q", download.Image)
+	}
 	if !download.Resources.Requests.Cpu().Equal(*engine.Resources.Requests.Cpu()) ||
 		!download.Resources.Requests.Memory().Equal(*engine.Resources.Requests.Memory()) ||
 		len(download.Resources.Requests) != 2 {

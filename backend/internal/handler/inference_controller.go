@@ -94,7 +94,7 @@ func (r *KthenaReconciler) admitLocked(ctx context.Context, obj *unstructured.Un
 		AccountID:   uint(accountID),
 		Username:    annotations[inferenceServiceAnnotationUsername],
 		AccountName: annotations[inferenceServiceAnnotationAccount]}
-	if err := r.mgr.validateStoredServing(ctx, obj, token); err != nil {
+	if err := r.mgr.validateStoredServing(ctx, obj, token, desired); err != nil {
 		return err
 	}
 	if err := service.CheckWorkloadSubmission(ctx,

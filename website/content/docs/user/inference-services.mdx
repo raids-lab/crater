@@ -3,7 +3,9 @@ title: 模型部署
 description: 创建、查看和使用 Kthena 在线推理服务。
 ---
 
-管理员完成 Kthena 控制器和 CRD 的安装后，可在平台设置的 AI 标签中启用模型部署。开关默认关闭；关闭后入口隐藏，推理接口拒绝访问，但不会删除已有部署。找不到入口时，请联系平台管理员确认配置。
+管理员安装 Kthena v1.1.0 的控制器、Router 和 CRD 后，可在平台设置的 AI 标签中启用模型部署。开关默认关闭。关闭后保留已有部署，入口与推理接口停止开放。找不到入口时，请联系平台管理员确认配置。
+
+从 Kthena v1.0.0 升级时，已有的 Ray 部署如果缺少 `headless-service` 插件，需要克隆为新部署。新部署就绪后，将客户端切换到新路由，再删除旧部署。 [Kthena 升级说明](https://github.com/volcano-sh/kthena/releases/tag/v1.1.0#upgrade-notes)
 
 ## 创建和查看部署
 

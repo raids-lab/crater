@@ -411,7 +411,7 @@ const getColumns = (
     ),
     cell: ({ row }) => (
       <div className="flex flex-row items-center justify-start">
-        <PodPhaseLabel podPhase={row.getValue('status')} />
+        <PodPhaseLabel podPhase={row.getValue('status')} nodeName={nodeName} />
       </div>
     ),
     filterFn: (row, id, value) => {

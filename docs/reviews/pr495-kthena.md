@@ -31,7 +31,7 @@ Kthena v1.0.0 的 [PodGroup manager](https://github.com/volcano-sh/kthena/blob/v
 
 每个角色使用单 Pod，支持多个 serving group 和角色副本。API 显式拒绝 `worker.pods > 1`；多节点 Ray 和 P/D 分离未在本次实现。
 
-平台模型经数据集权限校验后，以只读 subPath 挂载授权目录；外部 hf/s3/ms 来源下载到 Pod 独立 emptyDir，不允许用户指定 PVC 或 hostPath。下载器默认固定为 `ghcr.io/volcano-sh/downloader:v1.0.0`，管理员可通过 `backendConfig.kthena.downloaderImage` 设置镜像地址。它与 Crater 的模型下载 Job 镜像是不同配置。
+平台模型经数据集权限校验后，以只读 subPath 挂载授权目录；外部 hf/s3/ms 来源下载到 Pod 独立 emptyDir，不允许用户指定 PVC 或 hostPath。管理员可通过 `backendConfig.kthena.downloaderImage` 为 ModelServing 指定下载器镜像。
 
 直接启动 vLLM engine，ModelServer 路由到 engine 端口，不需要 ModelBooster 注入的 runtime sidecar。engine、readiness/startup probe 和 ModelServer 使用同一端口，因此支持合法的自定义端口。命令使用参数数组，不通过 shell 拼接。
 
@@ -46,15 +46,17 @@ Kthena v1.0.0 的 [PodGroup manager](https://github.com/volcano-sh/kthena/blob/v
 
 ## 上游兼容性
 
-最新正式版是 [v1.0.0](https://github.com/volcano-sh/kthena/releases/tag/v1.0.0)，发布于 2026-07-16。检查时主分支为 `943428223c344678d37f365aafab9715af8284ad`（2026-09-30）。实现使用 v1.0.0 已发布的三类 CRD，不依赖未发布主分支功能。
+初版使用 Kthena v1.0.0 的三类原生 CRD。当前实现对齐 2026-11-12 发布的 v1.1.0。新建 ModelServing 声明 `headless-service` 插件，为 Ray Worker 注入 `ENTRY_ADDRESS`。编辑部署保留既有插件配置。缺少插件的旧部署需要克隆后再启用 Ray 或扩容、恢复旧 Ray 部署。 [Kthena v1.1.0 升级说明](https://github.com/volcano-sh/kthena/releases/tag/v1.1.0#upgrade-notes)
 
-主分支的 [ModelBooster API](https://github.com/volcano-sh/kthena/blob/943428223c344678d37f365aafab9715af8284ad/pkg/apis/workload/v1alpha1/model_booster_types.go) 声明从 v1.1 起弃用、最早 v1.5 移除，并推荐这三类原生资源。主分支还增加了 obs:// 来源、独立 metrics 端口及 tokenizer service 等能力，本次未启用这些未发布能力。
+下载器默认使用 `ghcr.io/volcano-sh/downloader:v1.1.0`。Router ServiceMonitor 默认抓取 `kthena-router-metrics` Service 的 `metrics` 端口。推理调用使用 `kthena-router` Service 的 `http` 端口。Kthena 在 v1.1.0 弃用 ModelBooster，本实现继续使用 ModelServing、ModelServer 和 ModelRoute。
+
+7 组测试生成的 21 个资源通过 v1.1.0 发布版 CRD 的 OpenAPI 和 CEL 校验，以及对应版本的 admission webhook 创建校验。旧单节点部署编辑模板、暂停的部署使用已有 `headless-service` 插件切换到 Ray，也通过更新校验。官方 Helm 包和 Crater Chart 的渲染结果确认 ServiceMonitor 抓取独立的 `metrics` 端口。
 
 ## 验证
 
 - Go 聚焦测试：`internal/kthena`、`internal/handler`、`internal/handler/vcjob`、`cmd/gorm-gen/models` 中 Kthena/Inference/Workload 测试通过。覆盖三资源关联、端口一致性、PVC 路径、原生会话调用、原生删除、冲突回滚、部署名称冲突、缺少 ModelServing CRD、观察失败传播及代际状态。
 - handler 测试仍使用临时 Go overlay，仅将 `dao/query.GetDB` 的包初始化连接替换为内存 SQLite；业务代码没有增加测试分支，overlay 不进入仓库。没有验证 PostgreSQL 行锁语义。
-- 测试生成的实际三个资源，通过 Kthena v1.0.0 CRD 的 OpenAPI schema 校验。可设置 `CRATER_KTHENA_MANIFEST_DIR` 运行 `TestKthenaNativeResourceContract` 导出同一批对象。这项离线检查不运行 Kubernetes 默认值填充、CEL 或 admission webhook。
+- 初版测试生成的三个资源通过 Kthena v1.0.0 CRD 的 OpenAPI schema 校验。设置 `CRATER_KTHENA_MANIFEST_DIR` 后运行 `TestKthenaNativeResourceContract` 可导出当前实现生成的对象。
 - 聚焦 Go 静态检查返回 0 issues；Swagger 已重新生成；Helm lint、前端 TypeScript/ESLint 和四种语言翻译文件格式检查通过。
 - 未连接真实集群，未执行 GPU 推理、镜像拉取或 Kubernetes 垃圾回收端到端验证。
 

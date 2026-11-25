@@ -334,7 +334,7 @@ backendConfig:
   # -- Native Kthena inference workload configuration
   kthena:
     # -- ModelServing init-container image (independent of the Crater download-job image)
-    downloaderImage: ghcr.io/volcano-sh/downloader:v1.0.0
+    downloaderImage: ghcr.io/volcano-sh/downloader:v1.1.0
     # -- Enable distributed profiles after validating this cluster's images, storage and GPU networking.
     # Values: vLLM/combined/ray, vLLM/disaggregated/single,
     # vLLM/disaggregated/ray, SGLang/disaggregated/single
@@ -523,11 +523,11 @@ backendConfig:
     # Both token secrets must be specified for secure authentication
     token:
       # -- Secret key used to sign JWT access tokens (Required)
-      # Must be a secure, randomly generated string
-      accessTokenSecret: "example-access-token"
+      # Must be a private, randomly generated string; public example values are rejected
+      accessTokenSecret: ""
       # -- Secret key used to sign JWT refresh tokens (Required)
-      # Must be a secure, randomly generated string
-      refreshTokenSecret: "example-refresh-token"
+      # Must be a private, randomly generated string; public example values are rejected
+      refreshTokenSecret: ""
 
     # -- LDAP authentication settings
     ldap:
@@ -737,11 +737,11 @@ inferenceMonitoring:
   router:
     # -- Scrape Kthena Router for request/error rates and end-to-end latency
     enabled: true
-    # -- Labels of the Kthena Service exposing the Router metrics endpoint
+    # -- Labels of the dedicated Kthena Router metrics Service
     serviceSelector:
-      app.kubernetes.io/component: kthena-router
+      app.kubernetes.io/component: kthena-router-metrics
     # -- Named Service port serving /metrics
-    port: http
+    port: metrics
   # -- Create a PodMonitor for vLLM engine metrics in the job namespace
   enabled: false
   # -- Labels used by the Prometheus instance's podMonitorSelector

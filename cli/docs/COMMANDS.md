@@ -78,8 +78,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 5,
-      "min_supported_backend_api_version": 3
+      "api_version": 7,
+      "min_supported_backend_api_version": 7
     }
   }
   ```
@@ -98,10 +98,10 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **处理逻辑**：
   - 未提供 `--platform` 且没有当前激活身份时，不发起 HTTP 请求，返回 `usage_error` + `ERR_MISSING_REQUIRED_FLAG`，进程退出码为 `2`；提示用户通过 `--platform <URL>` 指定目标平台，并明确该操作无需登录。
   - 调用公开的 `GET /api/cli/compatibility` 一次，并比较 CLI / 后端各自的当前 API 版本与最低支持的对方版本。
-  - 双方均满足最低版本时成功；默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
+  - 双方均满足最低版本时成功。当前 CLI 最低要求后端 API v7，连接 v6 后端时会报告后端版本过旧。默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
   - 后端构建信息仅用于诊断和展示，不参与 API 兼容性判断。兼容性接口仅返回 API 版本字段的早期实现仍可使用；缺失的后端构建字段显示为“未知”，不会因此把响应判定为非法。
   - 明确不兼容时返回 `api_error` + `ERR_API_VERSION_MISMATCH`，进程退出码为 `4`。人类可读错误按“具体情况 / 版本信息 / 使用建议”分段展示：具体指出哪个最低版本条件不满足，列出 CLI 产品版本、CLI / 后端 API 版本和双方最低支持版本，并说明用户仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。
-  - 握手响应明确包含版本字段但值为 `0` 时，将 `0` 视为早于首个正式契约的旧版本并参与比较，而不是泛化为“兼容性信息无效”。例如后端明确报告 `apiVersion: 0` 且 CLI 最低支持后端版本为 `1` 时，按“后端版本过旧”输出上述完整诊断，并在最后的排查手段中建议降级 CLI。字段缺失或负数才视为非法响应。
+  - 握手响应明确报告版本 `0` 时，将它视为早于首个正式契约的旧版本并参与比较。例如后端明确报告 `apiVersion: 0` 时，当前 CLI 会输出“后端版本过旧”的完整诊断。字段缺失或为负数时视为非法响应。
   - 兼容性检查用于定位命令失败的原因。检查通过后，常规排障可排除 API 版本不匹配，根据实际报错检查命令输入、本地配置、认证、网络连接、平台状态或 CLI 自身的缺陷。检查提示不兼容时，结合实际报错判断故障是否由版本差异引起，再决定是否调整版本。
   - 最后的 CLI 版本调整按检测方向决定：CLI API 版本低于后端最低要求时尝试升级 CLI；后端 API 版本低于 CLI 最低要求时尝试降级 CLI；两项限制同时不满足时分别解释升级和降级可解决的约束，并提示向平台管理员确认该部署对应的 CLI 版本。
   - 该接口返回 HTTP 404 时，视为目标后端早于当前 CLI 的兼容性检查命令：返回 `api_error` + `ERR_API_VERSION_MISMATCH`，后端版本显示为未知。排除更常见原因后，最后才建议尝试降级 CLI 或联系平台管理员。原始 `http_status: 404` 与响应 `msg` 保留在错误 context 中。此特殊映射只适用于本命令，不改变其他命令的 404 语义。
@@ -114,15 +114,15 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 4,
-      "min_supported_backend_api_version": 3
+      "api_version": 7,
+      "min_supported_backend_api_version": 7
     },
     "backend": {
       "product_version": "1.1.1",
       "short_commit_sha": "f42b0c2",
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
-      "api_version": 4,
+      "api_version": 7,
       "min_supported_cli_api_version": 3
     }
   }
@@ -547,11 +547,35 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **`--json` 的 `data`**：`logs`（数组）；每项固定包含 `namespace`、`pod`、`container`、`content`。`--prefix` 仅影响文本输出，不修改 JSON 内容。
 - **状态**: [x] Completed
 
-### `crater job token|secret|ssh|snapshot|alert|delete <name>`
+### `crater job exec <name> [--pod POD] [-c CONTAINER] [-i] [-t] [--env-mode user|container] [-- COMMAND [ARG...]]`
+
+- **描述**：在已有作业的运行中容器内执行命令，通过平台 WebSocket 转发到 Kubernetes exec，不依赖节点 CPU 架构、加速卡厂商、GPU 数量、SSH 服务或本地 kubectl。
+- 省略命令时自动转发 stdin、分配 TTY，进入任务用户的交互式登录 shell；要求本地输入输出为终端，与 `--json`、`--no-interactive` 互斥。显式命令必须放在 `--` 后；保留 argv 边界，不解释管道、变量或重定向。需要 shell 表达式时显式使用 `-- sh -c '...'`。
+- Exec 优先使用容器的 `NB_USER`，未配置时使用容器当前用户。HOME 与首选 shell 来自容器账户信息。用户不存在、切换身份失败或 HOME 不可用时返回错误。自定义镜像需要准备任务用户。
+- `--env-mode user` 为默认：交互会话由用户登录 shell 加载配置；显式 TTY 命令由该 shell 加载配置后执行安全引用的 argv，不传输环境前缀；非 TTY 命令先通过用户的登录交互 shell 获取导出的环境（最多 10 秒、1 MiB），再执行原始 argv。探测启动输出不进入命令 stdout/stderr；超时或失败时明确报错，可用 `--env-mode container` 跳过用户配置探测，仍保留任务用户与 HOME。别名、shell 函数不是普通命令可继承的环境。
+- Exec 从 Pod 初始环境开始，默认加载用户 shell 配置。仅由作业入口进程或其他终端导出的变量需要在新会话中重新设置。交互 shell 从 HOME 开始，普通命令使用容器工作目录，不可访问时回到 HOME。跨用户执行使用镜像中的 runuser、sudo 或 su。
+- `--pod`、`--container` / `-c` 指定目标。只有一个 Pod、一个普通容器时自动选择；多候选必须显式选择。默认不选择 init container，显式指定时只允许运行中的容器。后端再次检查当前用户、项目、作业与 Pod 的归属。
+- `--stdin` / `-i` 转发标准输入，显式命令时默认关闭；输入 EOF 只关闭远端 stdin，继续读取输出与退出状态。命令提前结束导致 stdin 或尺寸同步写入失败时，仍读完远端输出，并以最终退出帧为准；本地 stdin 读取失败仍及时终止会话。
+- `--tty` / `-t` 分配终端，必须同时指定 `-i` 且本地输入输出为终端；与 `--json`、`--no-interactive` 互斥。TTY 模式合并远端 stderr 到 stdout，并同步终端尺寸。结束、出错或取消时恢复本地终端。
+- 普通模式将远端 stdout、stderr 原样流式写入对应的本地流。Ctrl+C 取消返回 `cancelled`（退出码 3）；TTY 内 Ctrl+C 由远端终端处理。
+- `--json` 仅支持不带 `-t` 的执行；完成后输出一次成功信封，`data.exec` 包含 `namespace`、`pod`、`container`、`stdout`、`stderr`、`exit_code`。捕获文本输出总计最多 16 MiB，超限关闭连接并返回 `system_error`。二进制结果使用普通模式重定向保存。
+- 远端命令非零退出返回 `api_error` / `ERR_REMOTE_COMMAND_FAILED`（CLI 退出码 4），`context` 保留 `exit_code` 和目标；JSON 模式还保留已捕获的 `stdout`、`stderr`。连接中断或缺少最终退出帧均视为失败，不能推断执行成功。
+- `job exec` 使用后端 API v7 引入的 `GET /api/v1/vcjobs/{name}/exec`，通过 Bearer Header 鉴权。WebSocket 升级前的 HTTP 失败按普通 API 错误返回。可运行 `crater compatibility` 检查平台版本。
+
+### `crater job ssh <name> [--connect] [--user USER] [--identity-file FILE]`
+
+- `job ssh` 调用现有 SSH 接口并输出 `host:port`。`--json` 的 `data.ssh` 包含 `ip`、`port`。
+- `--connect` 在开启 SSH 后直接调用本机 OpenSSH 并进入交互会话，复用本机 SSH 配置、密钥及主机校验；与 `--json`、`--no-interactive` 互斥，要求本地输入输出为终端。
+- `--user` 默认使用当前平台登录用户名。`--identity-file` / `-i` 指定私钥。两者只用于 `--connect`，单独使用返回用法错误。SSH 登录环境由容器的 sshd 和所选用户的 shell 配置决定。
+
+- SSH 保留平台管理员访问作业的既有权限，普通用户仍限当前账户中自己的作业；exec 始终要求当前账户中本人拥有。SSH 使用首个作业 task 模板的主容器名，注入 sidecar 不改变目标；exec 多容器时仍需显式选择。
+- 本地参数和 SSH 可执行文件在平台请求前检查；后端返回的主机、端口在启动 OpenSSH 前校验，以独立 argv 调用，不经本地 shell。
+- SSH 适用于平台可连接的各种节点，容器需已安装平台 SSH 接口要求的 sshd。无 sshd 的镜像可使用 `job exec`。取消返回退出码 3，OpenSSH 非零退出返回 `system_error`，`context.exit_code` 保留其退出状态。
+
+### `crater job token|secret|snapshot|alert|delete <name>`
 - **描述**:
   - `token`: 获取运行中 Jupyter 作业的 URL 与 token。
   - `secret`: 获取运行中 WebIDE 作业的 URL 与密码。
-  - `ssh`: 为运行中作业开启 SSH，并输出 `host:port`。
   - `snapshot`: 为 Jupyter 或 Custom 作业创建镜像快照。
   - `alert`: 切换作业告警状态。
   - `delete`: 停止或删除自己的作业。
@@ -562,7 +586,6 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 交互模式默认二次确认；`--json` 或 `--no-interactive` 下必须显式提供 `--yes`，否则返回 `usage_error`。
 - **`--json` 的 `data`**：
   - `token` / `secret`: `token`
-  - `ssh`: `ssh`
   - `snapshot` / `alert` / `delete`: `message`
 - **状态**: [x] Completed
 
@@ -838,7 +861,7 @@ This section covers account context and additional resource commands. All comman
   - `crater pod logs <pod> <container> --namespace NAMESPACE [--tail N] [--timestamps] [--previous]`
 - 为兼容旧脚本，仍接受显式 namespace 的旧位置参数形式：`... <namespace> <pod>` 与 `logs <namespace> <pod> <container>`。同一次调用不能同时提供旧位置参数 namespace 和 `--namespace`，否则返回 `usage_error`。
 - 上述命令覆盖 `/api/v1/namespaces/...` diagnostic GET APIs；`pod logs` 会先解码后端 Base64 载荷再输出原始日志文本。平台未向普通用户暴露全局作业命名空间配置，CLI 不硬编码或猜测默认值；`crater job get|pods|logs|events|yaml` 始终使用作业 API 返回的真实 namespace。
-- Job-level log streaming is available through `crater job logs --follow`; terminal websocket APIs are intentionally not part of this CLI.
+- Job-level log streaming is available through `crater job logs --follow`. Container execution uses the dedicated, ownership-checked `job exec` protocol described above; the browser terminal endpoint is not reused.
 - AIJob/SPJob reads are intentionally not exposed in this PR because their backend identifier contracts differ from Volcano job names and need a dedicated CLI design.
 
 ### Interfaces Not Exposed As General Read CLI
@@ -928,7 +951,7 @@ This section covers account context and additional resource commands. All comman
   - `bytes`（整数）：服务端完整接收并发布的字节数。
   - `overwrite`（布尔）：本次是否显式启用了覆盖选项。
   - `overwritten`（布尔）：本次是否实际替换了已有普通文件。
-- **兼容性**：安全上传端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 3。缺少该端点的旧 storage service 会返回 404，CLI 不会回退到可能截断文件的旧 WebDAV PUT。
+- **兼容性**：安全上传端点由 API 契约 2 引入。缺少该端点的 storage service 返回 404，CLI 直接返回该错误。
 - **状态**：[x] Completed
 
 ### `crater file mkdir <remote-path>`
@@ -987,5 +1010,5 @@ This section covers account context and additional resource commands. All comman
   - 默认模式：展示已删除的规范化远端路径。
   - `--json`：stdout 仅输出成功信封；失败时 stdout 为空。
 - **`--json` 的 `data`**：`remote_path`（字符串）、`recursive`（布尔）。
-- **兼容性**：安全删除端点由 API 契约 2 提供；CLI 最低要求后端 API 版本 3，不回退到旧 `/delete` 端点。
+- **兼容性**：CLI 调用 API 契约 2 引入的安全删除端点，并直接返回该端点的错误。
 - **状态**：[x] Completed

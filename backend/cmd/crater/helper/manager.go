@@ -212,6 +212,7 @@ func (ms *ManagerSetup) setupVolcano(mgr manager.Manager, registerConfig *handle
 	if ms.backendConfig.SchedulerExtenderPort != "" {
 		extenderServer := extender.New(
 			mgr.GetClient(),
+			mgr.GetEventRecorderFor("crater-volcano-extender"),
 			registerConfig.QueueQuotaService,
 			registerConfig.ConfigService,
 			ms.backendConfig.SchedulerExtenderPort,

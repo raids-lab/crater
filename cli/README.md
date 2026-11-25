@@ -18,6 +18,7 @@ Crater CLI is the command-line client for Crater. It talks to the Crater platfor
 - Agent-friendly `--json` and `--no-interactive` modes.
 - Local authentication context management.
 - Inspect the current account/queue and switch the account used by subsequent commands.
+- Direct SSH connections and container command execution on CPU and accelerator nodes.
 - Bash and zsh completion.
 - Chinese and English display language support.
 - Native binaries for Linux, macOS, and Windows on x64 and ARM64.
@@ -57,6 +58,20 @@ crater version
 ```
 
 For day-to-day use, you can ask an AI Agent to operate Crater after installing the bundled Skills.
+
+Connect to a running job, execute a command, or open a shell:
+
+```bash
+crater job ssh my-job --connect
+crater job exec my-job -- uname -m
+crater job exec my-job
+crater job exec my-job --env-mode container -- env
+crater job exec my-job --pod worker-0 -c worker --json -- python -V
+```
+
+`job exec` requires backend API v7 and uses the platform connection, without local kubectl, sshd, or accelerator-specific tools. With no command it opens the task user's login shell. Commands after `--` retain their argument boundaries, use that user's HOME, and inherit exported shell configuration. Use `--env-mode container` to skip configuration probing. Select the Pod/container explicitly when there are multiple candidates. `--json` captures output; remote failures preserve `context.exit_code`.
+
+Use `job ssh` to print the connection address or add `--connect` to log in with local OpenSSH. The container needs sshd. The login uses your platform username by default. Set `--user` if the container account has a different name. SSH uses the container’s native login environment.
 
 ## Agent Skills
 
