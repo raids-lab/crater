@@ -13,14 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { PhaseBadge } from './phase-badge'
+import { JobDisplayPhase } from '@/services/api/vcjob'
+
+import { getJobPhaseLabel } from './job-phase-badge'
+import { PhaseBadge, PhaseBadgeData } from './phase-badge'
 
 export const podPhases = [
   {
     value: 'Pending',
     label: '等待中',
     color: 'text-highlight-purple bg-highlight-purple/20',
-    description: 'Pod 正在等待被调度或容器镜像正在下载',
+    description: 'Pod 尚未分配节点，正在等待调度',
   },
   {
     value: 'Running',
@@ -48,13 +51,12 @@ export const podPhases = [
   },
 ]
 
-const getPodPhaseLabel = (
-  phase: string
-): {
-  label: string
-  color: string
-  description: string
-} => {
+const getPodPhaseLabel = (phase: string): PhaseBadgeData => {
+  if (phase === JobDisplayPhase.Starting) {
+    // Pod badges carry no icon; take only the copy and color so both badges read the same.
+    const { label, color, description } = getJobPhaseLabel(JobDisplayPhase.Starting)
+    return { label, color, description }
+  }
   const foundPhase = podPhases.find((p) => p.value === phase)
   if (foundPhase) {
     return foundPhase
@@ -67,8 +69,14 @@ const getPodPhaseLabel = (
   }
 }
 
-const PodPhaseLabel = ({ podPhase }: { podPhase: string }) => {
-  return <PhaseBadge phase={podPhase} getPhaseLabel={getPodPhaseLabel} />
+// A bound pod stays Pending until its containers start; display-only, so filters keep matching the raw phase.
+const getPodDisplayPhase = (phase: string, nodeName?: string): string =>
+  phase === 'Pending' && nodeName ? JobDisplayPhase.Starting : phase
+
+const PodPhaseLabel = ({ podPhase, nodeName }: { podPhase: string; nodeName?: string }) => {
+  return (
+    <PhaseBadge phase={getPodDisplayPhase(podPhase, nodeName)} getPhaseLabel={getPodPhaseLabel} />
+  )
 }
 
 export default PodPhaseLabel
