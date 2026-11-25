@@ -142,6 +142,7 @@ func TestFetchDownloadListAllPagesSequentially(t *testing.T) {
 				Page: api.Page[api.ModelDownloadResp]{
 					Items: []api.ModelDownloadResp{{ID: 3}, {ID: 2}},
 					Total: 3,
+					Page:  1, PageSize: 2,
 				},
 				Summary: summary,
 			},
@@ -149,6 +150,7 @@ func TestFetchDownloadListAllPagesSequentially(t *testing.T) {
 				Page: api.Page[api.ModelDownloadResp]{
 					Items: []api.ModelDownloadResp{{ID: 1}},
 					Total: 3,
+					Page:  2, PageSize: 2,
 				},
 			},
 		},

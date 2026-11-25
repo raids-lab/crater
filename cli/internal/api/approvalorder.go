@@ -69,15 +69,7 @@ func (c *Client) ListApprovalOrders(admin bool) ([]ApprovalOrder, error) {
 	if admin {
 		path = AdminApprovalPrefix
 	}
-	var result Response[[]ApprovalOrder]
-	resp, err := c.httpClient.R().SetSuccessResult(&result).SetErrorResult(&result).Get(path)
-	if err != nil {
-		return nil, &NetworkError{Cause: err}
-	}
-	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
+	return fetchAllListPages[ApprovalOrder](c, path, "-createdAt")
 }
 
 func (c *Client) GetApprovalOrder(id uint, admin bool) (*ApprovalOrder, error) {

@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	// v7 adds the container command execution API.
-	APIVersion = 7
-	// job exec requires the v7 endpoint and has no equivalent fallback.
-	MinSupportedBackendAPIVersion    = 7
+	// v7 adds container command execution.
+	// v8 consolidates optionally paginated database lists with legacy complete reads.
+	APIVersion = 8
+	// v8 requires the backend pagination contract and has no fallback to legacy list responses.
+	MinSupportedBackendAPIVersion    = 8
 	APIVersionHeader                 = "X-Crater-API-Version"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"

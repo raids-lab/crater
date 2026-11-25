@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/raids-lab/crater/cli/internal/session"
+	internalversion "github.com/raids-lab/crater/cli/internal/version"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 )
@@ -459,6 +461,17 @@ func runDownloadLs(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	page, err := fetchDownloadList(client, options)
+	if errors.Is(err, api.ErrLegacyDownloadPagination) {
+		return &clierror.Error{
+			Category: errorcodes.CategoryAPI,
+			Code:     errorcodes.ErrAPIVersionMismatch,
+			Message:  i18n.T("err_legacy_download_pagination", internalversion.MinSupportedBackendAPIVersion),
+			Context: map[string]interface{}{
+				"reason":                                "legacy_download_pagination",
+				"cli_min_supported_backend_api_version": internalversion.MinSupportedBackendAPIVersion,
+			},
+		}
+	}
 	if err != nil {
 		return cliErrFromAPI(err)
 	}
