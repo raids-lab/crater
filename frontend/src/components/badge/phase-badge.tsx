@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { ReactNode } from 'react'
+
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -22,6 +24,7 @@ export interface PhaseBadgeData {
   label: string
   color: string
   description: string
+  icon?: ReactNode
 }
 
 interface PhaseBadgeProps<T> {
@@ -41,6 +44,7 @@ export const PhaseBadge = <T,>({
   if (disableDefaultTooltip) {
     return (
       <Badge className={cn('border-none', data.color)} variant="outline">
+        {data.icon}
         <div>{data.label}</div>
       </Badge>
     )
@@ -51,6 +55,7 @@ export const PhaseBadge = <T,>({
       <Tooltip>
         <TooltipTrigger asChild>
           <Badge className={cn('cursor-help border-none', data.color)} variant="outline">
+            {data.icon}
             <div>{data.label}</div>
           </Badge>
         </TooltipTrigger>
