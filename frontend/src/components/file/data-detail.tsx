@@ -84,6 +84,7 @@ import {
   cancelSharedUserResp,
 } from '@/services/api/dataset'
 import { FileItem, apiGetDatasetFiles } from '@/services/api/file'
+import { invalidateDatasetLists } from '@/services/query/pagination-cache'
 import { IResponse } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
@@ -272,6 +273,7 @@ export function SharedResourceTable({
     mutationFn: (userId: number) =>
       apiCancelDatasetSharewithUser({ datasetID: datasetId, userID: userId }),
     onSuccess: () => {
+      void invalidateDatasetLists(queryClient, resourceType)
       void queryClient.invalidateQueries({
         queryKey: ['data', 'userdataset', datasetId],
       })
@@ -283,7 +285,7 @@ export function SharedResourceTable({
     mutationFn: (datasetID: number) => apiDatasetDelete(datasetID),
     onSuccess: () => {
       // 刷新对应类型的列表 + 显式导航
-      void queryClient.invalidateQueries({ queryKey: ['data', resourceType] })
+      void invalidateDatasetLists(queryClient, resourceType)
       router.history.back()
       toast.success(t('sharedResource.deletedSuccess', { type: dataTypeLabel }))
     },
@@ -299,6 +301,7 @@ export function SharedResourceTable({
         queueID: queueId,
       }),
     onSuccess: () => {
+      void invalidateDatasetLists(queryClient, resourceType)
       void queryClient.invalidateQueries({
         queryKey: ['data', 'queuedataset', datasetId],
       })
@@ -584,6 +587,7 @@ export function SharedResourceTable({
                   <ShareWithUsers
                     datasetId={datasetId}
                     apiShareDatasetwithUser={apiShareDatasetwithUser}
+                    datasetType={resourceType}
                   />
                 </DialogContent>
               </Dialog>
@@ -615,6 +619,7 @@ export function SharedResourceTable({
                   <ShareWithAccounts
                     datasetId={datasetId}
                     apiShareDatasetwithQueue={apiShareDatasetwithQueue}
+                    datasetType={resourceType}
                   />
                 </DialogContent>
               </Dialog>

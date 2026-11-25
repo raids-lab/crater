@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/table'
 
 import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
+import { stopInactiveRowEvent } from '@/components/layout/data-list-remote'
 import PageTitle from '@/components/layout/page-title'
 
 import { cn } from '@/lib/utils'
@@ -34,6 +35,8 @@ interface DataTableShellProps<TData> {
   briefChildren?: ReactNode
   withI18n: boolean
   className?: string
+  rowsInactive?: boolean
+  isShowingPlaceholder?: boolean
   isLoading: boolean
   isError: boolean
   errorMessage?: string
@@ -51,6 +54,8 @@ export function DataTableShell<TData>({
   briefChildren,
   withI18n,
   className,
+  rowsInactive = false,
+  isShowingPlaceholder = false,
   isLoading,
   isError,
   errorMessage,
@@ -80,7 +85,15 @@ export function DataTableShell<TData>({
           {!info && <>{children}</>}
         </DataTableToolbar>
       )}
-      <Card className="overflow-hidden rounded-md p-0 shadow-xs">
+      {isShowingPlaceholder && (
+        <p role="status" className="text-muted-foreground text-sm">
+          {t('common.loading')}
+        </p>
+      )}
+      <Card
+        aria-busy={isLoading || isShowingPlaceholder}
+        className="overflow-hidden rounded-md p-0 shadow-xs"
+      >
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -100,7 +113,13 @@ export function DataTableShell<TData>({
                 </TableRow>
               ))}
             </TableHeader>
-            <TableBody>
+            <TableBody
+              inert={rowsInactive && table.getRowModel().rows.length > 0}
+              onClickCapture={(event) => stopInactiveRowEvent(rowsInactive, event)}
+              onKeyDownCapture={(event) => stopInactiveRowEvent(rowsInactive, event)}
+              onPointerDownCapture={(event) => stopInactiveRowEvent(rowsInactive, event)}
+              onSubmitCapture={(event) => stopInactiveRowEvent(rowsInactive, event)}
+            >
               {table.getRowModel().rows.length > 0 ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>

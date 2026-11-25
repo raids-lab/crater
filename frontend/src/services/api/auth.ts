@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { apiClient, apiRequest, apiV1Post } from '@/services/client'
-
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
+import { getAuthSession, replaceAuthSession } from '@/services/auth-session'
+import { apiClient, apiRequest } from '@/services/client'
 
 import { OK } from '../error_code'
 import { IResponse } from '../types'
@@ -129,14 +128,31 @@ export const apiCheckToken = () =>
     'caller'
   )
 
-export const apiQueueSwitch = async (queue: string) => {
-  const response = await apiV1Post<IResponse<IAuthResponse>>('auth/switch', {
-    queue,
-  })
-  if (response.code === OK) {
-    const { accessToken, refreshToken } = response.data
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+let latestQueueSwitch = 0
+
+export const apiQueueSwitch = async (
+  queue: string,
+  applyContext: (context: IUserContext) => void | Promise<void>
+): Promise<void> => {
+  const session = getAuthSession()
+  const sequence = ++latestQueueSwitch
+  const isCurrent = () => getAuthSession() === session && sequence === latestQueueSwitch
+
+  let response: IResponse<IAuthResponse>
+  try {
+    response = await apiRequest(
+      () => apiClient.post('v1/auth/switch', { json: { queue } }).json<IResponse<IAuthResponse>>(),
+      undefined,
+      'caller'
+    )
+  } catch (error) {
+    if (!isCurrent()) return
+    throw error
   }
-  return response.data
+  if (!isCurrent()) return
+  if (response.code !== OK) throw new Error(response.msg)
+
+  const { accessToken, refreshToken, context } = response.data
+  replaceAuthSession(accessToken, refreshToken)
+  await applyContext(context)
 }

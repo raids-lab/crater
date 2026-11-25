@@ -22,6 +22,7 @@ import { getJobPhaseLabel } from '@/components/badge/job-phase-badge'
 
 import { type ApprovalOrder, reviewApprovalOrder } from '@/services/api/approvalorder'
 import { type IJobInfo, JobPhase, apiAdminGetJobList } from '@/services/api/vcjob'
+import { invalidateApprovalOrderLists } from '@/services/query/pagination-cache'
 
 // Hook 用于管理工单锁定逻辑
 export function useApprovalOrderLock() {
@@ -61,15 +62,7 @@ export function useApprovalOrderLock() {
     },
     onSuccess: () => {
       toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
-      queryClient.invalidateQueries({
-        queryKey: ['admin', 'approvalorders'],
-      })
-      queryClient.invalidateQueries({
-        queryKey: ['approvalorders'],
-      })
-      queryClient.invalidateQueries({
-        queryKey: ['portal', 'approvalorders'],
-      })
+      void invalidateApprovalOrderLists(queryClient)
       setIsDelayDialogOpen(false)
       setSelectedOrder(null)
       setSelectedJob(null)

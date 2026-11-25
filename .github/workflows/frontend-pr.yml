@@ -56,6 +56,9 @@ jobs:
       - name: Run lint
         run: pnpm run lint
 
+      - name: Run frontend regression tests
+        run: make test
+
   frontend-build-check:
     runs-on: ubuntu-latest
     needs: frontend-lint-check

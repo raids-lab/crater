@@ -8,12 +8,16 @@ import Loading from '@/components/placeholder/loading-spinner'
 
 import { IAuthResponse, ILogin, IUserContext, apiCheckToken, apiLogin } from '@/services/api/auth'
 import { getAuthErrorMessage } from '@/services/auth-errors'
+import {
+  clearAuthSession,
+  getAuthSession,
+  replaceAuthSession,
+  requireAuthSession,
+} from '@/services/auth-session'
 import { IResponse } from '@/services/types'
 
 import { logger } from '@/utils/loglevel'
 import {
-  ACCESS_TOKEN_KEY,
-  REFRESH_TOKEN_KEY,
   UserInfo,
   atomBackendVersion,
   atomUserContext,
@@ -45,8 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Restore auth state on app load
   useEffect(() => {
+    const session = getAuthSession()
     apiCheckToken()
       .then(({ data }) => {
+        if (getAuthSession() !== session) return
         if (data == undefined || data == null) {
           // No auth data means user is not authenticated
           logger.info('No auth data found, user not authenticated')
@@ -64,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true)
       })
       .catch((error) => {
+        if (getAuthSession() !== session) return
         logger.error('Failed to check auth token:', error)
         toast.error(getAuthErrorMessage(error))
         setUser(undefined)
@@ -82,14 +89,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const login = async (auth: ILogin) => {
+    const previous = getAuthSession()
     const res = await apiLogin(auth)
+    requireAuthSession(previous)
     const { accessToken, refreshToken } = res.data
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+    replaceAuthSession(accessToken, refreshToken)
+    const session = getAuthSession()
 
     try {
       // Fetch session metadata through the existing check API after saving the tokens.
       const { data } = await apiCheckToken()
+      requireAuthSession(session)
       if (data == null) {
         throw new Error('No authenticated session returned by auth/check')
       }
@@ -99,12 +109,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(true)
       return { ...res, data: { ...res.data, user: data.user, context: data.context } }
     } catch (error) {
-      localStorage.removeItem(ACCESS_TOKEN_KEY)
-      localStorage.removeItem(REFRESH_TOKEN_KEY)
-      setUser(undefined)
-      setContext(undefined)
-      setBackendVersion(undefined)
-      setIsAuthenticated(false)
+      if (getAuthSession() === session) {
+        clearAuthSession()
+        setUser(undefined)
+        setContext(undefined)
+        setBackendVersion(undefined)
+        setIsAuthenticated(false)
+      }
       throw error
     }
   }
@@ -112,8 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setIsAuthenticated(false)
     setLastView('portal')
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
+    clearAuthSession()
     setUser(undefined)
     setContext(undefined)
     setBackendVersion(undefined)

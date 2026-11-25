@@ -34,16 +34,21 @@ import { TimeDistance } from '@/components/custom/time-distance'
 import UserLabel from '@/components/label/user-label'
 import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
 import { type ApprovalOrder } from '@/services/api/approvalorder'
 import { NodeStatus } from '@/services/api/cluster'
 import { PodDetail, apiJobGetPods } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
+import type { IPage } from '@/services/types'
+
+import type { RemoteTableState } from '@/hooks/use-remote-table-state'
 
 export interface ApprovalOrderDataTableProps {
-  query: UseQueryResult<ApprovalOrder[]>
+  query: UseQueryResult<ApprovalOrder[]> | UseQueryResult<IPage<ApprovalOrder>>
   storageKey: string
+  remoteState?: RemoteTableState
   info?: {
     title: string
     description: string
@@ -166,6 +171,7 @@ const JobInfoWrapper = ({
 export function ApprovalOrderDataTable({
   query,
   storageKey,
+  remoteState,
   info,
   showExtensionHours = false,
   onNameClick,
@@ -206,11 +212,13 @@ export function ApprovalOrderDataTable({
         key: 'type',
         title: (getHeader || defaultGetHeader)('type'),
         option: approvalOrderTypes,
+        remoteFacets: Boolean(remoteState),
       },
       {
         key: 'status',
         title: (getHeader || defaultGetHeader)('status'),
         option: approvalOrderStatuses,
+        remoteFacets: Boolean(remoteState),
       },
     ],
     getHeader: getHeader || defaultGetHeader,
@@ -238,6 +246,7 @@ export function ApprovalOrderDataTable({
     },
     {
       accessorKey: 'creator',
+      enableSorting: !remoteState,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={(getHeader || defaultGetHeader)('creator')} />
       ),
@@ -245,6 +254,7 @@ export function ApprovalOrderDataTable({
     },
     {
       accessorKey: 'reviewer',
+      enableSorting: !remoteState,
       header: ({ column }) => (
         <DataTableColumnHeader
           column={column}
@@ -303,12 +313,28 @@ export function ApprovalOrderDataTable({
     })
   }
 
+  if (remoteState) {
+    return (
+      <RemoteDataTable
+        info={info}
+        toolbarConfig={toolbarConfig}
+        query={query as UseQueryResult<IPage<ApprovalOrder>, Error>}
+        state={remoteState}
+        columns={columns}
+        getRowId={(row) => String(row.id)}
+        initialColumnVisibility={{ reviewer: false }}
+      >
+        {children}
+      </RemoteDataTable>
+    )
+  }
+
   return (
     <DataTable
       info={info}
       toolbarConfig={toolbarConfig}
       storageKey={storageKey}
-      query={query}
+      query={query as UseQueryResult<ApprovalOrder[], Error>}
       columns={columns}
       initialColumnVisibility={{ reviewer: false }}
     >

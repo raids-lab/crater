@@ -23,7 +23,7 @@ import {
   apiAdminChangeImageDescription,
   apiAdminChangeImagePublicStatus,
   apiAdminDeleteImageList,
-  apiAdminListImage,
+  apiAdminListImagePage,
 } from '@/services/api/admin/imagepack'
 
 export const Route = createFileRoute('/admin/env/images/')({
@@ -38,7 +38,7 @@ export const Route = createFileRoute('/admin/env/images/')({
 function RouteComponent() {
   return (
     <ImageListTable
-      apiListImage={apiAdminListImage}
+      apiListImage={apiAdminListImagePage}
       apiDeleteImageList={apiAdminDeleteImageList}
       apiChangeImagePublicStatus={apiAdminChangeImagePublicStatus}
       apiChangeImageDescription={apiAdminChangeImageDescription}

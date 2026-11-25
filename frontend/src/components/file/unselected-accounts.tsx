@@ -23,17 +23,20 @@ import { Button } from '@/components/ui/button'
 import { DialogClose, DialogFooter } from '@/components/ui/dialog'
 
 import { QueueDataset, apiListQueuesNotInDataset } from '@/services/api/dataset'
+import { invalidateDatasetLists } from '@/services/query/pagination-cache'
 import { IResponse } from '@/services/types'
 
 import SelectBox from '../custom/select-box'
 
 interface QueueSelectProps {
   datasetId: number
+  datasetType: string
   apiShareDatasetwithQueue: (qd: QueueDataset) => Promise<IResponse<string>>
 }
 
 export default function ShareWithAccounts({
   datasetId,
+  datasetType,
   apiShareDatasetwithQueue,
 }: QueueSelectProps) {
   const { t } = useTranslation()
@@ -61,9 +64,11 @@ export default function ShareWithAccounts({
       }),
     onSuccess: () => {
       toast.success(t('shareDatasetToQueueDialog.success'))
-      void queryClient.invalidateQueries({
-        queryKey: ['data', 'queuedataset', datasetId],
-      })
+      void Promise.all([
+        invalidateDatasetLists(queryClient, datasetType),
+        queryClient.invalidateQueries({ queryKey: ['data', 'queuedataset', datasetId] }),
+        queryClient.invalidateQueries({ queryKey: ['dataset', 'queueOutList', { datasetId }] }),
+      ])
       setQueueIds([])
     },
   })

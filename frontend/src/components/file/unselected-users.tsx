@@ -23,16 +23,22 @@ import { Button } from '@/components/ui/button'
 import { DialogClose, DialogFooter } from '@/components/ui/dialog'
 
 import { UserDataset, apiListUsersNotInDataset } from '@/services/api/dataset'
+import { invalidateDatasetLists } from '@/services/query/pagination-cache'
 import { IResponse } from '@/services/types'
 
 import SelectBox from '../custom/select-box'
 
 interface UserSelectProps {
   datasetId: number
+  datasetType: string
   apiShareDatasetwithUser: (userDataset: UserDataset) => Promise<IResponse<string>>
 }
 
-export default function ShareWithUsers({ datasetId, apiShareDatasetwithUser }: UserSelectProps) {
+export default function ShareWithUsers({
+  datasetId,
+  datasetType,
+  apiShareDatasetwithUser,
+}: UserSelectProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [users, setUsers] = useState<string[]>([])
@@ -59,9 +65,11 @@ export default function ShareWithUsers({ datasetId, apiShareDatasetwithUser }: U
       }),
     onSuccess: () => {
       toast.success(t('shareDatasetToUserDialog.toastSuccess'))
-      void queryClient.invalidateQueries({
-        queryKey: ['data', 'userdataset', datasetId],
-      })
+      void Promise.all([
+        invalidateDatasetLists(queryClient, datasetType),
+        queryClient.invalidateQueries({ queryKey: ['data', 'userdataset', datasetId] }),
+        queryClient.invalidateQueries({ queryKey: ['dataset', 'userOutList', { datasetId }] }),
+      ])
     },
   })
 

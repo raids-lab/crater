@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 import { useQuery } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { ClockIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -38,6 +39,7 @@ import {
 import { NodeStatus } from '@/services/api/cluster'
 import { IJobInfo } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
+import { invalidateApprovalOrderLists } from '@/services/query/pagination-cache'
 
 const ExtensionMarkdown = `
 ## 清理规则
@@ -63,6 +65,7 @@ export const JobLockSheet = ({ isOpen, onOpenChange, jobName }: JobLockSheetProp
     hours: 0,
     totalHours: 0,
   })
+  const queryClient = useQueryClient()
   const [reason, setReason] = useState('')
 
   const commonReasons = ['模型训练尚未结束', '需要保留环境进行调试', '等待数据处理']
@@ -119,6 +122,7 @@ export const JobLockSheet = ({ isOpen, onOpenChange, jobName }: JobLockSheetProp
       setDuration({ days: 0, hours: 0, totalHours: 0 })
       setReason('')
       toast.success('创建锁定申请成功')
+      void invalidateApprovalOrderLists(queryClient)
 
       const myOrders = await listMyApprovalOrder()
       const latestOrder = myOrders.data

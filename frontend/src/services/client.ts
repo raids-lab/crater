@@ -3,11 +3,11 @@ import { HTTPError, Options } from 'ky'
 import { toast } from 'sonner'
 
 import { logger } from '@/utils/loglevel'
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '@/utils/store'
 import { configAPIBaseAtom } from '@/utils/store/config'
 import { showErrorToast } from '@/utils/toast'
 
 import { getAuthErrorMessage } from './auth-errors'
+import { clearAuthSession, getAuthSession, getAuthTokens, rotateAuthSession } from './auth-session'
 import {
   CONFLICT_ERROR_GROUP,
   ERROR_INVALID_CREDENTIALS,
@@ -202,15 +202,12 @@ export const handleApiErrorByCode = (
 
 export const apiClient = createSessionClient({
   prefixUrl: baseURL,
-  getAccessToken: () => localStorage.getItem(ACCESS_TOKEN_KEY),
-  getRefreshToken: () => localStorage.getItem(REFRESH_TOKEN_KEY),
-  saveTokens: (access, refresh) => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, access)
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh)
-  },
+  getAccessToken: () => getAuthTokens().accessToken,
+  getRefreshToken: () => getAuthTokens().refreshToken,
+  getSessionGeneration: getAuthSession,
+  saveTokens: (access, refresh) => rotateAuthSession(getAuthSession(), access, refresh),
   onInvalid: (error) => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY)
-    localStorage.removeItem(REFRESH_TOKEN_KEY)
+    clearAuthSession()
     sessionStorage.setItem('auth-session-hint', getAuthErrorMessage(error))
     if (window.location.pathname.replace(/\/$/, '') !== '/auth') window.location.assign('/auth')
   },
