@@ -49,33 +49,6 @@ func TestConcurrentJobApprovalExtendsOnce(t *testing.T) {
 	checkStoredJobLock(t, db, testApprovalJob, initial.Add(8*time.Hour))
 }
 
-func TestAutoApprovalRecordsLockAndRollsBackOnInsertFailure(t *testing.T) {
-	db, _, initial := newJobApprovalFixture(t)
-	newOrder := func(id uint) *model.ApprovalOrder {
-		return &model.ApprovalOrder{
-			Model: gorm.Model{ID: id}, Name: testApprovalJob, Type: model.ApprovalOrderTypeJob,
-			Content: datatypes.NewJSONType(model.ApprovalOrderContent{ApprovalOrderExtensionHours: 2}),
-		}
-	}
-	if approved, err := createAutoApprovedJobOrder(t.Context(), newOrder(1)); approved || err == nil {
-		t.Fatalf("duplicate insert: approved = %v, err = %v", approved, err)
-	}
-	checkStoredJobLock(t, db, testApprovalJob, initial)
-	order := newOrder(10)
-	if approved, err := createAutoApprovedJobOrder(t.Context(), order); !approved || err != nil {
-		t.Fatalf("auto approval: approved = %v, err = %v", approved, err)
-	}
-	var stored model.ApprovalOrder
-	if err := db.First(&stored, order.ID).Error; err != nil {
-		t.Fatal(err)
-	}
-	if lock := stored.Content.Data().ApprovedLock; lock == nil || lock.DurationMinutes != 120 ||
-		stored.Status != model.ApprovalOrderStatusApproved || stored.ReviewerID != nil {
-		t.Fatalf("unexpected automatic approval: %+v, lock: %+v", stored, lock)
-	}
-	checkStoredJobLock(t, db, testApprovalJob, initial.Add(2*time.Hour))
-}
-
 func sendJobOrderRequest(t *testing.T, router *gin.Engine, id uint, suffix, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	path := fmt.Sprintf("/api/v1/admin/approvalorder/%d/%s", id, suffix)

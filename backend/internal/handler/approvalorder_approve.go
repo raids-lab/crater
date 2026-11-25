@@ -11,7 +11,6 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -147,31 +146,4 @@ func requestedJobLock(hours uint) (*vcjobservice.JobLockDuration, error) {
 		return nil, bizerr.BadRequest.ParameterError.New("requested lock duration is too large")
 	}
 	return &vcjobservice.JobLockDuration{Hours: int64(hours)}, nil
-}
-
-// A failed automatic lock leaves the order pending. A failed insert rolls the lock back.
-func createAutoApprovedJobOrder(ctx context.Context, order *model.ApprovalOrder) (bool, error) {
-	content := order.Content.Data()
-	duration, err := requestedJobLock(content.ApprovalOrderExtensionHours)
-	if err != nil {
-		return false, err
-	}
-	var lockFailed bool
-	err = query.Q.Transaction(func(tx *query.Query) error {
-		lock, err := vcjobservice.ExtendJobLock(ctx, tx, order.Name, *duration, false)
-		if err != nil {
-			lockFailed = true
-			return err
-		}
-		content.ApprovedLock = lock
-		order.Content = datatypes.NewJSONType(content)
-		order.Status = model.ApprovalOrderStatusApproved
-		order.ReviewNotes = autoApprovalReason
-		return tx.ApprovalOrder.WithContext(ctx).Create(order)
-	})
-	if lockFailed {
-		klog.Warningf("automatic approval could not lock job %s: %v", order.Name, err)
-		return false, nil
-	}
-	return err == nil, err
 }

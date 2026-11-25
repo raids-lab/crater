@@ -20,10 +20,13 @@ import (
 
 	. "github.com/bytedance/mockey"
 	. "github.com/smartystreets/goconvey/convey"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/internal/service"
+	"github.com/raids-lab/crater/pkg/utils"
 )
 
 const (
@@ -42,6 +45,20 @@ func fieldValue(v vote, key string) any {
 		}
 	}
 	return nil
+}
+
+// recordedEvents drains the fake recorder.
+func recordedEvents(s *Server) []string {
+	recorder, _ := s.recorder.(*record.FakeRecorder)
+	var events []string
+	for {
+		select {
+		case event := <-recorder.Events:
+			events = append(events, event)
+		default:
+			return events
+		}
+	}
 }
 
 func TestDecideSkips(t *testing.T) {
@@ -100,21 +117,38 @@ func TestDecideSkips(t *testing.T) {
 		So(result.status, ShouldEqual, voteReject)
 		So(fieldValue(result, fieldCause), ShouldEqual, "vcjob not in cache yet")
 		So(s.accumulator.entries, ShouldBeEmpty)
+		So(recordedEvents(s), ShouldBeEmpty)
 	})
 }
 
 func TestDecideQuota(t *testing.T) {
 	PatchConvey("admitted usage plus demand above the limit", t, func() {
 		stubJobNamespace()
-		stubQuota(map[string]string{"cpu": "2"})
-		s := seededServer(newSnapshot(newView(jobB, rl("cpu", "2"), admitted), newView(jobA, rl("cpu", "1"))))
+		stubQuota(map[string]string{gpuA100: "1", "cpu": "2"})
+		s := seededServer(newSnapshot(
+			newView(jobB, rl("cpu", "2", gpuA100, "1"), admitted),
+			newView(jobA, rl("cpu", "1", gpuA100, "1")),
+		))
 
 		result := s.decide(t.Context(), vcjobRequest(jobA))
 		So(result.status, ShouldEqual, voteReject)
 		So(fieldValue(result, fieldCause), ShouldEqual, causeQuota)
-		So(fieldValue(result, "quota"), ShouldEqual, "cpu used 3 limit 2")
+		So(fieldValue(result, "quota"), ShouldEqual, "cpu used 3 limit 2; nvidia.com/a100 used 2 limit 1")
 		So(fieldValue(result, "userID"), ShouldEqual, testUserID)
 		So(s.accumulator.entries, ShouldNotContainKey, jobA)
+		quotaEvent := []string{"Warning QueueQuotaExceeded per-user queue quota would be exceeded"}
+		So(recordedEvents(s), ShouldResemble, quotaEvent)
+
+		// Repeats are skipped until the reason changes or heldWarningRefresh passes.
+		s.decide(t.Context(), vcjobRequest(jobA))
+		So(recordedEvents(s), ShouldBeEmpty)
+		uid := s.session.snap.byName[jobA].uid
+		s.lastWarned.Add(uid, heldWarning{reason: reasonBlockedByTimedOutJob, at: utils.GetLocalTime()})
+		s.decide(t.Context(), vcjobRequest(jobA))
+		So(recordedEvents(s), ShouldResemble, quotaEvent)
+		s.lastWarned.Add(uid, heldWarning{reason: reasonQueueQuotaExceeded, at: utils.GetLocalTime().Add(-heldWarningRefresh)})
+		s.decide(t.Context(), vcjobRequest(jobA))
+		So(recordedEvents(s), ShouldResemble, quotaEvent)
 	})
 
 	PatchConvey("exactly the limit passes and is reserved", t, func() {
@@ -126,6 +160,7 @@ func TestDecideQuota(t *testing.T) {
 		So(result.status, ShouldEqual, voteAbstain)
 		So(result.fields, ShouldBeEmpty)
 		So(s.accumulator.entries, ShouldContainKey, jobA)
+		So(recordedEvents(s), ShouldBeEmpty)
 	})
 
 	PatchConvey("only admitted jobs of the same user count", t, func() {
@@ -180,7 +215,11 @@ func TestDecideQuota(t *testing.T) {
 		s = seededServer(snap)
 		result := s.decide(t.Context(), vcjobRequest(jobA))
 		So(fieldValue(result, fieldSkip), ShouldEqual, "exceeds queue capability")
+		So(fieldValue(result, "capability"), ShouldEqual, "default: cpu requested 2 capability 1")
 		So(s.accumulator.entries, ShouldBeEmpty)
+		So(recordedEvents(s), ShouldResemble, []string{
+			"Warning ExceedsQueueCapability minimum demand exceeds queue capability",
+		})
 	})
 }
 
@@ -206,6 +245,9 @@ func TestDecideBlockingScope(t *testing.T) {
 		So(fieldValue(result, "blockerPodGroupPhase"), ShouldEqual, scheduling.PodGroupPhase(""))
 		So(fieldValue(result, "blockerResources"), ShouldEqual, "cpu=1, nvidia.com/a100=1")
 		So(s.accumulator.entries, ShouldNotContainKey, jobA)
+		So(recordedEvents(s), ShouldResemble, []string{
+			"Warning BlockedByTimedOutJob waiting behind a timed-out job",
+		})
 	})
 
 	PatchConvey("cpu-only candidate still competes", t, func() {
@@ -307,26 +349,27 @@ func TestDecideBlockerEligibility(t *testing.T) {
 }
 
 func TestQueueCapability(t *testing.T) {
-	PatchConvey("fitsCapability", t, func() {
+	PatchConvey("exceededResource", t, func() {
 		required := rl("cpu", "2")
-		So(fitsCapability(required, nil), ShouldBeTrue)
-		So(fitsCapability(required, rl("memory", "1Gi")), ShouldBeTrue)
-		So(fitsCapability(required, rl("cpu", "2")), ShouldBeTrue)
-		So(fitsCapability(required, rl("cpu", "1")), ShouldBeFalse)
-		So(fitsCapability(required, rl("cpu", "0")), ShouldBeTrue)
-		So(fitsCapability(rl(gpuV100, "1"), rl(gpuV100, "0")), ShouldBeFalse)
+		So(exceededResource(required, nil), ShouldBeEmpty)
+		So(exceededResource(required, rl("memory", "1Gi")), ShouldBeEmpty)
+		So(exceededResource(required, rl("cpu", "2")), ShouldBeEmpty)
+		So(exceededResource(required, rl("cpu", "1")), ShouldEqual, v1.ResourceCPU)
+		So(exceededResource(required, rl("cpu", "0")), ShouldBeEmpty)
+		So(exceededResource(rl(gpuV100, "1"), rl(gpuV100, "0")), ShouldEqual, v1.ResourceName(gpuV100))
+		So(exceededResource(rl("cpu", "2", gpuV100, "2"), rl(gpuV100, "1", "cpu", "1")), ShouldEqual, v1.ResourceCPU)
 	})
 
-	PatchConvey("fitsQueueCapability", t, func() {
+	PatchConvey("exceededCapability", t, func() {
 		view := newView(jobA, rl("cpu", "2"), withMinimum(rl("cpu", "4")))
 		snap := newSnapshot(view)
-		So(snap.fitsQueueCapability(view), ShouldBeTrue)
+		So(snap.exceededCapability(view), ShouldBeEmpty)
 
 		addQueue(snap, publicQueue, "parent", rl("cpu", "4"))
 		addQueue(snap, "parent", "", rl("cpu", "2"))
-		So(snap.fitsQueueCapability(view), ShouldBeFalse)
+		So(snap.exceededCapability(view), ShouldEqual, "parent: cpu requested 4 capability 2")
 
 		addQueue(snap, "parent", publicQueue, rl("cpu", "8"))
-		So(snap.fitsQueueCapability(view), ShouldBeTrue)
+		So(snap.exceededCapability(view), ShouldBeEmpty)
 	})
 }

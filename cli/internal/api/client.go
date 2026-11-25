@@ -25,6 +25,7 @@ type Response[T any] struct {
 type Client struct {
 	httpClient *req.Client
 	BaseURL    string
+	token      string
 }
 
 // applyHTTPSim 按环境变量在 req Transport 上注册拦截（仅影响经 NewClient 创建的客户端）。
@@ -46,10 +47,9 @@ func applyHTTPSim(rc *req.Client) {
 	case "passthrough":
 		wrapLoopbackPassthrough(rc)
 	case "compatibility-compatible":
-		// The fixture backend keeps support for CLI contract v3 when the current contract advances.
 		wrapSimCompatibility(rc, internalversion.APIVersion, internalversion.APIVersion)
 	case "compatibility-cli-too-old":
-		wrapSimCompatibility(rc, internalversion.APIVersion, internalversion.APIVersion+1)
+		wrapSimCompatibility(rc, internalversion.APIVersion+1, internalversion.APIVersion+1)
 	case "compatibility-backend-zero":
 		wrapSimCompatibility(rc, 0, 0)
 	case "compatibility-unavailable":
@@ -143,6 +143,7 @@ func NewClient(baseURL string) *Client {
 
 // SetToken 为后续请求设置 Bearer Token
 func (c *Client) SetToken(token string) *Client {
+	c.token = token
 	c.httpClient.SetCommonBearerAuthToken(token)
 	return c
 }

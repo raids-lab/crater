@@ -141,13 +141,37 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "用户名或密码错误",
+                        "description": "账号凭证错误或账号未激活",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "登录方式禁用、平台账号受限或缺少项目关联",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "账号创建冲突",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "数据库交互错误",
+                        "description": "目录服务、身份映射或数据库异常",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "502": {
+                        "description": "外部 UID 服务不可用或响应不完整",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "504": {
+                        "description": "LDAP 认证超时",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -11152,6 +11176,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vcjobs/{name}/exec": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.\nEmpty command opens a user login shell with stdin/tty.\nenv_mode=user (default) loads user shell configuration; container skips probing.\nNon-TTY commands use a bounded environment probe; TTY commands use the user login shell.\nExec resolves HOME and shell from the task account. Byte payloads use Base64 JSON strings.",
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Open a user shell or execute argv in your current-project job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform job name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pod name; required for multiple pods",
+                        "name": "pod",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Container name; required for multiple regular containers",
+                        "name": "container",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "WebSocket exec session",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid target or subprotocol",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Job is outside the current user/project",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or pod not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Container is not running",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Platform failure",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vcjobs/{name}/pods": {
             "get": {
                 "security": [
@@ -11306,21 +11403,18 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "开启 SSH",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns the address and port for native sshd login.\nPlatform administrators retain access to other users' jobs; ordinary users require ownership in the current project.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "VolcanoJob"
                 ],
-                "summary": "开启 SSH",
+                "summary": "Enable SSH access",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Job Name",
+                        "description": "Platform job name",
                         "name": "name",
                         "in": "path",
                         "required": true
@@ -11328,19 +11422,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "SSH开启成功",
+                        "description": "SSH endpoint",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo"
+                        }
+                    },
+                    "403": {
+                        "description": "Job is outside the current user/project",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
-                    "400": {
-                        "description": "Request parameter error",
+                    "404": {
+                        "description": "Job, pod or SSH service not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Job or container is not running",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "Other errors",
+                        "description": "SSH service or session setup failed",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -13198,6 +13304,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_vcjob.JupyterTokenResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_vcjob.SSHInfo"
                 },
                 "msg": {
                     "type": "string"
@@ -16576,6 +16697,17 @@ const docTemplate = `{
                 },
                 "port": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler_vcjob.SSHInfo": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
                 }
             }
         },
