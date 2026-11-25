@@ -26,14 +26,19 @@ type Tokens struct {
 }
 
 type clientSession struct {
-	tokens Tokens
-	check  func(Tokens) error
-	save   func(previous, next Tokens, requireActive bool) error
+	tokens        Tokens
+	check         func(Tokens) error
+	save          func(previous, next Tokens, requireActive bool) error
+	refreshClient *req.Client
 }
 
 // SetSession enables renewal for requests made using one saved identity.
 func (c *Client) SetSession(tokens Tokens, check func(Tokens) error, save func(Tokens, Tokens, bool) error) *Client {
-	c.session = &clientSession{tokens: tokens, check: check, save: save}
+	// Keep the resolved address and transport settings, before adding Bearer
+	// authentication or retry behavior to the business client.
+	refreshClient := c.httpClient.Clone().SetRedirectPolicy(req.NoRedirectPolicy())
+	refreshClient.Headers.Del("Authorization")
+	c.session = &clientSession{tokens: tokens, check: check, save: save, refreshClient: refreshClient}
 	platform, _ := url.Parse(c.BaseURL)
 	c.httpClient.GetTransport().WrapRoundTripFunc(func(next http.RoundTripper) req.HttpRoundTripFunc {
 		return func(r *http.Request) (*http.Response, error) {
@@ -100,12 +105,10 @@ func (c *Client) renewAccessToken(ctx context.Context, rejected string) (string,
 }
 
 func (c *Client) exchangeRefreshToken(ctx context.Context, refreshToken string) (Tokens, error) {
-	refreshClient := NewClient(c.BaseURL)
-	refreshClient.httpClient.SetRedirectPolicy(req.NoRedirectPolicy())
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var result Response[Tokens]
-	resp, err := refreshClient.httpClient.R().SetContext(ctx).
+	resp, err := c.session.refreshClient.R().SetContext(ctx).
 		SetBody(struct {
 			RefreshToken string `json:"refreshToken"`
 		}{RefreshToken: refreshToken}).

@@ -2,11 +2,15 @@ package api
 
 import (
 	"bytes"
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/imroc/req/v3"
 )
 
 const expiredSessionBody = `{"code":40101,"msg":"access expired"}`
@@ -49,6 +54,146 @@ func testRenewingClient(t *testing.T, server *httptest.Server, tokens Tokens) *C
 		}
 		return nil
 	})
+}
+
+func TestResolveSessionPlatform(t *testing.T) {
+	for _, tc := range []struct {
+		name, base, location, want string
+		probe, rejected            bool
+	}{
+		{name: "HTTPS", base: "https://platform.invalid"},
+		{name: "localhost", base: "http://localhost:8089"},
+		{name: "IPv4 loopback", base: "http://127.0.0.1:8089"},
+		{name: "IPv6 loopback", base: "http://[::1]:8089"},
+		{name: "direct HTTP", base: "http://platform.invalid", probe: true},
+		{name: "HTTPS upgrade", base: "http://platform.invalid:80/crater", probe: true,
+			location: "https://platform.invalid:443/crater" + AuthCheckPath, want: "https://platform.invalid:443/crater"},
+		{name: "nonstandard HTTP port", base: "http://platform.invalid:8080", probe: true, rejected: true,
+			location: "https://platform.invalid" + AuthCheckPath},
+		{name: "nonstandard HTTPS port", base: "http://platform.invalid", probe: true, rejected: true,
+			location: "https://platform.invalid:8443" + AuthCheckPath},
+		{name: "different host", base: "http://platform.invalid", probe: true, rejected: true,
+			location: "https://other.invalid" + AuthCheckPath},
+		{name: "different path", base: "http://platform.invalid", probe: true, rejected: true,
+			location: "https://platform.invalid/other" + AuthCheckPath},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := NewClient(tc.base)
+			var probes int
+			client.httpClient.GetTransport().WrapRoundTripFunc(func(_ http.RoundTripper) req.HttpRoundTripFunc {
+				return func(r *http.Request) (*http.Response, error) {
+					probes++
+					if r.Method != http.MethodGet || r.URL.String() != tc.base+AuthCheckPath || r.Header.Get("Authorization") != "" {
+						t.Errorf("expected an unauthenticated GET to the configured platform, got %s %s", r.Method, r.URL)
+					}
+					if tc.location == "" {
+						return simulatedJSONResponse(r, http.StatusUnauthorized, expiredSessionBody), nil
+					}
+					response := simulatedJSONResponse(r, http.StatusPermanentRedirect, "")
+					response.Header.Set("Location", tc.location)
+					return response, nil
+				}
+			})
+			err := client.resolveSessionPlatform(t.Context())
+			var redirect *RequestError
+			if tc.rejected {
+				if !errors.As(err, &redirect) || redirect.HTTPStatus != http.StatusPermanentRedirect {
+					t.Fatalf("expected an HTTP redirect error, got %v", err)
+				}
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			want := tc.want
+			if want == "" {
+				want = tc.base
+			}
+			if client.BaseURL != want || client.httpClient.BaseURL != want || (probes == 1) != tc.probe || probes > 1 {
+				t.Fatalf("expected platform %s and probe=%t, got %s / %s and %d requests", want, tc.probe, client.BaseURL, client.httpClient.BaseURL, probes)
+			}
+		})
+	}
+}
+
+func TestUpgradedSessionUsesHTTPSForRequestsAndRenewal(t *testing.T) {
+	const httpBase = "http://example.com/crater"
+	const httpsBase = "https://example.com/crater"
+	var probes, accountRequests, refreshes atomic.Int32
+	httpServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		probes.Add(1)
+		if r.Method != http.MethodGet || r.URL.Path != "/crater"+AuthCheckPath || r.Header.Get("Authorization") != "" {
+			t.Error("the HTTP server must see only the unauthenticated GET probe")
+		}
+		http.Redirect(w, r, httpsBase+AuthCheckPath, http.StatusPermanentRedirect)
+	}))
+	defer httpServer.Close()
+	httpsServer := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/crater" + AuthRefreshPath:
+			refreshes.Add(1)
+			respondToRefresh(t, w, r)
+		case "/crater" + AuthCheckPath:
+			access := r.Header.Get("Authorization")
+			attempt := accountRequests.Add(1)
+			switch attempt {
+			case 1, 2:
+				if access != "Bearer old-access" {
+					t.Error("the original access credential must reach the HTTPS server")
+				}
+				if attempt == 2 {
+					sessionJSON(w, http.StatusUnauthorized, expiredSessionBody)
+					return
+				}
+			case 3:
+				if access != "Bearer new-access" {
+					t.Error("the retried request must use the new access credential")
+				}
+			}
+			sessionJSON(w, http.StatusOK, `{"data":{"context":{"queue":"research"}}}`)
+		default:
+			t.Errorf("unexpected HTTPS request %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer httpsServer.Close()
+
+	// Route both logical default ports to local test listeners. TLS still checks
+	// example.com against the trusted certificate supplied by httptest.
+	roots := x509.NewCertPool()
+	roots.AddCert(httpsServer.Certificate())
+	client := NewClient(httpBase)
+	dialer := net.Dialer{}
+	client.httpClient.SetProxy(nil).SetTLSClientConfig(&tls.Config{RootCAs: roots}).
+		SetDial(func(ctx context.Context, network, address string) (net.Conn, error) {
+			switch address {
+			case "example.com:80":
+				address = httpServer.Listener.Addr().String()
+			case "example.com:443":
+				address = httpsServer.Listener.Addr().String()
+			default:
+				return nil, fmt.Errorf("unexpected network address %s", address)
+			}
+			return dialer.DialContext(ctx, network, address)
+		})
+	if err := client.resolveSessionPlatform(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	var saves int
+	client.SetSession(originalTokens, func(Tokens) error { return nil }, func(previous, next Tokens, requireActive bool) error {
+		saves++
+		if previous != originalTokens || next != renewedTokens || !requireActive {
+			t.Error("renewal must replace the original pair for the active identity")
+		}
+		return nil
+	})
+	if account, err := client.CurrentAccount(); err != nil || account.Queue != "research" {
+		t.Fatalf("expected the HTTPS account request to succeed, got %v, %v", account, err)
+	}
+	if account, err := client.CurrentAccount(); err != nil || account.Queue != "research" {
+		t.Fatalf("expected the account request to succeed after HTTPS renewal, got %v, %v", account, err)
+	}
+	if probes.Load() != 1 || accountRequests.Load() != 3 || refreshes.Load() != 1 || saves != 1 || client.currentTokens() != renewedTokens {
+		t.Fatal("expected one probe, three HTTPS account requests, and one successful HTTPS renewal and save")
+	}
 }
 
 func TestSessionRenewsAndReplaysAPostOnce(t *testing.T) {

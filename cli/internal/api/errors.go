@@ -16,7 +16,7 @@ type RequestError struct {
 // ShouldSignInAgain distinguishes credential failures from other HTTP 401s.
 func (e *RequestError) ShouldSignInAgain() bool {
 	return e.HTTPStatus == http.StatusUnauthorized &&
-		(e.DuringRefresh || e.CraterCode == tokenExpiredCode || e.CraterCode == tokenInvalidCode)
+		(e.CraterCode == tokenExpiredCode || e.CraterCode == tokenInvalidCode)
 }
 
 // SessionStateError indicates a failed check or update of saved credentials.
