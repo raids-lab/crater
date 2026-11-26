@@ -189,6 +189,11 @@ test-job-sessions: ## Test job sessions and browser/native request compatibility
 	# Test request parsing separately from service initialization and its database migration.
 	go test -race ./internal/middleware/jwt_request.go ./internal/middleware/jwt_request_test.go
 
+.PHONY: compatibility-test
+compatibility-test: ## Verify published and current CLI binaries with isolated handler fixtures.
+	@test -n "$(OLD_CLI_BIN)" -a -n "$(NEW_CLI_BIN)" || (echo "OLD_CLI_BIN and NEW_CLI_BIN are required" >&2; exit 1)
+	OLD_CLI_BIN="$(OLD_CLI_BIN)" NEW_CLI_BIN="$(NEW_CLI_BIN)" go test -tags=cli_compatibility ./internal/handler/image -run '^TestReleasedCLICompatibility$$' -count=1 -v
+
 ##@ Build
 
 .PHONY: build
@@ -253,3 +258,8 @@ build-storage: fmt lint ## Build storage server binary.
 	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/storage-server cmd/storage-server/main.go
 	go build -ldflags="-w -s $(VERSION_LDFLAGS)" -o bin/model-dataset-governance cmd/model-dataset-governance/main.go
 	@echo "$(GREEN)Storage server binary built successfully: bin/storage-server$(RESET)"
+
+.PHONY: test-dataset-postgres
+test-dataset-postgres: ## Execute dataset list regressions on an isolated PostgreSQL 16 database.
+	@test -n "$(CRATER_TEST_POSTGRES_DSN)" || (echo "CRATER_TEST_POSTGRES_DSN is required" >&2; exit 1)
+	GIN_MODE=debug CRATER_DEBUG_CONFIG_PATH="$(PWD)/etc/example-config.yaml" go test ./internal/service/dataset -count=1 -v

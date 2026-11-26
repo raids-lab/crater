@@ -41,7 +41,7 @@ import { JobNameCell } from '@/components/label/job-name-label'
 import SimpleTooltip from '@/components/label/simple-tooltip'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
 import { RemoteDataTable } from '@/components/query-table/remote'
-import { buildFacetQueryKey, buildRemoteQueryKey } from '@/components/query-table/remote-state'
+import { buildFacetQueryKey } from '@/components/query-table/remote-state'
 
 import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
@@ -54,7 +54,13 @@ import {
   getDisplayJobPhase,
   interactiveJobTypes,
 } from '@/services/api/vcjob'
+import {
+  accountListQueryKey,
+  accountListQueryOptions,
+  assertAccountListScope,
+} from '@/services/query/account-list-scope'
 
+import { useAccountListScope } from '@/hooks/use-account-list-scope'
 import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
@@ -74,6 +80,19 @@ export const Route = createFileRoute('/portal/jobs/inter/')({
 type JobTableRow = IJobInfo
 
 function RouteComponent() {
+  const { scope, isCurrentScope } = useAccountListScope()
+  if (!scope) return null
+
+  return <InteractiveJobs key={scope} scope={scope} isCurrentScope={isCurrentScope} />
+}
+
+function InteractiveJobs({
+  scope,
+  isCurrentScope,
+}: {
+  scope: string
+  isCurrentScope: () => boolean
+}) {
   const { t: translate } = useTranslation()
   const queryClient = useQueryClient()
   const { data: billingStatus } = useQuery({
@@ -81,19 +100,31 @@ function RouteComponent() {
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
-  const tableState = useRemoteTableState('portal_job_interactive', {
+  const tableState = useRemoteTableState(`portal_job_interactive-${scope}`, {
     sorting: [{ id: 'createdAt', desc: true }],
   })
 
+  const listKey = accountListQueryKey(['remote-list', 'jobs-interactive'], scope)
+  const [facetNamespace, facetResource, facetFilters] = buildFacetQueryKey(
+    'jobs-interactive',
+    tableState.params
+  )
+  const facetKey = accountListQueryKey([facetNamespace, facetResource], scope)
   const interactiveQuery = useQuery({
-    queryKey: buildRemoteQueryKey('jobs-interactive', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobInteractiveList(tableState.params, signal)).data,
+    ...accountListQueryOptions(
+      [...listKey, tableState.params],
+      isCurrentScope,
+      async (signal) => (await apiJobInteractiveList(tableState.params, signal)).data
+    ),
     placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
   const facetsQuery = useQuery({
-    queryKey: buildFacetQueryKey('jobs-interactive', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobInteractiveFacets(tableState.params, signal)).data,
+    ...accountListQueryOptions(
+      [...facetKey, facetFilters],
+      isCurrentScope,
+      async (signal) => (await apiJobInteractiveFacets(tableState.params, signal)).data
+    ),
   })
   const toolbarConfig = useMemo(
     () => getRemoteJobToolbarConfig(facetsQuery.data, interactiveJobTypes),
@@ -104,8 +135,8 @@ function RouteComponent() {
     try {
       // 隔 200ms 并行发送所有异步请求
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['remote-list', 'jobs-interactive'] }),
-        queryClient.invalidateQueries({ queryKey: ['remote-list-facets', 'jobs-interactive'] }),
+        queryClient.invalidateQueries({ queryKey: listKey }),
+        queryClient.invalidateQueries({ queryKey: facetKey }),
         new Promise((resolve) => setTimeout(resolve, 200)).then(() =>
           queryClient.invalidateQueries({ queryKey: ['job'] })
         ),
@@ -122,7 +153,10 @@ function RouteComponent() {
   }
 
   const { mutate: deleteTask } = useMutation({
-    mutationFn: apiJobDelete,
+    mutationFn: (jobName: string) => {
+      assertAccountListScope(isCurrentScope)
+      return apiJobDelete(jobName)
+    },
     onSuccess: async () => {
       await refetchTaskList()
       toast.success(translate('jobs.successMessage'))

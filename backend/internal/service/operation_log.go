@@ -4,21 +4,32 @@ import (
 	"context"
 	"time"
 
+	"gorm.io/gen/field"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"github.com/raids-lab/crater/internal/util"
+
 	"gorm.io/datatypes"
-	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
 )
 
-//nolint:gochecknoinits // Operation logs need schema migration during service registration.
-func init() {
-	if err := query.GetDB().AutoMigrate(&model.OperationLog{}); err != nil {
-		klog.Fatalf("auto migrate operation_logs failed: %v", err)
-	}
+type OperationLogService struct {
+	db *gorm.DB
 }
 
-type OperationLogService struct{}
+func NewOperationLogService(db *gorm.DB) *OperationLogService {
+	return &OperationLogService{db: db}
+}
+
+func (s *OperationLogService) database() *gorm.DB {
+	if s.db != nil {
+		return s.db
+	}
+	return query.GetDB()
+}
 
 var OpLog = &OperationLogService{}
 
@@ -37,60 +48,63 @@ func (s *OperationLogService) Create(
 		Status:        status,
 		Message:       message,
 	}
-	return query.GetDB().WithContext(ctx).Create(log).Error
+	return s.database().WithContext(ctx).Create(log).Error
 }
 
 func (s *OperationLogService) List(
-	ctx context.Context,
-	page,
-	pageSize int,
-	operator,
-	opType,
-	target,
-	search string,
-	startTime,
-	endTime *time.Time,
+	ctx context.Context, page, pageSize int, operator, opType, target, search string,
+	startTime, endTime *time.Time, sortFields ...field.Expr,
 ) ([]*model.OperationLog, int64, error) {
-	var logs []*model.OperationLog
-	var total int64
-	db := query.GetDB().WithContext(ctx).Model(&model.OperationLog{})
-
+	// OperationLog has no generated DAO; use GORM with bound field expressions.
+	operatorField := field.NewString("operation_logs", "operator")
+	typeField := field.NewString("operation_logs", "operation_type")
+	targetField := field.NewString("operation_logs", "target")
+	messageField := field.NewString("operation_logs", "message")
+	createdAt := field.NewTime("operation_logs", "created_at")
+	db := s.database().WithContext(ctx).Model(&model.OperationLog{})
 	if operator != "" {
-		db = db.Where("operator LIKE ?", "%"+operator+"%")
+		db = db.Where(operatorField.Lower().Like(util.ContainsPattern(operator)).RawExpr())
 	}
 	if opType != "" {
-		db = db.Where("operation_type = ?", opType)
+		db = db.Where(typeField.Eq(opType).RawExpr())
 	}
 	if target != "" {
-		db = db.Where("target LIKE ?", "%"+target+"%")
+		db = db.Where(targetField.Lower().Like(util.ContainsPattern(target)).RawExpr())
 	}
 	if search != "" {
-		searchPattern := "%" + search + "%"
-		db = db.Where(
-			"operator LIKE ? OR operation_type LIKE ? OR target LIKE ? OR message LIKE ?",
-			searchPattern,
-			searchPattern,
-			searchPattern,
-			searchPattern,
-		)
+		pattern := util.ContainsPattern(search)
+		db = db.Where(field.Or(
+			operatorField.Lower().Like(pattern), typeField.Lower().Like(pattern),
+			targetField.Lower().Like(pattern), messageField.Lower().Like(pattern),
+		).RawExpr())
 	}
 	if startTime != nil {
-		db = db.Where("created_at >= ?", *startTime)
+		db = db.Where(createdAt.Gte(*startTime).RawExpr())
 	}
 	if endTime != nil {
-		db = db.Where("created_at <= ?", *endTime)
+		db = db.Where(createdAt.Lte(*endTime).RawExpr())
 	}
-
-	err := db.Count(&total).Error
-	if err != nil {
+	if len(sortFields) == 0 {
+		sortFields = []field.Expr{createdAt.Desc(), field.NewUint("operation_logs", "id").Desc()}
+	}
+	orders := make([]clause.Expression, 0, len(sortFields))
+	for _, order := range sortFields {
+		orders = append(orders, order)
+	}
+	db = db.Clauses(clause.OrderBy{Expression: clause.CommaExpression{Exprs: orders}})
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-
 	offset := (page - 1) * pageSize
-	err = db.Order("created_at desc").Offset(offset).Limit(pageSize).Find(&logs).Error
+	if int64(offset) >= total {
+		return nil, total, nil
+	}
+	var logs []*model.OperationLog
+	err := db.Offset(offset).Limit(pageSize).Find(&logs).Error
 	return logs, total, err
 }
 
 func (s *OperationLogService) Clear(ctx context.Context) error {
-	return query.GetDB().WithContext(ctx).Unscoped().Where("1 = 1").Delete(&model.OperationLog{}).Error
+	return s.database().WithContext(ctx).Unscoped().Where("1 = 1").Delete(&model.OperationLog{}).Error
 }

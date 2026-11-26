@@ -13,15 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import {
-  ColumnDef,
-  PaginationState,
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
+import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import {
   AlertCircleIcon,
   ArrowLeft,
@@ -35,7 +29,7 @@ import {
   RotateCw,
   SearchIcon,
 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -64,27 +58,32 @@ import DocsButton from '@/components/button/docs-button'
 import { TimeDistance } from '@/components/custom/time-distance'
 import SimpleTooltip from '@/components/label/simple-tooltip'
 import UserLabel from '@/components/label/user-label'
+import { stopInactiveRowEvent } from '@/components/layout/data-list-remote'
 import PageTitle from '@/components/layout/page-title'
 import ModelDownloadProgress from '@/components/model/model-download-progress'
 import ModelDownloadTokenDialog from '@/components/model/model-download-token-dialog'
 import { DataTablePagination } from '@/components/query-table/pagination'
+import { buildRemoteQueryKey, getLastPageIndex } from '@/components/query-table/remote-state'
 
 import {
   ModelDownload,
-  ModelDownloadListResp,
   ModelDownloadStatus,
-  apiListModelDownloadsPaged,
+  apiGetModelDownloadSummary,
+  apiListModelDownloadsPage,
   apiPauseModelDownload,
   apiResumeModelDownload,
   apiRetryModelDownload,
 } from '@/services/api/modeldownload'
+import { invalidateModelDownloadLists } from '@/services/query/pagination-cache'
+import type { IPage } from '@/services/types'
+
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { logger } from '@/utils/loglevel'
 import { showErrorToast } from '@/utils/toast'
 
 import { cn } from '@/lib/utils'
 
-const SEARCH_DEBOUNCE_MS = 400
 // 有进行中的任务时快轮询,否则慢轮询
 const ACTIVE_REFETCH_MS = 5000
 const IDLE_REFETCH_MS = 30000
@@ -108,59 +107,87 @@ export function ModelDownloadsPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
+  const tableState = useRemoteTableState('model_downloads', {
+    sorting: [{ id: 'updatedAt', desc: true }],
   })
-  const [statusFilter, setStatusFilter] = useState<ModelDownloadStatus | 'all'>('all')
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'model' | 'dataset'>('all')
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
   const [tokenTarget, setTokenTarget] = useState<{
     action: 'resume' | 'retry'
     download: ModelDownload
   } | null>(null)
 
-  // 搜索防抖,避免每个按键都触发请求
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearch(searchInput.trim())
-      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-    }, SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [searchInput])
-
-  const queryParams = useMemo(
-    () => ({
-      page: pagination.pageIndex + 1,
-      pageSize: pagination.pageSize,
-      category: categoryFilter === 'all' ? undefined : categoryFilter,
-      status: statusFilter === 'all' ? undefined : statusFilter,
-      search: search || undefined,
-    }),
-    [pagination, categoryFilter, statusFilter, search]
+  const getSingleFilter = useCallback(
+    (id: string) => {
+      const value = tableState.columnFilters.find((filter) => filter.id === id)?.value
+      return Array.isArray(value) ? String(value[0] ?? 'all') : value ? String(value) : 'all'
+    },
+    [tableState.columnFilters]
+  )
+  const statusFilter = getSingleFilter('status') as ModelDownloadStatus | 'all'
+  const categoryFilter = getSingleFilter('category') as 'all' | 'model' | 'dataset'
+  const setSingleFilter = useCallback(
+    (id: string, value: string) => {
+      tableState.setColumnFilters((current) => {
+        const remaining = current.filter((filter) => filter.id !== id)
+        return value === 'all' ? remaining : [...remaining, { id, value: [value] }]
+      })
+    },
+    [tableState]
   )
 
-  const query = useQuery({
-    queryKey: ['model-downloads', queryParams],
-    queryFn: () => apiListModelDownloadsPaged(queryParams),
+  const query = useQuery<IPage<ModelDownload>, Error>({
+    queryKey: buildRemoteQueryKey('model-downloads', tableState.params),
+    queryFn: ({ signal }) =>
+      apiListModelDownloadsPage(tableState.params, signal).then((response) => response.data),
+    placeholderData: keepPreviousData,
     refetchInterval: (q) => {
-      const resp = q.state.data?.data as ModelDownloadListResp | undefined
-      const summary = resp?.summary
       const active =
-        (summary?.Pending ?? 0) + (summary?.Downloading ?? 0) > 0 ||
-        resp?.items?.some((d) => d.status === 'Pending' || d.status === 'Downloading')
+        q.state.data?.items.some(
+          (download) => download.status === 'Pending' || download.status === 'Downloading'
+        ) ?? false
       return active ? ACTIVE_REFETCH_MS : IDLE_REFETCH_MS
     },
   })
+  const rowsInactive = query.isPlaceholderData || query.isError || query.isPending
+  const summaryQuery = useQuery({
+    queryKey: ['model-downloads-summary', categoryFilter],
+    queryFn: ({ signal }) =>
+      apiGetModelDownloadSummary(
+        categoryFilter === 'all' ? undefined : categoryFilter,
+        signal
+      ).then((response) => response.data),
+    refetchInterval: (summary) => {
+      const counts = summary.state.data
+      return (counts?.Pending ?? 0) + (counts?.Downloading ?? 0) > 0
+        ? ACTIVE_REFETCH_MS
+        : IDLE_REFETCH_MS
+    },
+  })
 
-  const listData = query.data?.data
-  const summary = listData?.summary
+  const listData = query.data
+  const summary = summaryQuery.data
   const total = listData?.total ?? 0
+  const { pageIndex, pageSize } = tableState.pagination
+  const setTablePagination = tableState.setPagination
+
+  useEffect(() => {
+    if (!query.data || query.isError || query.isFetching || query.isPlaceholderData) return
+    const lastPageIndex = getLastPageIndex(query.data.total, pageSize)
+    if (pageIndex > lastPageIndex) {
+      setTablePagination((current) => ({ ...current, pageIndex: lastPageIndex }))
+    }
+  }, [
+    pageIndex,
+    pageSize,
+    query.data,
+    query.isError,
+    query.isFetching,
+    query.isPlaceholderData,
+    setTablePagination,
+  ])
 
   const refetchDownloads = async () => {
     try {
-      await queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
+      await invalidateModelDownloadLists(queryClient)
     } catch (error) {
       logger.error('failed to refresh model download queries', error)
     }
@@ -406,16 +433,15 @@ export function ModelDownloadsPage() {
   const table = useReactTable({
     data: listData?.items ?? defaultData,
     columns,
-    pageCount: total > 0 ? Math.ceil(total / pagination.pageSize) : 0,
-    state: { pagination },
-    onPaginationChange: setPagination,
+    pageCount: total > 0 ? Math.ceil(total / tableState.pagination.pageSize) : 0,
+    state: { pagination: tableState.pagination },
+    onPaginationChange: tableState.setPagination,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
   })
 
   const handleStatusChange = (value: string) => {
-    setStatusFilter(value as ModelDownloadStatus | 'all')
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    setSingleFilter('status', value)
   }
 
   const summaryTotal = summary
@@ -532,15 +558,14 @@ export function ModelDownloadsPage() {
           <Input
             placeholder={t('modelDownload.list.searchPlaceholder')}
             className="h-9 w-full pl-8 sm:w-[250px]"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            value={tableState.search}
+            onChange={(e) => tableState.setSearch(e.target.value)}
           />
         </div>
         <Select
           value={categoryFilter}
           onValueChange={(value) => {
-            setCategoryFilter(value as 'all' | 'model' | 'dataset')
-            setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+            setSingleFilter('category', value)
           }}
         >
           <SelectTrigger className="h-9 w-full sm:w-[140px]">
@@ -568,7 +593,12 @@ export function ModelDownloadsPage() {
       </div>
 
       {/* 数据表 */}
-      <div className="rounded-md border">
+      {query.isPlaceholderData && (
+        <p role="status" className="text-muted-foreground text-sm">
+          {t('common.loading')}
+        </p>
+      )}
+      <div aria-busy={query.isFetching} className="rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -583,7 +613,13 @@ export function ModelDownloadsPage() {
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody
+            inert={query.isPlaceholderData}
+            onClickCapture={(event) => stopInactiveRowEvent(rowsInactive, event)}
+            onKeyDownCapture={(event) => stopInactiveRowEvent(rowsInactive, event)}
+            onPointerDownCapture={(event) => stopInactiveRowEvent(rowsInactive, event)}
+            onSubmitCapture={(event) => stopInactiveRowEvent(rowsInactive, event)}
+          >
             {query.isError ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
@@ -626,26 +662,30 @@ export function ModelDownloadsPage() {
         updatedAt={lastUpdatedAt}
         refetch={() => void query.refetch()}
         pageSizeOptions={[10, 20, 50, 100]}
+        totalItems={total}
       />
-      {tokenTarget && (
-        <ModelDownloadTokenDialog
-          action={tokenTarget.action}
-          downloadName={tokenTarget.download.name}
-          initialRevision={tokenTarget.download.revision}
-          source={tokenTarget.download.source}
-          isPending={isResuming || isRetrying}
-          open
-          onOpenChange={(open) => !open && setTokenTarget(null)}
-          onSubmit={(token, revision) => {
-            const request = { id: tokenTarget.download.id, token, revision }
-            if (tokenTarget.action === 'resume') {
-              resumeDownload(request)
-            } else {
-              retryDownload(request)
-            }
-          }}
-        />
-      )}
+      {tokenTarget &&
+        !rowsInactive &&
+        query.data?.items.some((item) => item.id === tokenTarget.download.id) && (
+          <ModelDownloadTokenDialog
+            action={tokenTarget.action}
+            downloadName={tokenTarget.download.name}
+            initialRevision={tokenTarget.download.revision}
+            source={tokenTarget.download.source}
+            isPending={isResuming || isRetrying}
+            open
+            onOpenChange={(open) => !open && setTokenTarget(null)}
+            onSubmit={(token, revision) => {
+              if (rowsInactive) return
+              const request = { id: tokenTarget.download.id, token, revision }
+              if (tokenTarget.action === 'resume') {
+                resumeDownload(request)
+              } else {
+                retryDownload(request)
+              }
+            }}
+          />
+        )}
     </div>
   )
 }

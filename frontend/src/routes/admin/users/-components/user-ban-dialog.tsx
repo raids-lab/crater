@@ -123,6 +123,7 @@ export function UserBanDialog({ open, onOpenChange, user, mode }: UserBanDialogP
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin', 'userlist'] }),
+        queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-users'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'users', user?.name, 'ban'] }),
         queryClient.invalidateQueries({ queryKey: ['users', user?.name, 'ban'] }),
         queryClient.invalidateQueries({ queryKey: ['current-user', 'ban'] }),

@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui-custom/alert-dialog'
 
-import { apiAdminUserList } from '@/services/api/admin/user'
+import { apiAdminUserListAll } from '@/services/api/admin/user'
 import { IAdminModelDownloadLimitConfig } from '@/services/api/system-config'
 
 interface ModelDownloadLimitSettingsProps {
@@ -70,7 +70,7 @@ export function ModelDownloadLimitSettings({
 
   const { data: userOptions = [] } = useQuery({
     queryKey: ['admin', 'userlist'],
-    queryFn: apiAdminUserList,
+    queryFn: ({ signal }) => apiAdminUserListAll(signal),
     select: (res) =>
       res.data.map((user) => ({
         value: String(user.id),

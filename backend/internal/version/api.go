@@ -16,10 +16,12 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	// v7 adds the optional container command execution API.
-	APIVersion = 7
+	// v7 adds container command execution.
+	// v8 consolidates optionally paginated database lists with legacy complete reads.
+	APIVersion = 8
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
 	// v2 and older CLIs still call the removed prequeue endpoints and the dropped schedule_type filter with no fallback.
+	// Optional pagination preserves the complete reads used by v3 and newer CLIs.
 	MinSupportedCLIAPIVersion = 3
 )

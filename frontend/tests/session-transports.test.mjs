@@ -18,15 +18,33 @@ function transportHarness(fetch) {
     ['refresh', 'old-refresh'],
   ])
   const transfers = []
+  const tokenKeys = { ACCESS_TOKEN_KEY: 'access', REFRESH_TOKEN_KEY: 'refresh' }
+  const localStorage = {
+    getItem: (key) => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, value),
+    removeItem: (key) => storage.delete(key),
+  }
+  const authSession = {}
+  const sessionSource = readFileSync(
+    new URL('../src/services/auth-session.ts', import.meta.url),
+    'utf8'
+  )
+  runInNewContext(
+    ts.transpileModule(sessionSource, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS },
+    }).outputText,
+    { exports: authSession, require: () => tokenKeys, localStorage, DOMException }
+  )
   const modules = {
     jotai: { getDefaultStore: () => ({ get: () => 'https://example.invalid' }) },
     ky,
     sonner: { toast: { error() {} } },
     '@/utils/loglevel': { logger: { error() {}, debug() {} } },
-    '@/utils/store': { ACCESS_TOKEN_KEY: 'access', REFRESH_TOKEN_KEY: 'refresh' },
+    '@/utils/store': tokenKeys,
     '@/utils/store/config': {},
     '@/utils/toast': {},
     './auth-errors': { getAuthErrorMessage: () => 'session expired' },
+    './auth-session': authSession,
     './error_code': codes,
     './error_code_legacy': legacy,
     './session-client': {
@@ -83,11 +101,7 @@ function transportHarness(fetch) {
       assert.ok(name in modules, `Unexpected dependency: ${name}`)
       return modules[name]
     },
-    localStorage: {
-      getItem: (key) => storage.get(key) ?? null,
-      setItem: (key, value) => storage.set(key, value),
-      removeItem: (key) => storage.delete(key),
-    },
+    localStorage,
     sessionStorage: { setItem() {} },
     window: { location: { pathname: '/auth' } },
     document: {
@@ -146,7 +160,7 @@ for (const method of ['PUT', 'GET']) {
     h.storage.set('access', 'other-access')
     h.storage.set('refresh', 'other-refresh')
     release()
-    await assert.rejects(pending, /Session changed/)
+    await assert.rejects(pending, { name: 'AbortError', message: /session changed/i })
     assert.equal(h.transfers.length, 0)
   })
 }

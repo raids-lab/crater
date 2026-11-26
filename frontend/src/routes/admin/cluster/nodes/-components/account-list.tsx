@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-import { apiAdminAccountList } from '@/services/api/account'
+import { apiAdminAccountListAll } from '@/services/api/account'
 import { IAccount } from '@/services/api/account'
 
 interface AccountSelectProps {
@@ -38,7 +38,7 @@ const AccountSelect: React.FC<AccountSelectProps> = ({ value, onChange }) => {
   const { t } = useTranslation()
   const { data } = useQuery({
     queryKey: ['admin', 'accounts'],
-    queryFn: apiAdminAccountList,
+    queryFn: ({ signal }) => apiAdminAccountListAll(signal),
   })
 
   return (

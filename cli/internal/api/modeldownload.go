@@ -1,11 +1,16 @@
 package api
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 	"time"
 )
+
+// ErrLegacyDownloadPagination identifies the older download list response format.
+var ErrLegacyDownloadPagination = errors.New("legacy download list response omitted page and page_size")
 
 // ModelDownloadClient handles model and dataset download task APIs.
 type ModelDownloadClient interface {
@@ -120,85 +125,73 @@ func (c *Client) CreateDownload(req CreateModelDownloadReq) (*ModelDownloadResp,
 	return &result.Data, result.Message, nil
 }
 
-// ListDownloads lists model or dataset download tasks for the active user.
 func (c *Client) ListDownloads(category string) ([]ModelDownloadResp, error) {
-	var result Response[[]ModelDownloadResp]
-	req := c.httpClient.R().
-		SetSuccessResult(&result).
-		SetErrorResult(&result)
-	if category != "" {
-		req.SetQueryParam("category", category)
-	}
-	resp, err := req.Get(ModelDownloadListPath)
-	if err != nil {
-		return nil, &NetworkError{Cause: err}
-	}
-	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return nil, err
-	}
-	return result.Data, nil
+	return fetchAllListPagesWithParams[ModelDownloadResp](c, ModelDownloadListPath, map[string]string{"category": category, "sort": "-updatedAt"})
 }
 
-// ListAdminDownloads lists every model or dataset download visible to a platform administrator.
 func (c *Client) ListAdminDownloads() ([]ModelDownloadResp, error) {
-	var result Response[[]ModelDownloadResp]
-	resp, err := c.httpClient.R().
-		SetSuccessResult(&result).
-		SetErrorResult(&result).
-		Get(AdminModelDLPfx + "/models/downloads")
-	if err != nil {
-		return nil, &NetworkError{Cause: err}
-	}
-	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
-		return nil, err
-	}
-	if result.Data == nil {
-		result.Data = []ModelDownloadResp{}
-	}
-	return result.Data, nil
+	return fetchAllListPages[ModelDownloadResp](c, AdminModelDLPfx+"/models/downloads", "-updatedAt")
 }
 
 // ListDownloadPage lists one server-side page of model or dataset download
 // tasks for the active user.
 func (c *Client) ListDownloadPage(opts ModelDownloadListOptions) (ModelDownloadPage, error) {
 	opts.ListOptions = opts.ListOptions.Normalize()
-	var result Response[struct {
-		Items   []ModelDownloadResp `json:"items"`
-		Total   int64               `json:"total"`
-		Summary map[string]int64    `json:"summary"`
-	}]
+	var result Response[json.RawMessage]
 	resp, err := c.httpClient.R().
 		SetSuccessResult(&result).
 		SetErrorResult(&result).
 		SetQueryParamsFromValues(modelDownloadListValues(opts)).
 		Get(ModelDownloadListPath)
-	if err != nil {
-		return ModelDownloadPage{}, &NetworkError{Cause: err}
-	}
-	if err := errorFromResponse(resp, result.Code, result.Message); err != nil {
+	if err := errorFromRequest(resp, err, result.Code, result.Message); err != nil {
 		return ModelDownloadPage{}, err
 	}
-	if result.Data.Items == nil {
-		result.Data.Items = []ModelDownloadResp{}
+	var data struct {
+		Items    []ModelDownloadResp `json:"items"`
+		Total    *int64              `json:"total"`
+		Page     json.RawMessage     `json:"page"`
+		PageSize json.RawMessage     `json:"page_size"`
+		Summary  map[string]int64    `json:"summary"`
 	}
-	if result.Data.Summary == nil {
-		result.Data.Summary = map[string]int64{}
+	if err := json.Unmarshal(result.Data, &data); err != nil {
+		return ModelDownloadPage{}, fmt.Errorf("invalid download list response: %w", err)
 	}
-	return ModelDownloadPage{
-		Page: Page[ModelDownloadResp]{
-			Items:    result.Data.Items,
-			Total:    result.Data.Total,
-			Page:     opts.Page,
-			PageSize: opts.PageSize,
-		},
-		Summary: result.Data.Summary,
-	}, nil
+	if data.Items == nil || data.Total == nil || *data.Total < int64(len(data.Items)) {
+		return ModelDownloadPage{}, errors.New("invalid download list response: missing items or invalid total")
+	}
+	for _, item := range data.Items {
+		if item.ID == 0 {
+			return ModelDownloadPage{}, errors.New("invalid download list response: item has no valid id")
+		}
+	}
+	// The historical envelope includes summary but omits both paging fields.
+	if len(data.Page) == 0 && len(data.PageSize) == 0 && data.Summary != nil {
+		return ModelDownloadPage{}, ErrLegacyDownloadPagination
+	}
+	page := Page[ModelDownloadResp]{Items: data.Items, Total: *data.Total}
+	if json.Unmarshal(data.Page, &page.Page) != nil || json.Unmarshal(data.PageSize, &page.PageSize) != nil ||
+		page.Page < 1 || page.PageSize < 1 {
+		return ModelDownloadPage{}, errors.New("invalid download list response: page and page_size must be positive integers")
+	}
+	if page.Page != opts.Page {
+		return ModelDownloadPage{}, fmt.Errorf("invalid download list response: requested page %d, received page %d", opts.Page, page.Page)
+	}
+	if page.PageSize != opts.PageSize {
+		return ModelDownloadPage{}, fmt.Errorf("invalid download list response: requested page_size %d, received page_size %d", opts.PageSize, page.PageSize)
+	}
+	if len(page.Items) > page.PageSize {
+		return ModelDownloadPage{}, errors.New("invalid download list response: item count exceeds page_size")
+	}
+	if data.Summary == nil {
+		data.Summary = map[string]int64{}
+	}
+	return ModelDownloadPage{Page: page, Summary: data.Summary}, nil
 }
 
 func modelDownloadListValues(opts ModelDownloadListOptions) url.Values {
 	values := url.Values{
-		"page":     {strconv.Itoa(opts.Page)},
-		"pageSize": {strconv.Itoa(opts.PageSize)},
+		"page":      {strconv.Itoa(opts.Page)},
+		"page_size": {strconv.Itoa(opts.PageSize)},
 	}
 	if opts.Category != "" {
 		values.Set("category", opts.Category)

@@ -39,6 +39,7 @@ import { TagsInput } from '@/components/form/tags-input'
 import { SandwichLayout } from '@/components/sheet/sandwich-sheet'
 
 import { apiDatasetCreate } from '@/services/api/dataset'
+import { invalidateDatasetLists } from '@/services/query/pagination-cache'
 
 export const dataFormSchema = z.object({
   datasetName: z
@@ -98,9 +99,7 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
         editable: !values.readOnly,
       }),
     onSuccess: async (_, { datasetName }) => {
-      await queryClient.invalidateQueries({
-        queryKey: ['data', type ?? 'dataset'],
-      })
+      await invalidateDatasetLists(queryClient, type ?? 'dataset')
       toast.success(`${dataTypeLabel} ${datasetName} 创建成功`)
       closeSheet()
     },

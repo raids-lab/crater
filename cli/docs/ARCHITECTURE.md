@@ -125,16 +125,18 @@ WebSocket 子协议为 `crater.exec.v1`。目标选择通过 `pod`、`container`
 
 后端定期发送 ping 保持空闲会话，写操作有超时。CLI 的 stdin/尺寸同步网络写入失败会停止相应发送协程，接收侧继续读取输出和最终退出帧；本地 stdin 读取失败或用户取消仍关闭会话。断连与取消会关闭 socket、stdin pipe 和尺寸队列，取消 Kubernetes exec；CLI 完成后取消输入读取并恢复终端。JSON 捕获限制在命令层实施，普通模式流式输出。
 
-后端与 CLI 的 `APIVersion` 为 7。`job exec` 依赖该版本引入的 WebSocket 接口，因此 CLI 的 `MinSupportedBackendAPIVersion` 为 7。后端仍提供旧版 CLI 所需的接口，`MinSupportedCLIAPIVersion` 为 3。SSH 使用既有地址接口。`crater compatibility` 是单独执行的诊断命令，其他命令直接调用各自的接口并处理返回的错误。
+后端与 CLI 的 `APIVersion` 为 8。CLI 使用 API v8 的数据库分页列表，因此 `MinSupportedBackendAPIVersion` 为 8。`job exec` 继续使用 API v7 引入的 WebSocket 接口。后端仍提供旧版 CLI 所需的接口，`MinSupportedCLIAPIVersion` 为 3。SSH 使用既有地址接口。`crater compatibility` 是单独执行的诊断命令，其他命令直接调用各自的接口并处理返回的错误。
 
 ## 列表分页
 
 列表分页由 `internal/api` 的传输模型与 `cmd` 的公共展示 helper 两层协作：
 
-- `internal/api/pagination.go` 定义 typed `ListOptions`、`Page[T]`、默认页大小 `15` 与 `FetchAllPages`。支持分页的域客户端负责把这些选项转换成端点真实 query（例如 Job 使用 `page_size`，download 使用 `pageSize`），命令层不手写分页 URL。
+- `internal/api/pagination.go` 定义 typed `ListOptions`、`Page[T]`、默认页大小 `15` 与 `FetchAllPages`。支持数据库分页的域客户端统一发送 `page` / `page_size`；需要完整列表的调用方通过 `fetchAllListPages` 或 `FetchAllPages` 聚合，命令层不手写分页 URL。
 - `cmd/list_options.go` 统一挂载 `--page` / `--page-size` / `--all-pages`、收集分页用法问题、本地切页、构造 `data.pagination` 与打印表格页摘要。服务端分页命令使用 `--all-pages` 且用户未显式指定 `--page-size` 时，公共解析器采用对应端点最大批量；显式值保持不变。领域命令先把分页问题和自己的筛选问题合并，再一次返回 `errUsageFromIssues`。
 - Job 与 download 列表使用服务端分页。Job 还支持 owner / 时间范围等本地筛选：存在这些筛选时，命令先以服务端允许的批次顺序拉取全部候选页，再筛选并按用户请求的页大小重新切页；无本地筛选时保留后端返回的页码和总数。
-- Node Pod、Job Pod、审批工单、管理员用户、镜像/构建记录和计费作业等数组端点使用本地分页：typed 响应先经过命令约定的过滤与稳定排序，再调用公共 helper。`--all-pages` 绕过本地截断；JSON 完整结果省略 `pagination`。
+- 资源规格单次读取原完整数组。Node Pod 从原 Pod 列表端点单次读取完整数组，在 CLI 中筛选、稳定排序后本地分页，不发送页码或游标。Job Pod 和计费作业保留既有本地分页；审批工单、管理员用户、镜像/构建记录先聚合服务端分页，再按命令约定完成本地筛选与分页。`--all-pages` 绕过本地截断；JSON 完整结果省略 `pagination`。
+- 普通下载列表调用用户端分页接口，由 Backend 执行筛选和分页，并保留响应中的状态 `summary`。`model-download ls` 直接复用该命令入口，因此 V7 缺少 `page`、`page_size` 的旧式响应统一映射为 API 版本不匹配。管理员下载调用独立的管理员端点，先以 200 条批次聚合全部候选，再在 CLI 中执行筛选和分页，不复用普通下载的 V7 专用映射。
+- 操作日志使用独立的逻辑分页链路。命令接收 `page` 和逻辑页大小 `limit`，API 客户端把它拆成 `page_size` 不超过 200 的连续请求，按逻辑页起止位置截取并合并结果，再通过统一成功信封输出 `items` 和 `total`。该链路不使用公共列表命令的 `--page-size` 或 `--all-pages`，因此不会把逻辑页大小误当成单次后端页大小。
 
 这样，服务端和本地列表向用户暴露相同的 JSON / 表格契约，但 `total` 始终描述最终筛选结果，而不是某个中间候选页。
 

@@ -59,6 +59,12 @@ jobs:
       - name: Run make lint
         run: make lint
 
+      - name: Test pagination handlers and contracts
+        run: |
+          export GIN_MODE=debug CRATER_DEBUG_CONFIG_PATH="$PWD/etc/example-config.yaml"
+          go test -count=1 ./internal/handler ./internal/handler/image ./internal/handler/operations \
+            ./internal/pagination ./internal/resputil ./internal/service/jobtemplate ./internal/version
+
       - name: Test TensorBoard launcher
         run: make test-tensorboard-launcher
 
@@ -104,3 +110,35 @@ jobs:
           go build -ldflags="-X main.AppVersion=${{ steps.set-version.outputs.app_version }} -X main.CommitSHA=${{ steps.set-version.outputs.commit_sha }} -X main.BuildType=${{ steps.set-version.outputs.build_type }} -X main.BuildTime=${{ steps.set-version.outputs.build_time }} -w -s" -o bin/linux_amd64/controller cmd/crater/main.go
         env:
           CGO_ENABLED: 0
+
+  dataset-postgres-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: crater_test
+          POSTGRES_DB: crater_pagination_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crater_test -d crater_pagination_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Test dataset lists on SQLite
+        run: GIN_MODE=debug CRATER_DEBUG_CONFIG_PATH="$PWD/etc/example-config.yaml" go test ./internal/service/dataset -count=1 -v
+      - name: Test dataset lists on PostgreSQL 16
+        env:
+          CRATER_TEST_POSTGRES_DSN: host=127.0.0.1 port=5432 user=crater_test dbname=crater_pagination_test sslmode=disable
+        run: make test-dataset-postgres

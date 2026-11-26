@@ -174,6 +174,8 @@ format-translation: ## 🌐 Format translation files
 test: ## 🧪 Run tests
 	@echo "$(CYAN)Running tests...$(RESET)"
 	pnpm test
+	pnpm test:data-list
+	pnpm test:pagination
 
 ## 🛡️  Code Generation & Backend Integration
 .PHONY: generate-error-code

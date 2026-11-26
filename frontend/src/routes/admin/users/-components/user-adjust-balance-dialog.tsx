@@ -65,6 +65,7 @@ export function UserAdjustBalanceDialog({
     },
     onSuccess: (_, values) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'userlist'] })
+      queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-users'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'users', 'billing-summary'] })
       toast.success(
         `${t('userTable.adjustBalance.success', { defaultValue: '点数调整成功' })} (${values.delta > 0 ? '+' : ''}${values.delta})`

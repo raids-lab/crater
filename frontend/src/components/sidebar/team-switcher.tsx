@@ -76,13 +76,13 @@ export function TeamSwitcher() {
     return [expiredAt, expiredAt.getTime() - Date.now()]
   }, [currentQueue])
 
-  const { mutate: switchQueue } = useMutation({
-    mutationFn: (project: QueueBasic) => apiQueueSwitch(project.name),
-    onSuccess: ({ context }, { nickname: name }) => {
-      setAccount(context)
-      toast.success(`已切换至账户 ${name}`)
-      void queryClient.invalidateQueries()
-    },
+  const { mutate: switchQueue, isPending: isSwitchingQueue } = useMutation({
+    mutationFn: (project: QueueBasic) =>
+      apiQueueSwitch(project.name, (context) => {
+        setAccount(context)
+        toast.success(`已切换至账户 ${project.nickname}`)
+        void queryClient.invalidateQueries()
+      }),
     onError: (error) => {
       showErrorToast(error)
     },
@@ -155,7 +155,8 @@ export function TeamSwitcher() {
             <DropdownMenuLabel className="text-muted-foreground text-xs">账户</DropdownMenuLabel>
             {queues?.map((queue) => (
               <DropdownMenuItem
-                key={queue.nickname}
+                key={queue.name}
+                disabled={isSwitchingQueue}
                 onClick={() => {
                   if (currentQueue?.name !== queue.name) {
                     switchQueue(queue)

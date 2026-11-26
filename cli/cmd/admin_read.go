@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"math"
+
 	"github.com/raids-lab/crater/cli/internal/api"
+	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/spf13/cobra"
 )
 
@@ -42,16 +45,34 @@ var adminWhitelistCmd = &cobra.Command{Use: "whitelist", Short: "List operation 
 }}
 
 func runAdminOperationLogs(cmd *cobra.Command, _ []string) error {
+	page, _ := cmd.Flags().GetInt("page")
+	limit, _ := cmd.Flags().GetInt("limit")
+	var issues []usageIssue
+	if page < 1 {
+		issues = append(issues, invalidIssue("page", i18n.T("err_page_min")))
+	}
+	if limit < 1 {
+		issues = append(issues, invalidIssue("limit", i18n.T("err_page_size_range", math.MaxInt)))
+	}
+	if page > math.MaxInt/max(limit, 1) {
+		issues = append(issues, invalidIssue("page", i18n.T("err_page_overflow")))
+	}
+	if len(issues) > 0 {
+		return errUsageFromIssues(issues)
+	}
 	params := map[string]string{
-		"page":           getIntParam(cmd, "page"),
-		"limit":          getIntParam(cmd, "limit"),
 		"operator":       getStringParam(cmd, "operator"),
 		"operation_type": getStringParam(cmd, "operation-type"),
 		"target":         getStringParam(cmd, "target"),
 		"start_time":     getStringParam(cmd, "start-time"),
 		"end_time":       getStringParam(cmd, "end-time"),
 	}
-	return runRawRead(cmd, rawReadSpec{PayloadKey: "operation_logs", Path: api.AdminOperationLogs, Params: func(*cobra.Command) map[string]string { return params }, Table: printRawObject})
+	client, err := activeAPIClient()
+	if err != nil {
+		return err
+	}
+	data, err := client.GetOperationLogs(page, limit, params)
+	return writeRawReadResult("operation_logs", printRawObject, data, err)
 }
 
 func init() {

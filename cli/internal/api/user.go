@@ -12,15 +12,14 @@ type AdminUser struct {
 }
 
 func (c *Client) ListAdminUsers(base bool) ([]AdminUser, error) {
-	path := AdminUsersPrefix
-	if base {
-		path += "/baseinfo"
+	if !base {
+		return fetchAllListPages[AdminUser](c, AdminUsersPrefix, "-id")
 	}
 	var result Response[[]AdminUser]
 	resp, err := c.httpClient.R().
 		SetSuccessResult(&result).
 		SetErrorResult(&result).
-		Get(path)
+		Get(AdminUsersPrefix + "/baseinfo")
 	if err != nil {
 		return nil, &NetworkError{Cause: err}
 	}

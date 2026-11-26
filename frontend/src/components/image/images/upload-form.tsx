@@ -44,6 +44,7 @@ import {
   imageLinkRegex,
   parseImageLink,
 } from '@/services/api/imagepack'
+import { invalidateImageLists } from '@/services/query/pagination-cache'
 
 const formSchema = z.object({
   imageLink: z
@@ -83,9 +84,7 @@ function ImageUploadSheetContent({ closeSheet }: ImageUploadSheetContentProps) {
       })
     },
     onSuccess: async (_, { imageLink }) => {
-      await queryClient.invalidateQueries({
-        queryKey: ['imagelink', 'list'],
-      })
+      await invalidateImageLists(queryClient)
       toast.success(`镜像 ${imageLink} 上传成功`)
       closeSheet()
     },

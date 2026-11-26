@@ -20,6 +20,7 @@ interface SessionOptions {
   prefixUrl: string
   getAccessToken: () => string | null
   getRefreshToken: () => string | null
+  getSessionGeneration?: () => object
   saveTokens: (access: string, refresh: string) => void
   onInvalid: (error: HTTPError) => void
   fetch?: typeof fetch
@@ -43,15 +44,27 @@ export function createSessionClient(settings: SessionOptions) {
   interface Session {
     access: string | null
     refresh: string | null
+    generation: object | undefined
     refreshing?: Promise<string>
   }
   let session: Session | undefined
   const currentSession = () => {
     const access = settings.getAccessToken()
     const refresh = settings.getRefreshToken()
-    if (!session || session.access !== access || session.refresh !== refresh)
-      session = { access, refresh }
+    const generation = settings.getSessionGeneration?.()
+    if (
+      !session ||
+      session.generation !== generation ||
+      session.access !== access ||
+      session.refresh !== refresh
+    )
+      session = { access, refresh, generation }
     return session
+  }
+  const isCurrent = (owner: Session) => {
+    if (currentSession() === owner) return true
+    if (owner.generation) throw new DOMException('Authentication session changed', 'AbortError')
+    return false
   }
   const requestSessions = new WeakMap<NormalizedOptions, Session>()
   const notify = (error: HTTPError, data: unknown) => {
@@ -78,18 +91,23 @@ export function createSessionClient(settings: SessionOptions) {
           if (!response.data?.accessToken || !response.data.refreshToken)
             throw new Error('Incomplete session response')
           // A logout or a newer login while refreshing must not restore the old session.
-          if (currentSession() !== owner) throw new Error('Session changed during renewal')
+          if (!isCurrent(owner)) throw new Error('Session changed during renewal')
           settings.saveTokens(response.data.accessToken, response.data.refreshToken)
           owner.access = response.data.accessToken
           owner.refresh = response.data.refreshToken
           return response.data.accessToken
         } catch (error) {
-          if (error instanceof HTTPError && currentSession() === owner) {
+          const stillCurrent = isCurrent(owner)
+          if (error instanceof HTTPError && stillCurrent) {
             const data = await error.response
               .clone()
               .json()
               .catch(() => undefined)
-            if (terminalCodes.has(data?.code) && currentSession() === owner) notify(error, data)
+            if (
+              isCurrent(owner) &&
+              (error.response.status === 401 || terminalCodes.has(data?.code))
+            )
+              notify(error, data)
           }
           throw error
         }
@@ -111,6 +129,8 @@ export function createSessionClient(settings: SessionOptions) {
       ],
       afterResponse: [
         async (request, options, response) => {
+          const owner = requestSessions.get(options)
+          if (owner?.generation) isCurrent(owner)
           if (
             response.ok ||
             /\/auth\/(login|signup|mode|refresh)$/.test(new URL(request.url).pathname)
@@ -121,25 +141,35 @@ export function createSessionClient(settings: SessionOptions) {
             .json()
             .catch(() => undefined)
           const sentToken = request.headers.get('Authorization')
-          const owner = requestSessions.get(options)
           // Only this client's renewal may keep a request in the same session.
           // Login, logout, account switches and external token changes end it.
-          if (!owner || currentSession() !== owner) return response
+          if (!owner || !isCurrent(owner)) return response
           if (response.status === 401 && data?.code === ERROR_TOKEN_EXPIRED) {
+            request.signal.throwIfAborted()
             // A late response using the previous access token can reuse an already renewed one.
             const current = settings.getAccessToken()
             const token =
               current && sentToken !== `Bearer ${current}`
                 ? current
                 : await refresh(request, options, owner)
-            if (currentSession() !== owner) return response
+            if (!isCurrent(owner)) return response
+            request.signal.throwIfAborted()
             request.headers.set('Authorization', `Bearer ${token}`)
             const retried = await basic(request, {
               ...options,
               prefixUrl: undefined,
-              hooks: {},
+              hooks: {
+                beforeRequest: [
+                  (replay) => {
+                    if (owner.generation) isCurrent(owner)
+                    replay.signal.throwIfAborted()
+                  },
+                ],
+              },
               headers: request.headers,
               throwHttpErrors: false,
+            }).finally(() => {
+              if (owner.generation) isCurrent(owner)
             })
             if (!retried.ok) {
               const failure = await retried
@@ -147,8 +177,8 @@ export function createSessionClient(settings: SessionOptions) {
                 .json()
                 .catch(() => undefined)
               if (
+                isCurrent(owner) &&
                 rejectsSession(failure?.code, request) &&
-                currentSession() === owner &&
                 owner.access === token
               )
                 notify(new HTTPError(retried, request, options), failure)
@@ -172,7 +202,7 @@ export function createSessionClient(settings: SessionOptions) {
       const owner = currentSession()
       const response = await client.get('auth/check', options).json<{ data: unknown }>()
       options?.signal?.throwIfAborted()
-      if (currentSession() !== owner) throw new Error('Session changed before starting request')
+      if (!isCurrent(owner)) throw new Error('Session changed before starting request')
       if (!response.data || !owner.access) throw new Error('No authenticated session available')
       return start(owner.access)
     },

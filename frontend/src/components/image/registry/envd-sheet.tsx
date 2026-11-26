@@ -55,6 +55,7 @@ import {
   imageNameRegex,
   imageTagRegex,
 } from '@/services/api/imagepack'
+import { invalidateImageBuildLists } from '@/services/query/pagination-cache'
 
 import { useImageTemplateLoader } from '@/hooks/use-template-loader'
 
@@ -205,9 +206,7 @@ function EnvdSheetContent({ closeSheet, imagePackName, setImagePackName }: EnvdS
         buildSource: ImagePackSource.EnvdAdvanced,
       }),
     onSuccess: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500)).then(() =>
-        queryClient.invalidateQueries({ queryKey: ['imagepack', 'list'] })
-      )
+      await invalidateImageBuildLists(queryClient)
       closeSheet()
       toast.success(`镜像开始制作，请在下方列表中查看制作状态`)
     },

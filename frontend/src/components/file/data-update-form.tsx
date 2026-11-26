@@ -49,6 +49,7 @@ import FormLabelMust from '@/components/form/form-label-must'
 import { TagsInput } from '@/components/form/tags-input'
 
 import { apiDatasetUpdate } from '@/services/api/dataset'
+import { invalidateDatasetLists } from '@/services/query/pagination-cache'
 
 // 复用创建表单的Schema
 
@@ -103,7 +104,7 @@ export function DatasetUpdateForm({ type, initialData, onSuccess }: UpdateFormPr
         editable: !values.readOnly,
       }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['data', type ?? 'dataset'] })
+      void invalidateDatasetLists(queryClient, type ?? 'dataset')
       toast.success(t('dataset.toast.success', { name: variables.datasetName }))
       setIsOpen(false)
       onSuccess?.()

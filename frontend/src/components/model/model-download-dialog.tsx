@@ -49,6 +49,7 @@ import {
 
 import { CreateModelDownloadReq, apiCreateModelDownload } from '@/services/api/modeldownload'
 import { apiGetModelDownloadLimitConfig } from '@/services/api/system-config'
+import { invalidateModelDownloadLists } from '@/services/query/pagination-cache'
 
 import { showErrorToast } from '@/utils/toast'
 
@@ -139,7 +140,7 @@ export function ModelDownloadDialog({
       } else {
         toast.success(message)
       }
-      queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
+      void invalidateModelDownloadLists(queryClient)
       setPendingRequest(null)
       closeSheet()
       form.reset()

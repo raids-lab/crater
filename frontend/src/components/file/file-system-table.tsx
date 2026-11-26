@@ -66,7 +66,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui-custom/alert-dialog'
 
-import { IAccount, apiAdminAccountList } from '@/services/api/account'
+import { IAccount, apiAdminAccountListAll } from '@/services/api/account'
 import { AccessMode } from '@/services/api/auth'
 import { FileItem, MoveFile, apiFileDelete, apiMkdir, apiMoveFile } from '@/services/api/file'
 import { BaseUserInfo, apiGetBaseUserInfo } from '@/services/api/user'
@@ -404,8 +404,8 @@ export default function FileSystem({ apiGetFiles, path }: SpacefileTableProps) {
 
   const accountInfoQuery = useQuery({
     queryKey: ['accounts', 'baseinfo'],
-    queryFn: () => {
-      return apiAdminAccountList()
+    queryFn: ({ signal }) => {
+      return apiAdminAccountListAll(signal)
     },
     select: (res) => {
       return res.data

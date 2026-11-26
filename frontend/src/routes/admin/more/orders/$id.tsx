@@ -57,6 +57,7 @@ import {
 import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
 import { JobStatus, apiJobGetDetail, apiJobGetPods, getJobStateType } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
+import { invalidateApprovalOrderLists } from '@/services/query/pagination-cache'
 
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
 
@@ -165,11 +166,7 @@ function RouteComponent() {
     selectedOrderRef.current = selectedOrder ?? null
   }, [selectedOrder])
 
-  const invalidateOrderLists = () => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
-    queryClient.invalidateQueries({ queryKey: ['approvalorders'] })
-    queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] })
-  }
+  const invalidateOrderLists = () => void invalidateApprovalOrderLists(queryClient)
 
   const approveMutation = useMutation({
     mutationFn: async (target: ApprovalOrder) => {

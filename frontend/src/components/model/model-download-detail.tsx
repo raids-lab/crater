@@ -57,6 +57,7 @@ import {
   apiResumeModelDownload,
   apiRetryModelDownload,
 } from '@/services/api/modeldownload'
+import { invalidateModelDownloadLists } from '@/services/query/pagination-cache'
 
 import useFixedLayout from '@/hooks/use-fixed-layout'
 
@@ -85,8 +86,10 @@ export function ModelDownloadDetail({ ...props }: DetailPageCoreProps) {
 
   const refetchDownload = async () => {
     try {
-      await queryClient.invalidateQueries({ queryKey: ['model-downloads', id] })
-      await queryClient.invalidateQueries({ queryKey: ['model-downloads'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['model-downloads', id] }),
+        invalidateModelDownloadLists(queryClient),
+      ])
     } catch (error) {
       logger.error('failed to refresh model download queries', error)
     }

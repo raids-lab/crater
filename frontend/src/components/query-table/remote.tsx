@@ -47,7 +47,8 @@ export function RemoteDataTable<TData, TValue>({
 }: RemoteDataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = useState({})
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(initialColumnVisibility)
-  const data = query.data?.items ?? []
+  const data = query.isError ? [] : (query.data?.items ?? [])
+  const rowsInactive = query.isPlaceholderData || query.isError || query.isPending
   const total = query.data?.total ?? 0
   const pageIndex = state.pagination.pageIndex
   const pageSize = state.pagination.pageSize
@@ -63,12 +64,14 @@ export function RemoteDataTable<TData, TValue>({
           <Checkbox
             checked={table.getIsAllPageRowsSelected()}
             onCheckedChange={(value) => table.toggleAllPageRowsSelected(Boolean(value))}
+            disabled={rowsInactive}
             hidden={table.getRowModel().rows.length === 0}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
-            checked={row.getIsSelected()}
+            disabled={rowsInactive}
+            checked={!rowsInactive && row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(Boolean(value))}
           />
         ),
@@ -77,7 +80,7 @@ export function RemoteDataTable<TData, TValue>({
       } satisfies ColumnDef<TData>,
       ...columns,
     ]
-  }, [columns, multipleHandlers])
+  }, [columns, multipleHandlers, rowsInactive])
 
   const handleGlobalFilterChange: OnChangeFn<string> = (updater) => {
     const next = typeof updater === 'function' ? updater(state.search) : updater
@@ -95,9 +98,9 @@ export function RemoteDataTable<TData, TValue>({
       columnFilters: state.columnFilters,
       globalFilter: state.search,
       columnVisibility,
-      rowSelection,
+      rowSelection: rowsInactive ? {} : rowSelection,
     },
-    enableRowSelection: Boolean(multipleHandlers?.length),
+    enableRowSelection: !rowsInactive && Boolean(multipleHandlers?.length),
     enableMultiSort: true,
     maxMultiSortColCount: 3,
     autoResetPageIndex: false,
@@ -141,7 +144,9 @@ export function RemoteDataTable<TData, TValue>({
       table={table}
       info={info}
       toolbarConfig={toolbarConfig}
-      multipleHandlers={multipleHandlers}
+      multipleHandlers={rowsInactive ? undefined : multipleHandlers}
+      rowsInactive={rowsInactive}
+      isShowingPlaceholder={query.isPlaceholderData}
       briefChildren={briefChildren}
       withI18n={withI18n}
       className={className}

@@ -15,7 +15,7 @@
  */
 // i18n-processed-v1.1.0
 import { zodResolver } from '@hookform/resolvers/zod'
-import { UseQueryResult, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { t } from 'i18next'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -73,8 +73,8 @@ import { BillingInlineMeter } from '@/components/custom/billing-balance-meter'
 import SelectBox from '@/components/custom/select-box'
 import FormLabelMust from '@/components/form/form-label-must'
 import UserLabel from '@/components/label/user-label'
-import { DataTable } from '@/components/query-table'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
+import { RemoteDataTable } from '@/components/query-table/remote'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 import {
   AlertDialog,
@@ -114,6 +114,7 @@ import {
   apiUpdateAccountBillingMemberIssueAmount,
 } from '@/services/api/billing'
 import { apiGetBillingStatus } from '@/services/api/system-config'
+import { getAuthSession } from '@/services/auth-session'
 import { handleApiErrorByCode } from '@/services/client'
 import {
   ERROR_DEPENDENCY_CONFLICT,
@@ -122,8 +123,10 @@ import {
   ERROR_RESOURCE_STATUS_ERROR,
 } from '@/services/error_code'
 import { queryAccountByID } from '@/services/query/account'
+import type { IPage } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
+import useRemoteTableState from '@/hooks/use-remote-table-state'
 
 import { isBillingVisible } from '@/utils/billing-visibility'
 import { atomUserContext, atomUserInfo } from '@/utils/store'
@@ -163,6 +166,9 @@ export function AccountMemberTable({
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const isAdminView = useIsAdmin()
+  const tableState = useRemoteTableState(
+    `${storageKey}_${accountId}_${isAdminView ? 'admin' : 'user'}`
+  )
   const editable = editableProp ?? isAdminView
   const currentUser = useAtomValue(atomUserInfo)
   const currentAccountContext = useAtomValue(atomUserContext)
@@ -238,28 +244,59 @@ export function AccountMemberTable({
     })
   }, [])
 
-  const accountUsersQuery = useQuery({
-    queryKey: ['account', accountId, 'users', isAdminView ? 'admin' : 'user'],
-    queryFn: () => listAccountMembers(accountId),
-    select: (res) => res.data,
+  const accountUsersQuery = useQuery<IPage<AccountMemberRow>, Error>({
+    queryKey: [
+      'account',
+      accountId,
+      'users',
+      isAdminView ? 'admin' : 'user',
+      tableState.params,
+      billingEnabled,
+    ],
+    queryFn: async ({ signal }) => {
+      const response = await listAccountMembers(accountId, tableState.params, signal)
+      const membersPage = response.data
+      if (!billingEnabled || membersPage.items.length === 0) return membersPage
+
+      const billingMembers = await listBillingMembers(
+        accountId,
+        membersPage.items.map((member) => member.id)
+      )
+      const billingByUserId = new Map(
+        billingMembers.data.map((member) => [member.userId, member] as const)
+      )
+      return {
+        ...membersPage,
+        items: membersPage.items.map((member) => ({
+          ...member,
+          ...billingByUserId.get(member.id),
+        })),
+      }
+    },
     retry: false, // Disable auto-retry to show errors immediately
   })
+
+  const refreshAccountMembers = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['account', accountId, 'users'] }),
+      queryClient.invalidateQueries({ queryKey: ['usersOutOfProject', accountId] }),
+    ])
 
   const { mutate: addUser } = useMutation({
     mutationFn: (users: IUserInAccountCreate[]) =>
       Promise.all(users.map((user) => addAccountMember(accountId, user))),
     onSuccess: async () => {
       toast.success(t('accountDetail.toast.added'))
-      await queryClient.invalidateQueries({
-        queryKey: ['account', accountId, 'users'],
-      })
+      await refreshAccountMembers()
     },
     onError: handleAccountMemberMutationError,
   })
 
   const { mutate: updateUser } = useMutation({
     mutationFn: (user: IUserInAccountCreate) => updateAccountMember(accountId, user),
-    onSuccess: async (_, user: IUserInAccountCreate) => {
+    onMutate: getAuthSession,
+    onSuccess: async (_, user, session) => {
+      if (session !== getAuthSession()) return
       toast.success(t('accountDetail.toast.updated'))
 
       // If updating own permissions in current account, refresh token first
@@ -270,35 +307,28 @@ export function AccountMemberTable({
         // Get current account ID by name to compare with accountId
         try {
           const currentAccountInfo = await apiAccountGetByName(currentAccountContext.queue)
+          if (session !== getAuthSession()) return
           if (currentAccountInfo.data?.id === accountId) {
             // Switch to current account to refresh token with new permissions
-            const authResponse = await apiQueueSwitch(currentAccountContext.queue)
-            // Update user context with new token data
-            if (authResponse?.context) {
-              setAccountContext(authResponse.context)
-            }
-            toast.success(t('accountDetail.toast.tokenUpdated'))
-            // Refresh member list after token update (token now has correct permissions)
-            await queryClient.invalidateQueries({
-              queryKey: ['account', accountId, 'users'],
+            await apiQueueSwitch(currentAccountContext.queue, async (context) => {
+              setAccountContext(context)
+              toast.success(t('accountDetail.toast.tokenUpdated'))
+              await refreshAccountMembers()
             })
             return
           }
         } catch {
+          if (session !== getAuthSession()) return
           // Token update failed, but user update succeeded
           toast.error(t('accountDetail.toast.tokenUpdateFailed'))
           // Still refresh cache even if token update failed (user is still in account)
-          await queryClient.invalidateQueries({
-            queryKey: ['account', accountId, 'users'],
-          })
+          await refreshAccountMembers()
           return
         }
       }
 
       // Refresh member list if not updating self
-      await queryClient.invalidateQueries({
-        queryKey: ['account', accountId, 'users'],
-      })
+      await refreshAccountMembers()
     },
     onError: handleAccountMemberMutationError,
   })
@@ -312,7 +342,9 @@ export function AccountMemberTable({
 
   const { mutate: deleteUser } = useMutation({
     mutationFn: (user: IUserInAccountCreate) => removeAccountMember(accountId, user),
-    onSuccess: async (_, user: IUserInAccountCreate) => {
+    onMutate: getAuthSession,
+    onSuccess: async (_, user, session) => {
+      if (session !== getAuthSession()) return
       toast.success(t('accountDetail.toast.removed'))
 
       // Check if deleting self from current account
@@ -326,19 +358,19 @@ export function AccountMemberTable({
         // Get current account ID by name to compare with accountId
         try {
           const currentAccountInfo = await apiAccountGetByName(currentAccountContext.queue)
+          if (session !== getAuthSession()) return
           if (currentAccountInfo.data?.id === accountId) {
             // Switch to default account
-            const authResponse = await apiQueueSwitch('default')
-            // Update user context with new token data
-            if (authResponse?.context) {
-              setAccountContext(authResponse.context)
-            }
-            toast.success(t('accountDetail.toast.switchedToDefaultAccount'))
+            await apiQueueSwitch('default', (context) => {
+              setAccountContext(context)
+              toast.success(t('accountDetail.toast.switchedToDefaultAccount'))
+            })
             // Don't refresh cache for old account - component will be unmounted
             // and parent component will handle the account switch
             return
           }
         } catch {
+          if (session !== getAuthSession()) return
           // Token update failed, but user deletion succeeded
           toast.error(t('accountDetail.toast.accountSwitchFailed'))
           // Don't refresh member list if account switch failed (user is no longer in the account)
@@ -347,47 +379,10 @@ export function AccountMemberTable({
       }
 
       // Refresh member list if not deleting self
-      await queryClient.invalidateQueries({
-        queryKey: ['account', accountId, 'users'],
-      })
+      await refreshAccountMembers()
     },
     onError: handleAccountMemberMutationError,
   })
-
-  const billingMembersQuery = useQuery({
-    queryKey: ['account', accountId, 'billing-members', isAdminView ? 'admin' : 'user'],
-    queryFn: () => listBillingMembers(accountId).then((res) => res.data),
-    enabled: billingEnabled,
-  })
-
-  const mergedAccountUsers = useMemo<AccountMemberRow[]>(() => {
-    const billingByUserId = new Map(
-      (billingMembersQuery.data ?? []).map((item) => [item.userId, item] as const)
-    )
-    return (accountUsersQuery.data ?? []).map((user) => ({
-      ...user,
-      ...billingByUserId.get(user.id),
-    }))
-  }, [accountUsersQuery.data, billingMembersQuery.data])
-
-  const mergedAccountUsersQuery = useMemo(
-    () =>
-      ({
-        data: mergedAccountUsers,
-        isLoading: accountUsersQuery.isLoading || (billingEnabled && billingMembersQuery.isLoading),
-        dataUpdatedAt: Math.max(accountUsersQuery.dataUpdatedAt, billingMembersQuery.dataUpdatedAt),
-        refetch: accountUsersQuery.refetch,
-      }) as UseQueryResult<AccountMemberRow[], Error>,
-    [
-      accountUsersQuery.dataUpdatedAt,
-      accountUsersQuery.isLoading,
-      accountUsersQuery.refetch,
-      billingEnabled,
-      billingMembersQuery.dataUpdatedAt,
-      billingMembersQuery.isLoading,
-      mergedAccountUsers,
-    ]
-  )
 
   const { data: usersOutOfProjectData, isLoading: isLoadingUsersOutOfProject } = useQuery({
     queryKey: ['usersOutOfProject', accountId, isAdminView ? 'admin' : 'user'],
@@ -469,6 +464,7 @@ export function AccountMemberTable({
             {
               accessorKey: 'billing',
               header: ({ column }) => <DataTableColumnHeader column={column} title="免费额度" />,
+              enableSorting: false,
               cell: ({ row }) => (
                 <BillingIssueAmountCell
                   user={row.original}
@@ -525,20 +521,22 @@ export function AccountMemberTable({
   )
 
   const toolbarConfig: DataTableToolbarConfig = {
-    filterInput: {
+    globalSearch: {
+      enabled: true,
       placeholder: t('accountDetail.table.filter.searchUser'),
-      key: 'name',
     },
     filterOptions: [
       {
         key: 'role',
         title: t('accountDetail.table.filter.role'),
         option: userRoles,
+        remoteFacets: true,
       },
       {
         key: 'accessmode',
         title: t('accountDetail.table.filter.permissions'),
         option: accessModes,
+        remoteFacets: true,
       },
     ],
     getHeader: getHeader,
@@ -574,11 +572,12 @@ export function AccountMemberTable({
         onCancel={() => setPendingDeleteUser(null)}
       />
 
-      <DataTable
-        key={`${accountId}-${accountUsersQuery.data?.length}`}
-        columns={columns as ColumnDef<unknown>[]}
-        query={mergedAccountUsersQuery as UseQueryResult<unknown[], Error>}
-        storageKey={storageKey}
+      <RemoteDataTable
+        key={`${accountId}-${isAdminView ? 'admin' : 'user'}`}
+        columns={columns as ColumnDef<AccountMemberRow, unknown>[]}
+        query={accountUsersQuery}
+        state={tableState}
+        getRowId={(row) => String(row.id)}
         toolbarConfig={toolbarConfig}
       >
         {editable && (
@@ -599,7 +598,7 @@ export function AccountMemberTable({
             />
           </Dialog>
         )}
-      </DataTable>
+      </RemoteDataTable>
     </div>
   )
 }
@@ -649,9 +648,10 @@ const BillingIssueAmountCell: FC<BillingIssueAmountCellProps> = ({
     onSuccess: async () => {
       toast.success('点数额度已更新')
       setBillingDialogOpen(false)
-      await queryClient.invalidateQueries({
-        queryKey: ['account', accountId, 'billing-members'],
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['account', accountId, 'billing-members'] }),
+        queryClient.invalidateQueries({ queryKey: ['account', accountId, 'users'] }),
+      ])
     },
     onError: (error) => {
       if (

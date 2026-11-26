@@ -2,9 +2,11 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/imroc/req/v3"
@@ -30,11 +32,11 @@ func TestListDownloadPageSendsPagingAndServerFilters(t *testing.T) {
 		}
 		query := request.URL.Query()
 		want := map[string][]string{
-			"page":     {"2"},
-			"pageSize": {"25"},
-			"category": {"model"},
-			"status":   {"Downloading"},
-			"search":   {"Qwen"},
+			"page":      {"2"},
+			"page_size": {"25"},
+			"category":  {"model"},
+			"status":    {"Downloading"},
+			"search":    {"Qwen"},
 		}
 		if !reflect.DeepEqual(map[string][]string(query), want) {
 			t.Fatalf("unexpected query: %#v", query)
@@ -48,7 +50,8 @@ func TestListDownloadPageSendsPagingAndServerFilters(t *testing.T) {
 					Relation:   "submitted", CanViewLogs: true,
 					SourceURL: "https://huggingface.co/Qwen/Qwen3",
 				}},
-				"total":   31,
+				"total": 31,
+				"page":  2, "page_size": 25,
 				"summary": map[string]int64{"Downloading": 4, "Ready": 27},
 			},
 		})
@@ -85,7 +88,7 @@ func TestListDownloadPageNormalizesEmptyCollections(t *testing.T) {
 	client := modelDownloadTestClient(t, func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(writer).Encode(Response[map[string]interface{}]{
-			Data: map[string]interface{}{"total": 0},
+			Data: map[string]interface{}{"items": []ModelDownloadResp{}, "total": 0, "page": 1, "page_size": DefaultCLIPageSize},
 		})
 	})
 
@@ -101,17 +104,72 @@ func TestListDownloadPageNormalizesEmptyCollections(t *testing.T) {
 	}
 }
 
-func TestListDownloadsKeepsLegacyUnpagedContract(t *testing.T) {
+func TestListDownloadPageValidatesResponse(t *testing.T) {
+	for _, tc := range []struct {
+		name, data, message string
+		legacy              bool
+	}{
+		{name: "legacy response", data: `{"items":[{"id":21}],"total":60,"summary":{}}`, legacy: true},
+		{name: "malformed legacy-shaped response", data: `{"items":[null],"total":60,"summary":{}}`, message: "item has no valid id"},
+		{name: "missing page", data: `{"items":[],"total":0,"page_size":5}`, message: "positive integers"},
+		{name: "missing both metadata fields without legacy summary", data: `{"items":[],"total":0}`, message: "positive integers"},
+		{name: "null metadata", data: `{"items":[],"total":0,"page":null,"page_size":null,"summary":{}}`, message: "positive integers"},
+		{name: "zero metadata", data: `{"items":[],"total":0,"page":0,"page_size":0,"summary":{}}`, message: "positive integers"},
+		{name: "wrong page", data: `{"items":[],"total":0,"page":1,"page_size":5}`, message: "requested page 2, received page 1"},
+		{name: "wrong page size", data: `{"items":[],"total":0,"page":2,"page_size":20}`, message: "requested page_size 5, received page_size 20"},
+		{name: "items are not an array", data: `{"items":{},"total":0,"page":2,"page_size":5}`, message: "invalid download list response"},
+		{name: "missing items", data: `{"total":0,"page":2,"page_size":5}`, message: "missing items"},
+		{name: "null items", data: `{"items":null,"total":0,"page":2,"page_size":5}`, message: "missing items"},
+		{name: "null item", data: `{"items":[null],"total":6,"page":2,"page_size":5}`, message: "item has no valid id"},
+		{name: "missing total", data: `{"items":[],"page":2,"page_size":5}`, message: "invalid total"},
+		{name: "negative total", data: `{"items":[],"total":-1,"page":2,"page_size":5}`, message: "invalid total"},
+		{name: "total smaller than items", data: `{"items":[{"id":6}],"total":0,"page":2,"page_size":5}`, message: "invalid total"},
+		{name: "too many items", data: `{"items":[{"id":6},{"id":7},{"id":8},{"id":9},{"id":10},{"id":11}],"total":11,"page":2,"page_size":5}`, message: "item count exceeds page_size"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := modelDownloadTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+				writeJobTestResponse(t, w, json.RawMessage(tc.data))
+			})
+			page, err := client.ListDownloadPage(ModelDownloadListOptions{ListOptions: ListOptions{Page: 2, PageSize: 5}})
+			if err == nil || page.Items != nil || errors.Is(err, ErrLegacyDownloadPagination) != tc.legacy ||
+				!strings.Contains(err.Error(), tc.message) {
+				t.Fatalf("unexpected page or error: page=%+v, error=%v", page, err)
+			}
+		})
+	}
+}
+
+func TestDownloadAggregationRejectsRepeatedServerPage(t *testing.T) {
+	requests := 0
+	client := modelDownloadTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		if requests > 2 {
+			t.Fatal("requested a page after repeated server page")
+		}
+		writeJobTestResponse(t, w, ModelDownloadPage{
+			Page: Page[ModelDownloadResp]{Items: []ModelDownloadResp{{ID: uint(requests)}}, Total: 2, Page: 1, PageSize: 1},
+		})
+	})
+	items, err := FetchAllPages(ListOptions{PageSize: 1}, func(options ListOptions) (Page[ModelDownloadResp], error) {
+		page, err := client.ListDownloadPage(ModelDownloadListOptions{ListOptions: options})
+		return page.Page, err
+	})
+	if items != nil || err == nil || !strings.Contains(err.Error(), "requested page 2, received page 1") || requests != 2 {
+		t.Fatalf("items=%v err=%v requests=%d", items, err, requests)
+	}
+}
+
+func TestListDownloadsAggregatesSharedPages(t *testing.T) {
 	client := modelDownloadTestClient(t, func(writer http.ResponseWriter, request *http.Request) {
-		if got := request.URL.Query().Get("page"); got != "" {
-			t.Fatalf("legacy request unexpectedly contains page=%q", got)
+		if got := request.URL.Query().Get("page"); got != "1" {
+			t.Fatalf("first page = %q, want 1", got)
 		}
 		if got := request.URL.Query().Get("category"); got != "dataset" {
 			t.Fatalf("category = %q, want dataset", got)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(writer).Encode(Response[[]ModelDownloadResp]{
-			Data: []ModelDownloadResp{{ID: 9}},
+		_ = json.NewEncoder(writer).Encode(Response[Page[ModelDownloadResp]]{
+			Data: Page[ModelDownloadResp]{Items: []ModelDownloadResp{{ID: 9}}, Total: 1, Page: 1, PageSize: 200},
 		})
 	})
 
@@ -130,12 +188,12 @@ func TestListAdminDownloadsUsesAdminEndpoint(t *testing.T) {
 		if request.Method != http.MethodGet || request.URL.Path != wantPath {
 			t.Fatalf("unexpected request: %s %s", request.Method, request.URL.Path)
 		}
-		if request.URL.RawQuery != "" {
-			t.Fatalf("admin list unexpectedly sent query: %q", request.URL.RawQuery)
+		if request.URL.Query().Get("page_size") != "200" {
+			t.Fatalf("admin list missing page size: %q", request.URL.RawQuery)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(writer).Encode(Response[[]ModelDownloadResp]{
-			Data: []ModelDownloadResp{{ID: 11, Name: "Qwen/Qwen3"}},
+		_ = json.NewEncoder(writer).Encode(Response[Page[ModelDownloadResp]]{
+			Data: Page[ModelDownloadResp]{Items: []ModelDownloadResp{{ID: 11, Name: "Qwen/Qwen3"}}, Total: 1, Page: 1, PageSize: 200},
 		})
 	})
 

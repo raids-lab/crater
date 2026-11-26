@@ -42,6 +42,22 @@ function loginHarness(check) {
     globalLastView: 'lastView',
     useResetStore: () => ({ resetAll() {} }),
   }
+  const localStorage = {
+    getItem: (key) => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, value),
+    removeItem: (key) => storage.delete(key),
+  }
+  const sessionSource = readFileSync(
+    new URL('../src/services/auth-session.ts', import.meta.url),
+    'utf8'
+  )
+  const authSession = {}
+  runInNewContext(
+    ts.transpileModule(sessionSource, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS },
+    }).outputText,
+    { exports: authSession, require: () => store, localStorage, DOMException }
+  )
   const modules = {
     '@tanstack/react-query': { useQueryClient: () => ({ clear() {} }) },
     jotai: {
@@ -66,6 +82,7 @@ function loginHarness(check) {
       },
     },
     '@/services/auth-errors': {},
+    '@/services/auth-session': authSession,
     '@/utils/loglevel': {},
     '@/utils/store': store,
   }
@@ -80,12 +97,9 @@ function loginHarness(check) {
       assert.ok(name in modules, `Unexpected dependency: ${name}`)
       return modules[name]
     },
-    localStorage: {
-      setItem: (key, value) => storage.set(key, value),
-      removeItem: (key) => storage.delete(key),
-    },
+    localStorage,
   })
-  return { login: exports.AuthProvider({ children: null }).value.login, storage, state }
+  return { ...exports.AuthProvider({ children: null }).value, storage, state }
 }
 
 test('login obtains metadata from auth/check using the newly saved tokens', async () => {
@@ -124,4 +138,27 @@ test('failed or empty post-login checks do not leave a partial authenticated ses
     assert.equal(h.state.get('user'), undefined)
     assert.equal(h.state.get('context'), undefined)
   }
+})
+
+test('post-login check cannot restore a session after logout', async () => {
+  let startCheck
+  let resolveCheck
+  const checking = new Promise((resolve) => {
+    startCheck = resolve
+  })
+  const checkResult = new Promise((resolve) => {
+    resolveCheck = resolve
+  })
+  const h = loginHarness(() => {
+    startCheck()
+    return checkResult
+  })
+  const login = h.login({ auth: 'ldap' })
+  await checking
+  h.logout()
+  resolveCheck({ data: { user: {}, context: { space: 'home' }, version: {} } })
+  await assert.rejects(login, { name: 'AbortError' })
+  assert.equal(h.storage.size, 0)
+  assert.equal(h.state.get('authenticated'), false)
+  assert.equal(h.state.get('context'), undefined)
 })
