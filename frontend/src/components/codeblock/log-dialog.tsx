@@ -33,9 +33,9 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
 import { ContainerInfo, apiGetPodContainerLog } from '@/services/api/tool'
+import { apiClient } from '@/services/client'
 
 import { logger } from '@/utils/loglevel'
-import { ACCESS_TOKEN_KEY } from '@/utils/store'
 
 import TooltipButton from '../button/tooltip-button'
 import LoadingCircleIcon from '../icon/loading-circle-icon'
@@ -207,23 +207,19 @@ export function LogCard({
       streamAbortController.current = abortController
 
       // 构建流式日志的 URL
-      const baseUrl = `${import.meta.env.VITE_API_BASE || ''}/api/v1/namespaces/${namespacedName.namespace}/pods/${namespacedName.name}/containers/${selectedContainer.name}/log/stream`
+      const baseUrl = `v1/namespaces/${namespacedName.namespace}/pods/${namespacedName.name}/containers/${selectedContainer.name}/log/stream`
       const params = new URLSearchParams({
         timestamps: timestamps.toString(),
       })
       const url = `${baseUrl}?${params}`
 
-      // 获取认证 token
-      const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-
-      // 使用原生 fetch 来处理流式响应
-      const response = await fetch(url, {
-        method: 'GET',
+      // Keep streaming responses while sharing normal access-token renewal.
+      const response = await apiClient.get(url, {
         headers: {
-          Authorization: `Bearer ${token}`,
           Accept: 'application/octet-stream',
         },
         signal: abortController.signal,
+        timeout: false,
       })
 
       if (!response.ok) {

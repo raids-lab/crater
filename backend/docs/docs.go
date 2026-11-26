@@ -92,13 +92,37 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "用户名或密码错误",
+                        "description": "账号凭证错误或账号未激活",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "登录方式禁用、平台账号受限或缺少项目关联",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "账号创建冲突",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "数据库交互错误",
+                        "description": "目录服务、身份映射或数据库异常",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "502": {
+                        "description": "外部 UID 服务不可用或响应不完整",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "504": {
+                        "description": "LDAP 认证超时",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -1673,6 +1697,64 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/admin/images/getbyname": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns full build configuration and pod information through the admin route.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "Get any image build as an administrator",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Image build name",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/images/image": {
             "get": {
                 "security": [
@@ -1752,7 +1834,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作",
+                "description": "Cancel active builds or delete terminal builds as an administrator. Omit action to choose by status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1765,19 +1847,23 @@ const docTemplate = `{
                 "summary": "管理员模式下删除或取消镜像制作任务（批量）",
                 "parameters": [
                     {
-                        "description": "镜像构建任务ID列表",
-                        "name": "idList",
+                        "description": "Build IDs and optional action",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
+                            "$ref": "#/definitions/internal_handler_image.DeleteKanikoByIDListRequest"
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/admin/images/tags": {
@@ -6769,27 +6855,55 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取imagepackname，搜索到imagepack",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Owners receive full build details. Public and shared image readers receive configuration without pod or node information.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "ImagePack"
                 ],
-                "summary": "获取imagepack的详细信息",
+                "summary": "Get a visible image build",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "获取ImagePack的name",
+                        "description": "Image build name",
                         "name": "name",
                         "in": "query",
                         "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/images/grant": {
@@ -7056,7 +7170,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作",
+                "description": "Cancel active builds or delete terminal builds. Omit action to choose by status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7069,19 +7183,23 @@ const docTemplate = `{
                 "summary": "删除或取消镜像制作任务（批量）",
                 "parameters": [
                     {
-                        "description": "镜像构建任务ID列表",
-                        "name": "idList",
+                        "description": "Build IDs and optional action",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
+                            "$ref": "#/definitions/internal_handler_image.DeleteKanikoByIDListRequest"
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/images/share": {
@@ -11127,6 +11245,79 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vcjobs/{name}/exec": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.\nEmpty command opens a user login shell with stdin/tty.\nenv_mode=user (default) loads user shell configuration; container skips probing.\nNon-TTY commands use a bounded environment probe; TTY commands use the user login shell.\nExec resolves HOME and shell from the task account. Byte payloads use Base64 JSON strings.",
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Open a user shell or execute argv in your current-project job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Platform job name",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pod name; required for multiple pods",
+                        "name": "pod",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Container name; required for multiple regular containers",
+                        "name": "container",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "WebSocket exec session",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid target or subprotocol",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Job is outside the current user/project",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Job or pod not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Container is not running",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Platform failure",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vcjobs/{name}/pods": {
             "get": {
                 "security": [
@@ -11281,21 +11472,18 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "开启 SSH",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns the address and port for native sshd login.\nPlatform administrators retain access to other users' jobs; ordinary users require ownership in the current project.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "VolcanoJob"
                 ],
-                "summary": "开启 SSH",
+                "summary": "Enable SSH access",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Job Name",
+                        "description": "Platform job name",
                         "name": "name",
                         "in": "path",
                         "required": true
@@ -11303,19 +11491,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "SSH开启成功",
+                        "description": "SSH endpoint",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo"
+                        }
+                    },
+                    "403": {
+                        "description": "Job is outside the current user/project",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
-                    "400": {
-                        "description": "Request parameter error",
+                    "404": {
+                        "description": "Job, pod or SSH service not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Job or container is not running",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "500": {
-                        "description": "Other errors",
+                        "description": "SSH service or session setup failed",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -11592,6 +11792,25 @@ const docTemplate = `{
                 "Snapshot",
                 "EnvdAdvanced",
                 "EnvdRaw"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.BuildStatus": {
+            "type": "string",
+            "enum": [
+                "Initial",
+                "Pending",
+                "Running",
+                "Finished",
+                "Failed",
+                "Canceled"
+            ],
+            "x-enum-varnames": [
+                "BuildJobInitial",
+                "BuildJobPending",
+                "BuildJobRunning",
+                "BuildJobFinished",
+                "BuildJobFailed",
+                "BuildJobCanceled"
             ]
         },
         "github_com_raids-lab_crater_dao_model.CraterResourceType": {
@@ -13057,6 +13276,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_image.GetKanikoResponse"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp": {
             "type": "object",
             "properties": {
@@ -13141,6 +13375,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_vcjob.JupyterTokenResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_vcjob.SSHInfo"
                 },
                 "msg": {
                     "type": "string"
@@ -15849,6 +16098,75 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_image.DeleteKanikoByIDListRequest": {
+            "type": "object",
+            "required": [
+                "idList"
+            ],
+            "properties": {
+                "action": {
+                    "enum": [
+                        "cancel",
+                        "delete"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_handler_image.imageBuildRemovalAction"
+                        }
+                    ]
+                },
+                "idList": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "internal_handler_image.GetKanikoResponse": {
+            "type": "object",
+            "properties": {
+                "ID": {
+                    "type": "integer"
+                },
+                "buildSource": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.BuildSource"
+                },
+                "canManage": {
+                    "type": "boolean"
+                },
+                "canViewBuildLogs": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dockerfile": {
+                    "type": "string"
+                },
+                "imageLink": {
+                    "type": "string"
+                },
+                "imagepackName": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "podName": {
+                    "type": "string"
+                },
+                "podNameSpace": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus"
+                }
+            }
+        },
         "internal_handler_image.UpdateImageArchRequest": {
             "type": "object",
             "required": [
@@ -15903,6 +16221,17 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.JobType"
                 }
             }
+        },
+        "internal_handler_image.imageBuildRemovalAction": {
+            "type": "string",
+            "enum": [
+                "cancel",
+                "delete"
+            ],
+            "x-enum-varnames": [
+                "cancelImageBuild",
+                "deleteImageBuild"
+            ]
         },
         "internal_handler_operations.OperationLogResp": {
             "type": "object",
@@ -16481,6 +16810,17 @@ const docTemplate = `{
                 },
                 "port": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler_vcjob.SSHInfo": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "string"
                 }
             }
         },

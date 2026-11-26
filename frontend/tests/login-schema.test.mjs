@@ -22,23 +22,30 @@ import { createFormControl } from 'react-hook-form'
 import ts from 'typescript'
 import { z } from 'zod'
 
-// Transpile the production schema so these tests also run on Node 22.
-const source = readFileSync(
-  new URL('../src/routes/auth/-components/login-schema.ts', import.meta.url),
-  'utf8'
-)
-const { outputText } = ts.transpileModule(source, {
-  compilerOptions: { module: ts.ModuleKind.CommonJS },
+// Transpile the production schemas so these tests also run on Node 22.
+function loadSchema(relativePath, dependencies) {
+  const source = readFileSync(new URL(relativePath, import.meta.url), 'utf8')
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS },
+  })
+  const schemaModule = { exports: {} }
+  vm.runInNewContext(outputText, {
+    exports: schemaModule.exports,
+    require: (name) => {
+      assert.ok(name in dependencies, `Unexpected dependency: ${name}`)
+      return dependencies[name]
+    },
+  })
+  return schemaModule.exports
+}
+const { usernameSchema } = loadSchema('../src/services/auth-username.ts', {
+  zod: { z },
+  './auth-text.ts': { authText: (key) => key },
 })
-const schemaModule = { exports: {} }
-vm.runInNewContext(outputText, {
-  exports: schemaModule.exports,
-  require: (name) => {
-    assert.equal(name, 'zod')
-    return { z }
-  },
+const { loginFormSchema: schema } = loadSchema('../src/routes/auth/-components/login-schema.ts', {
+  zod: { z },
+  '@/services/auth-username': { usernameSchema },
 })
-const { loginFormSchema: schema } = schemaModule.exports
 const resolver = zodResolver(schema)
 const validForm = { username: 'alice', password: ' PaSsWord ', acceptPrivacy: true }
 const resolve = (values) => resolver(values, {}, { fields: {}, shouldUseNativeValidation: false })
@@ -99,10 +106,18 @@ test('normalization does not weaken username syntax or length constraints', asyn
 })
 
 test('password and privacy validation still prevent submission', async () => {
-  for (const password of ['', 'x'.repeat(21)]) {
+  for (const password of ['']) {
     const result = await resolve({ ...validForm, password })
     assert.ok(result.errors.password)
   }
   const result = await resolve({ ...validForm, acceptPrivacy: false })
   assert.ok(result.errors.acceptPrivacy)
+})
+
+test('LDAP passwords longer than local signup limits are preserved unchanged', async () => {
+  for (const password of ['x'.repeat(21), ' PaSsWord '.repeat(10)]) {
+    const result = await resolve({ ...validForm, password })
+    assert.deepEqual(result.errors, {})
+    assert.equal(result.values.password, password)
+  }
 })

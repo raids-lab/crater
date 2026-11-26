@@ -396,26 +396,6 @@ func runJobSecret(_ *cobra.Command, args []string) error {
 	return writeToken(token)
 }
 
-func runJobSSH(_ *cobra.Command, args []string) error {
-	name, err := requiredArg(args, "job_label_name", "name")
-	if err != nil {
-		return err
-	}
-	client, err := activeAPIClient()
-	if err != nil {
-		return err
-	}
-	ssh, err := client.OpenJobSSH(name)
-	if err != nil {
-		return cliErrFromAPI(err)
-	}
-	if outputJSON {
-		return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{"ssh": ssh}))
-	}
-	fmt.Printf("%s:%s\n", ssh.IP, ssh.Port)
-	return nil
-}
-
 func runJobSnapshot(_ *cobra.Command, args []string) error {
 	return runJobMessage(args, func(client *api.Client, name string) (string, error) {
 		return client.SnapshotJob(name)

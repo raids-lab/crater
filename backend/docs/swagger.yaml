@@ -94,6 +94,22 @@ definitions:
     - Snapshot
     - EnvdAdvanced
     - EnvdRaw
+  github_com_raids-lab_crater_dao_model.BuildStatus:
+    enum:
+    - Initial
+    - Pending
+    - Running
+    - Finished
+    - Failed
+    - Canceled
+    type: string
+    x-enum-varnames:
+    - BuildJobInitial
+    - BuildJobPending
+    - BuildJobRunning
+    - BuildJobFinished
+    - BuildJobFailed
+    - BuildJobCanceled
   github_com_raids-lab_crater_dao_model.CraterResourceType:
     enum:
     - gpu
@@ -1104,6 +1120,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler_image.GetKanikoResponse'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp:
     properties:
       code:
@@ -1161,6 +1187,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler_vcjob.SSHInfo'
       msg:
         type: string
     type: object
@@ -2964,6 +3000,50 @@ definitions:
     - label
     - value
     type: object
+  internal_handler_image.DeleteKanikoByIDListRequest:
+    properties:
+      action:
+        allOf:
+        - $ref: '#/definitions/internal_handler_image.imageBuildRemovalAction'
+        enum:
+        - cancel
+        - delete
+      idList:
+        items:
+          type: integer
+        type: array
+    required:
+    - idList
+    type: object
+  internal_handler_image.GetKanikoResponse:
+    properties:
+      ID:
+        type: integer
+      buildSource:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildSource'
+      canManage:
+        type: boolean
+      canViewBuildLogs:
+        type: boolean
+      createdAt:
+        type: string
+      description:
+        type: string
+      dockerfile:
+        type: string
+      imageLink:
+        type: string
+      imagepackName:
+        type: string
+      nodeName:
+        type: string
+      podName:
+        type: string
+      podNameSpace:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus'
+    type: object
   internal_handler_image.UpdateImageArchRequest:
     properties:
       archs:
@@ -3000,6 +3080,14 @@ definitions:
       taskType:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
     type: object
+  internal_handler_image.imageBuildRemovalAction:
+    enum:
+    - cancel
+    - delete
+    type: string
+    x-enum-varnames:
+    - cancelImageBuild
+    - deleteImageBuild
   internal_handler_operations.OperationLogResp:
     properties:
       created_at:
@@ -3394,6 +3482,13 @@ definitions:
       port:
         type: integer
     type: object
+  internal_handler_vcjob.SSHInfo:
+    properties:
+      ip:
+        type: string
+      port:
+        type: string
+    type: object
   internal_handler_vcjob.TaskReq:
     properties:
       command:
@@ -3758,11 +3853,27 @@ paths:
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "401":
-          description: 用户名或密码错误
+          description: 账号凭证错误或账号未激活
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: 登录方式禁用、平台账号受限或缺少项目关联
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "409":
+          description: 账号创建冲突
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: 数据库交互错误
+          description: 目录服务、身份映射或数据库异常
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "502":
+          description: 外部 UID 服务不可用或响应不完整
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "504":
+          description: LDAP 认证超时
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       summary: 用户登录
@@ -4765,6 +4876,44 @@ paths:
       summary: 管理员模式下更新镜像的描述
       tags:
       - ImagePack
+  /v1/admin/images/getbyname:
+    get:
+      description: Returns full build configuration and pod information through the
+        admin route.
+      parameters:
+      - description: Image build name
+        in: query
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get any image build as an administrator
+      tags:
+      - ImagePack
   /v1/admin/images/image:
     get:
       consumes:
@@ -4814,19 +4963,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: 管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      description: Cancel active builds or delete terminal builds as an administrator.
+        Omit action to choose by status.
       parameters:
-      - description: 镜像构建任务ID列表
+      - description: Build IDs and optional action
         in: body
-        name: idList
+        name: request
         required: true
         schema:
-          items:
-            type: integer
-          type: array
+          $ref: '#/definitions/internal_handler_image.DeleteKanikoByIDListRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 管理员模式下删除或取消镜像制作任务（批量）
@@ -7991,21 +8143,40 @@ paths:
       - ImagePack
   /v1/images/getbyname:
     get:
-      consumes:
-      - application/json
-      description: 获取imagepackname，搜索到imagepack
+      description: Owners receive full build details. Public and shared image readers
+        receive configuration without pod or node information.
       parameters:
-      - description: 获取ImagePack的name
+      - description: Image build name
         in: query
         name: name
         required: true
         type: string
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取imagepack的详细信息
+      summary: Get a visible image build
       tags:
       - ImagePack
   /v1/images/grant:
@@ -8173,19 +8344,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: 根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      description: Cancel active builds or delete terminal builds. Omit action to
+        choose by status.
       parameters:
-      - description: 镜像构建任务ID列表
+      - description: Build IDs and optional action
         in: body
-        name: idList
+        name: request
         required: true
         schema:
-          items:
-            type: integer
-          type: array
+          $ref: '#/definitions/internal_handler_image.DeleteKanikoByIDListRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 删除或取消镜像制作任务（批量）
@@ -10322,6 +10496,58 @@ paths:
       summary: 获取任务的事件
       tags:
       - VolcanoJob
+  /v1/vcjobs/{name}/exec:
+    get:
+      description: |-
+        Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.
+        Empty command opens a user login shell with stdin/tty.
+        env_mode=user (default) loads user shell configuration; container skips probing.
+        Non-TTY commands use a bounded environment probe; TTY commands use the user login shell.
+        Exec resolves HOME and shell from the task account. Byte payloads use Base64 JSON strings.
+      parameters:
+      - description: Platform job name
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: Pod name; required for multiple pods
+        in: query
+        name: pod
+        type: string
+      - description: Container name; required for multiple regular containers
+        in: query
+        name: container
+        type: string
+      responses:
+        "101":
+          description: WebSocket exec session
+          schema:
+            type: string
+        "400":
+          description: Invalid target or subprotocol
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Job is outside the current user/project
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Job or pod not found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "409":
+          description: Container is not running
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Platform failure
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Open a user shell or execute argv in your current-project job
+      tags:
+      - VolcanoJob
   /v1/vcjobs/{name}/pods:
     get:
       consumes:
@@ -10419,11 +10645,11 @@ paths:
       - VolcanoJob
   /v1/vcjobs/{name}/ssh:
     post:
-      consumes:
-      - application/json
-      description: 开启 SSH
+      description: |-
+        Returns the address and port for native sshd login.
+        Platform administrators retain access to other users' jobs; ordinary users require ownership in the current project.
       parameters:
-      - description: Job Name
+      - description: Platform job name
         in: path
         name: name
         required: true
@@ -10432,20 +10658,28 @@ paths:
       - application/json
       responses:
         "200":
-          description: SSH开启成功
+          description: SSH endpoint
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_SSHInfo'
+        "403":
+          description: Job is outside the current user/project
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "400":
-          description: Request parameter error
+        "404":
+          description: Job, pod or SSH service not found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "409":
+          description: Job or container is not running
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
-          description: Other errors
+          description: SSH service or session setup failed
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 开启 SSH
+      summary: Enable SSH access
       tags:
       - VolcanoJob
   /v1/vcjobs/{name}/template:

@@ -23,8 +23,10 @@ import { useDebounceCallback } from 'usehooks-ts'
 import { Card } from '@/components/ui/card'
 
 import { ContainerInfo } from '@/services/api/tool'
+import { getAuthErrorMessage } from '@/services/auth-errors'
+import { apiClient } from '@/services/client'
+import { openTerminalWebSocket } from '@/services/terminal-session'
 
-import { REFRESH_TOKEN_KEY } from '@/utils/store'
 import { configAPIBaseAtom } from '@/utils/store/config'
 
 import {
@@ -32,17 +34,6 @@ import {
   PodContainerDialogProps,
   PodNamespacedName,
 } from './pod-container-dialog'
-
-const buildWebSocketUrl = (
-  apiBase: string,
-  namespace: string,
-  podName: string,
-  containerName: string
-) => {
-  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const token = localStorage.getItem(REFRESH_TOKEN_KEY) || ''
-  return `${protocol}://${window.location.host}${apiBase}/api/v1/websocket/namespaces/${namespace}/pods/${podName}/containers/${containerName}/terminal?token=${token}`
-}
 
 // 发送终端大小变更消息
 function sendTerminalResize(websocket: WebSocket, cols: number, rows: number) {
@@ -107,41 +98,48 @@ function TerminalCard({
     terminal.focus()
     fitAddon.fit() // 调整终端大小
 
-    const wsUrl = buildWebSocketUrl(
+    const abortController = new AbortController()
+    let ws: WebSocket | undefined
+    void openTerminalWebSocket({
+      client: apiClient,
+      origin: window.location.origin,
       apiBase,
-      namespacedName.namespace,
-      namespacedName.name,
-      selectedContainer.name
-    )
-
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
-
-    ws.onmessage = (event: MessageEvent) => {
-      terminal.write(event.data as string)
-    }
-
-    ws.onerror = () => {
-      terminal.writeln('WebSocket error')
-    }
-
-    ws.onclose = () => {
-      //另起一行，说明关闭的时间
-      terminal.writeln('')
-      terminal.writeln('Connection closed on ' + new Date().toLocaleString())
-      terminal.writeln(
-        '尊敬的用户您好，我们在网页端提供的终端，由于用户无操作、网络波动等因素，并不稳定。'
-      )
-      terminal.writeln(
-        '这个终端比较适合简易调试的场景，如果您有复杂调试的需求，建议使用 SSH、Jupyter、CodeServer 等功能。'
-      )
-    }
-
-    ws.onopen = () => {
-      // 连接打开后立即发送初始终端大小（这里不需要防抖）
-      const { cols, rows } = terminal
-      sendTerminalResize(ws, cols, rows)
-    }
+      namespace: namespacedName.namespace,
+      podName: namespacedName.name,
+      containerName: selectedContainer.name,
+      signal: abortController.signal,
+    })
+      .then((socket) => {
+        if (abortController.signal.aborted) {
+          socket.close()
+          return
+        }
+        ws = socket
+        wsRef.current = socket
+        socket.onmessage = (event: MessageEvent) => {
+          terminal.write(event.data as string)
+        }
+        socket.onerror = () => {
+          terminal.writeln('WebSocket error')
+        }
+        socket.onclose = () => {
+          terminal.writeln('')
+          terminal.writeln('Connection closed on ' + new Date().toLocaleString())
+          terminal.writeln(
+            '尊敬的用户您好，我们在网页端提供的终端，由于用户无操作、网络波动等因素，并不稳定。'
+          )
+          terminal.writeln(
+            '这个终端比较适合简易调试的场景，如果您有复杂调试的需求，建议使用 SSH、Jupyter、CodeServer 等功能。'
+          )
+        }
+        socket.onopen = () => {
+          const { cols, rows } = terminal
+          sendTerminalResize(socket, cols, rows)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!abortController.signal.aborted) terminal.writeln(getAuthErrorMessage(error))
+      })
 
     // 监听窗口调整，自动调整终端大小
     const handleResize = () => {
@@ -149,24 +147,30 @@ function TerminalCard({
 
       // 获取调整后的终端尺寸并发送到后端（使用防抖）
       const { cols, rows } = terminal
-      debouncedSendResize(ws, cols, rows)
+      if (ws) debouncedSendResize(ws, cols, rows)
     }
     window.addEventListener('resize', handleResize)
 
     // 监听终端大小变化（使用防抖）
     terminal.onResize((dimensions) => {
-      debouncedSendResize(ws, dimensions.cols, dimensions.rows)
+      if (ws) debouncedSendResize(ws, dimensions.cols, dimensions.rows)
     })
 
     // 将终端的输入发送到 WebSocket，使用新的格式
     // 注意：输入不需要防抖，应该立即发送
     terminal.onData((data) => {
-      sendTerminalInput(ws, data)
+      if (ws) sendTerminalInput(ws, data)
     })
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      ws.close()
+      abortController.abort()
+      debouncedSendResize.cancel()
+      if (ws) {
+        ws.onmessage = ws.onerror = ws.onclose = ws.onopen = null
+        ws.close()
+      }
+      wsRef.current = null
       terminal.dispose()
     }
   }, [namespacedName, selectedContainer, apiBase, debouncedSendResize])

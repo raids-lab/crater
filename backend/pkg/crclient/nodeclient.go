@@ -3,6 +3,7 @@ package crclient
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -79,6 +80,10 @@ type NodeBriefInfo struct {
 	KernelVersion string                   `json:"kernelVersion"`
 	GPUDriver     string                   `json:"gpuDriver"`
 	Address       string                   `json:"address"`
+
+	Unschedulable bool                       `json:"unschedulable"`
+	ReadyStatus   corev1.ConditionStatus     `json:"readyStatus"`
+	Pressures     []corev1.NodeConditionType `json:"pressures,omitempty"`
 }
 
 type Pod struct {
@@ -244,6 +249,23 @@ func getNodeCondition(node *corev1.Node) corev1.NodeConditionType {
 	return NodeStatusUnknown // 如果没有任何条件为 True，则视为就绪
 }
 
+func getNodeReadinessAndPressures(conditions []corev1.NodeCondition) (corev1.ConditionStatus, []corev1.NodeConditionType) {
+	readyStatus := corev1.ConditionUnknown
+	var pressures []corev1.NodeConditionType
+	for _, condition := range conditions {
+		switch condition.Type {
+		case corev1.NodeReady:
+			readyStatus = condition.Status
+		case corev1.NodeMemoryPressure, corev1.NodeDiskPressure, corev1.NodePIDPressure, corev1.NodeNetworkUnavailable:
+			if condition.Status == corev1.ConditionTrue {
+				pressures = append(pressures, condition.Type)
+			}
+		}
+	}
+	slices.Sort(pressures)
+	return readyStatus, pressures
+}
+
 func taintsToString(taints []corev1.Taint) string {
 	var taintStrings []string
 	for _, taint := range taints {
@@ -327,12 +349,16 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 
 		// 获取节点IP地址
 		nodeIP := getNodeIP(node)
+		readyStatus, pressures := getNodeReadinessAndPressures(node.Status.Conditions)
 
 		nodeInfos[i] = NodeBriefInfo{
 			Name:          node.Name,
 			Role:          getNodeRole(node),
 			Arch:          node.Status.NodeInfo.Architecture,
 			Status:        getNodeStatus(node),
+			Unschedulable: node.Spec.Unschedulable,
+			ReadyStatus:   readyStatus,
+			Pressures:     pressures,
 			Vendor:        vendor,
 			Taints:        node.Spec.Taints,
 			Capacity:      node.Status.Capacity,

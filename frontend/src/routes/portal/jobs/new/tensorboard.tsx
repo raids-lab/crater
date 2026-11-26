@@ -24,6 +24,7 @@ import {
   CircleHelpIcon,
   FolderOpenIcon,
   HardDriveIcon,
+  InfoIcon,
   LayoutGridIcon,
   LoaderCircleIcon,
   PlayIcon,
@@ -60,12 +61,8 @@ import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 import SelectBox from '@/components/custom/select-box'
-import FormExportButton from '@/components/form/form-export-button'
-import FormImportButton from '@/components/form/form-import-button'
 import FormLabelMust from '@/components/form/form-label-must'
-import { TemplateInfo } from '@/components/form/template-info'
-import { MetadataFormTensorboard } from '@/components/form/types'
-import { PublishConfigForm } from '@/components/job/publish'
+import { MarkdownRenderer } from '@/components/form/markdown-renderer'
 import CardTitle from '@/components/label/card-title'
 import PageTitle from '@/components/layout/page-title'
 import PersonalDirectoryPicker from '@/components/tensorboard/personal-directory-picker'
@@ -84,7 +81,6 @@ import { getTensorboardPersonalStoragePath } from '@/utils/tensorboard'
 import { showErrorToast } from '@/utils/toast'
 
 type TensorboardSearch = {
-  fromTemplate?: number
   sourceJob?: string
 }
 
@@ -141,7 +137,6 @@ const getTensorboardSourceJobs = async (search: string, signal?: AbortSignal) =>
 }
 
 const validateTensorboardSearch = (search: Record<string, unknown>): TensorboardSearch => ({
-  fromTemplate: Number(search.fromTemplate) || undefined,
   sourceJob: typeof search.sourceJob === 'string' ? search.sourceJob : undefined,
 })
 
@@ -219,16 +214,6 @@ const createFormSchema = (t: TFunction) =>
     })
 
 type FormSchema = z.infer<ReturnType<typeof createFormSchema>>
-
-const dataProcessor = (data: FormSchema) => {
-  return {
-    ...data,
-    name: data.name ?? '',
-    sourceJobNames: data.sourceJobNames ?? [],
-    logDir: data.logDir ?? '',
-    sourceLogDirs: data.sourceLogDirs ?? {},
-  }
-}
 
 const FormHelpTooltip = ({ content }: { content: string }) => (
   <TooltipProvider delayDuration={100}>
@@ -439,7 +424,6 @@ function RouteComponent() {
           ? (data.sourceLogDirs[jobName] ?? '').trim()
           : data.logDir.trim(),
       })),
-      // Keep the top-level value for compatibility with exported legacy configurations.
       logDir: hasMultipleSources ? '' : data.logDir.trim(),
     })
   }
@@ -455,31 +439,15 @@ function RouteComponent() {
             title={t('tensorboard.create.title')}
             description={t('tensorboard.create.description')}
             className="lg:col-span-3"
-            tipContent={t('tensorboard.create.version', {
-              version: MetadataFormTensorboard.version,
-            })}
           >
-            <div className="flex w-full flex-wrap items-center justify-start gap-2 sm:w-fit sm:flex-nowrap sm:justify-end sm:gap-3">
-              <FormImportButton
-                metadata={MetadataFormTensorboard}
-                dataProcessor={dataProcessor}
-                form={form}
-              />
-              <FormExportButton metadata={MetadataFormTensorboard} form={form} />
-              <PublishConfigForm
-                config={MetadataFormTensorboard}
-                configform={form}
-                fromTemplate={searchParams.fromTemplate}
-              />
-              <Button
-                type="submit"
-                disabled={isPending || isResolvingSourceConfigs || hasMissingMultiLogDirs}
-                className="gap-2"
-              >
-                <PlayIcon className="h-4 w-4" />
-                {isPending ? t('tensorboard.create.creating') : t('tensorboard.create.submit')}
-              </Button>
-            </div>
+            <Button
+              type="submit"
+              disabled={isPending || isResolvingSourceConfigs || hasMissingMultiLogDirs}
+              className="gap-2"
+            >
+              <PlayIcon className="h-4 w-4" />
+              {isPending ? t('tensorboard.create.creating') : t('tensorboard.create.submit')}
+            </Button>
           </PageTitle>
 
           <div className="flex flex-col gap-4 md:gap-6 lg:col-span-2">
@@ -701,13 +669,14 @@ function RouteComponent() {
               </CardContent>
             </Card>
 
-            <TemplateInfo
-              form={form}
-              metadata={MetadataFormTensorboard}
-              searchParams={searchParams}
-              dataProcessor={dataProcessor}
-              defaultMarkdown={t('tensorboard.create.helpMarkdown')}
-            />
+            <Card>
+              <CardHeader>
+                <CardTitle icon={InfoIcon}>{t('templateInfo.jobInstructions')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <MarkdownRenderer>{t('tensorboard.create.helpMarkdown')}</MarkdownRenderer>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="flex flex-col gap-4 md:gap-6" />
