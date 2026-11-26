@@ -16,7 +16,6 @@ import (
 	"github.com/raids-lab/crater/cli/internal/completion"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
-	"github.com/raids-lab/crater/cli/internal/session"
 	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 )
@@ -345,27 +344,11 @@ func resolveDownloadToken(cmd *cobra.Command, current string) (string, error) {
 }
 
 func activeModelDownloadClient() (api.ModelDownloadClient, error) {
-	st, err := session.LoadState()
-	if err != nil {
-		return nil, &clierror.Error{
-			Category: errorcodes.CategorySystem,
-			Code:     errorcodes.ErrConfigWriteFailed,
-			Message:  i18n.T("err_config_write", err.Error()),
-		}
-	}
-	active := st.ActiveContext
-	if active.PlatformURL == "" {
-		return nil, &clierror.Error{
-			Category: errorcodes.CategoryUsage,
-			Code:     errorcodes.ErrNotFound,
-			Message:  i18n.T("err_no_active"),
-		}
-	}
-	token, err := loadAccessToken(st, active)
+	client, err := activeAPIClient()
 	if err != nil {
 		return nil, err
 	}
-	return api.NewModelDownloadClient(active.PlatformURL, token), nil
+	return client, nil
 }
 
 func runDownloadCreate(cmd *cobra.Command, _ []string) error {

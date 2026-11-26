@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 
 	"github.com/raids-lab/crater/cli/internal/api"
@@ -58,5 +59,17 @@ func activeAPIClientWithContext() (*api.Client, session.ActiveContext, error) {
 	if err != nil {
 		return nil, active, err
 	}
-	return api.NewClient(active.PlatformURL).SetToken(token), active, nil
+	info, _ := session.AuthInfoFor(st, active)
+	tokens := api.Tokens{AccessToken: token, RefreshToken: info.RefreshToken}
+	check := func(current api.Tokens) error {
+		return session.CheckTokens(active, current.AccessToken, current.RefreshToken)
+	}
+	save := func(previous, next api.Tokens, requireActive bool) error {
+		return session.ReplaceTokens(active, previous.AccessToken, previous.RefreshToken, next.AccessToken, next.RefreshToken, requireActive)
+	}
+	client, err := api.NewSessionClient(context.Background(), active.PlatformURL, tokens, check, save)
+	if err != nil {
+		return nil, active, cliErrFromAPI(err)
+	}
+	return client, active, nil
 }

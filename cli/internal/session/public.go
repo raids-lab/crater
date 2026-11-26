@@ -1,9 +1,10 @@
 package session
 
 // PublicAuthInfo returns a copy of info that is safe for command output.
-// The persisted token stays in state.json but is omitted from JSON via omitempty.
+// Persisted tokens are omitted from JSON via omitempty.
 func PublicAuthInfo(info AuthInfo) AuthInfo {
 	info.Token = ""
+	info.RefreshToken = ""
 	return info
 }
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/imroc/req/v3"
 	"github.com/raids-lab/crater/cli/internal/testenv"
@@ -26,6 +27,8 @@ type Client struct {
 	httpClient *req.Client
 	BaseURL    string
 	token      string
+	sessionMu  sync.Mutex
+	session    *clientSession
 }
 
 // applyHTTPSim 按环境变量在 req Transport 上注册拦截（仅影响经 NewClient 创建的客户端）。
