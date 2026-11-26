@@ -32,7 +32,7 @@ Use this skill only for administrator approval-order workflows.
 - `approve` approves and locks a running job in one operation. It uses the requested hours by default. To override, pass `--lock` with a positive duration or `--permanent`. Read the applied lock from `data.approved_lock`.
 - Lock duration values must be non-negative. Permanent and finite durations are mutually exclusive.
 - The CLI does not send `reviewerID`; the backend derives the reviewer from the active token.
-- The server preserves the original request and records the applied lock separately. Job approval requires backend API 8.
+- The server preserves the original request and records the applied lock separately.
 - Lists are filtered and then locally paginated. They are sorted with pending orders first and newest orders first within each status, default to 15 records (maximum 200), and expose `data.pagination`.
 - `--creator` is admin-only and matches creator username or display name. `--search` also matches the order name and creator information.
 - Pagination, status, and type validation are aggregated. If stderr JSON contains `context.issues`, fix all fields before retrying.
