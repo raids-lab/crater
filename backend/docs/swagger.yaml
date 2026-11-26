@@ -105,6 +105,22 @@ definitions:
     - Snapshot
     - EnvdAdvanced
     - EnvdRaw
+  github_com_raids-lab_crater_dao_model.BuildStatus:
+    enum:
+    - Initial
+    - Pending
+    - Running
+    - Finished
+    - Failed
+    - Canceled
+    type: string
+    x-enum-varnames:
+    - BuildJobInitial
+    - BuildJobPending
+    - BuildJobRunning
+    - BuildJobFinished
+    - BuildJobFailed
+    - BuildJobCanceled
   github_com_raids-lab_crater_dao_model.CraterResourceType:
     enum:
     - gpu
@@ -1122,6 +1138,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.generateAgentTitleResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler_image.GetKanikoResponse'
       msg:
         type: string
     type: object
@@ -3018,6 +3044,50 @@ definitions:
     - label
     - value
     type: object
+  internal_handler_image.DeleteKanikoByIDListRequest:
+    properties:
+      action:
+        allOf:
+        - $ref: '#/definitions/internal_handler_image.imageBuildRemovalAction'
+        enum:
+        - cancel
+        - delete
+      idList:
+        items:
+          type: integer
+        type: array
+    required:
+    - idList
+    type: object
+  internal_handler_image.GetKanikoResponse:
+    properties:
+      ID:
+        type: integer
+      buildSource:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildSource'
+      canManage:
+        type: boolean
+      canViewBuildLogs:
+        type: boolean
+      createdAt:
+        type: string
+      description:
+        type: string
+      dockerfile:
+        type: string
+      imageLink:
+        type: string
+      imagepackName:
+        type: string
+      nodeName:
+        type: string
+      podName:
+        type: string
+      podNameSpace:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus'
+    type: object
   internal_handler_image.UpdateImageArchRequest:
     properties:
       archs:
@@ -3054,6 +3124,14 @@ definitions:
       taskType:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
     type: object
+  internal_handler_image.imageBuildRemovalAction:
+    enum:
+    - cancel
+    - delete
+    type: string
+    x-enum-varnames:
+    - cancelImageBuild
+    - deleteImageBuild
   internal_handler_operations.OperationLogResp:
     properties:
       created_at:
@@ -4922,6 +5000,44 @@ paths:
       summary: 管理员模式下更新镜像的描述
       tags:
       - ImagePack
+  /v1/admin/images/getbyname:
+    get:
+      description: Returns full build configuration and pod information through the
+        admin route.
+      parameters:
+      - description: Image build name
+        in: query
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get any image build as an administrator
+      tags:
+      - ImagePack
   /v1/admin/images/image:
     get:
       consumes:
@@ -4971,19 +5087,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: 管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      description: Cancel active builds or delete terminal builds as an administrator.
+        Omit action to choose by status.
       parameters:
-      - description: 镜像构建任务ID列表
+      - description: Build IDs and optional action
         in: body
-        name: idList
+        name: request
         required: true
         schema:
-          items:
-            type: integer
-          type: array
+          $ref: '#/definitions/internal_handler_image.DeleteKanikoByIDListRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 管理员模式下删除或取消镜像制作任务（批量）
@@ -8085,21 +8204,40 @@ paths:
       - ImagePack
   /v1/images/getbyname:
     get:
-      consumes:
-      - application/json
-      description: 获取imagepackname，搜索到imagepack
+      description: Owners receive full build details. Public and shared image readers
+        receive configuration without pod or node information.
       parameters:
-      - description: 获取ImagePack的name
+      - description: Image build name
         in: query
         name: name
         required: true
         type: string
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取imagepack的详细信息
+      summary: Get a visible image build
       tags:
       - ImagePack
   /v1/images/grant:
@@ -8267,19 +8405,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: 根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      description: Cancel active builds or delete terminal builds. Omit action to
+        choose by status.
       parameters:
-      - description: 镜像构建任务ID列表
+      - description: Build IDs and optional action
         in: body
-        name: idList
+        name: request
         required: true
         schema:
-          items:
-            type: integer
-          type: array
+          $ref: '#/definitions/internal_handler_image.DeleteKanikoByIDListRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 删除或取消镜像制作任务（批量）
