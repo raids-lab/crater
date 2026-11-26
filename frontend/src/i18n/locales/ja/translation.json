@@ -1,4 +1,5 @@
 {
+  "ApprovalOrderTable.actions.approveAndLock": "承認してロック",
   "ApprovalOrderTable.actions.menuLabel": "その他の操作",
   "ApprovalOrderTable.actions.menuTrigger": "操作メニューを開く",
   "ApprovalOrderTable.actions.viewDetails": "詳細を表示",
@@ -14,6 +15,11 @@
   "ApprovalOrderTable.column.status": "ステータス",
   "ApprovalOrderTable.column.type": "種類",
   "ApprovalOrderTable.column.typeId": "種類ID",
+  "ApprovalOrderTable.detail.approvedLockDuration": "承認されたロック時間",
+  "ApprovalOrderTable.detail.approvedLockPermanent": "永久ロック",
+  "ApprovalOrderTable.detail.durationHours": "{{hours}} 時間",
+  "ApprovalOrderTable.detail.durationHoursMinutes": "{{hours}} 時間 {{minutes}} 分",
+  "ApprovalOrderTable.detail.durationMinutes": "{{minutes}} 分",
   "ApprovalOrderTable.info.description": "自分に関連する承認申請を表示・管理します",
   "ApprovalOrderTable.info.title": "承認申請",
   "ApprovalOrderTable.toast.approveError": "承認に失敗しました。もう一度お試しください。",

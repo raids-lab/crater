@@ -78,8 +78,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 7,
-      "min_supported_backend_api_version": 7
+      "api_version": 8,
+      "min_supported_backend_api_version": 8
     }
   }
   ```
@@ -98,7 +98,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **处理逻辑**：
   - 未提供 `--platform` 且没有当前激活身份时，不发起 HTTP 请求，返回 `usage_error` + `ERR_MISSING_REQUIRED_FLAG`，进程退出码为 `2`；提示用户通过 `--platform <URL>` 指定目标平台，并明确该操作无需登录。
   - 调用公开的 `GET /api/cli/compatibility` 一次，并比较 CLI / 后端各自的当前 API 版本与最低支持的对方版本。
-  - 双方均满足最低版本时成功。当前 CLI 最低要求后端 API v7，连接 v6 后端时会报告后端版本过旧。默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
+  - 作业审批并锁定接口从 API v8 开始提供，当前 CLI 与后端均要求对方至少为 API v8。v7 CLI 连接 v8 后端时会报告 CLI 版本过旧，v8 CLI 连接 v7 后端时会报告后端版本过旧。默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
   - 后端构建信息仅用于诊断和展示，不参与 API 兼容性判断。兼容性接口仅返回 API 版本字段的早期实现仍可使用；缺失的后端构建字段显示为“未知”，不会因此把响应判定为非法。
   - 明确不兼容时返回 `api_error` + `ERR_API_VERSION_MISMATCH`，进程退出码为 `4`。人类可读错误按“具体情况 / 版本信息 / 使用建议”分段展示：具体指出哪个最低版本条件不满足，列出 CLI 产品版本、CLI / 后端 API 版本和双方最低支持版本，并说明用户仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。
   - 握手响应明确报告版本 `0` 时，将它视为早于首个正式契约的旧版本并参与比较。例如后端明确报告 `apiVersion: 0` 时，当前 CLI 会输出“后端版本过旧”的完整诊断。字段缺失或为负数时视为非法响应。
@@ -114,16 +114,16 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 7,
-      "min_supported_backend_api_version": 7
+      "api_version": 8,
+      "min_supported_backend_api_version": 8
     },
     "backend": {
       "product_version": "1.1.1",
       "short_commit_sha": "f42b0c2",
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
-      "api_version": 7,
-      "min_supported_cli_api_version": 3
+      "api_version": 8,
+      "min_supported_cli_api_version": 8
     }
   }
   ```
@@ -840,11 +840,15 @@ This section covers account context and additional resource commands. All comman
   - `page-size` 默认 `15`、最大 `200`；JSON 使用 `data.billing`，非 `--all-pages` 时同时有 `data.pagination`。
 - `crater user get <username>`, `email-verified`.
 - `crater order ls [--status STATUS] [--type TYPE] [--search TEXT] [--page N] [--page-size N] [--all-pages]`, `get <id>`, `by-name <name>`。
+- `order ls` 和 `order get` 只查询当前用户创建的工单。`order by-name` 只返回与当前用户可访问的作业或数据集关联的工单。管理员跨用户按 ID 查询请使用 `crater admin order get <id>`。
+- `crater order get <id>` 默认显示工单名称、状态、申请原因和审核信息。作业工单还显示申请时长、实际批准时长、当前用户为该作业提交的工单历史，以及当前用户有权查询的作业所有者、队列和资源。有限的批准时长按整小时和剩余分钟显示。使用 `--json` 时，接口返回的工单字段位于 `data.order`。
 - `crater admin order ls` 支持相同的本地筛选和分页，并额外支持 `--creator TEXT`。普通用户 `order ls` 不提供 creator filter；两者的 `--search` 均匹配工单名称或创建者信息。
+- 两个工单列表的 `--status` 均忽略大小写，例如 `pending` 和 `Pending` 都匹配 `Pending`。
 - 工单列表默认按 `Pending`、`Approved`、`Rejected`、`Canceled` 分组，同状态按创建时间和 ID 倒序排列。
 - `crater admin user ls [--base] [--search TEXT] [--role Guest|User|Admin] [--status Pending|Active|Inactive] [--page N] [--page-size N] [--all-pages]`；搜索覆盖用户名与显示名，默认按 ID 倒序。`--base` 与 `--role` / `--status` 互斥。
 - 上述工单和用户列表均先本地筛选再分页，`page-size` 默认 `15`、最大 `200`；JSON 当前页输出同时包含 `data.pagination`。
 - `crater admin billing status|jobs`, `crater admin order get <id>`, `crater admin user billing summary|accounts <username>`.
+- `crater admin order get <id>` 对作业工单显示作业所有者、资源申请、申请序号和历次工单的状态、申请时长、实际批准时长及审核耗时。实际批准的有限时长按整小时和剩余分钟显示，例如 `3 小时` 或 `3 小时 30 分钟`。`--json` 返回 `data.order`、作业摘要 `data.job` 和历史 `data.history`，实际批准的有限时长使用 `durationMinutes`。作业摘要或历史查询失败时，分别通过 `data.job_error` 或 `data.history_error` 报告原因。
 
 ### Approval Order Writes
 - User-visible commands stay under `crater order ...`:
@@ -857,9 +861,10 @@ This section covers account context and additional resource commands. All comman
   - `crater admin order reject <id> --review-notes TEXT`.
   - `crater admin order check --yes`.
 - `order edit` first reads the current order and preserves fields that were not explicitly provided, so absent flags do not clear existing content.
-- `admin order approve|reject` use the admin review API and only send review status/notes. The backend derives `reviewerID` from the active token and preserves the original order content.
-- Lock duration flags must be non-negative. Unless `--permanent` is set, `--lock` requires a positive duration.
-- `--json` success payloads use `data.message`; `approve --lock --json` also includes `data.lock_message`.
+- For running job orders, `admin order approve` approves and locks the job in one operation. It uses the requested hours by default. Use `--lock` with a positive duration or `--permanent` to override the request. Finite locks extend from the later of the current time and the existing expiration.
+- A job approval records the actual lock in `content.approvedLock` while preserving the request. The approval confirmation shows the applied duration in hours and remaining minutes or as a permanent lock. Older orders without a lock record show the approved duration as unknown. Dataset approvals and rejections use the review API.
+- Lock duration flags must be non-negative. Use either `--permanent` or a finite duration.
+- `--json` success payloads use `data.message`. Successful job approvals also include `data.lock_message` and `data.approved_lock`.
 
 ### Pod And Non-Volcano Job Diagnostics
 - 普通用户直接诊断 Job Pod 时必须显式指定真实命名空间：
