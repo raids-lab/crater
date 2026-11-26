@@ -228,7 +228,7 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                 </div>
               )}
             </div>
-            <div className="flex flex-1 flex-col justify-center gap-4 pl-0 sm:pl-6">
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-4 pl-0 sm:pl-6">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
@@ -246,12 +246,15 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center border-t pt-4">
-                <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2 border-t pt-4">
+                <div className="text-muted-foreground flex shrink-0 items-center gap-2 text-sm">
                   <CpuIcon className="size-4" />
                   <span>{t('nodeDetail.info.cpuModel')}</span>
                 </div>
-                <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
+                <Badge
+                  variant="secondary"
+                  className="max-w-full min-w-0 shrink font-mono text-[10px] break-all whitespace-normal"
+                >
                   {nodeDetail.cpuModel || '-'}
                 </Badge>
               </div>

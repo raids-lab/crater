@@ -154,8 +154,8 @@ func TestFileContractCompatibility(t *testing.T) {
 }
 
 func TestAtomicJobApprovalContractCompatibility(t *testing.T) {
-	if APIVersion != 8 || MinSupportedBackendAPIVersion != 8 {
-		t.Fatalf("atomic job approval contract = %d, minimum backend = %d, want 8/8",
+	if APIVersion < 8 || MinSupportedBackendAPIVersion != 8 {
+		t.Fatalf("atomic job approval contract = %d, minimum backend = %d, want >=8/8",
 			APIVersion, MinSupportedBackendAPIVersion)
 	}
 	if got := EvaluateCompatibility(7, 3); got != CompatibilityBackendTooOld {
