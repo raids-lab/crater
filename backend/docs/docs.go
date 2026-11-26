@@ -1058,6 +1058,82 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/approvalorder/{id}/approve-and-lock": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "在同一事务中锁定运行中的作业、批准工单并记录实际批准时长，省略锁定参数时使用工单申请时长",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "批准作业工单并锁定作业",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "锁定时长及审核备注",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ApproveJobOrderReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/approvalorder/{id}/review": {
             "put": {
                 "security": [
@@ -1065,7 +1141,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容",
+                "description": "审批数据集工单或拒绝、取消工单。批准作业工单使用 approve-and-lock",
                 "consumes": [
                     "application/json"
                 ],
@@ -1746,6 +1822,64 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/admin/images/getbyname": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns full build configuration and pod information through the admin route.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "Get any image build as an administrator",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Image build name",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/images/image": {
             "get": {
                 "security": [
@@ -1825,7 +1959,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作",
+                "description": "Cancel active builds or delete terminal builds as an administrator. Omit action to choose by status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1838,19 +1972,23 @@ const docTemplate = `{
                 "summary": "管理员模式下删除或取消镜像制作任务（批量）",
                 "parameters": [
                     {
-                        "description": "镜像构建任务ID列表",
-                        "name": "idList",
+                        "description": "Build IDs and optional action",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
+                            "$ref": "#/definitions/internal_handler_image.DeleteKanikoByIDListRequest"
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/admin/images/tags": {
@@ -5221,7 +5359,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "通过名称获取所有同名审批工单（无需身份验证）",
+                "description": "按名称查询当前用户可访问的作业或数据集的审批工单",
                 "consumes": [
                     "application/json"
                 ],
@@ -5239,6 +5377,16 @@ const docTemplate = `{
                         "name": "name",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "enum": [
+                            "job",
+                            "dataset"
+                        ],
+                        "type": "string",
+                        "description": "关联资源类型",
+                        "name": "type",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5250,12 +5398,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "404": {
-                        "description": "工单不存在",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -6738,27 +6880,55 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取imagepackname，搜索到imagepack",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Owners receive full build details. Public and shared image readers receive configuration without pod or node information.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "ImagePack"
                 ],
-                "summary": "获取imagepack的详细信息",
+                "summary": "Get a visible image build",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "获取ImagePack的name",
+                        "description": "Image build name",
                         "name": "name",
                         "in": "query",
                         "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/images/grant": {
@@ -7025,7 +7195,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作",
+                "description": "Cancel active builds or delete terminal builds. Omit action to choose by status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7038,19 +7208,23 @@ const docTemplate = `{
                 "summary": "删除或取消镜像制作任务（批量）",
                 "parameters": [
                     {
-                        "description": "镜像构建任务ID列表",
-                        "name": "idList",
+                        "description": "Build IDs and optional action",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
+                            "$ref": "#/definitions/internal_handler_image.DeleteKanikoByIDListRequest"
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/images/share": {
@@ -11579,6 +11753,9 @@ const docTemplate = `{
                 },
                 "approvalorderTypeID": {
                     "type": "integer"
+                },
+                "approvedLock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock"
                 }
             }
         },
@@ -11628,6 +11805,20 @@ const docTemplate = `{
                 "ApprovalOrderTypeJob"
             ]
         },
+        "github_com_raids-lab_crater_dao_model.ApprovedJobLock": {
+            "type": "object",
+            "properties": {
+                "durationMinutes": {
+                    "type": "integer"
+                },
+                "isPermanent": {
+                    "type": "boolean"
+                },
+                "lockedUntil": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_dao_model.BuildSource": {
             "type": "string",
             "enum": [
@@ -11643,6 +11834,25 @@ const docTemplate = `{
                 "Snapshot",
                 "EnvdAdvanced",
                 "EnvdRaw"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.BuildStatus": {
+            "type": "string",
+            "enum": [
+                "Initial",
+                "Pending",
+                "Running",
+                "Finished",
+                "Failed",
+                "Canceled"
+            ],
+            "x-enum-varnames": [
+                "BuildJobInitial",
+                "BuildJobPending",
+                "BuildJobRunning",
+                "BuildJobFinished",
+                "BuildJobFailed",
+                "BuildJobCanceled"
             ]
         },
         "github_com_raids-lab_crater_dao_model.CraterResourceType": {
@@ -12703,6 +12913,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ApproveJobOrderResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_AuthModeResp": {
             "type": "object",
             "properties": {
@@ -13108,6 +13333,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_image.GetKanikoResponse"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp": {
             "type": "object",
             "properties": {
@@ -13417,6 +13657,23 @@ const docTemplate = `{
                 "IngressType",
                 "NodePortType"
             ]
+        },
+        "github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer"
+                },
+                "hours": {
+                    "type": "integer"
+                },
+                "isPermanent": {
+                    "type": "boolean"
+                },
+                "minutes": {
+                    "type": "integer"
+                }
+            }
         },
         "github_com_raids-lab_crater_internal_util.VolumeMount": {
             "type": "object",
@@ -13910,6 +14167,9 @@ const docTemplate = `{
                 "reviewNotes": {
                     "type": "string"
                 },
+                "reviewedAt": {
+                    "type": "string"
+                },
                 "reviewer": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
                 },
@@ -13951,6 +14211,31 @@ const docTemplate = `{
                 },
                 "type": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderType"
+                }
+            }
+        },
+        "internal_handler.ApproveJobOrderReq": {
+            "type": "object",
+            "properties": {
+                "lock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration"
+                },
+                "reviewNotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.ApproveJobOrderResp": {
+            "type": "object",
+            "properties": {
+                "approvedLock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock"
+                },
+                "lockMessage": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -15911,6 +16196,75 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_image.DeleteKanikoByIDListRequest": {
+            "type": "object",
+            "required": [
+                "idList"
+            ],
+            "properties": {
+                "action": {
+                    "enum": [
+                        "cancel",
+                        "delete"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_handler_image.imageBuildRemovalAction"
+                        }
+                    ]
+                },
+                "idList": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "internal_handler_image.GetKanikoResponse": {
+            "type": "object",
+            "properties": {
+                "ID": {
+                    "type": "integer"
+                },
+                "buildSource": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.BuildSource"
+                },
+                "canManage": {
+                    "type": "boolean"
+                },
+                "canViewBuildLogs": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dockerfile": {
+                    "type": "string"
+                },
+                "imageLink": {
+                    "type": "string"
+                },
+                "imagepackName": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "podName": {
+                    "type": "string"
+                },
+                "podNameSpace": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus"
+                }
+            }
+        },
         "internal_handler_image.UpdateImageArchRequest": {
             "type": "object",
             "required": [
@@ -15965,6 +16319,17 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.JobType"
                 }
             }
+        },
+        "internal_handler_image.imageBuildRemovalAction": {
+            "type": "string",
+            "enum": [
+                "cancel",
+                "delete"
+            ],
+            "x-enum-varnames": [
+                "cancelImageBuild",
+                "deleteImageBuild"
+            ]
         },
         "internal_handler_operations.OperationLogResp": {
             "type": "object",

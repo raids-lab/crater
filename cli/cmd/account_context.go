@@ -19,11 +19,9 @@ import (
 	"os"
 
 	"github.com/raids-lab/crater/cli/internal/api"
-	"github.com/raids-lab/crater/cli/internal/clierror"
 	"github.com/raids-lab/crater/cli/internal/i18n"
 	"github.com/raids-lab/crater/cli/internal/output"
 	"github.com/raids-lab/crater/cli/internal/session"
-	"github.com/raids-lab/crater/cli/pkg/errorcodes"
 	"github.com/spf13/cobra"
 )
 
@@ -60,12 +58,8 @@ func runAccountUse(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return cliErrFromAPI(err)
 	}
-	if err := session.ReplaceToken(active, result.AccessToken); err != nil {
-		return &clierror.Error{
-			Category: errorcodes.CategorySystem,
-			Code:     errorcodes.ErrConfigWriteFailed,
-			Message:  i18n.T("err_config_write", err.Error()),
-		}
+	if err := client.ReplaceCredentials(api.Tokens{AccessToken: result.AccessToken, RefreshToken: result.RefreshToken}); err != nil {
+		return cliErrFromAPI(err)
 	}
 	return writeAccountContext(active, &result.Context)
 }

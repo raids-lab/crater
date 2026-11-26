@@ -56,7 +56,7 @@ crater auth rm --help
 
 行为：
 
-- 从 `auth_infos` 移除当前 active 身份及其保存的 token。
+- 从 `auth_infos` 移除当前 active 身份及其保存的两个令牌。
 - 如果仍有其他身份，自动切换到列表中第一项；否则清空 `active_context`。
 - `--no-interactive` 下必须同时传 `--yes`。
 
@@ -77,7 +77,7 @@ crater auth rm --help
 
 行为：
 
-- 删除所有匹配过滤条件的身份及其保存的 token。
+- 删除所有匹配过滤条件的身份及其保存的两个令牌。
 - 如果删除的是当前 active 身份，则清空 `active_context`。
 - `--no-interactive` 下必须同时传 `--yes`。
 

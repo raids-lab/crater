@@ -12,6 +12,8 @@ var (
 	ErrAuthInfoNotFound = errors.New("no saved auth info matches the active context")
 	// ErrNoToken indicates that the matching auth info exists without a persisted token.
 	ErrNoToken = errors.New("no token saved for these credentials")
+	// ErrSessionChanged indicates that another command updated the active session.
+	ErrSessionChanged = errors.New("the active session changed; run the command again")
 )
 
 func accountKey(ac state.ActiveContext) string {
@@ -36,11 +38,8 @@ func LoadToken(st state.State, ac state.ActiveContext) (string, error) {
 	return info.Token, nil
 }
 
-// ReplaceToken updates one saved identity without changing the active identity.
-func ReplaceToken(ac ActiveContext, token string) error {
-	if token == "" {
-		return ErrNoToken
-	}
+// CheckTokens verifies that the request still belongs to the active session.
+func CheckTokens(ac ActiveContext, token, refreshToken string) error {
 	if testSessionEnabled() {
 		return nil
 	}
@@ -48,15 +47,42 @@ func ReplaceToken(ac ActiveContext, token string) error {
 	if err != nil {
 		return err
 	}
-	if _, ok := AuthInfoFor(st, ac); !ok {
-		return ErrAuthInfoNotFound
+	if st.ActiveContext != ac {
+		return ErrSessionChanged
 	}
-	for i := range st.AuthInfos {
-		info := &st.AuthInfos[i]
-		if info.PlatformURL == ac.PlatformURL && info.Username == ac.Username && info.Method == ac.Method {
-			info.Token = token
-			return SaveState(st)
+	return matchTokens(st, ac, token, refreshToken)
+}
+
+func matchTokens(st State, ac ActiveContext, token, refreshToken string) error {
+	info, ok := AuthInfoFor(st, ac)
+	if !ok || info.Token != token || info.RefreshToken != refreshToken {
+		return ErrSessionChanged
+	}
+	return nil
+}
+
+// ReplaceTokens updates the pair only if the saved credentials still match.
+func ReplaceTokens(ac ActiveContext, previousAccess, previousRefresh, access, refresh string, requireActive bool) error {
+	if access == "" {
+		return ErrNoToken
+	}
+	if testSessionEnabled() {
+		return nil
+	}
+	return UpdateState(func(st *State) error {
+		if requireActive && st.ActiveContext != ac {
+			return ErrSessionChanged
 		}
-	}
-	return ErrAuthInfoNotFound
+		if err := matchTokens(*st, ac, previousAccess, previousRefresh); err != nil {
+			return err
+		}
+		for i := range st.AuthInfos {
+			info := &st.AuthInfos[i]
+			if info.PlatformURL == ac.PlatformURL && info.Username == ac.Username && info.Method == ac.Method {
+				info.Token, info.RefreshToken = access, refresh
+				return nil
+			}
+		}
+		return ErrSessionChanged
+	})
 }

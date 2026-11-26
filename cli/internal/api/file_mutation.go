@@ -29,8 +29,11 @@ type moveFileRequest struct {
 // created implicitly, and HTTP 201 is the only accepted success status.
 func (c *Client) CreateDirectory(ctx context.Context, remotePath string) error {
 	requestPath := StoragePrefix + "/" + escapeRemotePath(remotePath)
-	resp, err := c.httpClient.R().
-		SetContext(ctx).
+	request, err := c.storageRequest(ctx)
+	if err != nil {
+		return err
+	}
+	resp, err := request.
 		DisableAutoReadResponse().
 		Send("MKCOL", requestPath)
 	if resp != nil && resp.Response != nil && resp.Body != nil {
@@ -50,8 +53,11 @@ func (c *Client) CreateDirectory(ctx context.Context, remotePath string) error {
 // Atomic no-clobber is available only on filesystems supporting it.
 func (c *Client) MoveFile(ctx context.Context, sourcePath, destinationPath string) error {
 	requestPath := FileMovePath + "/" + escapeRemotePath(sourcePath)
-	resp, err := c.httpClient.R().
-		SetContext(ctx).
+	request, err := c.storageRequest(ctx)
+	if err != nil {
+		return err
+	}
+	resp, err := request.
 		SetContentType("application/json").
 		SetBody(moveFileRequest{Destination: destinationPath}).
 		DisableAutoReadResponse().

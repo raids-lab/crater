@@ -54,10 +54,17 @@ func cliErrFromAPIRequest(e *api.RequestError) *clierror.Error {
 	if upstream == "" {
 		upstream = "-"
 	}
+	message := i18n.T("err_api_request", e.HTTPStatus, upstream)
+	if e.DuringRefresh {
+		message = i18n.T("err_session_refresh", message)
+	}
+	if e.ShouldSignInAgain() {
+		message += "\n" + i18n.T("err_session_expired")
+	}
 	return &clierror.Error{
 		Category: errorcodes.CategoryAPI,
 		Code:     apiCodeForHTTP(e.HTTPStatus),
-		Message:  i18n.T("err_api_request", e.HTTPStatus, upstream),
+		Message:  message,
 		Context:  apiContextFromRequest(e),
 	}
 }
@@ -75,6 +82,14 @@ func cliErrFromAPINetwork(e *api.NetworkError) *clierror.Error {
 // cliErrFromAPI 将 internal/api 返回的错误映射为 CLI 稳定错误契约。
 // 已知 API 错误会按 RequestError / NetworkError 保留结构化事实；未知错误退化为 ERR_API_OTHER。
 func cliErrFromAPI(err error) *clierror.Error {
+	var sessionErr *api.SessionStateError
+	if errors.As(err, &sessionErr) {
+		return &clierror.Error{
+			Category: errorcodes.CategorySystem,
+			Code:     errorcodes.ErrConfigWriteFailed,
+			Message:  i18n.T("err_config_write", sessionErr.Error()),
+		}
+	}
 	var req *api.RequestError
 	if errors.As(err, &req) {
 		return cliErrFromAPIRequest(req)

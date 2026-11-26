@@ -43,8 +43,9 @@ const CompatibilityPath = CompatibilityPrefix + "/compatibility"
 const AuthLoginPath = AuthPrefix + "/login"
 
 const (
-	AuthCheckPath  = AuthPrefix + "/check"
-	AuthSwitchPath = "/api/v1/auth/switch"
+	AuthCheckPath   = AuthPrefix + "/check"
+	AuthRefreshPath = AuthPrefix + "/refresh"
+	AuthSwitchPath  = "/api/v1/auth/switch"
 )
 
 // ModelDownloadCreatePath creates a model or dataset download task.

@@ -569,7 +569,14 @@ export const apiJobUnlock = (jobName: string) =>
     name: jobName,
   })
 
-export const apiJobLock = (params: object) =>
+export interface JobLockDuration {
+  isPermanent: boolean
+  days: number
+  hours: number
+  minutes: number
+}
+
+export const apiJobLock = (params: JobLockDuration & { name: string }) =>
   apiV1Put<IResponse<string>>('admin/operations/add/locktime', params)
 
 export const apiJobGetDetail = (jobName: string) =>

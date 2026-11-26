@@ -62,6 +62,34 @@ func TestReadOrderListOptionsAggregatesPaginationAndDomainIssues(t *testing.T) {
 	}
 }
 
+func TestReadOrderListOptionsNormalizesStatus(t *testing.T) {
+	for _, test := range []struct {
+		input string
+		want  string
+	}{
+		{input: "pending", want: "Pending"},
+		{input: "APPROVED", want: "Approved"},
+		{input: "rEjEcTeD", want: "Rejected"},
+		{input: " canceled ", want: "Canceled"},
+		{input: "Pending", want: "Pending"},
+	} {
+		t.Run(test.input, func(t *testing.T) {
+			command := &cobra.Command{}
+			addOrderListFlags(command, true)
+			if err := command.Flags().Set("status", test.input); err != nil {
+				t.Fatalf("set --status: %v", err)
+			}
+			options, err := readOrderListOptions(command, true)
+			if err != nil {
+				t.Fatalf("read list options: %v", err)
+			}
+			if options.Status != test.want {
+				t.Errorf("status = %q, want %q", options.Status, test.want)
+			}
+		})
+	}
+}
+
 func TestFilterApprovalOrdersUsesTypedFields(t *testing.T) {
 	older := time.Date(2026, 7, 20, 0, 0, 0, 0, time.UTC)
 	newer := older.Add(24 * time.Hour)
