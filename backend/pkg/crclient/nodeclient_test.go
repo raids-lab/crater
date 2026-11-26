@@ -15,11 +15,16 @@
 package crclient
 
 import (
+	"slices"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/raids-lab/crater/pkg/indexer"
 )
 
 func TestPodInfoFromKubePodIncludesStartTime(t *testing.T) {
@@ -51,5 +56,94 @@ func TestPodInfoFromKubePodKeepsMissingStartTime(t *testing.T) {
 
 	if got := podInfoFromKubePod(pod); got.StartTime != nil {
 		t.Fatalf("StartTime = %v, want nil", got.StartTime)
+	}
+}
+
+func TestListNodesReportsIndependentStatusFields(t *testing.T) {
+	occupied := []corev1.Taint{{
+		Key:    "crater.raids.io/account",
+		Value:  "research",
+		Effect: corev1.TaintEffectNoSchedule,
+	}}
+	tests := []struct {
+		name          string
+		spec          corev1.NodeSpec
+		conditions    []corev1.NodeCondition
+		labels        map[string]string
+		wantStatus    corev1.NodeConditionType
+		wantReadiness corev1.ConditionStatus
+		wantPressures []corev1.NodeConditionType
+	}{
+		{
+			name:          "occupied and not ready before the taint is added",
+			spec:          corev1.NodeSpec{Taints: occupied},
+			conditions:    []corev1.NodeCondition{{Type: corev1.NodeReady, Status: corev1.ConditionFalse}},
+			wantStatus:    NodeStatusOccupied,
+			wantReadiness: corev1.ConditionFalse,
+		},
+		{
+			name:          "occupied and cordoned before the taint is added",
+			spec:          corev1.NodeSpec{Taints: occupied, Unschedulable: true},
+			conditions:    []corev1.NodeCondition{{Type: corev1.NodeReady, Status: corev1.ConditionTrue}},
+			wantStatus:    NodeStatusOccupied,
+			wantReadiness: corev1.ConditionTrue,
+		},
+		{
+			name: "ready with memory and disk pressure",
+			conditions: []corev1.NodeCondition{
+				{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
+				{Type: corev1.NodeMemoryPressure, Status: corev1.ConditionTrue},
+				{Type: corev1.NodePIDPressure, Status: corev1.ConditionFalse},
+				{Type: corev1.NodeDiskPressure, Status: corev1.ConditionTrue},
+				{Type: corev1.NodeNetworkUnavailable, Status: corev1.ConditionUnknown},
+			},
+			wantStatus:    corev1.NodeReady,
+			wantReadiness: corev1.ConditionTrue,
+			wantPressures: []corev1.NodeConditionType{corev1.NodeDiskPressure, corev1.NodeMemoryPressure},
+		},
+		{
+			name: "uncertain readiness with PID and network conditions",
+			spec: corev1.NodeSpec{Unschedulable: true},
+			conditions: []corev1.NodeCondition{
+				{Type: corev1.NodeReady, Status: corev1.ConditionUnknown},
+				{Type: corev1.NodePIDPressure, Status: corev1.ConditionTrue},
+				{Type: corev1.NodeNetworkUnavailable, Status: corev1.ConditionTrue},
+			},
+			wantStatus:    NodeStatusUnschedulable,
+			wantReadiness: corev1.ConditionUnknown,
+			wantPressures: []corev1.NodeConditionType{corev1.NodeNetworkUnavailable, corev1.NodePIDPressure},
+		},
+		{
+			name:          "virtual node without a Ready condition",
+			labels:        map[string]string{"crater.raids.io/nodetype": "virtual"},
+			wantStatus:    NodeStatusUnknown,
+			wantReadiness: corev1.ConditionUnknown,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Name: "node", Labels: tt.labels},
+				Spec:       tt.spec,
+				Status:     corev1.NodeStatus{Conditions: tt.conditions},
+			}
+			c := &NodeClient{Client: fake.NewClientBuilder().
+				WithObjects(node).
+				WithIndex(&corev1.Pod{}, indexer.PodNodeNameIndex, func(obj client.Object) []string {
+					return []string{obj.(*corev1.Pod).Spec.NodeName}
+				}).
+				Build()}
+			nodes, err := c.ListNodes(t.Context())
+			if err != nil || len(nodes) != 1 {
+				t.Fatalf("ListNodes returned %d nodes, err = %v", len(nodes), err)
+			}
+			got := nodes[0]
+			if got.Status != tt.wantStatus || got.ReadyStatus != tt.wantReadiness ||
+				got.Unschedulable != tt.spec.Unschedulable || !slices.Equal(got.Pressures, tt.wantPressures) {
+				t.Errorf("got status=%q readyStatus=%q unschedulable=%t pressures=%v, want %q %q %t %v",
+					got.Status, got.ReadyStatus, got.Unschedulable, got.Pressures,
+					tt.wantStatus, tt.wantReadiness, tt.spec.Unschedulable, tt.wantPressures)
+			}
+		})
 	}
 }

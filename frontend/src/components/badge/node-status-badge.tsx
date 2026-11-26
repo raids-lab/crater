@@ -13,85 +13,82 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { PhaseBadge } from './phase-badge'
+import { NodeStatus } from '@/services/api/cluster'
 
-// These are valid but not exhaustive conditions of node. A cloud provider may set a condition not listed here.
-// Relevant events contain "NodeReady", "NodeNotReady", "NodeSchedulable", and "NodeNotSchedulable".
-// const (
-// 	// NodeReady means kubelet is healthy and ready to accept pods.
-// 	NodeReady NodeConditionType = "Ready"
-// 	// NodeMemoryPressure means the kubelet is under pressure due to insufficient available memory.
-// 	NodeMemoryPressure NodeConditionType = "MemoryPressure"
-// 	// NodeDiskPressure means the kubelet is under pressure due to insufficient available disk.
-// 	NodeDiskPressure NodeConditionType = "DiskPressure"
-// 	// NodePIDPressure means the kubelet is under pressure due to insufficient available PID.
-// 	NodePIDPressure NodeConditionType = "PIDPressure"
-// 	// NodeNetworkUnavailable means that network for the node is not correctly configured.
-// 	NodeNetworkUnavailable NodeConditionType = "NetworkUnavailable"
-// )
-export const nodeStatuses = [
+import { PhaseBadge, type PhaseBadgeData } from './phase-badge'
+
+interface NodeStatusMeta extends Omit<PhaseBadgeData, 'icon'> {
+  value: NodeStatus
+}
+
+const PRESSURE_COLOR = 'text-highlight-red bg-highlight-red/20'
+
+// 顺序即筛选器中的展示顺序：健康状态 → 压力告警 → 调度限制
+export const nodeStatuses: NodeStatusMeta[] = [
   {
-    value: 'Ready',
+    value: NodeStatus.Ready,
     label: '运行中',
     color: 'text-highlight-blue bg-highlight-blue/20',
     description: '节点正常运行',
   },
   {
-    value: 'MemoryPressure',
-    label: '内存压力',
+    value: NodeStatus.NotReady,
+    label: '未就绪',
     color: 'text-highlight-red bg-highlight-red/20',
+    description: '节点未就绪，kubelet 或容器运行时异常',
+  },
+  {
+    value: NodeStatus.Unknown,
+    label: '未知',
+    color: 'text-highlight-slate bg-highlight-slate/20',
+    description: '节点失联或无法获取节点状态',
+  },
+  {
+    value: NodeStatus.MemoryPressure,
+    label: '内存压力',
+    color: PRESSURE_COLOR,
     description: '节点内存压力过大',
   },
   {
-    value: 'DiskPressure',
+    value: NodeStatus.DiskPressure,
     label: '磁盘压力',
-    color: 'text-highlight-red bg-highlight-red/20',
+    color: PRESSURE_COLOR,
     description: '节点磁盘压力过大',
   },
   {
-    value: 'PIDPressure',
+    value: NodeStatus.PIDPressure,
     label: 'PID压力',
-    color: 'text-highlight-red bg-highlight-red/20',
+    color: PRESSURE_COLOR,
     description: '节点PID压力过大',
   },
   {
-    value: 'NetworkUnavailable',
+    value: NodeStatus.NetworkUnavailable,
     label: '网络不可用',
-    color: 'text-highlight-red bg-highlight-red/20',
+    color: PRESSURE_COLOR,
     description: '节点网络不可用',
   },
   {
-    value: 'Unschedulable',
+    value: NodeStatus.Unschedulable,
     label: '不可调度',
     color: 'text-highlight-orange bg-highlight-orange/20',
     description: '节点不可调度',
   },
   {
-    value: 'Occupied',
+    value: NodeStatus.Occupied,
     label: '已占用',
     color: 'text-highlight-yellow bg-highlight-yellow/20',
     description: '节点已被占用',
   },
 ]
 
-const getNodeStatusLabel = (
-  status: string
-): {
-  label: string
-  color: string
-  description: string
-} => {
-  const foundStatus = nodeStatuses.find((s) => s.value === status)
-  if (foundStatus) {
-    return foundStatus
-  } else {
-    return {
-      label: '未知',
-      color: 'text-highlight-slate bg-highlight-slate/20',
-      description: '无法获取节点状态信息',
-    }
-  }
+const unknownNodeStatus: PhaseBadgeData = {
+  label: '未知',
+  color: 'text-highlight-slate bg-highlight-slate/20',
+  description: '无法获取节点状态信息',
 }
+
+export const getNodeStatusMeta = (status: string): PhaseBadgeData =>
+  nodeStatuses.find((s) => s.value === status) ?? unknownNodeStatus
 
 const NodeStatusBadge = ({
   status,
@@ -103,7 +100,7 @@ const NodeStatusBadge = ({
   disableDefaultTooltip?: boolean
 }) => {
   const getPhaseLabel = (s: string) => {
-    const base = getNodeStatusLabel(s)
+    const base = getNodeStatusMeta(s)
     if (reason && typeof reason === 'string' && reason.trim() !== '') {
       return {
         ...base,
