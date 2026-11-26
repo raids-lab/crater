@@ -87,6 +87,12 @@ Install all Crater CLI Skills globally for supported agents:
 npx skills add https://github.com/raids-lab/crater/tree/main/cli -g --all
 ```
 
+Community-maintained end-to-end operational workflow skill ([`cyjin-yl/crater-skill`](https://github.com/cyjin-yl/crater-skill), covering job lifecycle, watching, storage/model downloads, image builds, and troubleshooting):
+
+```bash
+npx skills add cyjin-yl/crater-skill
+```
+
 ## License
 
 Crater CLI is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
