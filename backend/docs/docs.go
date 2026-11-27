@@ -4560,6 +4560,27 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/vcjobs/queue": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "List current unscheduled jobs across accounts",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_QueueSnapshot"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/vcjobs/{name}": {
             "delete": {
                 "security": [
@@ -10687,7 +10708,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "返回指定天数内的所有作业，默认为14天",
+                "description": "List jobs submitted within the requested time range.",
                 "consumes": [
                     "application/json"
                 ],
@@ -10701,9 +10722,15 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "default": 14,
-                        "description": "Number of days to look back, default is 14",
+                        "default": 7,
+                        "description": "Number of days to look back, -1 for all",
                         "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include jobs still running from before the time range",
+                        "name": "include_running",
                         "in": "query"
                     },
                     {
@@ -10806,6 +10833,30 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/vcjobs/all/active-counts": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "Count current running jobs, waiting jobs, and distinct submitters of running jobs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_ActiveJobCounts"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/vcjobs/all/facets": {
             "get": {
                 "security": [
@@ -10826,6 +10877,21 @@ const docTemplate = `{
                         "type": "integer",
                         "description": "Number of days to look back, -1 for all",
                         "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include jobs still running from before the time range",
+                        "name": "include_running",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "submissions"
+                        ],
+                        "type": "string",
+                        "description": "Return submitter counts across all statuses in place of running-only owner and GPU counts",
+                        "name": "summary",
                         "in": "query"
                     },
                     {
@@ -11099,6 +11165,35 @@ const docTemplate = `{
                         "description": "Service error",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/vcjobs/queue": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "tags": [
+                    "VolcanoJob"
+                ],
+                "summary": "List current unscheduled jobs in the active account",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Limit to the signed-in user",
+                        "name": "mine",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_QueueSnapshot"
                         }
                     }
                 }
@@ -13026,6 +13121,9 @@ const docTemplate = `{
                 "count": {
                     "type": "integer"
                 },
+                "label": {
+                    "type": "string"
+                },
                 "value": {
                     "type": "string"
                 }
@@ -14019,6 +14117,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_ActiveJobCounts": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_vcjob.ActiveJobCounts"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp": {
             "type": "object",
             "properties": {
@@ -14028,6 +14141,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler_vcjob.JupyterTokenResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_QueueSnapshot": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_vcjob.QueueSnapshot"
                 },
                 "msg": {
                     "type": "string"
@@ -17183,6 +17311,20 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_vcjob.ActiveJobCounts": {
+            "type": "object",
+            "properties": {
+                "activeUsers": {
+                    "type": "integer"
+                },
+                "running": {
+                    "type": "integer"
+                },
+                "waiting": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_handler_vcjob.CreateCustomReq": {
             "type": "object",
             "required": [
@@ -17504,6 +17646,61 @@ const docTemplate = `{
                 },
                 "port": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler_vcjob.QueueJob": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "type": "string"
+                },
+                "accountId": {
+                    "type": "integer"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "jobType": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "resources": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "userInfo": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
+                }
+            }
+        },
+        "internal_handler_vcjob.QueueSnapshot": {
+            "type": "object",
+            "properties": {
+                "jobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler_vcjob.QueueJob"
+                    }
+                },
+                "observedAt": {
+                    "type": "string"
+                },
+                "reasonsAvailable": {
+                    "type": "boolean"
                 }
             }
         },

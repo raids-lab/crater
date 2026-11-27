@@ -78,8 +78,10 @@ func (mgr *VolcanojobMgr) RegisterPublic(_ *gin.RouterGroup) {}
 func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 	g.GET("", mgr.GetSelfJobs)
 	g.GET("facets", mgr.GetSelfJobFacets)
+	g.GET("queue", mgr.GetAccountQueue)
 	g.GET("all", mgr.GetAllJobsInDays)
 	g.GET("all/facets", mgr.GetAllJobFacets)
+	g.GET("all/active-counts", mgr.GetActiveJobCounts)
 	g.GET("user/:username", mgr.GetUserJobsInDays)
 	g.GET("user/:username/facets", mgr.GetUserJobFacets)
 	g.GET("billing", mgr.GetSelfJobBilling)
@@ -123,6 +125,7 @@ func (mgr *VolcanojobMgr) RegisterProtected(g *gin.RouterGroup) {
 func (mgr *VolcanojobMgr) RegisterAdmin(g *gin.RouterGroup) {
 	g.GET("", mgr.GetAllJobsInDays)
 	g.GET("facets", mgr.GetAllJobFacets)
+	g.GET("queue", mgr.GetAdminQueue)
 	g.GET("user/:username", mgr.GetUserJobsInDays)
 	g.GET("user/:username/facets", mgr.GetUserJobFacets)
 	g.GET("billing", mgr.GetAllJobBillingInDays)
@@ -581,12 +584,13 @@ func (mgr *VolcanojobMgr) GetSelfJobs(c *gin.Context) {
 // GetAllJobsInDays godoc
 //
 //	@Summary		Get all of the jobs
-//	@Description	返回指定天数内的所有作业，默认为14天
+//	@Description	List jobs submitted within the requested time range.
 //	@Tags			VolcanoJob
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			days	query		int						false	"Number of days to look back, default is 14"	default(14)
+//	@Param			days	query	int	false	"Number of days to look back, -1 for all"	default(7)
+//	@Param			include_running	query	bool	false	"Include jobs still running from before the time range"
 //	@Param			page		query	int	false	"Page number"
 //	@Param			page_size	query	int	false	"Page size, 1-200"
 //	@Param			sort		query	string	false	"Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last"
@@ -653,6 +657,8 @@ func (mgr *VolcanojobMgr) GetSelfJobFacets(c *gin.Context) {
 //	@Produce	json
 //	@Security	Bearer
 //	@Param		days	query	int	false	"Number of days to look back, -1 for all"
+//	@Param		include_running	query	bool	false	"Include jobs still running from before the time range"
+//	@Param		summary	query	string	false	"Return submitter counts across all statuses in place of running-only owner and GPU counts" Enums(submissions)
 //	@Param		search	query	string	false	"Search jobs"
 //	@Param		job_type	query	[]string	false	"Job types" collectionFormat(multi)
 //	@Param		status	query	[]string	false	"Job statuses" collectionFormat(multi)
@@ -664,6 +670,23 @@ func (mgr *VolcanojobMgr) GetSelfJobFacets(c *gin.Context) {
 //nolint:lll // Swag requires full parameter enum annotations on one line.
 func (mgr *VolcanojobMgr) GetAllJobFacets(c *gin.Context) {
 	mgr.listJobFacets(c, allJobsDefaultDays, jobListScope{}, true)
+}
+
+// GetActiveJobCounts godoc
+//
+//	@Summary	Count current running jobs, waiting jobs, and distinct submitters of running jobs
+//	@Tags		VolcanoJob
+//	@Produce	json
+//	@Security	Bearer
+//	@Success	200	{object}	resputil.Response[ActiveJobCounts]
+//	@Router		/v1/vcjobs/all/active-counts [get]
+func (mgr *VolcanojobMgr) GetActiveJobCounts(c *gin.Context) {
+	counts, err := countActiveJobs(c)
+	if err != nil {
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "count active jobs failed"))
+		return
+	}
+	resputil.Success(c, counts)
 }
 
 // GetUserJobFacets godoc

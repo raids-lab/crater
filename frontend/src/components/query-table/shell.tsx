@@ -61,13 +61,6 @@ export function DataTableShell<TData>({
   pageSizeOptions,
 }: DataTableShellProps<TData>) {
   const { t } = useTranslation()
-  const updatedAt = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-    : '--'
 
   return (
     <div className={cn('flex flex-col gap-4', className)}>
@@ -150,7 +143,7 @@ export function DataTableShell<TData>({
       <DataTablePagination
         table={table}
         refetch={refetch}
-        updatedAt={updatedAt}
+        updatedAt={dataUpdatedAt}
         multipleHandlers={multipleHandlers}
         totalItems={totalItems}
         pageSizeOptions={pageSizeOptions}

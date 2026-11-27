@@ -142,6 +142,15 @@ export const apiJobAllFacets = (params: RemoteTableParams, signal?: AbortSignal)
     signal,
   })
 
+interface ActiveJobCounts {
+  running: number
+  waiting: number
+  activeUsers: number
+}
+
+export const apiJobActiveCounts = (signal?: AbortSignal) =>
+  apiV1Get<IResponse<ActiveJobCounts>>(`${JOB_URL}/all/active-counts`, { signal })
+
 export enum JobPhase {
   Prequeue = 'Prequeue',
   Pending = 'Pending',

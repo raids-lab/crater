@@ -94,7 +94,7 @@ func (mgr *VolcanojobMgr) CreatePytorchJob(c *gin.Context) {
 
 	// 2. Node Affinity and Tolerations
 	baseAffinity := GenerateNodeAffinity(req.Selectors, jobResources)
-	baseTolerations := GenerateTaintTolerationsForAccount(token)
+	baseTolerations := util.AccountTolerations(token)
 	envs := GenerateEnvs(c, token, jobName, req.Envs)
 
 	// 3. Labels and Annotations

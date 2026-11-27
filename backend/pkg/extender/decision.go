@@ -20,9 +20,9 @@ const maxQueueHierarchyDepth = 8
 
 // Reasons of the Warning events recorded on a held vcjob.
 const (
-	reasonQueueQuotaExceeded     = "QueueQuotaExceeded"
-	reasonBlockedByTimedOutJob   = "BlockedByTimedOutJob"
-	reasonExceedsQueueCapability = "ExceedsQueueCapability"
+	ReasonQueueQuotaExceeded     = "QueueQuotaExceeded"
+	ReasonBlockedByTimedOutJob   = "BlockedByTimedOutJob"
+	ReasonExceedsQueueCapability = "ExceedsQueueCapability"
 )
 
 // vote carries the answer plus the structured log fields that are the only diagnosis channel volcano
@@ -65,7 +65,7 @@ func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
 
 	if result := snap.quotaVerdict(candidate, s.accumulator); result != nil && result.Exceeded {
 		quota := formatQuotaDetails(result.Details)
-		s.warnHeld(candidate, reasonQueueQuotaExceeded, "per-user queue quota would be exceeded")
+		s.warnHeld(candidate, ReasonQueueQuotaExceeded, "per-user queue quota would be exceeded")
 		return vote{status: voteReject, fields: []any{
 			"job", jobName,
 			"cause", "queue quota exceeded",
@@ -76,7 +76,7 @@ func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
 	}
 
 	if blocker := snap.blockerFor(candidate, s.accumulator); blocker != nil {
-		s.warnHeld(candidate, reasonBlockedByTimedOutJob, "waiting behind a timed-out job")
+		s.warnHeld(candidate, ReasonBlockedByTimedOutJob, "waiting behind a timed-out job")
 		return vote{status: voteReject, fields: []any{
 			"job", jobName,
 			"cause", "blocked by timed out job",
@@ -90,7 +90,7 @@ func (s *Server) decide(ctx context.Context, req *requestJobInfo) vote {
 	// Capacity rejects it every round: the minimum demand exceeds the queue's or an ancestor's
 	// capability. Abstain without reserving headroom; capacity's own reason lands only on the pod group.
 	if exceeded := snap.exceededCapability(candidate); exceeded != "" {
-		s.warnHeld(candidate, reasonExceedsQueueCapability, "minimum demand exceeds queue capability")
+		s.warnHeld(candidate, ReasonExceedsQueueCapability, "minimum demand exceeds queue capability")
 		return vote{status: voteAbstain, fields: []any{
 			"job", jobName,
 			"skip", "exceeds queue capability",

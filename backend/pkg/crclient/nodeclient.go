@@ -19,6 +19,7 @@ import (
 	"github.com/raids-lab/crater/pkg/indexer"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/utils"
+	"github.com/raids-lab/crater/pkg/vcjob/admission"
 )
 
 const (
@@ -80,9 +81,10 @@ type NodeBriefInfo struct {
 	GPUDriver     string                   `json:"gpuDriver"`
 	Address       string                   `json:"address"`
 
-	Unschedulable bool                       `json:"unschedulable"`
-	ReadyStatus   corev1.ConditionStatus     `json:"readyStatus"`
-	Pressures     []corev1.NodeConditionType `json:"pressures,omitempty"`
+	Unschedulable         bool                       `json:"unschedulable"`
+	ReadyStatus           corev1.ConditionStatus     `json:"readyStatus"`
+	Pressures             []corev1.NodeConditionType `json:"pressures,omitempty"`
+	SchedulableForAccount bool                       `json:"schedulableForAccount"`
 }
 
 type Pod struct {
@@ -300,7 +302,7 @@ func cpuModelFromLabels(node *corev1.Node) string {
 }
 
 // ListNodes 获取所有 Node 列表
-func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
+func (nc *NodeClient) ListNodes(ctx context.Context, tolerations ...corev1.Toleration) ([]NodeBriefInfo, error) {
 	var nodes corev1.NodeList
 
 	err := nc.List(ctx, &nodes)
@@ -309,6 +311,7 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 	}
 
 	nodeInfos := make([]NodeBriefInfo, len(nodes.Items))
+	accountPod := corev1.PodSpec{Tolerations: tolerations}
 
 	// Loop through each node and calculate resources from pods
 	for i := range nodes.Items {
@@ -353,23 +356,24 @@ func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 		readyStatus, pressures := getNodeReadinessAndPressures(node.Status.Conditions)
 
 		nodeInfos[i] = NodeBriefInfo{
-			Name:          node.Name,
-			Role:          getNodeRole(node),
-			Arch:          node.Status.NodeInfo.Architecture,
-			Status:        getNodeStatus(node),
-			Unschedulable: node.Spec.Unschedulable,
-			ReadyStatus:   readyStatus,
-			Pressures:     pressures,
-			Vendor:        vendor,
-			Taints:        node.Spec.Taints,
-			Capacity:      node.Status.Capacity,
-			Allocatable:   node.Status.Allocatable,
-			Used:          usedResources,
-			Workloads:     workloadCount,
-			Annotations:   node.Annotations,
-			KernelVersion: node.Status.NodeInfo.KernelVersion,
-			GPUDriver:     gpuDriver,
-			Address:       nodeIP,
+			Name:                  node.Name,
+			Role:                  getNodeRole(node),
+			Arch:                  node.Status.NodeInfo.Architecture,
+			Status:                getNodeStatus(node),
+			Unschedulable:         node.Spec.Unschedulable,
+			ReadyStatus:           readyStatus,
+			Pressures:             pressures,
+			SchedulableForAccount: admission.NodeMatchesPodSchedulingConstraints(node, &accountPod),
+			Vendor:                vendor,
+			Taints:                node.Spec.Taints,
+			Capacity:              node.Status.Capacity,
+			Allocatable:           node.Status.Allocatable,
+			Used:                  usedResources,
+			Workloads:             workloadCount,
+			Annotations:           node.Annotations,
+			KernelVersion:         node.Status.NodeInfo.KernelVersion,
+			GPUDriver:             gpuDriver,
+			Address:               nodeIP,
 		}
 	}
 

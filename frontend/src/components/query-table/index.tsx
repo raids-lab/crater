@@ -52,7 +52,10 @@ interface DataTableProps<TData, TValue> extends React.HTMLAttributes<HTMLDivElem
     description: string
   }
   storageKey: string
-  query: UseQueryResult<TData[], Error>
+  query: Pick<
+    UseQueryResult<TData[], Error>,
+    'data' | 'error' | 'isError' | 'isLoading' | 'dataUpdatedAt'
+  > & { refetch: () => void }
   columns: ColumnDef<TData, TValue>[]
   toolbarConfig?: DataTableToolbarConfig
   multipleHandlers?: MultipleHandler<TData>[]

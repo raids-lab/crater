@@ -36,6 +36,7 @@ import JupyterIcon from '@/components/icon/jupyter-icon'
 import JobResourceSummary from '@/components/job/job-resource-summary'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
+import { QueueShortcut } from '@/components/job/queue/navigation'
 import { getHeader, getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
 import SimpleTooltip from '@/components/label/simple-tooltip'
@@ -308,6 +309,7 @@ function RouteComponent() {
       ]}
     >
       <div className="flex flex-row gap-3">
+        <QueueShortcut />
         <DocsButton title="查看文档" url="quick-start/interactive" />
         <ListedNewJobButton mode="inter" />
       </div>

@@ -18,18 +18,10 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ColumnDef } from '@tanstack/react-table'
 import { t } from 'i18next'
-import { CalendarIcon, LockIcon, Trash2Icon } from 'lucide-react'
+import { LockIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 
 import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
@@ -38,6 +30,7 @@ import ResourceBadges from '@/components/badge/resource-badges'
 import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
+import { JobDateRangeSelect } from '@/components/job/overview/job-date-range-select'
 import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
 import UserLabel from '@/components/label/user-label'
@@ -92,7 +85,7 @@ export const getHeader = (key: string): string => {
   }
 }
 
-const AdminJobOverview = () => {
+const AdminJobOverview = ({ hideHeading = false }: { hideHeading?: boolean } = {}) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [selectedJobs, setSelectedJobs] = useState<IJobInfo[]>([])
@@ -301,10 +294,14 @@ const AdminJobOverview = () => {
   return (
     <>
       <RemoteDataTable
-        info={{
-          title: t('adminJobOverview.title'),
-          description: t('adminJobOverview.description'),
-        }}
+        info={
+          hideHeading
+            ? undefined
+            : {
+                title: t('adminJobOverview.title'),
+                description: t('adminJobOverview.description'),
+              }
+        }
         query={vcjobQuery}
         state={tableState}
         columns={vcjobColumns}
@@ -353,29 +350,16 @@ const AdminJobOverview = () => {
           },
         ]}
       >
-        <Select
-          value={days.toString()}
-          onValueChange={(value) => {
+        <JobDateRangeSelect
+          days={days}
+          allowAll
+          onChange={(value) => {
             tableState.setColumnFilters((current) => [
               ...current.filter(({ id }) => id !== 'days'),
-              { id: 'days', value: [value] },
+              { id: 'days', value: [String(value)] },
             ])
           }}
-        >
-          <SelectTrigger className="bg-background h-9 pr-2 pl-3">
-            <CalendarIcon />
-            <SelectValue placeholder={days.toString()} />
-          </SelectTrigger>
-          <SelectContent side="top">
-            {[7, 14, 30, 90, -1].map((pageSize) => (
-              <SelectItem key={pageSize} value={`${pageSize}`}>
-                {pageSize === -1
-                  ? t('jobs.select.all')
-                  : t('jobs.select.recentDays', { days: pageSize })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       </RemoteDataTable>
 
       {/* Duration Dialog for locking/unlocking jobs (batch operation) */}

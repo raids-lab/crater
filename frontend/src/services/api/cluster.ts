@@ -44,6 +44,7 @@ export interface INodeBriefInfo {
   arch: string
   status: NodeStatus
   unschedulable?: boolean
+  schedulableForAccount?: boolean
   readyStatus?: 'True' | 'False' | 'Unknown'
   pressures?: NodeStatus[]
   vendor: string

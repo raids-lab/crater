@@ -36,6 +36,7 @@ func NewPage[T any](items []T, total int64, page, pageSize int) Page[T] {
 
 type FacetItem struct {
 	Value string `json:"value"`
+	Label string `json:"label,omitempty"`
 	Count int64  `json:"count"`
 }
 

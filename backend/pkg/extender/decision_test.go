@@ -143,10 +143,10 @@ func TestDecideQuota(t *testing.T) {
 		s.decide(t.Context(), vcjobRequest(jobA))
 		So(recordedEvents(s), ShouldBeEmpty)
 		uid := s.session.snap.byName[jobA].uid
-		s.lastWarned.Add(uid, heldWarning{reason: reasonBlockedByTimedOutJob, at: utils.GetLocalTime()})
+		s.lastWarned.Add(uid, heldWarning{reason: ReasonBlockedByTimedOutJob, at: utils.GetLocalTime()})
 		s.decide(t.Context(), vcjobRequest(jobA))
 		So(recordedEvents(s), ShouldResemble, quotaEvent)
-		s.lastWarned.Add(uid, heldWarning{reason: reasonQueueQuotaExceeded, at: utils.GetLocalTime().Add(-heldWarningRefresh)})
+		s.lastWarned.Add(uid, heldWarning{reason: ReasonQueueQuotaExceeded, at: utils.GetLocalTime().Add(-heldWarningRefresh)})
 		s.decide(t.Context(), vcjobRequest(jobA))
 		So(recordedEvents(s), ShouldResemble, quotaEvent)
 	})

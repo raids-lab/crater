@@ -19,22 +19,33 @@ import { ColumnDef } from '@tanstack/react-table'
 import { type Locale, enUS, ja, ko, zhCN } from 'date-fns/locale'
 import { useAtomValue } from 'jotai'
 import { ClockIcon, FlaskConicalIcon, GpuIcon, UsersRoundIcon } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
+
+import JobPhaseLabel from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import DocsButton from '@/components/button/docs-button'
-import NivoPie from '@/components/chart/nivo-pie'
-import PieCard from '@/components/chart/pie-card'
 import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { BillingSummaryCards } from '@/components/custom/billing-summary-cards'
 import { TimeDistance } from '@/components/custom/time-distance'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { getHeader } from '@/components/job/overview/admin-jobs'
-import { getJobOverviewSummary, getRemoteJobToolbarConfig } from '@/components/job/statuses'
+import { JobDateRangeSelect } from '@/components/job/overview/job-date-range-select'
+import {
+  AcceleratorPanel,
+  AccountQueuePanel,
+  JobActivityPanel,
+  UserSubmissionsPanel,
+  getAcceleratorAllocations,
+} from '@/components/job/overview/overview-panels'
+import { QueueBoard } from '@/components/job/queue/board'
+import { JobPageTabs } from '@/components/job/queue/navigation'
+import { getJobOverviewPhases, getRemoteJobToolbarConfig } from '@/components/job/statuses'
+import { JobNameCell } from '@/components/label/job-name-label'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import { SectionCards } from '@/components/metrics/section-cards'
@@ -54,8 +65,10 @@ import { apiContextBillingSummary } from '@/services/api/context'
 import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
   IJobInfo,
+  JobDisplayPhase,
   JobPhase,
   JobType,
+  apiJobActiveCounts,
   apiJobAllFacets,
   apiJobAllList,
   getDisplayJobPhase,
@@ -67,26 +80,44 @@ import useJobTableState from '@/hooks/use-job-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { getUserPseudonym } from '@/utils/pseudonym'
-import { atomUserInfo, globalHideUsername } from '@/utils/store'
+import { atomUserContext, atomUserInfo, globalHideUsername, globalJobUrl } from '@/utils/store'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
+type OverviewSearch = { tab?: 'jobs' | 'queue' | 'nodes'; mine?: boolean; submitted?: boolean }
+
 export const Route = createFileRoute('/portal/overview/')({
+  validateSearch: (raw: Record<string, unknown>): OverviewSearch => ({
+    tab: raw.tab === 'jobs' || raw.tab === 'nodes' || raw.tab === 'queue' ? raw.tab : undefined,
+    mine: raw.tab === 'queue' && (raw.mine === true || raw.mine === 'true') ? true : undefined,
+    submitted: raw.tab === 'jobs' && raw.submitted === true ? true : undefined,
+  }),
   component: Overview,
 })
 
 type JobTableRow = IJobInfo
-
-const overviewSummaryParams: RemoteTableParams = {
-  page: 1,
-  page_size: 1,
-  filters: { days: ['7'] },
-}
+const waitingPhases = [JobPhase.Pending, JobDisplayPhase.Inqueue, JobDisplayPhase.Starting]
+const activePhases = [JobPhase.Running, ...waitingPhases]
 
 function Overview() {
   const { i18n, t } = useTranslation()
-  const userInfo = useAtomValue(atomUserInfo)
-  const nodeQuery = useQuery(queryNodes(true))
+  const [overviewDays, setOverviewDays] = useState(7)
+  const account = useAtomValue(atomUserContext)
+  const username = useAtomValue(atomUserInfo)?.name
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const volcano = useAtomValue(globalJobUrl) === 'vcjobs'
+  const tab = search.tab === 'queue' && !volcano ? 'overview' : (search.tab ?? 'overview')
+  const setTab = (next: string) =>
+    void navigate({
+      search: { tab: next === 'overview' ? undefined : (next as OverviewSearch['tab']) },
+    })
+  const nodeQuery = useQuery({
+    ...queryNodes(true, account?.queue),
+    enabled: !!account?.queue && (tab === 'overview' || tab === 'nodes'),
+    staleTime: REFETCH_INTERVAL,
+    refetchInterval: tab === 'overview' ? 3 * REFETCH_INTERVAL : false,
+  })
   const { getNicknameByName } = useAccountNameLookup()
   const { data: billingStatus } = useQuery({
     queryKey: ['system-config', 'billing-status'],
@@ -97,9 +128,21 @@ function Overview() {
     sorting: [{ id: 'createdAt', desc: true }],
     columnFilters: [
       { id: 'days', value: ['7'] },
-      { id: 'status', value: ['Running', 'Pending', 'Inqueue', 'Starting'] },
+      { id: 'status', value: activePhases },
     ],
   })
+  const tableDays = Number(tableState.params.filters.days?.[0] ?? 7)
+  const tableParams: RemoteTableParams = search.submitted
+    ? tableState.params
+    : {
+        ...tableState.params,
+        filters: { ...tableState.params.filters, include_running: ['true'] },
+      }
+  const overviewSummaryParams: RemoteTableParams = {
+    page: 1,
+    page_size: 1,
+    filters: { days: [String(overviewDays)], summary: ['submissions'] },
+  }
 
   // 获取当前语言对应的 date-fns locale
   const getDateLocale = useCallback((): Locale => {
@@ -123,6 +166,18 @@ function Overview() {
           <DataTableColumnHeader column={column} title={getHeader('jobType')} />
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
+      },
+      {
+        accessorKey: 'name',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader('jobName')} />
+        ),
+        cell: ({ row }) => (
+          <JobNameCell
+            jobInfo={row.original}
+            linkable={!!username && row.original.userInfo?.username === username}
+          />
+        ),
       },
       {
         accessorKey: 'queue',
@@ -233,23 +288,32 @@ function Overview() {
         sortingFn: 'datetime',
       },
     ],
-    [billingVisible]
+    [billingVisible, username]
   )
 
   const jobQuery = useQuery({
-    queryKey: buildRemoteQueryKey('overview-jobs', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobAllList(tableState.params, signal)).data,
+    queryKey: buildRemoteQueryKey('overview-jobs', tableParams),
+    queryFn: async ({ signal }) => (await apiJobAllList(tableParams, signal)).data,
+    enabled: tab === 'jobs',
     placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
   const jobFacetsQuery = useQuery({
-    queryKey: buildFacetQueryKey('overview-jobs', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobAllFacets(tableState.params, signal)).data,
+    queryKey: buildFacetQueryKey('overview-jobs', tableParams),
+    queryFn: async ({ signal }) => (await apiJobAllFacets(tableParams, signal)).data,
+    enabled: tab === 'jobs',
     refetchInterval: REFETCH_INTERVAL,
   })
   const jobSummaryFacetsQuery = useQuery({
     queryKey: buildFacetQueryKey('overview-job-summary', overviewSummaryParams),
     queryFn: async ({ signal }) => (await apiJobAllFacets(overviewSummaryParams, signal)).data,
+    enabled: tab === 'overview',
+    refetchInterval: overviewDays > 14 ? 3 * REFETCH_INTERVAL : REFETCH_INTERVAL,
+  })
+  const activeJobCountsQuery = useQuery({
+    queryKey: ['overview', 'active-job-counts'],
+    queryFn: async ({ signal }) => (await apiJobActiveCounts(signal)).data,
+    enabled: tab === 'overview',
     refetchInterval: REFETCH_INTERVAL,
   })
   const toolbarConfig = (() => {
@@ -258,168 +322,216 @@ function Overview() {
       ...config,
       getHeader,
       filterOptions: config.filterOptions.map((filter) =>
-        filter.key === 'status'
-          ? { ...filter, defaultValues: ['Running', 'Pending', 'Inqueue', 'Starting'] }
-          : filter
+        filter.key === 'status' ? { ...filter, defaultValues: activePhases } : filter
       ),
     }
   })()
 
-  const resourcesQuery = useQuery(
-    queryResources(true, (resource) => {
-      return resource.type == 'gpu'
-    })
-  )
+  const resourcesQuery = useQuery({
+    ...queryResources(true, (resource) => resource.type === 'gpu'),
+    enabled: tab === 'overview' || tab === 'nodes',
+  })
   const billingSummaryQuery = useQuery({
     queryKey: ['context', 'billing-summary', 'overview'],
     queryFn: () => apiContextBillingSummary().then((res) => res.data),
     enabled: billingVisible,
   })
 
-  const {
-    phases: jobStatus,
-    runningCount,
-    waitingCount,
-  } = getJobOverviewSummary(jobSummaryFacetsQuery.data)
+  const jobStatus = getJobOverviewPhases(jobSummaryFacetsQuery.data)
+  const activeJobCounts = activeJobCountsQuery.data
 
   const hideUsername = useAtomValue(globalHideUsername)
-  const userStatus = useMemo(() => {
-    return (jobSummaryFacetsQuery.data?.facets.owner ?? []).map(({ value, count }) => ({
+  const userSubmissions = (jobSummaryFacetsQuery.data?.facets.submitter ?? []).map(
+    ({ value, label, count }) => ({
       id: value,
-      label: hideUsername ? getUserPseudonym(value) : value,
+      label: hideUsername || !label ? getUserPseudonym(value) : label,
       value: count,
-    }))
-  }, [hideUsername, jobSummaryFacetsQuery.data])
+    })
+  )
 
-  const gpuStatus = useMemo(() => {
-    return (jobSummaryFacetsQuery.data?.facets.gpu_resource ?? []).map(({ value, count }) => ({
-      id: value,
-      label: value,
-      value: count,
-    }))
-  }, [jobSummaryFacetsQuery.data])
+  const hasAccountScheduling = nodeQuery.data?.every(
+    (node) => node.schedulableForAccount !== undefined
+  )
+  const accelerators = useMemo(
+    () =>
+      hasAccountScheduling
+        ? getAcceleratorAllocations(nodeQuery.data ?? [], resourcesQuery.data ?? [])
+        : [],
+    [hasAccountScheduling, nodeQuery.data, resourcesQuery.data]
+  )
+  const acceleratorSummary = accelerators.reduce(
+    (sum, row) => ({
+      total: sum.total + row.total,
+      schedulable: sum.schedulable + row.schedulable,
+      used: sum.used + row.used,
+    }),
+    { total: 0, schedulable: 0, used: 0 }
+  )
+  const allocation = acceleratorSummary.schedulable
+    ? Math.round((acceleratorSummary.used / acceleratorSummary.schedulable) * 100)
+    : undefined
+  const jobPanelState = {
+    loading: jobSummaryFacetsQuery.isPending,
+    error: jobSummaryFacetsQuery.isError,
+  }
 
-  const gpuAllocation = useMemo(() => {
-    if (resourcesQuery.data === undefined) {
-      return 0
-    }
-    const total = resourcesQuery.data.reduce((acc, resource) => {
-      if (resource.type === 'gpu') {
-        return acc + resource.amount
-      }
-      return acc
-    }, 0)
-    const used = gpuStatus.reduce((acc, item) => {
-      return acc + item.value
-    }, 0)
-    return total > 0 ? (used / total) * 100 : 0
-  }, [resourcesQuery.data, gpuStatus])
+  const openClusterJobs = (phases: string[], days = overviewDays) => {
+    tableState.setSearch('')
+    tableState.setColumnFilters([
+      { id: 'days', value: [String(days)] },
+      { id: 'status', value: phases },
+    ])
+    void navigate({ search: { tab: 'jobs', submitted: days > 0 || undefined } })
+  }
 
   return (
-    <>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <UserBanAlert className="lg:col-span-2" />
-        <PageTitle
-          title={`欢迎回来，${userInfo?.nickname} 👋`}
-          description="使用异构集群管理平台 Crater 加速您的科研工作"
-          className="lg:col-span-2"
-        >
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {billingVisible ? (
-              <BillingSummaryCards
-                summary={billingSummaryQuery.data}
-                emphasis="inline"
-                compact
-                className="shrink-0"
-              />
-            ) : null}
-            <DocsButton title="平台文档" url="" />
-            <ListedNewJobButton mode="all" />
-          </div>
-        </PageTitle>
+    <Tabs value={tab} onValueChange={setTab} className="min-w-0 gap-4">
+      <UserBanAlert />
+      <PageTitle title={t('queueBoard.platform')}>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {billingVisible ? (
+            <BillingSummaryCards
+              summary={billingSummaryQuery.data}
+              emphasis="inline"
+              compact
+              className="shrink-0"
+            />
+          ) : null}
+          <DocsButton title="平台文档" url="" />
+          <ListedNewJobButton mode="all" />
+        </div>
+      </PageTitle>
+      <JobPageTabs
+        label={t('queueBoard.platform')}
+        items={[
+          { value: 'overview', label: t('queueBoard.overview') },
+          { value: 'jobs', label: t('queueBoard.clusterJobs') },
+          ...(volcano ? [{ value: 'queue', label: t('queueBoard.accountQueue') }] : []),
+          { value: 'nodes', label: t('queueBoard.nodes') },
+        ]}
+      />
+      <TabsContent value="overview" className="grid min-w-0 gap-4">
         <SectionCards
           items={[
             {
-              title: '运行中作业',
-              value: runningCount,
+              title: t('overviewDashboard.running'),
+              value: activeJobCounts?.running ?? '—',
               className: 'text-highlight-blue',
-              description: '正在运行的作业数量',
+              description: t('overviewDashboard.runningHint'),
               icon: FlaskConicalIcon,
             },
             {
               title: t('jobs.statuses.waiting.label'),
-              value: waitingCount,
+              value: activeJobCounts ? (
+                <button
+                  type="button"
+                  className="hover:underline"
+                  aria-label={t('queueBoard.currentWaiting')}
+                  onClick={() => openClusterJobs(waitingPhases, -1)}
+                >
+                  {activeJobCounts.waiting}
+                </button>
+              ) : (
+                '—'
+              ),
               className: 'text-highlight-purple',
-              description: t('jobs.statuses.waiting.description'),
+              description: t('overviewDashboard.waitingHint'),
               icon: ClockIcon,
             },
             {
-              title: '活跃用户',
-              value: userStatus.length,
+              title: t('overviewDashboard.activeUsers'),
+              value: activeJobCounts?.activeUsers ?? '—',
               className: 'text-highlight-emerald',
-              description: '当前活跃的用户数量',
+              description: t('overviewDashboard.currentActiveUsersHint'),
               icon: UsersRoundIcon,
             },
             {
-              title: '加速卡分配率',
-              value: `${gpuAllocation.toFixed()}%`,
+              title: t('overviewDashboard.allocation'),
+              value: allocation === undefined ? '—' : `${allocation}%`,
               className: 'text-highlight-orange',
-              description: '当前 GPU 资源的分配率',
+              description: t('overviewDashboard.allocationHint'),
               icon: GpuIcon,
             },
           ]}
-          className="lg:col-span-2"
         />
-        <PieCard
-          icon={FlaskConicalIcon}
-          cardTitle="作业状态"
-          cardDescription="查看集群近 7 天作业的状态统计"
-          isLoading={jobSummaryFacetsQuery.isLoading}
-        >
-          <NivoPie
-            data={jobStatus}
-            margin={{ top: 20, bottom: 30 }}
-            colors={({ id }) => {
-              return jobPhases.find((x) => x.value === id)?.color ?? '#000'
-            }}
-            arcLabelsTextColor="#ffffff"
+        <div className="grid min-w-0 gap-4 @4xl/main:grid-cols-2">
+          <JobActivityPanel
+            rows={jobStatus}
+            days={overviewDays}
+            onDaysChange={setOverviewDays}
+            onOpen={(phase) => openClusterJobs([phase])}
+            {...jobPanelState}
           />
-        </PieCard>
-        <PieCard
-          icon={UsersRoundIcon}
-          cardTitle="用户统计"
-          cardDescription="当前正在运行作业所属的用户"
-          isLoading={jobSummaryFacetsQuery.isLoading}
+          <UserSubmissionsPanel rows={userSubmissions} days={overviewDays} {...jobPanelState} />
+          <AcceleratorPanel
+            rows={accelerators}
+            summary={acceleratorSummary}
+            loading={nodeQuery.isPending || resourcesQuery.isPending}
+            error={nodeQuery.isError || resourcesQuery.isError || hasAccountScheduling === false}
+            onOpen={() => setTab('nodes')}
+          />
+          {volcano && <AccountQueuePanel onOpen={() => setTab('queue')} />}
+        </div>
+      </TabsContent>
+      <TabsContent value="jobs">
+        <RemoteDataTable
+          info={{
+            title: '作业信息',
+            description:
+              tableDays === -1
+                ? t('overviewDashboard.allClusterJobs')
+                : t(
+                    search.submitted
+                      ? 'overviewDashboard.clusterJobsRange'
+                      : 'overviewDashboard.clusterJobsWithRunning',
+                    { days: tableDays }
+                  ),
+          }}
+          query={jobQuery}
+          state={tableState}
+          columns={jobColumns}
+          getRowId={(row) => row.jobName}
+          toolbarConfig={toolbarConfig}
         >
-          <NivoPie data={userStatus} margin={{ top: 20, bottom: 30 }} />
-        </PieCard>
-      </div>
-      <RemoteDataTable
-        info={{
-          title: '作业信息',
-          description: '查看近 7 天集群作业的运行情况',
-        }}
-        query={jobQuery}
-        state={tableState}
-        columns={jobColumns}
-        getRowId={(row) => row.jobName}
-        toolbarConfig={toolbarConfig}
-      />
-      <DataTable
-        info={{
-          title: '节点信息',
-          description: '集群节点维度的资源分配情况',
-        }}
-        storageKey="overview_nodelist"
-        query={nodeQuery}
-        columns={getNodeColumns(
-          getNicknameByName,
-          resourcesQuery.data?.map((r) => r.name),
-          false,
-          getDateLocale()
-        )}
-        toolbarConfig={nodesToolbarConfig}
-      />
-    </>
+          <JobDateRangeSelect
+            days={tableDays}
+            allowAll
+            onChange={(value) =>
+              tableState.setColumnFilters((current) => [
+                ...current.filter(({ id }) => id !== 'days'),
+                { id: 'days', value: [String(value)] },
+              ])
+            }
+          />
+        </RemoteDataTable>
+      </TabsContent>
+      {volcano && (
+        <TabsContent value="queue">
+          <QueueBoard
+            mine={search.mine}
+            onMineChange={(mine) =>
+              void navigate({ search: { tab: 'queue', mine: mine || undefined } })
+            }
+          />
+        </TabsContent>
+      )}
+      <TabsContent value="nodes">
+        <DataTable
+          info={{
+            title: '节点信息',
+            description: '集群节点维度的资源分配情况',
+          }}
+          storageKey="overview_nodelist"
+          query={nodeQuery}
+          columns={getNodeColumns(
+            getNicknameByName,
+            resourcesQuery.data?.map((r) => r.name),
+            false,
+            getDateLocale()
+          )}
+          toolbarConfig={nodesToolbarConfig}
+        />
+      </TabsContent>
+    </Tabs>
   )
 }
