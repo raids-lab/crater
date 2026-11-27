@@ -116,7 +116,7 @@ export function DurationDialog({
       : t(`durationDialog.title.${action}`)
 
   useEffect(() => {
-    if (!open || !approval || alreadyPermanent) return
+    if (!open || alreadyPermanent || mixedState || isUnlockDialog) return
 
     let timer: ReturnType<typeof setTimeout>
     const updatePreviewTime = () => {
@@ -130,7 +130,7 @@ export function DurationDialog({
 
     updatePreviewTime()
     return () => clearTimeout(timer)
-  }, [open, approval, alreadyPermanent, lockEnd])
+  }, [open, alreadyPermanent, mixedState, isUnlockDialog, lockEnd])
 
   // Update form values when props change
   useEffect(() => {
@@ -299,7 +299,7 @@ export function DurationDialog({
                       form.setValue('hours', val.hours, { shouldValidate: true, shouldDirty: true })
                     }}
                     origin={isExtendDialogOpen ? jobs[0]?.lockedTimestamp : null}
-                    previewNow={approval ? previewNow : undefined}
+                    previewNow={previewNow}
                     jobLockPreview
                   />
                 </>
