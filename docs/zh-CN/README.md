@@ -65,8 +65,8 @@ Crater 适用于多个团队和多类工作负载共享同一套 GPU 集群的�
 
 |  |  |
 | :---: | :---: |
-| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 交互式开发** — Jupyter、WebIDE、终端与外部访问 | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI 工作负载** — 训练、推理、模板与批处理作业 |
-| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 监控** — 实时指标与日志 | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 模型与数据集** — 集中管理资产 |
+| <img src="../../frontend/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 交互式开发** — Jupyter、WebIDE、终端与外部访问 | <img src="../../frontend/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI 工作负载** — 训练、推理、模板与批处理作业 |
+| <img src="../../frontend/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 监控** — 实时指标与日志 | <img src="../../frontend/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 模型与数据集** — 集中管理资产 |
 
 </div>
 
