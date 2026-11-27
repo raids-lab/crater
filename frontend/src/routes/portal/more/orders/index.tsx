@@ -79,7 +79,7 @@ function RouteComponent() {
   if (actionConfig.custom) {
     actionConfig.custom.push({
       key: 'generate-link',
-      label: '复制审批链接',
+      label: t('common.copyLink'),
       icon: <LinkIcon className="size-4" />,
       onClick: handleGenerateLink,
       disabled: (order) => order.status !== 'Pending',
@@ -89,7 +89,7 @@ function RouteComponent() {
     actionConfig.custom = [
       {
         key: 'generate-link',
-        label: '复制审批链接',
+        label: t('common.copyLink'),
         icon: <LinkIcon className="size-4" />,
         onClick: handleGenerateLink,
         disabled: (order) => order.status !== 'Pending',

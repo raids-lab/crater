@@ -195,14 +195,14 @@ export function ConversationSidebar({
                   <DropdownMenuContent align="end" side="right">
                     <DropdownMenuItem onSelect={() => beginRename(conversation)}>
                       <PencilIcon />
-                      {t('craterAgent.renameConversation')}
+                      {t('common.rename')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       variant="destructive"
                       onSelect={() => setDeleteTarget(conversation)}
                     >
                       <Trash2Icon />
-                      {t('craterAgent.deleteConversation')}
+                      {t('common.delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -16,6 +16,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ClockIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -251,6 +252,7 @@ interface JobLockMenuItemProps {
 }
 
 export const JobLockMenuItem = ({ jobInfo, onLock }: JobLockMenuItemProps) => {
+  const { t } = useTranslation()
   const { data: nodes } = useQuery(queryNodes())
 
   const areNodesReady = useMemo(() => {
@@ -266,7 +268,7 @@ export const JobLockMenuItem = ({ jobInfo, onLock }: JobLockMenuItemProps) => {
   const handleLockClick = (e: React.MouseEvent) => {
     if (!areNodesReady) {
       e.preventDefault()
-      toast.error('作业所在节点未在正常运行，暂不支持锁定作业')
+      toast.error(t('jobs.lock.nodeUnavailable'))
       return
     }
 
@@ -280,7 +282,7 @@ export const JobLockMenuItem = ({ jobInfo, onLock }: JobLockMenuItemProps) => {
     >
       <div className="flex w-full items-center gap-2">
         <ClockIcon className="text-highlight-blue size-4" />
-        申请锁定
+        {t('jobs.actions.dropdown.requestLock')}
       </div>
     </DropdownMenuItem>
   )

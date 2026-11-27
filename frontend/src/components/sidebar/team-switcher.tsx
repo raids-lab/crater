@@ -22,6 +22,7 @@ import { zhCN } from 'date-fns/locale'
 import { useAtom } from 'jotai'
 import { ChevronsUpDown } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import {
@@ -47,6 +48,7 @@ import { atomUserContext } from '@/utils/store'
 import { showErrorToast } from '@/utils/toast'
 
 export function TeamSwitcher() {
+  const { t } = useTranslation()
   const { isMobile } = useSidebar()
 
   const [account, setAccount] = useAtom(atomUserContext)
@@ -152,7 +154,9 @@ export function TeamSwitcher() {
             side={isMobile ? 'bottom' : 'right'}
             sideOffset={4}
           >
-            <DropdownMenuLabel className="text-muted-foreground text-xs">账户</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
+              {t('teamSwitcher.account')}
+            </DropdownMenuLabel>
             {queues?.map((queue) => (
               <DropdownMenuItem
                 key={queue.nickname}

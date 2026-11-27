@@ -314,7 +314,7 @@ function UserList() {
                       setAdjustDialogOpen(true)
                     }}
                   >
-                    {t('userTable.adjustBalance.action', { defaultValue: '调整额外点数' })}
+                    {t('userTable.adjustBalance.action')}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSub>

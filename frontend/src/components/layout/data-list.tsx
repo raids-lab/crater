@@ -342,19 +342,19 @@ export default function DataList({
                           size="icon"
                           className="text-muted-foreground hover:text-foreground h-8 w-8 shrink-0 p-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                         >
-                          <span className="sr-only">更多操作</span>
+                          <span className="sr-only">{t('common.openMenu')}</span>
                           <EllipsisVerticalIcon className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel className="text-muted-foreground text-xs">
-                          操作
+                          {t('common.actions')}
                         </DropdownMenuLabel>
                         {handleDelete && (
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="group">
                               <Trash2Icon className="text-destructive mr-2 size-4" />
-                              删除
+                              {t('common.delete')}
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
                         )}

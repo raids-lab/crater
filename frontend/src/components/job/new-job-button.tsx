@@ -25,31 +25,41 @@ import { JobType } from '@/services/api/vcjob'
 export const linkJupyterJob = linkOptions({
   to: '/portal/jobs/new/jupyter-job',
   search: { fromJob: '', fromTemplate: 0 },
-  label: t('jobs.new.jupyterJob'),
+  get label() {
+    return t('jobs.new.jupyterJob')
+  },
 })
 
 export const linkWebIDEJob = linkOptions({
   to: '/portal/jobs/new/webide-job',
   search: { fromJob: '', fromTemplate: 0 },
-  label: t('jobs.new.webIDEJob'),
+  get label() {
+    return t('jobs.new.webIDEJob')
+  },
 })
 
 export const linkPyTorchDDPJob = linkOptions({
   to: '/portal/jobs/new/pytorch-ddp-job',
   search: { fromJob: '', fromTemplate: 0 },
-  label: t('jobs.new.pytorchDDPJob'),
+  get label() {
+    return t('jobs.new.pytorchDDPJob')
+  },
 })
 
 export const linkTensorFlowPSJob = linkOptions({
   to: '/portal/jobs/new/tensorflow-ps-job',
   search: { fromJob: '', fromTemplate: 0 },
-  label: t('jobs.new.tensorflowPSJob'),
+  get label() {
+    return t('jobs.new.tensorflowPSJob')
+  },
 })
 
 export const linkSingleJob = linkOptions({
   to: '/portal/jobs/new/single-job',
   search: { fromJob: '', fromTemplate: 0 },
-  label: t('jobs.new.singleJob'),
+  get label() {
+    return t('jobs.new.singleJob')
+  },
 })
 
 export const interOptions = [linkJupyterJob, linkWebIDEJob]
@@ -105,7 +115,7 @@ const ListedNewJobButton = ({ mode }: { mode: 'inter' | 'custom' | 'all' }) => {
     <ListedButton
       icon={<PlusCircleIcon className="size-4" />}
       renderTitle={(title) => `${t('jobs.new.action')}${title || ''}`}
-      itemTitle="作业类型"
+      itemTitle={t('jobs.new.type')}
       items={items}
       cacheKey={mode}
     />

@@ -30,6 +30,7 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import { type FC, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -132,6 +133,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
   const [openEnvdRawSheet, setOpenEnvdRawSheet] = useState(false)
   const [openCudaBaseImageSheet, setOpenCudaBaseImageSheet] = useState(false)
   const [imagePackName, setImagePackName] = useState<string>('')
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
   const [openCheckDialog, setCheckOpenDialog] = useState(false)
@@ -263,13 +265,13 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 p-0">
-                    <span className="sr-only">操作</span>
+                    <span className="sr-only">{t('common.openMenu')}</span>
                     <DotsHorizontalIcon className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel className="text-muted-foreground text-xs">
-                    操作
+                    {t('common.actions')}
                   </DropdownMenuLabel>
                   <DropdownMenuItem
                     onClick={() => {
@@ -288,7 +290,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     }}
                   >
                     <InfoIcon className="text-highlight-emerald" />
-                    详情
+                    {t('common.details')}
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => {
@@ -307,7 +309,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     }}
                   >
                     <CopyIcon className="text-highlight-blue size-4" />
-                    镜像链接
+                    {t('common.copyLink')}
                   </DropdownMenuItem>
 
                   <DropdownMenuItem
@@ -327,7 +329,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     }}
                   >
                     <RedoDotIcon className="text-highlight-purple size-4" />
-                    克隆
+                    {t('common.clone')}
                   </DropdownMenuItem>
 
                   {/* 根据状态显示"取消"或"删除" */}
@@ -337,7 +339,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem disabled={isPending}>
                         <Trash2Icon className="text-destructive" />
-                        删除
+                        {t('common.delete')}
                       </DropdownMenuItem>
                     </AlertDialogTrigger>
                   ) : (
@@ -348,7 +350,7 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
                       }}
                     >
                       <CircleX className="size-4 text-amber-600" />
-                      {isPending ? '取消中...' : '取消'}
+                      {isPending ? t('common.canceling') : t('common.cancel')}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -488,33 +490,33 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
             <DocsButton title="查看文档" url="image/imageCreate" />
             <ListedButton
               icon={<PackagePlusIcon />}
-              renderTitle={(title) => title || '构建镜像'}
-              itemTitle="构建方式"
+              renderTitle={(title) => title || t('imageBuild.action')}
+              itemTitle={t('imageBuild.method')}
               items={[
                 {
                   key: 'envd',
-                  title: 'Python + CUDA 自定义构建',
+                  title: t('imageBuild.pythonCuda'),
                   action: () => {
                     setOpenEnvdSheet(true)
                   },
                 },
                 {
                   key: 'pip-apt',
-                  title: '基于现有镜像构建',
+                  title: t('imageBuild.existingImage'),
                   action: () => {
                     setOpenPipAptSheet(true)
                   },
                 },
                 {
                   key: 'dockerfile',
-                  title: '基于 Dockerfile 构建',
+                  title: t('imageBuild.dockerfile'),
                   action: () => {
                     setOpenDockerfileSheet(true)
                   },
                 },
                 {
                   key: 'envd-raw',
-                  title: '基于 Envd 构建',
+                  title: t('imageBuild.envd'),
                   action: () => {
                     setOpenEnvdRawSheet(true)
                   },

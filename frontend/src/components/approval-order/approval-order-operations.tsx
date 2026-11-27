@@ -1,5 +1,6 @@
 import { CheckIcon, EyeIcon, MoreHorizontalIcon, XIcon } from 'lucide-react'
 import { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -47,6 +48,7 @@ export interface ApprovalOrderOperationsProps {
 }
 
 export function ApprovalOrderOperations({ order, config }: ApprovalOrderOperationsProps) {
+  const { t } = useTranslation()
   const hasActions =
     config.view?.show ||
     config.approve?.show ||
@@ -61,7 +63,7 @@ export function ApprovalOrderOperations({ order, config }: ApprovalOrderOperatio
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">打开菜单</span>
+          <span className="sr-only">{t('common.openMenu')}</span>
           <MoreHorizontalIcon className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -69,7 +71,7 @@ export function ApprovalOrderOperations({ order, config }: ApprovalOrderOperatio
         {config.view?.show && (
           <DropdownMenuItem onClick={() => config.view?.onClick(order)}>
             <EyeIcon className="mr-2 h-4 w-4" />
-            {config.view.label || '查看详情'}
+            {config.view.label || t('ApprovalOrderTable.actions.viewDetails')}
           </DropdownMenuItem>
         )}
 
@@ -79,7 +81,7 @@ export function ApprovalOrderOperations({ order, config }: ApprovalOrderOperatio
             disabled={config.approve.disabled?.(order)}
           >
             <CheckIcon className="mr-2 h-4 w-4" />
-            {config.approve.label || '批准'}
+            {config.approve.label || t('ApprovalOrderTable.actions.approve')}
           </DropdownMenuItem>
         )}
 
@@ -89,7 +91,7 @@ export function ApprovalOrderOperations({ order, config }: ApprovalOrderOperatio
             disabled={config.reject.disabled?.(order)}
           >
             <XIcon className="mr-2 h-4 w-4" />
-            {config.reject.label || '拒绝'}
+            {config.reject.label || t('ApprovalOrderTable.actions.reject')}
           </DropdownMenuItem>
         )}
 
