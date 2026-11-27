@@ -36,6 +36,9 @@ func TestGetCompatibilitySendsCLIHeaders(t *testing.T) {
 		if got := r.Header.Get(internalversion.APIVersionHeader); got != strconv.Itoa(internalversion.APIVersion) {
 			t.Errorf("%s = %q, want %d", internalversion.APIVersionHeader, got, internalversion.APIVersion)
 		}
+		if got := r.Header.Get(internalversion.ClientHeader); got != internalversion.ClientTypeCLI {
+			t.Errorf("%s = %q, want %q", internalversion.ClientHeader, got, internalversion.ClientTypeCLI)
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprintf(w, `{"code":0,"data":{"apiVersion":1,"minSupportedCliApiVersion":1,`+
 			`"appVersion":"v1.1.1","shortCommitSHA":"f42b0c2","buildType":"release",`+

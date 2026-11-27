@@ -202,6 +202,7 @@ export const handleApiErrorByCode = (
 
 export const apiClient = createSessionClient({
   prefixUrl: baseURL,
+  clientHeaders: { 'X-Crater-Client': 'web' },
   getAccessToken: () => localStorage.getItem(ACCESS_TOKEN_KEY),
   getRefreshToken: () => localStorage.getItem(REFRESH_TOKEN_KEY),
   saveTokens: (access, refresh) => {

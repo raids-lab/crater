@@ -400,7 +400,7 @@ The table illustrates how to apply this principle. Base each decision on the act
 | Change/remove a CLI-consumed path, method, required field, field type, meaning, authorization requirement, or response structure | Increment on backend and CLI | Raise the minimum on each side where the change prevents the documented operation from completing correctly with the older peer |
 | CLI begins requiring a capability already present in the backend API contract | Unchanged | If there is no fallback, raise the CLI's minimum backend version to the API version that first provided the capability |
 
-The CLI sends `User-Agent: crater-cli/<product-version>` and `X-Crater-API-Version: <APIVersion>`. These headers are untrusted diagnostic metadata: the backend must not use them for authorization, compatibility decisions, response-shape switching, or mandatory rejection. Only the explicit `crater compatibility` diagnostic calls public `GET /api/cli/compatibility`; ordinary business commands do not perform a handshake and must not be gated by compatibility results.
+The CLI sends `User-Agent: crater-cli/<product-version>`, `X-Crater-API-Version: <APIVersion>`, and `X-Crater-Client: cli`; the browser frontend sends `X-Crater-Client: web`. These headers are untrusted, self-declared metadata. The backend may record the client type and CLI version on a created job for display and diagnostics, but it must not use them for authorization, audit conclusions, compatibility decisions, response-shape switching, or mandatory rejection. Only the explicit `crater compatibility` diagnostic calls public `GET /api/cli/compatibility`; ordinary business commands do not perform a handshake and must not be gated by compatibility results.
 
 ## Cross-Module Rules
 

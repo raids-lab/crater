@@ -22,7 +22,7 @@
   - **行为**：不要求登录、不使用已保存 token、不访问 Crater 平台。为选择显示语言，仍可能读取本地 `state.json` 的 `language` 字段。以单行输出当前 CLI 产品版本与 7 位短 commit SHA，格式为 `Crater CLI version <product-version>, build <short-commit>`。无法确定 commit 时使用 `unknown`。
   - **约束**：不接受位置参数，也不能与 `--json` 同时使用；脚本或 Agent 需要结构化构建信息时应使用 `crater version --json`。
 
-CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-Crater-API-Version: <api-version>`，仅供平台诊断，不代表后端会据此改变或拒绝请求。普通业务命令不自动执行 API 兼容性握手。
+CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>`、`X-Crater-API-Version: <api-version>` 与 `X-Crater-Client: cli`。平台可能据此在创建作业时记录客户端类型和 CLI 版本，仅用于展示与诊断；这些 Header 不代表后端会据此鉴权、改变响应结构或拒绝请求。普通业务命令不自动执行 API 兼容性握手。
 
 ### 公共列表分页 (List Pagination)
 

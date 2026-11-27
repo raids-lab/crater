@@ -37,6 +37,7 @@ import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
+import { jobClientColumn } from '@/components/job/job-client-column'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
@@ -180,6 +181,7 @@ const AdminJobOverview = () => {
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
       },
+      jobClientColumn(),
       {
         accessorKey: 'jobName',
         header: ({ column }) => (

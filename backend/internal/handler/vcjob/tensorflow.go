@@ -126,6 +126,7 @@ func (mgr *VolcanojobMgr) CreateTensorflowJob(c *gin.Context) {
 		baseURL,
 		&req.CreateJobCommon,
 		waitingToleranceSeconds,
+		util.GetClientInfo(c),
 	)
 
 	// 4. Create the task spec

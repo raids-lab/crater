@@ -33,6 +33,7 @@ import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import CodeServerIcon from '@/components/icon/code-server-icon'
 import JupyterIcon from '@/components/icon/jupyter-icon'
+import { jobClientColumn } from '@/components/job/job-client-column'
 import JobResourceSummary from '@/components/job/job-resource-summary'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
@@ -135,6 +136,7 @@ function RouteComponent() {
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
       },
+      jobClientColumn(),
       {
         accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,

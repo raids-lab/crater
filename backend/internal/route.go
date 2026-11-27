@@ -19,6 +19,7 @@ type Backend struct {
 
 func Register(registerConfig *handler.RegisterConfig) *Backend {
 	s := &Backend{gin.Default()}
+	s.Use(middleware.ClientIdentity())
 
 	// Kubernetes health check
 	s.GET("/healthz", func(c *gin.Context) {

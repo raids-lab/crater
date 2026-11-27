@@ -16986,6 +16986,12 @@ const docTemplate = `{
                 "billedPointsTotal": {
                     "type": "number"
                 },
+                "clientType": {
+                    "type": "string"
+                },
+                "clientVersion": {
+                    "type": "string"
+                },
                 "completedAt": {
                     "type": "string"
                 },

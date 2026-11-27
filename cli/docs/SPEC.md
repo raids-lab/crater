@@ -100,7 +100,7 @@
 - CLI 的 `APIVersion` 与 `MinSupportedBackendAPIVersion` 定义在 `internal/version/version.go`；它们分别表示 CLI 编译时所依据的共享契约版本、CLI 能支持的最低后端契约版本。
 - 兼容性检查用于定位命令失败的原因。通过后，用户在常规排障中应能排除 API 版本不匹配。按公开命令和选项在旧版本上的实际行为判断最低支持版本，确认回退路径能按约定完成同一操作。版本值以双方源码为准，接口 URL 中的 `/api/v1` 独立维护。
 - 正式 API 契约从 `1` 开始，`0` 不得作为受支持的正式契约发布。握手接口明确返回 `0` 时，CLI 将其作为早于正式契约的旧版本参与最低版本比较，以便输出具体的不兼容条件；字段缺失或负数仍表示未知或非法。
-- 所有经统一客户端发出的请求都带 `User-Agent: crater-cli/<product-version>` 和 `X-Crater-API-Version: <APIVersion>`。两者仅用于日志与诊断，不能作为服务端兼容性判断、鉴权或强制拦截依据。
+- 所有经统一客户端发出的请求都带 `User-Agent: crater-cli/<product-version>`、`X-Crater-API-Version: <APIVersion>` 和 `X-Crater-Client: cli`。平台可以在创建作业时把该自报类型和 CLI 版本记录为作业来源，仅用于展示与诊断；这些 Header 不能作为服务端兼容性判断、鉴权、审计结论或强制拦截依据。
 - 只有显式执行 `crater compatibility` 时才调用一次公开的 `GET /api/cli/compatibility`。响应提供后端 `apiVersion` 与 `minSupportedCliApiVersion`，以及产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间；CLI 只使用两个 API 版本字段检查当前 CLI 是否低于后端最低要求、当前后端是否低于 CLI 最低要求。构建信息仅用于展示和排障，缺失时显示未知，不得影响兼容性结论。
 - 普通业务命令不得自动调用握手接口。诊断命令收到 404 时将其视为旧后端尚未提供握手接口，返回稳定错误 `ERR_API_VERSION_MISMATCH`，同时在 context 保留原始 HTTP 404；其他 HTTP 错误、网络失败或无效响应仍保留对应真实错误。该 404 映射只属于 `crater compatibility`，不改变其他命令的错误语义。这些结果只用于主动检查或排障，不改变其他命令的执行。
 - 不允许增加逐请求拦截中间件、HTTP 426 或按版本切换响应结构；具体业务接口仍按其真实响应决定成功或失败。

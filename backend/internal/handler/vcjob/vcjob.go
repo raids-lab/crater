@@ -520,6 +520,8 @@ type (
 		Owner                   string          `json:"owner"`
 		UserInfo                model.UserInfo  `json:"userInfo"`
 		JobType                 string          `json:"jobType"`
+		ClientType              string          `json:"clientType"`
+		ClientVersion           string          `json:"clientVersion,omitempty"`
 		WaitingToleranceSeconds *int64          `json:"waitingToleranceSeconds,omitempty"`
 		Queue                   string          `json:"queue"`
 		Status                  string          `json:"status"`
@@ -855,6 +857,20 @@ func (mgr *VolcanojobMgr) GetUserJobsInDays(c *gin.Context) {
 	mgr.listJobs(c, userJobsDefaultDays, scope)
 }
 
+func jobClientType(job *model.Job) model.ClientType {
+	if job == nil {
+		return model.ClientTypeUnknown
+	}
+	return util.NormalizeClientType(string(job.ClientType))
+}
+
+func jobClientVersion(job *model.Job) string {
+	if job == nil || job.ClientVersion == nil || jobClientType(job) != model.ClientTypeCLI {
+		return ""
+	}
+	return util.NormalizeClientVersion(*job.ClientVersion)
+}
+
 func convertJobResp(jobs []*model.Job) []JobResp {
 	jobList := make([]JobResp, len(jobs))
 	for i := range jobs {
@@ -868,6 +884,8 @@ func convertJobResp(jobs []*model.Job) []JobResp {
 				Nickname: job.User.Nickname,
 			},
 			JobType:                 string(job.JobType),
+			ClientType:              string(jobClientType(job)),
+			ClientVersion:           jobClientVersion(job),
 			WaitingToleranceSeconds: job.WaitingToleranceSeconds,
 			Queue:                   job.Account.Nickname, // 向后兼容，保持展示账号昵称
 			Status:                  string(job.Status),
@@ -895,6 +913,8 @@ type (
 		UserInfo                model.UserInfo                `json:"userInfo"`
 		JobName                 string                        `json:"jobName"`
 		JobType                 model.JobType                 `json:"jobType"`
+		ClientType              string                        `json:"clientType"`
+		ClientVersion           string                        `json:"clientVersion,omitempty"`
 		WaitingToleranceSeconds *int64                        `json:"waitingToleranceSeconds,omitempty"`
 		Queue                   string                        `json:"queue"`
 		Resources               v1.ResourceList               `json:"resources"`
@@ -995,6 +1015,8 @@ func (mgr *VolcanojobMgr) GetJobDetail(c *gin.Context) {
 		},
 		JobName:                 job.JobName,
 		JobType:                 job.JobType,
+		ClientType:              string(jobClientType(job)),
+		ClientVersion:           jobClientVersion(job),
 		WaitingToleranceSeconds: job.WaitingToleranceSeconds,
 		Queue:                   job.Account.Nickname,
 		Status:                  job.Status,

@@ -128,6 +128,7 @@ func (c *Client) dialJobExec(ctx context.Context, name string, options JobExecOp
 		"Authorization":          {"Bearer " + accessToken},
 		"User-Agent":             {version.UserAgent()},
 		version.APIVersionHeader: {strconv.Itoa(version.APIVersion)},
+		version.ClientHeader:     {version.ClientTypeCLI},
 	}
 	dialer := websocket.Dialer{Proxy: http.ProxyFromEnvironment, HandshakeTimeout: 10 * time.Second, Subprotocols: []string{execSubprotocol}}
 	conn, resp, err := dialer.DialContext(ctx, u.String(), headers)

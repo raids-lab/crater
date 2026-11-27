@@ -41,11 +41,35 @@ const (
 	annotationKeyForwards     = "crater.raids.io/forwards"
 	// AnnotationKeyMountedDatasetIDs stores mounted dataset IDs as JSON array on job annotations.
 	AnnotationKeyMountedDatasetIDs = "crater.raids.io/mounted-dataset-ids"
+	// AnnotationKeyClientType records the self-declared creating client.
+	AnnotationKeyClientType = "crater.raids.io/client-type"
+	// AnnotationKeyClientVersion records the CLI version when the creator is the CLI.
+	AnnotationKeyClientVersion = "crater.raids.io/client-version"
 
 	jobTypeJupyter = "jupyter"
 	jobTypeWebIDE  = "webide"
 	jupyterPort    = 8888
 )
+
+// ApplyClientInfoAnnotations stamps the creating client on a Volcano job. The
+// value is provenance metadata only; it must not be used for authorization.
+func ApplyClientInfoAnnotations(
+	annotations map[string]string,
+	clientType model.ClientType,
+	clientVersion string,
+) {
+	switch clientType {
+	case model.ClientTypeCLI, model.ClientTypeWeb:
+	default:
+		clientType = model.ClientTypeUnknown
+	}
+	annotations[AnnotationKeyClientType] = string(clientType)
+	if clientType != model.ClientTypeCLI || clientVersion == "" {
+		delete(annotations, AnnotationKeyClientVersion)
+		return
+	}
+	annotations[AnnotationKeyClientVersion] = clientVersion
+}
 
 func CalculateJobResources(job *batch.Job) v1.ResourceList {
 	return utils.CalculateReplicatedResources(

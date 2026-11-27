@@ -66,7 +66,7 @@ CLI 与 Crater 平台之间的请求、响应解析与传输层异常，集中�
 
 - `paths.go`：仅 path 常量（含版本或模块前缀），避免在方法中散落魔法字符串。
 - `client.go`：`Client`、`NewClient`、`SetToken`、`Response[T]`；读取 `CRATER_TEST_SANDBOX_HTTP` 并在 `NewClient` 内对 req 客户端注册 Transport 拦截（见下小节）。
-- `compatibility.go`：调用公开的 `/api/cli/compatibility` 并解包版本范围与可选后端构建信息；`internal/version` 保存 CLI 当前 API 版本、最低后端 API 版本与产品版本，统一客户端据此写入 `User-Agent` 和 `X-Crater-API-Version`。兼容性判断只读取 API 版本字段；后端产品版本、短提交 SHA、构建类型和构建时间仅用于诊断展示。
+- `compatibility.go`：调用公开的 `/api/cli/compatibility` 并解包版本范围与可选后端构建信息；`internal/version` 保存 CLI 当前 API 版本、最低后端 API 版本与产品版本，统一客户端据此写入 `User-Agent`、`X-Crater-API-Version` 和 `X-Crater-Client`。兼容性判断只读取 API 版本字段；后端产品版本、短提交 SHA、构建类型和构建时间仅用于诊断展示。
 - 按域文件（如 `auth.go`）：该域请求/响应 DTO、对外小接口（如 `AuthClient`）、`NewXxxClient` 及 `(*Client)` 上的 HTTP 方法；测试可注入假实现而不必连网。
 
 账户上下文命令复用 `internal/api/auth.go` 的认证 DTO：`CurrentAccount` 从 `/api/auth/check` 获取服务端确认的当前账户，`SwitchAccount` 调用 `/api/v1/auth/switch` 获取目标账户的凭据。命令层通过 `activeAPIClientWithContext` 在请求前记录登录身份，校验切换响应后通过会话客户端成对更新该身份的访问令牌和刷新令牌；即使请求期间激活身份发生变化，也不会把新 token 写入另一个身份。当前账户始终由服务端查询，不另建本地账户缓存，切换结果的用户输出只包含身份标识和账户上下文。
@@ -125,7 +125,7 @@ WebSocket 子协议为 `crater.exec.v1`。目标选择通过 `pod`、`container`
 
 后端定期发送 ping 保持空闲会话，写操作有超时。CLI 的 stdin/尺寸同步网络写入失败会停止相应发送协程，接收侧继续读取输出和最终退出帧；本地 stdin 读取失败或用户取消仍关闭会话。断连与取消会关闭 socket、stdin pipe 和尺寸队列，取消 Kubernetes exec；CLI 完成后取消输入读取并恢复终端。JSON 捕获限制在命令层实施，普通模式流式输出。
 
-后端与 CLI 的 `APIVersion` 为 7。`job exec` 依赖该版本引入的 WebSocket 接口，因此 CLI 的 `MinSupportedBackendAPIVersion` 为 7。后端仍提供旧版 CLI 所需的接口，`MinSupportedCLIAPIVersion` 为 3。SSH 使用既有地址接口。`crater compatibility` 是单独执行的诊断命令，其他命令直接调用各自的接口并处理返回的错误。
+后端与 CLI 的 `APIVersion` 为 8。`job exec` 依赖 v7 引入的 WebSocket 接口；作业审批并锁定接口从 v8 开始提供，因此 CLI 的 `MinSupportedBackendAPIVersion` 为 8，后端 `MinSupportedCLIAPIVersion` 为 8。SSH 使用既有地址接口。`crater compatibility` 是单独执行的诊断命令，其他命令直接调用各自的接口并处理返回的错误。
 
 ## 列表分页
 

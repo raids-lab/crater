@@ -24,8 +24,12 @@ const (
 	// v8 adds the atomic approval and lock operation for job orders.
 	APIVersion = 8
 	// Job order approval requires the v8 approve-and-lock endpoint.
-	MinSupportedBackendAPIVersion    = 8
-	APIVersionHeader                 = "X-Crater-API-Version"
+	MinSupportedBackendAPIVersion = 8
+	APIVersionHeader              = "X-Crater-API-Version"
+	// ClientHeader declares the client type. The backend records it as job
+	// provenance for display only; it is not an authentication mechanism.
+	ClientHeader                     = "X-Crater-Client"
+	ClientTypeCLI                    = "cli"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"
 	unknownBuildValue                = "unknown"

@@ -34,6 +34,7 @@ import (
 	scheduling "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 
 	"github.com/raids-lab/crater/dao/model"
+	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/pkg/crclient"
 )
 
@@ -180,5 +181,83 @@ func TestReconcileSkipsTensorboardFromOwnerEvent(t *testing.T) {
 	})
 	if err != nil || result != (ctrl.Result{}) {
 		t.Fatalf("auxiliary Job reconciliation = (%+v, %v), want no work", result, err)
+	}
+}
+
+func TestJobClientInfo(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		annotations map[string]string
+		wantType    model.ClientType
+		wantVersion string
+	}{
+		{
+			name:        "missing annotations are unknown",
+			annotations: nil,
+			wantType:    model.ClientTypeUnknown,
+		},
+		{
+			name: "cli with version",
+			annotations: map[string]string{
+				vcjobservice.AnnotationKeyClientType:    string(model.ClientTypeCLI),
+				vcjobservice.AnnotationKeyClientVersion: "1.4.1",
+			},
+			wantType:    model.ClientTypeCLI,
+			wantVersion: "1.4.1",
+		},
+		{
+			name: "cli without version",
+			annotations: map[string]string{
+				vcjobservice.AnnotationKeyClientType: string(model.ClientTypeCLI),
+			},
+			wantType: model.ClientTypeCLI,
+		},
+		{
+			name: "web ignores stray version",
+			annotations: map[string]string{
+				vcjobservice.AnnotationKeyClientType:    string(model.ClientTypeWeb),
+				vcjobservice.AnnotationKeyClientVersion: "1.4.1",
+			},
+			wantType: model.ClientTypeWeb,
+		},
+		{
+			name: "invalid type becomes unknown",
+			annotations: map[string]string{
+				vcjobservice.AnnotationKeyClientType: "frontend",
+			},
+			wantType: model.ClientTypeUnknown,
+		},
+		{
+			name: "invalid version is dropped",
+			annotations: map[string]string{
+				vcjobservice.AnnotationKeyClientType:    string(model.ClientTypeCLI),
+				vcjobservice.AnnotationKeyClientVersion: "../etc/passwd",
+			},
+			wantType: model.ClientTypeCLI,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			job := &batch.Job{ObjectMeta: metav1.ObjectMeta{Annotations: test.annotations}}
+			gotType, gotVersion := jobClientInfo(job)
+			if gotType != test.wantType {
+				t.Fatalf("type = %q, want %q", gotType, test.wantType)
+			}
+			version := ""
+			if gotVersion != nil {
+				version = *gotVersion
+			}
+			if version != test.wantVersion {
+				t.Fatalf("version = %q, want %q", version, test.wantVersion)
+			}
+		})
+	}
+
+	if gotType, gotVersion := jobClientInfo(nil); gotType != model.ClientTypeUnknown || gotVersion != nil {
+		t.Fatalf("nil job = %q/%v, want unknown/nil", gotType, gotVersion)
 	}
 }

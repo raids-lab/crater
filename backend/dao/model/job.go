@@ -39,6 +39,16 @@ const (
 	JobTypeTensorboard JobType = "tensorboard"
 )
 
+// ClientType records which client created a job. It is self-declared by the
+// client and must not be used for authorization or audit decisions.
+type ClientType string
+
+const (
+	ClientTypeUnknown ClientType = "unknown"
+	ClientTypeWeb     ClientType = "web"
+	ClientTypeCLI     ClientType = "cli"
+)
+
 func ParseWaitingToleranceSeconds(raw string) (*int64, error) {
 	if strings.TrimSpace(raw) == "" {
 		return nil, nil
@@ -95,6 +105,8 @@ type Job struct {
 	AccountID               uint           `gorm:"primaryKey;index:idx_jobs_account_creation_timestamp,priority:1"`
 	Account                 Account        `gorm:"foreignKey:AccountID"`
 	JobType                 JobType        `gorm:"not null;index:idx_jobs_type_creation_timestamp,priority:1;comment:作业类型"`
+	ClientType              ClientType     `gorm:"type:varchar(16);not null;default:unknown;comment:作业创建客户端类型"`
+	ClientVersion           *string        `gorm:"type:varchar(64);comment:作业创建客户端版本"`
 	WaitingToleranceSeconds *int64         `gorm:"comment:作业等待忍耐时间(秒)"`
 	Status                  batch.JobPhase `gorm:"index:status;index:idx_jobs_status_creation_timestamp,priority:1;not null;comment:作业状态"`
 	Queue                   string         `gorm:"type:varchar(256);index:idx_jobs_queue;comment:作业提交的volcano队列"`

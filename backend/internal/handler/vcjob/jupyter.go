@@ -116,6 +116,7 @@ func (mgr *VolcanojobMgr) CreateJupyterJob(c *gin.Context) {
 		baseURL,
 		&req.CreateJobCommon,
 		waitingToleranceSeconds,
+		util.GetClientInfo(c),
 	)
 
 	// 5. Create the pod spec

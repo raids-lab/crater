@@ -30,6 +30,7 @@ import {
   GpuIcon,
   HistoryIcon,
   LayoutGridIcon,
+  MonitorIcon,
   RedoDotIcon,
   SaveIcon,
   SquareIcon,
@@ -52,6 +53,7 @@ import { TimeDistance } from '@/components/custom/time-distance'
 import CodeServerIcon from '@/components/icon/code-server-icon'
 import JupyterIcon from '@/components/icon/jupyter-icon'
 import PrefixLinkButton from '@/components/job/detail/job-link-button'
+import { JobClientLabel } from '@/components/job/job-client-column'
 import SimpleTooltip from '@/components/label/simple-tooltip'
 import UserLabel from '@/components/label/user-label'
 import DetailPage from '@/components/layout/detail-page'
@@ -387,6 +389,17 @@ export default function BaseCore({ jobName, ...props }: DetailPageCoreProps & { 
             <span className="font-mono text-sm">
               {formatBillingPoints(billingDetail?.billedPointsTotal ?? 0)}
             </span>
+          ),
+        },
+        {
+          title: t('jobs.clientType'),
+          icon: MonitorIcon,
+          value: (
+            <JobClientLabel
+              clientType={data.clientType}
+              clientVersion={data.clientVersion}
+              withVersion
+            />
           ),
         },
         {

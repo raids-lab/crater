@@ -7,7 +7,7 @@ import { createSessionClient } from '../src/services/session-client.ts'
 const json = (status, data) =>
   new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
 const expired = () => json(401, { code: 40101 })
-function harness(handler, timeout) {
+function harness(handler, timeout, clientHeaders) {
   let access = 'old-access',
     refresh = 'old-refresh',
     invalidations = 0
@@ -30,6 +30,7 @@ function harness(handler, timeout) {
       return handler(new Request(request, body === undefined ? {} : { body }))
     },
     timeout,
+    clientHeaders,
   })
   return {
     client,
@@ -280,3 +281,18 @@ for (const status of [200, 401]) {
     assert.equal(h.invalidations, 0)
   })
 }
+
+test('sends the web client identity header on API requests', async () => {
+  let seen
+  const h = harness(
+    async (request) => {
+      seen = request.headers.get('X-Crater-Client')
+      return json(200, { code: 0 })
+    },
+    undefined,
+    { 'X-Crater-Client': 'web' }
+  )
+
+  await h.client.get('v1/client-identity').json()
+  assert.equal(seen, 'web')
+})

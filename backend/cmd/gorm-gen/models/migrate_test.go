@@ -15,6 +15,7 @@
 package main
 
 import (
+	"database/sql"
 	"testing"
 
 	"gorm.io/driver/sqlite"
@@ -132,14 +133,7 @@ func TestStorageQuotaMigrationAndRollback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.Exec(`CREATE TABLE users (
-		id integer primary key,
-		created_at datetime,
-		updated_at datetime,
-		deleted_at datetime,
-		name text,
-		space text
-	)`).Error; err != nil {
+	if err := db.Exec(`CREATE TABLE users (id integer primary key, created_at datetime, updated_at datetime, deleted_at datetime, name text, space text)`).Error; err != nil {
 		t.Fatalf("create legacy users table: %v", err)
 	}
 
@@ -168,5 +162,59 @@ func TestStorageQuotaMigrationAndRollback(t *testing.T) {
 	}
 	if db.Migrator().HasTable(&model.UserSpaceSize{}) {
 		t.Fatal("user_space_sizes remains after rollback")
+	}
+}
+
+func TestJobClientIdentityMigrationAndRollback(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:job_client_identity_migration?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.Exec(`CREATE TABLE jobs (id integer primary key, job_name text)`).Error; err != nil {
+		t.Fatalf("create legacy jobs table: %v", err)
+	}
+	if err := db.Exec(`INSERT INTO jobs (id, job_name) VALUES (1, 'legacy-job')`).Error; err != nil {
+		t.Fatalf("seed legacy job: %v", err)
+	}
+
+	migration := jobClientIdentityMigration()
+	if err := migration.Migrate(db); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	if err := migration.Migrate(db); err != nil {
+		t.Fatalf("idempotent migrate: %v", err)
+	}
+	for _, field := range []string{"ClientType", "ClientVersion"} {
+		if !db.Table("jobs").Migrator().HasColumn(&model.Job{}, field) {
+			t.Fatalf("jobs is missing %s", field)
+		}
+	}
+
+	var clientType string
+	var clientVersion sql.NullString
+	if err := db.Table("jobs").
+		Select("client_type, client_version").
+		Where("id = ?", 1).
+		Row().
+		Scan(&clientType, &clientVersion); err != nil {
+		t.Fatalf("read migrated job: %v", err)
+	}
+	if clientType != string(model.ClientTypeUnknown) {
+		t.Fatalf("client_type = %q, want %q", clientType, model.ClientTypeUnknown)
+	}
+	if clientVersion.Valid {
+		t.Fatalf("client_version = %q, want NULL", clientVersion.String)
+	}
+
+	if err := migration.Rollback(db); err != nil {
+		t.Fatalf("rollback: %v", err)
+	}
+	if err := migration.Rollback(db); err != nil {
+		t.Fatalf("idempotent rollback: %v", err)
+	}
+	for _, field := range []string{"ClientType", "ClientVersion"} {
+		if db.Table("jobs").Migrator().HasColumn(&model.Job{}, field) {
+			t.Fatalf("jobs.%s remains after rollback", field)
+		}
 	}
 }
