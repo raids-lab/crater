@@ -2,13 +2,13 @@ package operations
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
-	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
+	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/pkg/utils"
 )
 
@@ -17,11 +17,8 @@ type SetKeepRequest struct {
 }
 
 type SetLockTimeRequest struct {
-	Name        string `json:"name" binding:"required"`
-	IsPermanent bool   `json:"isPermanent"`
-	Days        int    `json:"days"`
-	Hours       int    `json:"hours"`
-	Minutes     int    `json:"minutes"`
+	Name string `json:"name" binding:"required"`
+	vcjobservice.JobLockDuration
 }
 
 type ClearLockTimeRequest struct {
@@ -80,51 +77,24 @@ func (mgr *OperationsMgr) AddLockTime(c *gin.Context) {
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
-	if req.Days < 0 || req.Hours < 0 || req.Minutes < 0 {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("lock duration values must be non-negative"))
-		return
+	// Preserve permanent locking for clients that also send unused finite fields.
+	if req.IsPermanent && req.Days >= 0 && req.Hours >= 0 && req.Minutes >= 0 {
+		req.JobLockDuration = vcjobservice.JobLockDuration{IsPermanent: true}
 	}
-	if !req.IsPermanent && req.Days == 0 && req.Hours == 0 && req.Minutes == 0 {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("lock duration must be positive unless permanent lock is requested"))
-		return
-	}
-
-	jobDB := query.Job
-
-	// 检查是否已经永久锁定
-	j, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).First()
+	var lock *model.ApprovedJobLock
+	err := query.Q.Transaction(func(tx *query.Query) error {
+		var err error
+		lock, err = vcjobservice.ExtendJobLock(c, tx, req.Name, req.JobLockDuration, false)
+		return err
+	})
 	if err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
-		return
-	}
-	// 若永久锁定，则不允许延长锁定时间
-	if j.LockedTimestamp.Equal(utils.GetPermanentTime()) {
-		resputil.Error(c, "Job is already permanently locked", resputil.NotSpecified)
-		return
-	}
-
-	// 初始值
-	lockTime := utils.GetLocalTime()
-	if j.LockedTimestamp.After(utils.GetLocalTime()) {
-		lockTime = j.LockedTimestamp
-	}
-
-	if req.IsPermanent {
-		lockTime = utils.GetPermanentTime()
-	} else {
-		lockTime = lockTime.Add(
-			time.Duration(req.Days)*24*time.Hour + time.Duration(req.Hours)*time.Hour + time.Duration(req.Minutes)*time.Minute,
-		)
-	}
-
-	if _, err := jobDB.WithContext(c).Where(jobDB.JobName.Eq(req.Name)).Update(jobDB.LockedTimestamp, lockTime); err != nil {
-		resputil.Error(c, err.Error(), resputil.NotSpecified)
+		resputil.HandleError(c, err)
 		return
 	}
 
 	message := fmt.Sprintf("Parmanently lock %s", req.Name)
 	if !req.IsPermanent {
-		message = fmt.Sprintf("Set %s lockTime to %s", req.Name, lockTime.Format("2006-01-02 15:04:05"))
+		message = fmt.Sprintf("Set %s lockTime to %s", req.Name, lock.LockedUntil.Format("2006-01-02 15:04:05"))
 	}
 	resputil.Success(c, message)
 }

@@ -43,12 +43,6 @@ export enum JobType {
   KubeRay = 'kuberay',
   DeepSpeed = 'deepspeed',
   OpenMPI = 'openmpi',
-  ModelDeployment = 'model-deployment',
-}
-
-export enum WorkloadKind {
-  VolcanoJob = 'volcano-job',
-  KthenaInference = 'kthena-inference',
 }
 
 export const isInteracitveJob = (jobType: JobType) => {
@@ -77,19 +71,6 @@ export interface IJobInfo {
   permanentLocked: boolean
   lockedTimestamp?: string
   billedPointsTotal: number
-}
-
-// IWorkloadInfo keeps the legacy job table fields while making long-running
-// Kthena inference deployments explicit. Model deployments are not VolcanoJob CRs, so
-// consumers must branch on workloadKind for links and allowed operations.
-export interface IWorkloadInfo extends IJobInfo {
-  workloadID: string
-  workloadKind: WorkloadKind
-  scheduler: string
-  detailPath: string
-  statusDetail?: string
-  namespace?: string
-  model?: string
 }
 
 export const apiAdminGetJobList = (params: RemoteTableParams, signal?: AbortSignal) =>
@@ -161,18 +142,6 @@ export const apiJobAllFacets = (params: RemoteTableParams, signal?: AbortSignal)
     signal,
   })
 
-export const apiWorkloadAllList = (params: RemoteTableParams, signal?: AbortSignal) =>
-  apiV1Get<IResponse<IPage<IWorkloadInfo>>>(`${JOB_URL}/workloads/all`, {
-    searchParams: buildRemoteSearchParams(toJobProtocol(params)),
-    signal,
-  })
-
-export const apiWorkloadAllFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
-  apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/workloads/all/facets`, {
-    searchParams: buildFacetSearchParams(toJobProtocol(params)),
-    signal,
-  })
-
 export enum JobPhase {
   Prequeue = 'Prequeue',
   Pending = 'Pending',
@@ -200,13 +169,19 @@ export enum PodGroupPhase {
   Completed = 'Completed',
 }
 
-// Display-only stages, kept out of JobPhase so they can never reach filters or requests.
+// UI stages use the phase query parameter, never the original status parameter.
 export enum JobDisplayPhase {
   Inqueue = 'Inqueue',
   Starting = 'Starting',
 }
 
 export type JobDisplayPhaseValue = JobPhase | JobDisplayPhase
+
+// Init is a wire encoding only: the persisted job state remains empty.
+export function encodeJobFilterPhase(phase: JobDisplayPhaseValue): string {
+  if (phase === JobPhase.Init) return 'Init'
+  return phase === JobPhase.Prequeue ? JobPhase.Pending : phase
+}
 
 export enum JobStatus {
   NotStarted = 'NotStarted',
@@ -284,18 +259,6 @@ export const apiJobBatchFacets = (params: RemoteTableParams, signal?: AbortSigna
     signal,
   })
 
-export const apiWorkloadBatchList = (params: RemoteTableParams, signal?: AbortSignal) =>
-  apiV1Get<IResponse<IPage<IWorkloadInfo>>>(`${JOB_URL}/workloads`, {
-    searchParams: buildRemoteSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),
-    signal,
-  })
-
-export const apiWorkloadBatchFacets = (params: RemoteTableParams, signal?: AbortSignal) =>
-  apiV1Get<IResponse<IFacetResponse>>(`${JOB_URL}/workloads/facets`, {
-    searchParams: buildFacetSearchParams(toJobProtocol(withJobTypes(params, batchJobTypes))),
-    signal,
-  })
-
 export const apiJobInteractiveList = (params: RemoteTableParams, signal?: AbortSignal) =>
   apiV1Get<IResponse<IPage<IJobInfo>>>(JOB_URL, {
     searchParams: buildRemoteSearchParams(toJobProtocol(withJobTypes(params, interactiveJobTypes))),
@@ -325,12 +288,26 @@ function withJobTypes(params: RemoteTableParams, allowed: JobType[]): RemoteTabl
 }
 
 export function toJobProtocol(params: RemoteTableParams): RemoteTableParams {
-  const { jobType, ...filters } = params.filters
+  const { jobType, status, ...filters } = params.filters
+  const sort = params.sort
+    ?.split(',')
+    .map((field) => (field === 'status' ? 'phase' : field === '-status' ? '-phase' : field))
+    .join(',')
   return {
     ...params,
+    ...(sort ? { sort } : {}),
     filters: {
       ...filters,
       ...(jobType ? { job_type: jobType } : {}),
+      ...(status
+        ? {
+            phase: [
+              ...new Set(
+                status.map((value) => encodeJobFilterPhase(value as JobDisplayPhaseValue))
+              ),
+            ],
+          }
+        : {}),
     },
   }
 }
@@ -612,7 +589,14 @@ export const apiJobUnlock = (jobName: string) =>
     name: jobName,
   })
 
-export const apiJobLock = (params: object) =>
+export interface JobLockDuration {
+  isPermanent: boolean
+  days: number
+  hours: number
+  minutes: number
+}
+
+export const apiJobLock = (params: JobLockDuration & { name: string }) =>
   apiV1Put<IResponse<string>>('admin/operations/add/locktime', params)
 
 export const apiJobGetDetail = (jobName: string) =>

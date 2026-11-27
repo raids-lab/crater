@@ -1058,6 +1058,82 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/approvalorder/{id}/approve-and-lock": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "在同一事务中锁定运行中的作业、批准工单并记录实际批准时长，省略锁定参数时使用工单申请时长",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "approvalorder"
+                ],
+                "summary": "批准作业工单并锁定作业",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "工单ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "锁定时长及审核备注",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.ApproveJobOrderReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/approvalorder/{id}/review": {
             "put": {
                 "security": [
@@ -1065,7 +1141,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容",
+                "description": "审批数据集工单或拒绝、取消工单。批准作业工单使用 approve-and-lock",
                 "consumes": [
                     "application/json"
                 ],
@@ -1746,6 +1822,64 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/v1/admin/images/getbyname": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns full build configuration and pod information through the admin route.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ImagePack"
+                ],
+                "summary": "Get any image build as an administrator",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Image build name",
+                        "name": "name",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/images/image": {
             "get": {
                 "security": [
@@ -1825,7 +1959,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作",
+                "description": "Cancel active builds or delete terminal builds as an administrator. Omit action to choose by status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1838,19 +1972,23 @@ const docTemplate = `{
                 "summary": "管理员模式下删除或取消镜像制作任务（批量）",
                 "parameters": [
                     {
-                        "description": "镜像构建任务ID列表",
-                        "name": "idList",
+                        "description": "Build IDs and optional action",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
+                            "$ref": "#/definitions/internal_handler_image.DeleteKanikoByIDListRequest"
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/admin/images/tags": {
@@ -5468,7 +5606,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "通过名称获取所有同名审批工单（无需身份验证）",
+                "description": "按名称查询当前用户可访问的作业或数据集的审批工单",
                 "consumes": [
                     "application/json"
                 ],
@@ -5486,6 +5624,16 @@ const docTemplate = `{
                         "name": "name",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "enum": [
+                            "job",
+                            "dataset"
+                        ],
+                        "type": "string",
+                        "description": "关联资源类型",
+                        "name": "type",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5497,12 +5645,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "请求参数错误",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    },
-                    "404": {
-                        "description": "工单不存在",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -6985,27 +7127,55 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "获取imagepackname，搜索到imagepack",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Owners receive full build details. Public and shared image readers receive configuration without pod or node information.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "ImagePack"
                 ],
-                "summary": "获取imagepack的详细信息",
+                "summary": "Get a visible image build",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "获取ImagePack的name",
+                        "description": "Image build name",
                         "name": "name",
                         "in": "query",
                         "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/images/grant": {
@@ -7272,7 +7442,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作",
+                "description": "Cancel active builds or delete terminal builds. Omit action to choose by status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -7285,19 +7455,23 @@ const docTemplate = `{
                 "summary": "删除或取消镜像制作任务（批量）",
                 "parameters": [
                     {
-                        "description": "镜像构建任务ID列表",
-                        "name": "idList",
+                        "description": "Build IDs and optional action",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
-                            }
+                            "$ref": "#/definitions/internal_handler_image.DeleteKanikoByIDListRequest"
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
             }
         },
         "/v1/images/share": {
@@ -7657,6 +7831,37 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Other errors",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/kthena/deployment-overview": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns cluster-visible summaries of existing deployments, including paused ones, without a creation-date filter.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "kthena"
+                ],
+                "summary": "List current model deployments for the platform overview",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaDeploymentOverview"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
@@ -11683,7 +11888,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -11717,6 +11922,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -11788,7 +12020,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -11816,6 +12048,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -11854,6 +12113,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -11895,6 +12155,33 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "Node name",
                         "name": "node",
@@ -11918,6 +12205,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -11956,6 +12244,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -12250,7 +12565,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Sort fields",
+                        "description": "Sort up to 3 fields including phase and id, prefix - for descending, unknown phases last",
                         "name": "sort",
                         "in": "query"
                     },
@@ -12278,6 +12593,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -12328,6 +12670,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
+                "description": "Each facet ignores its own filter. Other filters, including the other status dimension, and scopes apply.",
                 "produces": [
                     "application/json"
                 ],
@@ -12373,6 +12716,33 @@ const docTemplate = `{
                         "collectionFormat": "multi",
                         "description": "Job statuses",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "Init",
+                                "Pending",
+                                "Inqueue",
+                                "Starting",
+                                "Running",
+                                "Restarting",
+                                "Completing",
+                                "Completed",
+                                "Aborting",
+                                "Aborted",
+                                "Terminating",
+                                "Terminated",
+                                "Failed",
+                                "Deleted",
+                                "Freed"
+                            ],
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "UI phases AND status, repeat or comma-separate up to 20 values. Init encodes empty. Pending includes legacy Prequeue",
+                        "name": "phase",
                         "in": "query"
                     },
                     {
@@ -12444,123 +12814,6 @@ const docTemplate = `{
                         "description": "Other errors",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/vcjobs/workloads": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Lists persisted Volcano jobs and current-user Kthena inference deployments as a single pageable list.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "VolcanoJob"
-                ],
-                "summary": "Get current user's unified workloads",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Page number",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size, 1-200",
-                        "name": "page_size",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sort fields",
-                        "name": "sort",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search workloads",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Number of days to look back, -1 for all",
-                        "name": "days",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Job types, including model-deployment",
-                        "name": "job_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Workload kinds",
-                        "name": "workload_kind",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Workload statuses",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Node name",
-                        "name": "node",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_WorkloadResp"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/vcjobs/workloads/facets": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "VolcanoJob"
-                ],
-                "summary": "Get current user's unified workload facets",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse"
                         }
                     }
                 }
@@ -13231,6 +13484,9 @@ const docTemplate = `{
                 },
                 "approvalorderTypeID": {
                     "type": "integer"
+                },
+                "approvedLock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock"
                 }
             }
         },
@@ -13280,6 +13536,20 @@ const docTemplate = `{
                 "ApprovalOrderTypeJob"
             ]
         },
+        "github_com_raids-lab_crater_dao_model.ApprovedJobLock": {
+            "type": "object",
+            "properties": {
+                "durationMinutes": {
+                    "type": "integer"
+                },
+                "isPermanent": {
+                    "type": "boolean"
+                },
+                "lockedUntil": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_dao_model.BuildSource": {
             "type": "string",
             "enum": [
@@ -13295,6 +13565,25 @@ const docTemplate = `{
                 "Snapshot",
                 "EnvdAdvanced",
                 "EnvdRaw"
+            ]
+        },
+        "github_com_raids-lab_crater_dao_model.BuildStatus": {
+            "type": "string",
+            "enum": [
+                "Initial",
+                "Pending",
+                "Running",
+                "Finished",
+                "Failed",
+                "Canceled"
+            ],
+            "x-enum-varnames": [
+                "BuildJobInitial",
+                "BuildJobPending",
+                "BuildJobRunning",
+                "BuildJobFinished",
+                "BuildJobFailed",
+                "BuildJobCanceled"
             ]
         },
         "github_com_raids-lab_crater_dao_model.CraterResourceType": {
@@ -14042,26 +14331,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_WorkloadResp": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_handler_vcjob.WorkloadResp"
-                    }
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
         "github_com_raids-lab_crater_internal_resputil.Response-any": {
             "type": "object",
             "properties": {
@@ -14212,6 +14481,24 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/internal_handler.KthenaConversationResp"
+                    }
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaDeploymentOverview": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_handler.KthenaDeploymentOverview"
                     }
                 },
                 "msg": {
@@ -14432,21 +14719,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_WorkloadResp": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "description": "依然保持 int (ErrorCode) 类型",
-                    "type": "integer"
-                },
-                "data": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_WorkloadResp"
-                },
-                "msg": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentConversationPage": {
             "type": "object",
             "properties": {
@@ -14576,6 +14848,21 @@ const docTemplate = `{
                 },
                 "data": {
                     "$ref": "#/definitions/internal_handler.ApprovalOrderResp"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler.ApproveJobOrderResp"
                 },
                 "msg": {
                     "type": "string"
@@ -15092,6 +15379,21 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "依然保持 int (ErrorCode) 类型",
+                    "type": "integer"
+                },
+                "data": {
+                    "$ref": "#/definitions/internal_handler_image.GetKanikoResponse"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp": {
             "type": "object",
             "properties": {
@@ -15492,6 +15794,23 @@ const docTemplate = `{
                 "IngressType",
                 "NodePortType"
             ]
+        },
+        "github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration": {
+            "type": "object",
+            "properties": {
+                "days": {
+                    "type": "integer"
+                },
+                "hours": {
+                    "type": "integer"
+                },
+                "isPermanent": {
+                    "type": "boolean"
+                },
+                "minutes": {
+                    "type": "integer"
+                }
+            }
         },
         "github_com_raids-lab_crater_internal_util.VolumeMount": {
             "type": "object",
@@ -16014,6 +16333,9 @@ const docTemplate = `{
                 "reviewNotes": {
                     "type": "string"
                 },
+                "reviewedAt": {
+                    "type": "string"
+                },
                 "reviewer": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
                 },
@@ -16055,6 +16377,31 @@ const docTemplate = `{
                 },
                 "type": {
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovalOrderType"
+                }
+            }
+        },
+        "internal_handler.ApproveJobOrderReq": {
+            "type": "object",
+            "properties": {
+                "lock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration"
+                },
+                "reviewNotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.ApproveJobOrderResp": {
+            "type": "object",
+            "properties": {
+                "approvedLock": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock"
+                },
+                "lockMessage": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -16599,6 +16946,41 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_handler.KthenaDeploymentOverview": {
+            "type": "object",
+            "properties": {
+                "accountName": {
+                    "type": "string"
+                },
+                "canOpenDetail": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "desiredGroups": {
+                    "type": "integer"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "readyGroups": {
+                    "type": "integer"
+                },
+                "resources": {
+                    "$ref": "#/definitions/v1.ResourceList"
+                },
+                "routingConfigured": {
+                    "type": "boolean"
                 }
             }
         },
@@ -18655,6 +19037,75 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_handler_image.DeleteKanikoByIDListRequest": {
+            "type": "object",
+            "required": [
+                "idList"
+            ],
+            "properties": {
+                "action": {
+                    "enum": [
+                        "cancel",
+                        "delete"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_handler_image.imageBuildRemovalAction"
+                        }
+                    ]
+                },
+                "idList": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "internal_handler_image.GetKanikoResponse": {
+            "type": "object",
+            "properties": {
+                "ID": {
+                    "type": "integer"
+                },
+                "buildSource": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.BuildSource"
+                },
+                "canManage": {
+                    "type": "boolean"
+                },
+                "canViewBuildLogs": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dockerfile": {
+                    "type": "string"
+                },
+                "imageLink": {
+                    "type": "string"
+                },
+                "imagepackName": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "podName": {
+                    "type": "string"
+                },
+                "podNameSpace": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus"
+                }
+            }
+        },
         "internal_handler_image.UpdateImageArchRequest": {
             "type": "object",
             "required": [
@@ -18709,6 +19160,17 @@ const docTemplate = `{
                     "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.JobType"
                 }
             }
+        },
+        "internal_handler_image.imageBuildRemovalAction": {
+            "type": "string",
+            "enum": [
+                "cancel",
+                "delete"
+            ],
+            "x-enum-varnames": [
+                "cancelImageBuild",
+                "deleteImageBuild"
+            ]
         },
         "internal_handler_operations.OperationLogResp": {
             "type": "object",
@@ -19329,89 +19791,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "workingDir": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_handler_vcjob.WorkloadResp": {
-            "type": "object",
-            "properties": {
-                "billedPointsTotal": {
-                    "type": "number"
-                },
-                "completedAt": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "detailPath": {
-                    "type": "string"
-                },
-                "jobName": {
-                    "type": "string"
-                },
-                "jobType": {
-                    "type": "string"
-                },
-                "locked": {
-                    "type": "boolean"
-                },
-                "lockedTimestamp": {
-                    "type": "string"
-                },
-                "model": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "namespace": {
-                    "type": "string"
-                },
-                "nodes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "owner": {
-                    "type": "string"
-                },
-                "permanentLocked": {
-                    "type": "boolean"
-                },
-                "podGroupPhase": {
-                    "type": "string"
-                },
-                "queue": {
-                    "type": "string"
-                },
-                "resources": {
-                    "$ref": "#/definitions/v1.ResourceList"
-                },
-                "scheduler": {
-                    "type": "string"
-                },
-                "startedAt": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "statusDetail": {
-                    "type": "string"
-                },
-                "userInfo": {
-                    "$ref": "#/definitions/github_com_raids-lab_crater_dao_model.UserInfo"
-                },
-                "waitingToleranceSeconds": {
-                    "type": "integer"
-                },
-                "workloadID": {
-                    "type": "string"
-                },
-                "workloadKind": {
                     "type": "string"
                 }
             }

@@ -133,14 +133,19 @@ func applyServingObservation(response *KthenaServiceResp) {
 		}
 		return
 	}
-	switch response.Phase {
+	response.Phase = observedServingPhase(response.Phase, response.Replicas, ready, active, response.RuntimePods)
+}
+
+func observedServingPhase(phase string, replicas, ready, active int64, pods []KthenaRuntimePod) string {
+	switch phase {
 	case kthenaPhaseReady, kthenaPhaseActive:
-		if ready != response.Replicas || active != response.Replicas {
-			response.Phase = kthenaPhaseDegraded
+		if ready != replicas || active != replicas {
+			return kthenaPhaseDegraded
 		}
 	case kthenaPhasePending, kthenaPhaseProgressing:
-		response.Phase = currentServingStartupPhase(response.Phase, response.RuntimePods)
+		return currentServingStartupPhase(phase, pods)
 	}
+	return phase
 }
 
 func currentServingStartupPhase(phase string, pods []KthenaRuntimePod) string {

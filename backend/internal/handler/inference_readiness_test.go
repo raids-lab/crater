@@ -6,6 +6,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	kubefake "k8s.io/client-go/kubernetes/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/raids-lab/crater/internal/kthena"
 )
@@ -76,6 +78,62 @@ func TestServingReadinessIgnoresPreviousGeneration(t *testing.T) {
 	obj.SetGeneration(1)
 	if got := observedReadyReplicas(obj); got == nil || *got != 2 {
 		t.Fatalf("unexpected ready count: %v", got)
+	}
+}
+
+func TestKthenaListUsesLivePodsForReadyCount(t *testing.T) {
+	req := nativeTestRequest(t)
+	req.Replicas = 1
+	req.Roles[0].Instances = 1
+	serving := nativeTestServing(t, req)
+	serving.SetGeneration(1)
+	serving.Object["status"] = map[string]any{"observedGeneration": int64(1), "availableReplicas": int64(1)}
+
+	for _, tc := range []struct {
+		name      string
+		podPhase  corev1.PodPhase
+		wantReady int64
+		wantPhase string
+	}{
+		{name: "failed Pod with stale ready status", podPhase: corev1.PodFailed, wantPhase: kthenaPhaseDegraded},
+		{name: "ready Pod", podPhase: corev1.PodRunning, wantReady: 1, wantPhase: kthenaPhaseReady},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "current-pod", Namespace: serving.GetNamespace(),
+					Labels: map[string]string{
+						kthenaServingNameLabel:            serving.GetName(),
+						kthena.PodDeploymentLabel:         serving.GetLabels()[kthena.PodDeploymentLabel],
+						kthena.GroupLabel:                 "group-0",
+						kthena.RoleLabel:                  req.Roles[0].Name,
+						kthena.EntryLabel:                 kthena.EntryValue,
+						"modelserving.volcano.sh/role-id": "server-0",
+					},
+				},
+				Status: corev1.PodStatus{Phase: tc.podPhase, Conditions: []corev1.PodCondition{{
+					Type: corev1.PodReady, Status: corev1.ConditionTrue,
+				}}},
+			}
+			oldPod := pod.DeepCopy()
+			oldPod.Name = "old-pod"
+			oldPod.Labels[kthena.PodDeploymentLabel] = "previous-deployment"
+			oldPod.Labels[kthena.GroupLabel] = "old-group"
+			oldPod.Status.Phase = corev1.PodRunning
+			mgr := &KthenaMgr{client: nativeTestClient(serving), namespace: serving.GetNamespace(),
+				kubeClient: kubefake.NewClientset(pod, oldPod)}
+			services, err := mgr.listKthenaServices(t.Context(), client.MatchingLabels{
+				inferenceServiceLabelManagedBy: inferenceServiceManagedByValue,
+			})
+			if err != nil || len(services) != 1 {
+				t.Fatalf("list returned %d services, error = %v", len(services), err)
+			}
+			got := services[0]
+			if got.ReadyReplicas == nil || *got.ReadyReplicas != tc.wantReady || got.Phase != tc.wantPhase {
+				t.Fatalf("list returned ready=%v, phase=%s, want ready=%d, phase=%s",
+					got.ReadyReplicas, got.Phase, tc.wantReady, tc.wantPhase)
+			}
+		})
 	}
 }
 

@@ -22,7 +22,7 @@ import { ClockIcon, FlaskConicalIcon, GpuIcon, UsersRoundIcon } from 'lucide-rea
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import JobPhaseLabel, { getJobPhaseLabel, jobPhases } from '@/components/badge/job-phase-badge'
+import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
@@ -34,7 +34,7 @@ import { BillingSummaryCards } from '@/components/custom/billing-summary-cards'
 import { TimeDistance } from '@/components/custom/time-distance'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { getHeader } from '@/components/job/overview/admin-jobs'
-import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
+import { getJobOverviewSummary, getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import { SectionCards } from '@/components/metrics/section-cards'
@@ -53,18 +53,17 @@ import { UserBanAlert } from '@/components/user/user-ban-alert'
 import { apiContextBillingSummary } from '@/services/api/context'
 import { apiGetBillingStatus } from '@/services/api/system-config'
 import {
-  IWorkloadInfo,
+  IJobInfo,
   JobPhase,
   JobType,
-  WorkloadKind,
-  apiWorkloadAllFacets,
-  apiWorkloadAllList,
+  apiJobAllFacets,
+  apiJobAllList,
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 import { queryResources } from '@/services/query/resource'
 
-import useRemoteTableState from '@/hooks/use-remote-table-state'
+import useJobTableState from '@/hooks/use-job-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { getUserPseudonym } from '@/utils/pseudonym'
@@ -72,11 +71,14 @@ import { atomUserInfo, globalHideUsername } from '@/utils/store'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
+import { DeploymentOverview } from './-deployment-overview'
+import { OverviewSection } from './-overview-section'
+
 export const Route = createFileRoute('/portal/overview/')({
   component: Overview,
 })
 
-type JobTableRow = IWorkloadInfo
+type JobTableRow = IJobInfo
 
 const overviewSummaryParams: RemoteTableParams = {
   page: 1,
@@ -94,13 +96,14 @@ function Overview() {
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
-  const tableState = useRemoteTableState('overview_joblist', {
+  const tableState = useJobTableState('overview_joblist', {
     sorting: [{ id: 'createdAt', desc: true }],
-    columnFilters: [
-      { id: 'days', value: ['7'] },
-      { id: 'status', value: ['Running', 'Pending'] },
-    ],
+    columnFilters: [{ id: 'status', value: ['Running', 'Pending', 'Inqueue', 'Starting'] }],
   })
+  const overviewTableParams = {
+    ...tableState.params,
+    filters: { ...tableState.params.filters, ...overviewSummaryParams.filters },
+  }
 
   // 获取当前语言对应的 date-fns locale
   const getDateLocale = useCallback((): Locale => {
@@ -181,12 +184,7 @@ function Overview() {
             {
               accessorKey: 'billedPointsTotal',
               header: ({ column }) => <DataTableColumnHeader column={column} title="累计点数" />,
-              cell: ({ row }) =>
-                row.original.workloadKind === WorkloadKind.KthenaInference ? (
-                  <span className="text-muted-foreground">-</span>
-                ) : (
-                  <BillingPointsBadge value={row.original.billedPointsTotal ?? 0} />
-                ),
+              cell: ({ row }) => <BillingPointsBadge value={row.original.billedPointsTotal ?? 0} />,
             } as ColumnDef<JobTableRow>,
           ]
         : []),
@@ -243,31 +241,33 @@ function Overview() {
   )
 
   const jobQuery = useQuery({
-    queryKey: buildRemoteQueryKey('overview-workloads', tableState.params),
-    queryFn: async ({ signal }) => (await apiWorkloadAllList(tableState.params, signal)).data,
+    queryKey: buildRemoteQueryKey('overview-jobs', overviewTableParams),
+    queryFn: async ({ signal }) => (await apiJobAllList(overviewTableParams, signal)).data,
     placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
   const jobFacetsQuery = useQuery({
-    queryKey: buildFacetQueryKey('overview-workloads', tableState.params),
-    queryFn: async ({ signal }) => (await apiWorkloadAllFacets(tableState.params, signal)).data,
+    queryKey: buildFacetQueryKey('overview-jobs', overviewTableParams),
+    queryFn: async ({ signal }) => (await apiJobAllFacets(overviewTableParams, signal)).data,
     refetchInterval: REFETCH_INTERVAL,
   })
   const jobSummaryFacetsQuery = useQuery({
-    queryKey: buildFacetQueryKey('overview-workload-summary', overviewSummaryParams),
-    queryFn: async ({ signal }) => (await apiWorkloadAllFacets(overviewSummaryParams, signal)).data,
+    queryKey: buildFacetQueryKey('overview-job-summary', overviewSummaryParams),
+    queryFn: async ({ signal }) => (await apiJobAllFacets(overviewSummaryParams, signal)).data,
     refetchInterval: REFETCH_INTERVAL,
   })
-  const toolbarConfig = useMemo(() => {
+  const toolbarConfig = (() => {
     const config = getRemoteJobToolbarConfig(jobFacetsQuery.data)
     return {
       ...config,
       getHeader,
       filterOptions: config.filterOptions.map((filter) =>
-        filter.key === 'status' ? { ...filter, defaultValues: ['Running', 'Pending'] } : filter
+        filter.key === 'status'
+          ? { ...filter, defaultValues: ['Running', 'Pending', 'Inqueue', 'Starting'] }
+          : filter
       ),
     }
-  }, [jobFacetsQuery.data])
+  })()
 
   const resourcesQuery = useQuery(
     queryResources(true, (resource) => {
@@ -280,15 +280,11 @@ function Overview() {
     enabled: billingVisible,
   })
 
-  const jobStatus = useMemo(() => {
-    return (jobSummaryFacetsQuery.data?.facets.status ?? [])
-      .filter(({ value }) => value !== JobPhase.Deleted && value !== JobPhase.Freed)
-      .map(({ value, count }) => ({
-        id: value,
-        label: getJobPhaseLabel(value as JobPhase).label,
-        value: count,
-      }))
-  }, [jobSummaryFacetsQuery.data])
+  const {
+    phases: jobStatus,
+    runningCount,
+    waitingCount,
+  } = getJobOverviewSummary(jobSummaryFacetsQuery.data)
 
   const hideUsername = useAtomValue(globalHideUsername)
   const userStatus = useMemo(() => {
@@ -349,16 +345,16 @@ function Overview() {
           items={[
             {
               title: '运行中作业',
-              value: jobStatus.find(({ id }) => id === JobPhase.Running)?.value ?? 0,
+              value: runningCount,
               className: 'text-highlight-blue',
               description: '正在运行的作业数量',
               icon: FlaskConicalIcon,
             },
             {
-              title: t('jobs.statuses.pending.label'),
-              value: jobStatus.find(({ id }) => id === JobPhase.Pending)?.value ?? 0,
+              title: t('jobs.statuses.waiting.label'),
+              value: waitingCount,
               className: 'text-highlight-purple',
-              description: t('jobs.statuses.pending.description'),
+              description: t('jobs.statuses.waiting.description'),
               icon: ClockIcon,
             },
             {
@@ -402,17 +398,21 @@ function Overview() {
           <NivoPie data={userStatus} margin={{ top: 20, bottom: 30 }} />
         </PieCard>
       </div>
-      <RemoteDataTable
-        info={{
-          title: '作业信息',
-          description: '查看近 7 天集群作业和模型部署的运行情况',
-        }}
-        query={jobQuery}
-        state={tableState}
-        columns={jobColumns}
-        getRowId={(row) => row.workloadID}
-        toolbarConfig={toolbarConfig}
-      />
+      <OverviewSection
+        title={t('overview.jobs.title')}
+        description={t('overview.jobs.description')}
+        icon={FlaskConicalIcon}
+        accent="bg-highlight-blue/15 text-highlight-blue"
+      >
+        <RemoteDataTable
+          query={jobQuery}
+          state={tableState}
+          columns={jobColumns}
+          getRowId={(row) => row.jobName}
+          toolbarConfig={toolbarConfig}
+        />
+      </OverviewSection>
+      <DeploymentOverview />
       <DataTable
         info={{
           title: '节点信息',

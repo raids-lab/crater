@@ -1,9 +1,14 @@
 package api
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/imroc/req/v3"
 )
 
 // FileClient exposes the ordinary-user remote file APIs used by the CLI.
@@ -32,8 +37,12 @@ func (c *Client) ListFiles(remotePath string) ([]FileInfo, error) {
 		requestPath += "/" + escapeRemotePath(remotePath)
 	}
 
+	request, err := c.storageRequest(context.Background())
+	if err != nil {
+		return nil, err
+	}
 	var result Response[[]FileInfo]
-	resp, err := c.httpClient.R().
+	resp, err := request.
 		SetSuccessResult(&result).
 		SetErrorResult(&result).
 		Get(requestPath)
@@ -47,6 +56,34 @@ func (c *Client) ListFiles(remotePath string) ([]FileInfo, error) {
 		return []FileInfo{}, nil
 	}
 	return result.Data, nil
+}
+
+func (c *Client) storageRequest(ctx context.Context) (*req.Request, error) {
+	tokens := c.currentTokens()
+	if tokens.RefreshToken != "" && accessTokenExpired(tokens.AccessToken, time.Now()) {
+		if _, err := c.renewAccessToken(ctx, tokens.AccessToken); err != nil {
+			return nil, err
+		}
+	}
+	return c.httpClient.R().SetContext(ctx), nil
+}
+
+// The JWT expiry claim only schedules renewal. Storage still authenticates
+// every request, including those with a missing or unreadable expiry claim.
+func accessTokenExpired(token string, now time.Time) bool {
+	parts := strings.SplitN(token, ".", 3)
+	if len(parts) != 3 {
+		return false
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return false
+	}
+	var claims struct {
+		ExpiresAt *float64 `json:"exp"`
+	}
+	return json.Unmarshal(payload, &claims) == nil && claims.ExpiresAt != nil &&
+		*claims.ExpiresAt <= float64(now.UnixNano())/float64(time.Second)
 }
 
 func escapeRemotePath(remotePath string) string {

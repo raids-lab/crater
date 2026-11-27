@@ -148,18 +148,24 @@ var switchCmd = &cobra.Command{
 			}
 		}
 
-		st.ActiveContext = session.ActiveContext{
+		next := session.ActiveContext{
 			PlatformURL: target.PlatformURL,
 			Username:    target.Username,
 			Method:      target.Method,
 		}
-		if err := session.SaveState(st); err != nil {
+		if err := session.UpdateState(func(current *session.State) error {
+			if _, ok := session.AuthInfoFor(*current, next); !ok {
+				return session.ErrSessionChanged
+			}
+			current.ActiveContext = next
+			return nil
+		}); err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		if outputJSON {
 			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
-				"active": st.ActiveContext,
+				"active": next,
 			}))
 		}
 		fmt.Printf("%s\n", i18n.T("switch_success", target.PlatformURL, target.Username, target.Method, roleForAuthInfo(target.Role)))
@@ -244,12 +250,9 @@ var rmCmd = &cobra.Command{
 		}
 
 		var toRemove []session.AuthInfo
-		var remaining []session.AuthInfo
 		for _, info := range st.AuthInfos {
 			if (p == "" || info.PlatformURL == p) && (u == "" || info.Username == u) && (m == "" || info.Method == m) {
 				toRemove = append(toRemove, info)
-			} else {
-				remaining = append(remaining, info)
 			}
 		}
 
@@ -276,23 +279,36 @@ var rmCmd = &cobra.Command{
 			}
 		}
 
-		for _, r := range toRemove {
-			if r.PlatformURL == st.ActiveContext.PlatformURL && r.Username == st.ActiveContext.Username && r.Method == st.ActiveContext.Method {
-				st.ActiveContext = session.ActiveContext{}
+		removed := 0
+		if err := session.UpdateState(func(current *session.State) error {
+			targets := make(map[session.ActiveContext]bool, len(toRemove))
+			for _, info := range toRemove {
+				targets[authIdentity(info)] = true
 			}
-		}
-
-		st.AuthInfos = remaining
-		if err := session.SaveState(st); err != nil {
+			remaining := current.AuthInfos[:0]
+			for _, info := range current.AuthInfos {
+				identity := authIdentity(info)
+				if !targets[identity] {
+					remaining = append(remaining, info)
+					continue
+				}
+				removed++
+				if identity == current.ActiveContext {
+					current.ActiveContext = session.ActiveContext{}
+				}
+			}
+			current.AuthInfos = remaining
+			return nil
+		}); err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 
 		if outputJSON {
 			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
-				"removed_count": len(toRemove),
+				"removed_count": removed,
 			}))
 		}
-		fmt.Printf("%s\n", i18n.T("remove_success", len(toRemove)))
+		fmt.Printf("%s\n", i18n.T("remove_success", removed))
 		return nil
 	},
 }
@@ -329,42 +345,45 @@ var logoutCmd = &cobra.Command{
 			}
 		}
 
-		var remaining []session.AuthInfo
-		for _, info := range st.AuthInfos {
-			if info.PlatformURL == active.PlatformURL && info.Username == active.Username && info.Method == active.Method {
-				continue
+		var next session.ActiveContext
+		var nextRole string
+		if err := session.UpdateState(func(current *session.State) error {
+			remaining := current.AuthInfos[:0]
+			for _, info := range current.AuthInfos {
+				if authIdentity(info) != active {
+					remaining = append(remaining, info)
+				}
 			}
-			remaining = append(remaining, info)
-		}
-		st.AuthInfos = remaining
-
-		if len(remaining) > 0 {
-			st.ActiveContext = session.ActiveContext{
-				PlatformURL: remaining[0].PlatformURL,
-				Username:    remaining[0].Username,
-				Method:      remaining[0].Method,
+			current.AuthInfos = remaining
+			if current.ActiveContext == active {
+				current.ActiveContext = session.ActiveContext{}
+				if len(remaining) > 0 {
+					current.ActiveContext = authIdentity(remaining[0])
+				}
 			}
-			if !outputJSON {
-				fmt.Printf("%s\n", i18n.T("logout_success_switched", st.ActiveContext.PlatformURL, st.ActiveContext.Username, st.ActiveContext.Method, roleForAuthInfo(remaining[0].Role)))
-			}
-		} else {
-			st.ActiveContext = session.ActiveContext{}
-			if !outputJSON {
-				fmt.Println(i18n.T("logout_success_no_other"))
-			}
-		}
-
-		if err := session.SaveState(st); err != nil {
+			next = current.ActiveContext
+			nextRole = roleForActiveContext(*current, next)
+			return nil
+		}); err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: err.Error()}
 		}
 
 		if outputJSON {
 			return output.WriteSuccessJSON(os.Stdout, output.SuccessEnvelope(map[string]interface{}{
-				"next_active": st.ActiveContext,
+				"next_active": next,
 			}))
+		}
+		if next.PlatformURL != "" {
+			fmt.Printf("%s\n", i18n.T("logout_success_switched", next.PlatformURL, next.Username, next.Method, nextRole))
+		} else {
+			fmt.Println(i18n.T("logout_success_no_other"))
 		}
 		return nil
 	},
+}
+
+func authIdentity(info session.AuthInfo) session.ActiveContext {
+	return session.ActiveContext{PlatformURL: info.PlatformURL, Username: info.Username, Method: info.Method}
 }
 
 func init() {

@@ -67,6 +67,7 @@ func (mgr *KthenaMgr) GetName() string { return mgr.name }
 func (mgr *KthenaMgr) RegisterPublic(_ *gin.RouterGroup) {}
 
 func (mgr *KthenaMgr) RegisterProtected(g *gin.RouterGroup) {
+	g.GET("deployment-overview", mgr.requireKthenaInferenceEnabled, mgr.UserListKthenaDeploymentOverview)
 	services := g.Group("inference-services", mgr.requireKthenaInferenceEnabled)
 	services.POST("", mgr.UserCreateKthenaService)
 	services.GET("capabilities", mgr.UserServingCapabilities)

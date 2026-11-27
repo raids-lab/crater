@@ -44,8 +44,11 @@ func (e *DestinationWriteError) Unwrap() error {
 // full response in memory.
 func (c *Client) DownloadFile(ctx context.Context, remotePath string, destination io.Writer) (written int64, resultErr error) {
 	requestPath := FileDownloadPath + "/" + escapeRemotePath(remotePath)
-	resp, err := c.httpClient.R().
-		SetContext(ctx).
+	request, err := c.storageRequest(ctx)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := request.
 		DisableAutoReadResponse().
 		Get(requestPath)
 	if err != nil {

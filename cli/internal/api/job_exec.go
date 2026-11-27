@@ -85,7 +85,7 @@ func (s *execSocket) send(frame execFrame) error {
 	return s.conn.WriteJSON(frame)
 }
 
-func (c *Client) dialJobExec(ctx context.Context, name string, options JobExecOptions) (*websocket.Conn, error) {
+func (c *Client) dialJobExec(ctx context.Context, name string, options JobExecOptions, accessToken string) (*websocket.Conn, error) {
 	path := VCJobsPrefix + "/" + url.PathEscape(name) + "/exec"
 	mode := testenv.SandboxHTTPMode()
 	// Keep transport simulations on the shared HTTP client; no socket may escape
@@ -125,7 +125,7 @@ func (c *Client) dialJobExec(ctx context.Context, name string, options JobExecOp
 		u.Scheme = "ws"
 	}
 	headers := http.Header{
-		"Authorization":          {"Bearer " + c.token},
+		"Authorization":          {"Bearer " + accessToken},
 		"User-Agent":             {version.UserAgent()},
 		version.APIVersionHeader: {strconv.Itoa(version.APIVersion)},
 	}
@@ -154,7 +154,17 @@ func (c *Client) dialJobExec(ctx context.Context, name string, options JobExecOp
 // StreamJobExec forwards raw bytes and requires a final exit frame. Input must
 // support Close interrupting Read; callers retain ownership of stdout/stderr.
 func (c *Client) StreamJobExec(ctx context.Context, name string, options JobExecOptions, stdout, stderr io.Writer) (JobExecResult, error) {
-	conn, err := c.dialJobExec(ctx, name, options)
+	tokens := c.currentTokens()
+	conn, err := c.dialJobExec(ctx, name, options, tokens.AccessToken)
+	var failure *RequestError
+	if tokens.RefreshToken != "" && errors.As(err, &failure) &&
+		failure.HTTPStatus == http.StatusUnauthorized && failure.CraterCode == tokenExpiredCode {
+		var accessToken string
+		accessToken, err = c.renewAccessToken(ctx, tokens.AccessToken)
+		if err == nil {
+			conn, err = c.dialJobExec(ctx, name, options, accessToken)
+		}
+	}
 	if err != nil {
 		if options.Input != nil {
 			_ = options.Input.Close()

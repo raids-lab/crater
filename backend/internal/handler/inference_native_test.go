@@ -359,3 +359,31 @@ func TestKthenaNativeMissingRouteCannotReportReady(t *testing.T) {
 		t.Fatalf("phase without routing = %s", response.Phase)
 	}
 }
+
+func TestKthenaOverviewRequiresOwnedRoutesToTheDeployment(t *testing.T) {
+	req := nativeTestRequest(t)
+	serving := nativeTestServing(t, req)
+	networking := buildKthenaNetworking(serving, req)
+	server, route := networking[0], networking[1]
+	if !kthenaOverviewRoutingConfigured(serving, server, route) {
+		t.Fatal("deployment's own server and route should be configured")
+	}
+	if kthenaOverviewRoutingConfigured(serving, server, nil) {
+		t.Fatal("a ready deployment without a route must be shown as unconfigured")
+	}
+	stale := route.DeepCopy()
+	owners := stale.GetOwnerReferences()
+	owners[0].UID = "previous-deployment"
+	stale.SetOwnerReferences(owners)
+	if kthenaOverviewRoutingConfigured(serving, server, stale) {
+		t.Fatal("route belonging to a previous deployment must not count")
+	}
+	if err := unstructured.SetNestedSlice(route.Object, []any{
+		map[string]any{"targetModels": []any{map[string]any{"modelServerName": "unrelated"}}},
+	}, "spec", "rules"); err != nil {
+		t.Fatal(err)
+	}
+	if kthenaOverviewRoutingConfigured(serving, server, route) {
+		t.Fatal("route pointing to an unrelated server must not count")
+	}
+}

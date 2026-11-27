@@ -18,6 +18,8 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 )
 
+const kthenaServingNameLabel = "modelserving.volcano.sh/name"
+
 func (mgr *KthenaMgr) readKthenaResources(ctx context.Context, serving *unstructured.Unstructured) ([]KthenaResource, error) {
 	resources := []KthenaResource{kthenaResourceFromObject(serving.GetKind(), serving)}
 	for _, gvk := range []schema.GroupVersionKind{kthena.ServerGVK, kthena.RouteGVK} {
@@ -40,13 +42,48 @@ func (mgr *KthenaMgr) readKthenaPods(ctx context.Context, serving *unstructured.
 	if mgr.kubeClient == nil {
 		return nil, nil
 	}
-	selector := labels.Set{"modelserving.volcano.sh/name": serving.GetName(),
+	selector := labels.Set{kthenaServingNameLabel: serving.GetName(),
 		kthena.PodDeploymentLabel: serving.GetLabels()[kthena.PodDeploymentLabel]}
 	pods, err := mgr.kubeClient.CoreV1().Pods(serving.GetNamespace()).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return nil, err
 	}
 	return pods.Items, nil
+}
+
+// listKthenaRuntimePods batches Pod observations for the deployments in a list.
+func (mgr *KthenaMgr) listKthenaRuntimePods(
+	ctx context.Context, deployments []unstructured.Unstructured,
+) (map[string][]KthenaRuntimePod, error) {
+	if mgr.kubeClient == nil || len(deployments) == 0 {
+		return nil, nil
+	}
+
+	deploymentIDs := make(map[string]string, len(deployments))
+	for i := range deployments {
+		if id := deployments[i].GetLabels()[kthena.PodDeploymentLabel]; id != "" {
+			deploymentIDs[deployments[i].GetName()] = id
+		}
+	}
+	if len(deploymentIDs) == 0 {
+		return nil, nil
+	}
+	pods, err := mgr.kubeClient.CoreV1().Pods(mgr.namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: kthena.PodDeploymentLabel,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string][]KthenaRuntimePod, len(deployments))
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		name := pod.Labels[kthenaServingNameLabel]
+		if id := deploymentIDs[name]; id == "" || id != pod.Labels[kthena.PodDeploymentLabel] {
+			continue
+		}
+		result[name] = append(result[name], kthenaRuntimePodFromPod(pod))
+	}
+	return result, nil
 }
 
 // UserKthenaDiagnostics godoc

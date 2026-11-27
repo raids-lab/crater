@@ -29,6 +29,10 @@ func (mgr *KthenaMgr) listKthenaServices(
 	if err != nil {
 		return nil, err
 	}
+	runtimePods, err := mgr.listKthenaRuntimePods(ctx, items)
+	if err != nil {
+		return nil, err
+	}
 
 	services := make([]KthenaServiceResp, 0, len(items))
 	for i := range items {
@@ -40,6 +44,11 @@ func (mgr *KthenaMgr) listKthenaServices(
 				Diagnostics: []KthenaDiagnostic{{Level: "error",
 					Reason:  "InvalidSpecification",
 					Message: "Deployment configuration is invalid; inspect its resources"}}}
+		} else {
+			pods := runtimePods[resp.Name]
+			_, ready, active := servingRuntimeGroups(resp.Roles, pods)
+			resp.ReadyReplicas = &ready
+			resp.Phase = observedServingPhase(resp.Phase, resp.Replicas, ready, active, pods)
 		}
 		services = append(services, *resp)
 	}

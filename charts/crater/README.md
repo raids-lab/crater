@@ -271,7 +271,7 @@ A comprehensive AI development platform for Kubernetes that provides GPU resourc
 | tensorboard.affinity | object | `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"nvidia.com/gpu.present","operator":"DoesNotExist"}]},"weight":100}]}}` | Prefer nodes without GPUs while still allowing the scheduler to use other eligible nodes |
 | tensorboard.idleTimeoutSeconds | int | `57600` | End panels normally after this many seconds without user HTTP requests (default: 16 hours); must be positive |
 | tensorboard.ingressAuthEnabled | bool | `true` | Protect every TensorBoard Ingress request through the Crater authentication endpoint |
-| tensorboard.nodeSelector | object | `{}` | Node selector applied only to TensorBoard Pods |
+| tensorboard.nodeSelector | object | `{"kubernetes.io/arch":"amd64"}` | Node selector applied only to TensorBoard Pods; defaults to amd64 for the bundled image. Override when using an image that supports another architecture. |
 | tensorboard.tolerations | list | `[]` | Tolerations applied only to TensorBoard Pods |
 | tls | object | `{"base":{"cert":"<MASKED>","create":false,"key":"<MASKED>"},"forward":{"cert":"<MASKED>","create":false,"key":"<MASKED>"}}` | TLS certificate configuration for exposing services via Ingress cert-manager configuration variables |
 | tls.base | object | `{"cert":"<MASKED>","create":false,"key":"<MASKED>"}` | Base certificate configuration (Standard mode, e.g., crater.example.com certificate) |

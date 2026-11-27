@@ -98,8 +98,9 @@ tensorboard:
   idleTimeoutSeconds: 57600
   # -- Protect every TensorBoard Ingress request through the Crater authentication endpoint
   ingressAuthEnabled: true
-  # -- Node selector applied only to TensorBoard Pods
-  nodeSelector: {}
+  # -- Node selector applied only to TensorBoard Pods; defaults to amd64 for the bundled image. Override when using an image that supports another architecture.
+  nodeSelector:
+    kubernetes.io/arch: amd64
   # -- Tolerations applied only to TensorBoard Pods
   tolerations: []
   # -- Prefer nodes without GPUs while still allowing the scheduler to use other eligible nodes

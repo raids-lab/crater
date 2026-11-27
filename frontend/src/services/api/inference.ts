@@ -250,6 +250,22 @@ export const apiCreateKthenaService = (data: CreateKthenaReq) =>
 export const apiListKthenaServices = () =>
   apiV1Get<IResponse<KthenaService[]>>('kthena/inference-services')
 
+export interface KthenaDeploymentOverview {
+  name: string
+  model: string
+  accountName: string
+  phase: string
+  readyGroups: number | null
+  desiredGroups: number
+  resources: Record<string, string> | null
+  routingConfigured: boolean
+  canOpenDetail: boolean
+  createdAt: string
+}
+
+export const apiListKthenaDeploymentOverview = (signal?: AbortSignal) =>
+  apiV1Get<IResponse<KthenaDeploymentOverview[]>>('kthena/deployment-overview', { signal })
+
 export const apiGetKthenaService = (name: string) =>
   apiV1Get<IResponse<KthenaService>>(`kthena/inference-services/${name}`)
 

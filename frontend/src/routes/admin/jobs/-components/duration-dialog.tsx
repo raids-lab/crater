@@ -39,7 +39,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 
 import { DurationFields } from '@/components/form/duration-fields'
 
-import { IJobInfo, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
+import { IJobInfo, type JobLockDuration, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
 
 // Moved Zod schema to component
 const getFormSchema = (t: (key: string) => string) =>
@@ -60,6 +60,7 @@ interface DurationDialogProps {
   open: boolean
   setOpen: (open: boolean) => void
   onSuccess?: () => void
+  submitLock?: (duration: JobLockDuration) => Promise<void>
   setExtend?: boolean
   defaultDays?: number
   defaultHours?: number
@@ -70,6 +71,7 @@ export function DurationDialog({
   open,
   setOpen,
   onSuccess,
+  submitLock,
   setExtend,
   defaultDays,
   defaultHours,
@@ -79,6 +81,7 @@ export function DurationDialog({
   const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked)
   const mixedState = !allLocked && !allUnlocked
   const isExtendDialogOpen = setExtend && allLocked
+  const showUnlock = allLocked && !isExtendDialogOpen && !submitLock
 
   // Initialize form with translated schema
   const form = useForm<FormValues>({
@@ -117,20 +120,22 @@ export function DurationDialog({
   const lockMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const { isPermanent, days, hours } = values
-      const promises = jobs.map((job) => {
-        const payload = {
-          name: job.jobName,
-          isPermanent,
-          days: days || 0,
-          hours: hours || 0,
-          minutes: 0,
-        }
-        return apiJobLock(payload)
-      })
-      return Promise.all(promises)
+      const duration = {
+        isPermanent,
+        days: isPermanent ? 0 : days || 0,
+        hours: isPermanent ? 0 : hours || 0,
+        minutes: 0,
+      }
+      if (submitLock) {
+        await submitLock(duration)
+      } else {
+        await Promise.all(jobs.map((job) => apiJobLock({ name: job.jobName, ...duration })))
+      }
     },
     onSuccess: () => {
-      toast.success(t('durationDialog.toast.lockSuccess', { count: jobs.length }))
+      if (!submitLock) {
+        toast.success(t('durationDialog.toast.lockSuccess', { count: jobs.length }))
+      }
       setOpen(false)
       onSuccess?.()
     },
@@ -156,16 +161,19 @@ export function DurationDialog({
   })
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!lockMutation.isPending && !unlockMutation.isPending) setOpen(nextOpen)
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {allLocked && !isExtendDialogOpen
-              ? t('durationDialog.title.unlock')
-              : t('durationDialog.title.lock')}
+            {showUnlock ? t('durationDialog.title.unlock') : t('durationDialog.title.lock')}
           </DialogTitle>
           <DialogDescription>
-            {allLocked && !isExtendDialogOpen
+            {showUnlock
               ? t('durationDialog.description.unlock', { count: jobs.length })
               : t('durationDialog.description.lock', { count: jobs.length })}
           </DialogDescription>
@@ -185,7 +193,7 @@ export function DurationDialog({
               </CardContent>
             </Card>
           </div>
-        ) : allLocked && !isExtendDialogOpen ? (
+        ) : showUnlock ? (
           <Button
             onClick={() => unlockMutation.mutate()}
             className="w-full"
@@ -254,7 +262,11 @@ export function DurationDialog({
                   <Lock className="mr-2 h-4 w-4" />
                   {lockMutation.isPending
                     ? t('durationDialog.button.locking')
-                    : t('durationDialog.button.lock')}
+                    : t(
+                        submitLock
+                          ? 'ApprovalOrderTable.actions.approveAndLock'
+                          : 'durationDialog.button.lock'
+                      )}
                 </Button>
               </DialogFooter>
             </form>

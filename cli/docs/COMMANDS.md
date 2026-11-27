@@ -78,8 +78,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 7,
-      "min_supported_backend_api_version": 7
+      "api_version": 8,
+      "min_supported_backend_api_version": 8
     }
   }
   ```
@@ -98,7 +98,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **处理逻辑**：
   - 未提供 `--platform` 且没有当前激活身份时，不发起 HTTP 请求，返回 `usage_error` + `ERR_MISSING_REQUIRED_FLAG`，进程退出码为 `2`；提示用户通过 `--platform <URL>` 指定目标平台，并明确该操作无需登录。
   - 调用公开的 `GET /api/cli/compatibility` 一次，并比较 CLI / 后端各自的当前 API 版本与最低支持的对方版本。
-  - 双方均满足最低版本时成功。当前 CLI 最低要求后端 API v7，连接 v6 后端时会报告后端版本过旧。默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
+  - 作业审批并锁定接口从 API v8 开始提供，当前 CLI 与后端均要求对方至少为 API v8。v7 CLI 连接 v8 后端时会报告 CLI 版本过旧，v8 CLI 连接 v7 后端时会报告后端版本过旧。默认模式输出平台、状态、双方 API 版本，以及后端产品版本、7 位短提交 SHA、构建类型和 UTC 构建时间。
   - 后端构建信息仅用于诊断和展示，不参与 API 兼容性判断。兼容性接口仅返回 API 版本字段的早期实现仍可使用；缺失的后端构建字段显示为“未知”，不会因此把响应判定为非法。
   - 明确不兼容时返回 `api_error` + `ERR_API_VERSION_MISMATCH`，进程退出码为 `4`。人类可读错误按“具体情况 / 版本信息 / 使用建议”分段展示：具体指出哪个最低版本条件不满足，列出 CLI 产品版本、CLI / 后端 API 版本和双方最低支持版本，并说明用户仍可继续使用 CLI，但部分操作可能因 API 契约不一致而失败。
   - 握手响应明确报告版本 `0` 时，将它视为早于首个正式契约的旧版本并参与比较。例如后端明确报告 `apiVersion: 0` 时，当前 CLI 会输出“后端版本过旧”的完整诊断。字段缺失或为负数时视为非法响应。
@@ -114,16 +114,16 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 7,
-      "min_supported_backend_api_version": 7
+      "api_version": 8,
+      "min_supported_backend_api_version": 8
     },
     "backend": {
       "product_version": "1.1.1",
       "short_commit_sha": "f42b0c2",
       "build_type": "release",
       "build_time": "2026-07-26T08:30:00Z",
-      "api_version": 7,
-      "min_supported_cli_api_version": 3
+      "api_version": 8,
+      "min_supported_cli_api_version": 8
     }
   }
   ```
@@ -205,6 +205,12 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 
 需要访问平台的命令会读取当前 `active_context` 对应 `auth_infos` 条目中的 `token`。`auth ls` / `switch` / `rm` / `logout` 不读取 token。已有激活身份但该条目没有 `token`（例如从旧 Keyring 升级后尚未重新登录）时，访问平台的命令失败并提示重新 `auth login`。
 
+普通平台请求和 `job exec` 握手收到 HTTP 401 且业务码为 `40101` 时，CLI 使用同一身份的 refresh token 请求 `POST /api/auth/refresh`。续期成功后一起保存两个新令牌，原操作最多重试一次。已经开始的 exec 会话不会重启。文件命令在本地读到访问令牌已过期且有刷新令牌时，先续期再发送 storage 请求。正常的文件请求直接访问 storage，已发送的文件请求不会自动重传。
+
+保存的非本机 HTTP 平台地址会在发送凭据前进行一次不带凭据的 `GET /api/auth/check` 探测。同一主机将同一 API 路径从 HTTP 80 端口升级到 HTTPS 443 端口时，本次命令在 HTTPS 上发起业务请求和续期，凭据仍按原身份记录读写。其他重定向需要显式配置最终平台地址。已保存的 HTTPS 地址和本机 HTTP 开发地址直接连接。
+
+已有的单令牌记录在 access token 有效期内可继续使用。收到 HTTP 401 和令牌过期或无效的业务码（`40101` 或 `40102`），且无法续期时，提示重新执行 `crater auth login`。账号待激活（`40109`）时，保留后端联系管理员的提示。网络、权限或服务错误保留实际原因，续期接口返回 404 时保留该状态和原始错误。并发登出、切换身份或更新凭据后，旧请求的续期结果不得覆盖新的状态。
+
 ### `crater auth login`
 - **描述**: 登录到一个 Crater platform 实例并获取 Token。
 - **选项**:
@@ -220,9 +226,9 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - **非交互式约束**: 在开启 `--no-interactive` 或 `--json` 时，如果未提供 `--password`，程序将直接报错而非使用空密码。
 - **预期行为**:
   - 调用 `/api/auth/login` 接口。
-  - 成功后将 access token 明文写入 `state.json` 中对应 `auth_infos` 条目的 `token` 字段（与身份摘要同一文件，权限 `0600`）。
+  - 成功后将 access token 和后端提供的 refresh token 写入 `state.json` 中对应 `auth_infos` 条目的 `token` 和 `refresh_token` 字段（与身份摘要同一文件，权限 `0600`）。
   - 更新 `auth_infos` 列表，并自动将该环境设为 `active_context`。
-- **`--json` 的 `data`**：`user`（身份摘要对象，字段与 `auth_infos` 条目一致，但**不含** `token`）。
+- **`--json` 的 `data`**：`user`（身份摘要对象，字段与 `auth_infos` 条目一致，但**不含** `token` 或 `refresh_token`）。
 - **状态**: [x] Completed
 
 ### `crater auth switch`
@@ -259,7 +265,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
   - 标记出当前激活的 (`active`) 上下文。
 - **输出格式**:
   - 表格形式显示: `ACTIVE`, `PLATFORM`, `USERNAME`, `METHOD`, `PRIVILEGE` (该身份在平台的权限级别)。
-- **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目；字段与磁盘 `auth_infos` 相同，但**不含** `token`）。
+- **`--json` 的 `data`**：`active_context`（对象）、`auth_infos`（数组，筛选后的条目；字段与磁盘 `auth_infos` 相同，但**不含** `token` 或 `refresh_token`）。
 - **状态**: [x] Completed
 
 ### `crater auth rm`
@@ -275,7 +281,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     - **交互模式**: 在终端列出所有匹配项，并要求用户确认是否删除。
     - **非交互模式 (`--no-interactive`)**: 必须配合 `-y` 选项，否则报错并拒绝执行。
   - **清理逻辑**: 
-    - 从 `state.json` 的 `auth_infos` 中移除对应条目（其中的 `token` 一并删除）。
+    - 从 `state.json` 的 `auth_infos` 中移除对应条目（两个令牌一并删除）。
     - 如果删除的是当前 `active` 的上下文，则将 `active_context` 置为空。
 - **`--json` 的 `data`**：`removed_count`（整数）。
 - **状态**: [x] Completed
@@ -290,7 +296,7 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     - **交互模式**: 确认是否登出当前用户。
     - **非交互模式 (`--no-interactive`)**: 必须配合 `-y` 选项，否则报错。
   - **清理逻辑**: 
-    - 从 `state.json` 的 `auth_infos` 列表中移除当前激活项（其中的 `token` 一并删除）。
+    - 从 `state.json` 的 `auth_infos` 列表中移除当前激活项（两个令牌一并删除）。
   - **后续行为 (Auto-Switch)**:
     - 如果列表中仍有其他已保存的认证上下文，则**自动切换**到列表中的第一项作为新的 `active_context`。
     - 如果列表为空，则清空 `active_context`。
@@ -785,9 +791,9 @@ This section covers account context and additional resource commands. All comman
 - **描述**：将当前登录身份切换到其所属的指定账户／队列，供后续平台命令使用。
 - **位置参数**：`<name>` 为 `account ls` 返回的精确 `name`，不是昵称或 ID；首尾空白会去掉，空值、缺参及多余参数返回 `usage_error`。非交互模式同样必须提供名称。
 - **处理逻辑**：使用当前身份的 access token 请求 `POST /api/v1/auth/switch`，请求体为 `{"queue":"<name>"}`。账户存在性和成员权限由后端校验；显式指定名称后直接切换，无额外确认。
-- **持久化**：仅在成功响应包含非空 access token，且 `context.queue` 与目标名称一致时，更新发起请求的 `(platform_url, username, method)` 对应身份的 access token；保留其它身份、激活身份与语言。后续作业、文件、资源和计费命令使用新 token。refresh token 不持久化。
+- **持久化**：仅在成功响应包含非空 access token，且 `context.queue` 与目标名称一致时，成对更新发起请求的 `(platform_url, username, method)` 对应身份的 access token 和 refresh token。写回前核对原凭据仍一致，保留其它身份、激活身份与语言。兼容只返回 access token 的后端，切换时清除旧项目的 refresh token。
 - **默认输出与 JSON**：与 `account current` 相同，展示切换后的上下文，不输出 access token 或 refresh token。
-- **错误**：API、网络或无效响应不会写入本地状态；HTTP 与解码错误遵循 `account current` 的分类规则，保留后端错误事实。凭据先在同目录的私有临时文件中完整写入、同步并关闭，再替换原状态文件；写入或替换失败时保留原文件，清理临时文件，返回 `system_error`，不输出成功结果。
+- **错误**：只有成功的切换才写入目标项目的凭据。若切换前已成功续期，新续期的凭据会保留。HTTP 与解码错误遵循 `account current` 的分类规则，保留后端错误事实。凭据先在同目录的私有临时文件中完整写入、同步并关闭，再替换原状态文件；写入或替换失败时保留原文件，清理临时文件，返回 `system_error`，不输出成功结果。
 
 ### Account And Queue Reads
 - `crater account ls`: `/api/v1/accounts`.
@@ -834,11 +840,15 @@ This section covers account context and additional resource commands. All comman
   - `page-size` 默认 `15`、最大 `200`；JSON 使用 `data.billing`，非 `--all-pages` 时同时有 `data.pagination`。
 - `crater user get <username>`, `email-verified`.
 - `crater order ls [--status STATUS] [--type TYPE] [--search TEXT] [--page N] [--page-size N] [--all-pages]`, `get <id>`, `by-name <name>`。
+- `order ls` 和 `order get` 只查询当前用户创建的工单。`order by-name` 只返回与当前用户可访问的作业或数据集关联的工单。管理员跨用户按 ID 查询请使用 `crater admin order get <id>`。
+- `crater order get <id>` 默认显示工单名称、状态、申请原因和审核信息。作业工单还显示申请时长、实际批准时长、当前用户为该作业提交的工单历史，以及当前用户有权查询的作业所有者、队列和资源。有限的批准时长按整小时和剩余分钟显示。使用 `--json` 时，接口返回的工单字段位于 `data.order`。
 - `crater admin order ls` 支持相同的本地筛选和分页，并额外支持 `--creator TEXT`。普通用户 `order ls` 不提供 creator filter；两者的 `--search` 均匹配工单名称或创建者信息。
+- 两个工单列表的 `--status` 均忽略大小写，例如 `pending` 和 `Pending` 都匹配 `Pending`。
 - 工单列表默认按 `Pending`、`Approved`、`Rejected`、`Canceled` 分组，同状态按创建时间和 ID 倒序排列。
 - `crater admin user ls [--base] [--search TEXT] [--role Guest|User|Admin] [--status Pending|Active|Inactive] [--page N] [--page-size N] [--all-pages]`；搜索覆盖用户名与显示名，默认按 ID 倒序。`--base` 与 `--role` / `--status` 互斥。
 - 上述工单和用户列表均先本地筛选再分页，`page-size` 默认 `15`、最大 `200`；JSON 当前页输出同时包含 `data.pagination`。
 - `crater admin billing status|jobs`, `crater admin order get <id>`, `crater admin user billing summary|accounts <username>`.
+- `crater admin order get <id>` 对作业工单显示作业所有者、资源申请、申请序号和历次工单的状态、申请时长、实际批准时长及审核耗时。实际批准的有限时长按整小时和剩余分钟显示，例如 `3 小时` 或 `3 小时 30 分钟`。`--json` 返回 `data.order`、作业摘要 `data.job` 和历史 `data.history`，实际批准的有限时长使用 `durationMinutes`。作业摘要或历史查询失败时，分别通过 `data.job_error` 或 `data.history_error` 报告原因。
 
 ### Approval Order Writes
 - User-visible commands stay under `crater order ...`:
@@ -851,9 +861,10 @@ This section covers account context and additional resource commands. All comman
   - `crater admin order reject <id> --review-notes TEXT`.
   - `crater admin order check --yes`.
 - `order edit` first reads the current order and preserves fields that were not explicitly provided, so absent flags do not clear existing content.
-- `admin order approve|reject` use the admin review API and only send review status/notes. The backend derives `reviewerID` from the active token and preserves the original order content.
-- Lock duration flags must be non-negative. Unless `--permanent` is set, `--lock` requires a positive duration.
-- `--json` success payloads use `data.message`; `approve --lock --json` also includes `data.lock_message`.
+- For running job orders, `admin order approve` approves and locks the job in one operation. It uses the requested hours by default. Use `--lock` with a positive duration or `--permanent` to override the request. Finite locks extend from the later of the current time and the existing expiration.
+- A job approval records the actual lock in `content.approvedLock` while preserving the request. The approval confirmation shows the applied duration in hours and remaining minutes or as a permanent lock. Older orders without a lock record show the approved duration as unknown. Dataset approvals and rejections use the review API.
+- Lock duration flags must be non-negative. Use either `--permanent` or a finite duration.
+- `--json` success payloads use `data.message`. Successful job approvals also include `data.lock_message` and `data.approved_lock`.
 
 ### Pod And Non-Volcano Job Diagnostics
 - 普通用户直接诊断 Job Pod 时必须显式指定真实命名空间：

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
@@ -148,7 +149,10 @@ func runAuthLogin(cmd *cobra.Command, _ []string) error {
 		Role:        roleToStr(loginResp.Context.RolePlatform),
 	}
 
-	if err := session.SaveLogin(newAuth, loginResp.AccessToken); err != nil {
+	if strings.TrimSpace(loginResp.AccessToken) == "" {
+		return cliErrFromAPI(&api.RequestError{HTTPStatus: http.StatusOK, Msg: "platform returned no access token"})
+	}
+	if err := session.SaveLogin(newAuth, loginResp.AccessToken, loginResp.RefreshToken); err != nil {
 		return &clierror.Error{
 			Category: errorcodes.CategorySystem,
 			Code:     errorcodes.ErrConfigWriteFailed,

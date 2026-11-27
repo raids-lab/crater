@@ -43,6 +43,8 @@ definitions:
         type: string
       approvalorderTypeID:
         type: integer
+      approvedLock:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock'
     type: object
   github_com_raids-lab_crater_dao_model.ApprovalOrderStatus:
     enum:
@@ -80,6 +82,15 @@ definitions:
     x-enum-varnames:
     - ApprovalOrderTypeDataset
     - ApprovalOrderTypeJob
+  github_com_raids-lab_crater_dao_model.ApprovedJobLock:
+    properties:
+      durationMinutes:
+        type: integer
+      isPermanent:
+        type: boolean
+      lockedUntil:
+        type: string
+    type: object
   github_com_raids-lab_crater_dao_model.BuildSource:
     enum:
     - Dockerfile
@@ -94,6 +105,22 @@ definitions:
     - Snapshot
     - EnvdAdvanced
     - EnvdRaw
+  github_com_raids-lab_crater_dao_model.BuildStatus:
+    enum:
+    - Initial
+    - Pending
+    - Running
+    - Finished
+    - Failed
+    - Canceled
+    type: string
+    x-enum-varnames:
+    - BuildJobInitial
+    - BuildJobPending
+    - BuildJobRunning
+    - BuildJobFinished
+    - BuildJobFailed
+    - BuildJobCanceled
   github_com_raids-lab_crater_dao_model.CraterResourceType:
     enum:
     - gpu
@@ -624,19 +651,6 @@ definitions:
       total:
         type: integer
     type: object
-  github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_WorkloadResp:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/internal_handler_vcjob.WorkloadResp'
-        type: array
-      page:
-        type: integer
-      page_size:
-        type: integer
-      total:
-        type: integer
-    type: object
   github_com_raids-lab_crater_internal_resputil.Response-any:
     properties:
       code:
@@ -738,6 +752,18 @@ definitions:
       data:
         items:
           $ref: '#/definitions/internal_handler.KthenaConversationResp'
+        type: array
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaDeploymentOverview:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        items:
+          $ref: '#/definitions/internal_handler.KthenaDeploymentOverview'
         type: array
       msg:
         type: string
@@ -884,16 +910,6 @@ definitions:
       msg:
         type: string
     type: object
-  ? github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_WorkloadResp
-  : properties:
-      code:
-        description: 依然保持 int (ErrorCode) 类型
-        type: integer
-      data:
-        $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Page-internal_handler_vcjob_WorkloadResp'
-      msg:
-        type: string
-    type: object
   github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_service_AdminAgentConversationPage:
     properties:
       code:
@@ -981,6 +997,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler.ApprovalOrderResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler.ApproveJobOrderResp'
       msg:
         type: string
     type: object
@@ -1324,6 +1350,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler_image.GetKanikoResponse'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_personalLLMConfigResp:
     properties:
       code:
@@ -1590,6 +1626,17 @@ definitions:
     - _
     - IngressType
     - NodePortType
+  github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration:
+    properties:
+      days:
+        type: integer
+      hours:
+        type: integer
+      isPermanent:
+        type: boolean
+      minutes:
+        type: integer
+    type: object
   github_com_raids-lab_crater_internal_util.VolumeMount:
     properties:
       datasetID:
@@ -1937,6 +1984,8 @@ definitions:
         type: string
       reviewNotes:
         type: string
+      reviewedAt:
+        type: string
       reviewer:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
       reviewerID:
@@ -1966,6 +2015,22 @@ definitions:
     required:
     - name
     - type
+    type: object
+  internal_handler.ApproveJobOrderReq:
+    properties:
+      lock:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_service_vcjob.JobLockDuration'
+      reviewNotes:
+        type: string
+    type: object
+  internal_handler.ApproveJobOrderResp:
+    properties:
+      approvedLock:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.ApprovedJobLock'
+      lockMessage:
+        type: string
+      message:
+        type: string
     type: object
   internal_handler.AuthMethod:
     enum:
@@ -2332,6 +2397,29 @@ definitions:
         type: array
       title:
         type: string
+    type: object
+  internal_handler.KthenaDeploymentOverview:
+    properties:
+      accountName:
+        type: string
+      canOpenDetail:
+        type: boolean
+      createdAt:
+        type: string
+      desiredGroups:
+        type: integer
+      model:
+        type: string
+      name:
+        type: string
+      phase:
+        type: string
+      readyGroups:
+        type: integer
+      resources:
+        $ref: '#/definitions/v1.ResourceList'
+      routingConfigured:
+        type: boolean
     type: object
   internal_handler.KthenaDiagnostic:
     properties:
@@ -3689,6 +3777,50 @@ definitions:
     - label
     - value
     type: object
+  internal_handler_image.DeleteKanikoByIDListRequest:
+    properties:
+      action:
+        allOf:
+        - $ref: '#/definitions/internal_handler_image.imageBuildRemovalAction'
+        enum:
+        - cancel
+        - delete
+      idList:
+        items:
+          type: integer
+        type: array
+    required:
+    - idList
+    type: object
+  internal_handler_image.GetKanikoResponse:
+    properties:
+      ID:
+        type: integer
+      buildSource:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildSource'
+      canManage:
+        type: boolean
+      canViewBuildLogs:
+        type: boolean
+      createdAt:
+        type: string
+      description:
+        type: string
+      dockerfile:
+        type: string
+      imageLink:
+        type: string
+      imagepackName:
+        type: string
+      nodeName:
+        type: string
+      podName:
+        type: string
+      podNameSpace:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.BuildStatus'
+    type: object
   internal_handler_image.UpdateImageArchRequest:
     properties:
       archs:
@@ -3725,6 +3857,14 @@ definitions:
       taskType:
         $ref: '#/definitions/github_com_raids-lab_crater_dao_model.JobType'
     type: object
+  internal_handler_image.imageBuildRemovalAction:
+    enum:
+    - cancel
+    - delete
+    type: string
+    x-enum-varnames:
+    - cancelImageBuild
+    - deleteImageBuild
   internal_handler_operations.OperationLogResp:
     properties:
       created_at:
@@ -4145,61 +4285,6 @@ definitions:
       shell:
         type: string
       workingDir:
-        type: string
-    type: object
-  internal_handler_vcjob.WorkloadResp:
-    properties:
-      billedPointsTotal:
-        type: number
-      completedAt:
-        type: string
-      createdAt:
-        type: string
-      detailPath:
-        type: string
-      jobName:
-        type: string
-      jobType:
-        type: string
-      locked:
-        type: boolean
-      lockedTimestamp:
-        type: string
-      model:
-        type: string
-      name:
-        type: string
-      namespace:
-        type: string
-      nodes:
-        items:
-          type: string
-        type: array
-      owner:
-        type: string
-      permanentLocked:
-        type: boolean
-      podGroupPhase:
-        type: string
-      queue:
-        type: string
-      resources:
-        $ref: '#/definitions/v1.ResourceList'
-      scheduler:
-        type: string
-      startedAt:
-        type: string
-      status:
-        type: string
-      statusDetail:
-        type: string
-      userInfo:
-        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
-      waitingToleranceSeconds:
-        type: integer
-      workloadID:
-        type: string
-      workloadKind:
         type: string
     type: object
   map_string_string:
@@ -5203,11 +5288,60 @@ paths:
       summary: 管理员获取审批工单详情
       tags:
       - approvalorder
+  /v1/admin/approvalorder/{id}/approve-and-lock:
+    put:
+      consumes:
+      - application/json
+      description: 在同一事务中锁定运行中的作业、批准工单并记录实际批准时长，省略锁定参数时使用工单申请时长
+      parameters:
+      - description: 工单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 锁定时长及审核备注
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler.ApproveJobOrderReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_ApproveJobOrderResp'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: 批准作业工单并锁定作业
+      tags:
+      - approvalorder
   /v1/admin/approvalorder/{id}/review:
     put:
       consumes:
       - application/json
-      description: 管理员仅更新审批工单审核状态和审核备注，不覆盖申请内容
+      description: 审批数据集工单或拒绝、取消工单。批准作业工单使用 approve-and-lock
       parameters:
       - description: 工单ID
         in: path
@@ -5656,6 +5790,44 @@ paths:
       summary: 管理员模式下更新镜像的描述
       tags:
       - ImagePack
+  /v1/admin/images/getbyname:
+    get:
+      description: Returns full build configuration and pod information through the
+        admin route.
+      parameters:
+      - description: Image build name
+        in: query
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: Get any image build as an administrator
+      tags:
+      - ImagePack
   /v1/admin/images/image:
     get:
       consumes:
@@ -5705,19 +5877,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: 管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      description: Cancel active builds or delete terminal builds as an administrator.
+        Omit action to choose by status.
       parameters:
-      - description: 镜像构建任务ID列表
+      - description: Build IDs and optional action
         in: body
-        name: idList
+        name: request
         required: true
         schema:
-          items:
-            type: integer
-          type: array
+          $ref: '#/definitions/internal_handler_image.DeleteKanikoByIDListRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 管理员模式下删除或取消镜像制作任务（批量）
@@ -8117,12 +8292,19 @@ paths:
     get:
       consumes:
       - application/json
-      description: 通过名称获取所有同名审批工单（无需身份验证）
+      description: 按名称查询当前用户可访问的作业或数据集的审批工单
       parameters:
       - description: 工单名称
         in: path
         name: name
         required: true
+        type: string
+      - description: 关联资源类型
+        enum:
+        - job
+        - dataset
+        in: query
+        name: type
         type: string
       produces:
       - application/json
@@ -8133,10 +8315,6 @@ paths:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_ApprovalOrderResp'
         "400":
           description: 请求参数错误
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
-        "404":
-          description: 工单不存在
           schema:
             $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
         "500":
@@ -8972,21 +9150,40 @@ paths:
       - ImagePack
   /v1/images/getbyname:
     get:
-      consumes:
-      - application/json
-      description: 获取imagepackname，搜索到imagepack
+      description: Owners receive full build details. Public and shared image readers
+        receive configuration without pod or node information.
       parameters:
-      - description: 获取ImagePack的name
+      - description: Image build name
         in: query
         name: name
         required: true
         type: string
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_image_GetKanikoResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
-      summary: 获取imagepack的详细信息
+      summary: Get a visible image build
       tags:
       - ImagePack
   /v1/images/grant:
@@ -9154,19 +9351,22 @@ paths:
     post:
       consumes:
       - application/json
-      description: 根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+      description: Cancel active builds or delete terminal builds. Omit action to
+        choose by status.
       parameters:
-      - description: 镜像构建任务ID列表
+      - description: Build IDs and optional action
         in: body
-        name: idList
+        name: request
         required: true
         schema:
-          items:
-            type: integer
-          type: array
+          $ref: '#/definitions/internal_handler_image.DeleteKanikoByIDListRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
       security:
       - Bearer: []
       summary: 删除或取消镜像制作任务（批量）
@@ -9400,6 +9600,26 @@ paths:
       summary: 更新作业模板
       tags:
       - jobtemplate
+  /v1/kthena/deployment-overview:
+    get:
+      description: Returns cluster-visible summaries of existing deployments, including
+        paused ones, without a creation-date filter.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-array_internal_handler_KthenaDeploymentOverview'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any'
+      security:
+      - Bearer: []
+      summary: List current model deployments for the platform overview
+      tags:
+      - kthena
   /v1/kthena/inference-services:
     get:
       consumes:
@@ -11970,7 +12190,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort up to 3 fields including phase and id, prefix - for descending,
+          unknown phases last
         in: query
         name: sort
         type: string
@@ -11995,6 +12216,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -12434,7 +12679,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort up to 3 fields including phase and id, prefix - for descending,
+          unknown phases last
         in: query
         name: sort
         type: string
@@ -12455,6 +12701,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -12482,6 +12752,8 @@ paths:
       - VolcanoJob
   /v1/vcjobs/all/facets:
     get:
+      description: Each facet ignores its own filter. Other filters, including the
+        other status dimension, and scopes apply.
       parameters:
       - description: Number of days to look back, -1 for all
         in: query
@@ -12504,6 +12776,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -12523,6 +12819,8 @@ paths:
       - VolcanoJob
   /v1/vcjobs/facets:
     get:
+      description: Each facet ignores its own filter. Other filters, including the
+        other status dimension, and scopes apply.
       parameters:
       - description: Number of days to look back, -1 for all
         in: query
@@ -12545,6 +12843,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -12735,7 +13057,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort up to 3 fields including phase and id, prefix - for descending,
+          unknown phases last
         in: query
         name: sort
         type: string
@@ -12756,6 +13079,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -12791,6 +13138,8 @@ paths:
       - VolcanoJob
   /v1/vcjobs/user/{username}/facets:
     get:
+      description: Each facet ignores its own filter. Other filters, including the
+        other status dimension, and scopes apply.
       parameters:
       - description: Username
         in: path
@@ -12818,6 +13167,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -12870,82 +13243,6 @@ paths:
       security:
       - Bearer: []
       summary: Create a WebIDE job
-      tags:
-      - VolcanoJob
-  /v1/vcjobs/workloads:
-    get:
-      description: Lists persisted Volcano jobs and current-user Kthena inference
-        deployments as a single pageable list.
-      parameters:
-      - description: Page number
-        in: query
-        name: page
-        type: integer
-      - description: Page size, 1-200
-        in: query
-        name: page_size
-        type: integer
-      - description: Sort fields
-        in: query
-        name: sort
-        type: string
-      - description: Search workloads
-        in: query
-        name: search
-        type: string
-      - description: Number of days to look back, -1 for all
-        in: query
-        name: days
-        type: integer
-      - collectionFormat: multi
-        description: Job types, including model-deployment
-        in: query
-        items:
-          type: string
-        name: job_type
-        type: array
-      - collectionFormat: multi
-        description: Workload kinds
-        in: query
-        items:
-          type: string
-        name: workload_kind
-        type: array
-      - collectionFormat: multi
-        description: Workload statuses
-        in: query
-        items:
-          type: string
-        name: status
-        type: array
-      - description: Node name
-        in: query
-        name: node
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_Page-internal_handler_vcjob_WorkloadResp'
-      security:
-      - Bearer: []
-      summary: Get current user's unified workloads
-      tags:
-      - VolcanoJob
-  /v1/vcjobs/workloads/facets:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_resputil_FacetResponse'
-      security:
-      - Bearer: []
-      summary: Get current user's unified workload facets
       tags:
       - VolcanoJob
 securityDefinitions:

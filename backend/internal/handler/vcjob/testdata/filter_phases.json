@@ -1,0 +1,112 @@
+[
+  {
+    "status": "",
+    "podGroupPhase": null,
+    "phase": "Init"
+  },
+  {
+    "status": "",
+    "podGroupPhase": "",
+    "phase": "Init"
+  },
+  {
+    "status": "",
+    "podGroupPhase": "Pending",
+    "phase": "Init"
+  },
+  {
+    "status": "",
+    "podGroupPhase": "Inqueue",
+    "phase": "Inqueue"
+  },
+  {
+    "status": "",
+    "podGroupPhase": "Unknown",
+    "phase": "Inqueue"
+  },
+  {
+    "status": "",
+    "podGroupPhase": "Running",
+    "phase": "Starting"
+  },
+  {
+    "status": "",
+    "podGroupPhase": "Completed",
+    "phase": "Starting"
+  },
+  {
+    "status": "",
+    "podGroupPhase": "FuturePhase",
+    "phase": "Inqueue"
+  },
+  {
+    "status": "Pending",
+    "podGroupPhase": null,
+    "phase": "Pending"
+  },
+  {
+    "status": "Pending",
+    "podGroupPhase": "",
+    "phase": "Pending"
+  },
+  {
+    "status": "Pending",
+    "podGroupPhase": "Pending",
+    "phase": "Pending"
+  },
+  {
+    "status": "Pending",
+    "podGroupPhase": "Inqueue",
+    "phase": "Inqueue"
+  },
+  {
+    "status": "Pending",
+    "podGroupPhase": "Unknown",
+    "phase": "Inqueue"
+  },
+  {
+    "status": "Pending",
+    "podGroupPhase": "Running",
+    "phase": "Starting"
+  },
+  {
+    "status": "Pending",
+    "podGroupPhase": "Completed",
+    "phase": "Starting"
+  },
+  {
+    "status": "Pending",
+    "podGroupPhase": "FuturePhase",
+    "phase": "Inqueue"
+  },
+  {
+    "status": "Prequeue",
+    "podGroupPhase": "Running",
+    "phase": "Pending"
+  },
+  {
+    "status": "Running",
+    "podGroupPhase": "Running",
+    "phase": "Running"
+  },
+  {
+    "status": "Completed",
+    "podGroupPhase": "Running",
+    "phase": "Completed"
+  },
+  {
+    "status": "Failed",
+    "podGroupPhase": "Running",
+    "phase": "Failed"
+  },
+  {
+    "status": "Aborting",
+    "podGroupPhase": "Running",
+    "phase": "Aborting"
+  },
+  {
+    "status": "Deleted",
+    "podGroupPhase": "Running",
+    "phase": "Deleted"
+  }
+]
