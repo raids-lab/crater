@@ -1,11 +1,31 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestPageResponseAcceptsLegacyArray(t *testing.T) {
+	var response pageResponse[int]
+	if err := json.Unmarshal([]byte(`[1,2,3]`), &response); err != nil {
+		t.Fatalf("legacy list response failed to decode: %v", err)
+	}
+	if !reflect.DeepEqual(response.Items, []int{1, 2, 3}) || response.Total != 3 ||
+		response.Page.Page != 1 || response.Page.PageSize != 3 {
+		t.Fatalf("unexpected legacy page: %#v", response.Page)
+	}
+
+	var empty pageResponse[int]
+	if err := json.Unmarshal([]byte(`[]`), &empty); err != nil {
+		t.Fatalf("empty legacy list response failed to decode: %v", err)
+	}
+	if empty.Items == nil || empty.Total != 0 || empty.Page.Page != 1 || empty.Page.PageSize != 1 {
+		t.Fatalf("unexpected empty legacy page: %#v", empty.Page)
+	}
+}
 
 func TestListOptionsNormalize(t *testing.T) {
 	options := (ListOptions{}).Normalize()

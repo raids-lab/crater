@@ -1,6 +1,8 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -18,6 +20,36 @@ type Page[T any] struct {
 	Total    int64 `json:"total"`
 	Page     int   `json:"page"`
 	PageSize int   `json:"page_size"`
+}
+
+// pageResponse accepts the paginated response introduced by API v9 and the
+// complete array returned by older versions of list endpoints. The latter is
+// treated as one complete page so callers that intentionally read all items
+// remain compatible with the historical response shape.
+type pageResponse[T any] struct {
+	Page[T]
+}
+
+func (response *pageResponse[T]) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) > 0 && trimmed[0] == '[' {
+		var items []T
+		if err := json.Unmarshal(trimmed, &items); err != nil {
+			return err
+		}
+		pageSize := len(items)
+		if pageSize == 0 {
+			pageSize = 1
+		}
+		response.Page = Page[T]{
+			Items:    items,
+			Total:    int64(len(items)),
+			Page:     1,
+			PageSize: pageSize,
+		}
+		return nil
+	}
+	return json.Unmarshal(trimmed, &response.Page)
 }
 
 type ListOptions struct {
@@ -117,7 +149,7 @@ func fetchAllListPagesWithParams[T any](client *Client, path string, params map[
 }
 
 func fetchListPage[T any](client *Client, path string, params map[string]string, options ListOptions) (Page[T], error) {
-	var result Response[Page[T]]
+	var result Response[pageResponse[T]]
 	values := make(map[string]string, len(params)+2)
 	for key, value := range params {
 		values[key] = value
@@ -131,5 +163,5 @@ func fetchListPage[T any](client *Client, path string, params map[string]string,
 	if err := errorFromResponse(response, result.Code, result.Message); err != nil {
 		return Page[T]{}, err
 	}
-	return result.Data, nil
+	return result.Data.Page, nil
 }

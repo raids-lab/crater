@@ -78,8 +78,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
       "go_version": "go1.25.4",
       "os": "linux",
       "arch": "amd64",
-      "api_version": 8,
-      "min_supported_backend_api_version": 8
+      "api_version": 9,
+      "min_supported_backend_api_version": 9
     }
   }
   ```
@@ -114,8 +114,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
     "status": "compatible",
     "cli": {
       "product_version": "1.0.0",
-      "api_version": 8,
-      "min_supported_backend_api_version": 8
+      "api_version": 9,
+      "min_supported_backend_api_version": 9
     },
     "backend": {
       "product_version": "1.1.1",
@@ -825,7 +825,7 @@ This section covers account context and additional resource commands. All comman
 - `crater admin dataset ls`: `/api/v1/admin/dataset/alldataset`，逐页聚合完整数组。
 - `crater template ls`: `/api/v1/jobtemplate/list`，按创建时间、ID 升序自动读取全部分页，保持完整列表输出。`--json` 的 `data.templates` 为数组，空结果为 `[]`；任何一页读取失败时返回 API 错误，不输出不完整的成功列表。
 - `crater template get <id>`: `/api/v1/jobtemplate/{id}`.
-- API V8 为 CLI 提供数据库分页契约，覆盖模板、管理员用户和账户、账户成员、数据集、镜像、镜像构建、审批工单及模型下载，并统一操作日志的分页参数。完整列表命令会自动逐页读取。依赖分页响应的命令需要后端 API V8 或更新版本。GPU 分析、节点、节点 Pod 和资源规格仍通过各自的完整列表接口读取。
+- API V9 为 CLI 提供统一数据库分页契约，覆盖模板、管理员用户和账户、账户成员、数据集、镜像、镜像构建、审批工单及模型下载，并统一操作日志的分页参数。完整列表命令会自动逐页读取。依赖分页响应的命令需要后端 API V9 或更新版本。GPU 分析、节点、节点 Pod 和资源规格仍通过各自的完整列表接口读取。
 - 后端在原路径和权限范围内兼容旧请求。未请求数据库分页的调用继续获得原有的数组或 `imageList`、`kanikoList` 包装，空模板列表保留 `data: null`。模型下载和操作日志保留原有分页参数别名及响应。后端最低支持 CLI API V3，已用 API V4 的发布版 CLI 验证兼容性。API 版本头仅用于诊断。
 - 下载历史参数路径中，缺省或非正数 `page` 保留完整数组，正数 `page` 保留 `pageSize` 和原分页包装；显式 `page_size` 使用规范分页，要求页码和大小为正数。操作日志的 `limit` 正整数历史请求保持有效，非正数页码或大小返回 HTTP 400。
 - JSON payload keys: `datasets`, `dataset`, `users`, `queues`, `templates`, `template`.

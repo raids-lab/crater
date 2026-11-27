@@ -31,7 +31,7 @@ func TestDownloadListProcessPagination(t *testing.T) {
 		{
 			name: "V7 ignored page_size", legacy: true, total: 60,
 			items: []uint{21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40},
-			code:  errorcodes.ErrAPIVersionMismatch, message: "upgrade the backend to API V8",
+			code:  errorcodes.ErrAPIVersionMismatch, message: "upgrade the backend to API V9",
 		},
 		{name: "wrong page", page: 1, items: []uint{}, code: errorcodes.ErrAPIOther, message: "requested page 2, received page 1"},
 	} {
@@ -79,7 +79,7 @@ func TestDownloadListProcessPagination(t *testing.T) {
 					t.Fatalf("unexpected failure or partial output: %+v", result)
 				}
 				if tc.legacy && (failure.Context["reason"] != "legacy_download_pagination" ||
-					failure.Context["cli_min_supported_backend_api_version"] != float64(8) ||
+					failure.Context["cli_min_supported_backend_api_version"] != float64(9) ||
 					failure.Context["backend_api_version"] != nil ||
 					!strings.Contains(failure.Message, "crater compatibility")) {
 					t.Fatalf("unexpected compatibility diagnostic: %+v", failure)
