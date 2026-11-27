@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	// v7 adds the container command execution API.
-	APIVersion = 7
-	// job exec requires the v7 endpoint and has no equivalent fallback.
-	MinSupportedBackendAPIVersion    = 7
+	// v8 adds the atomic approval and lock operation for job orders.
+	APIVersion = 8
+	// Job order approval requires the v8 approve-and-lock endpoint.
+	MinSupportedBackendAPIVersion    = 8
 	APIVersionHeader                 = "X-Crater-API-Version"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"

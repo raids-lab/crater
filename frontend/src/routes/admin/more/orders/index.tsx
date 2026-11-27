@@ -86,8 +86,8 @@ function RouteComponent() {
     isDelayDialogOpen,
     isProcessingLock,
     handleApproveWithDelay,
-    handleDelaySuccess,
-    setIsDelayDialogOpen,
+    submitApprovalLock,
+    onDelayDialogOpenChange,
   } = useApprovalOrderLock()
 
   const query = useQuery({
@@ -307,9 +307,8 @@ function RouteComponent() {
           key={`${selectedOrder.id}-${selectedExtHours}`} // 默认值变化时重建
           jobs={[selectedJob]}
           open={isDelayDialogOpen}
-          setOpen={setIsDelayDialogOpen}
-          onSuccess={handleDelaySuccess}
-          approval
+          setOpen={onDelayDialogOpenChange}
+          submitLock={submitApprovalLock}
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}
         />

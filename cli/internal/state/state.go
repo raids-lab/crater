@@ -8,15 +8,16 @@ import (
 )
 
 // AuthInfo represents a saved set of credentials.
-// Token is persisted in state.json and must be stripped before command output.
+// Tokens are persisted in state.json and must be stripped before command output.
 type AuthInfo struct {
-	PlatformURL string `json:"platform_url"`
-	Username    string `json:"username"`
-	Method      string `json:"method"` // ldap | normal
-	UserID      int    `json:"user_id"`
-	Nickname    string `json:"nickname"`
-	Role        string `json:"role"` // 默认角色
-	Token       string `json:"token,omitempty"`
+	PlatformURL  string `json:"platform_url"`
+	Username     string `json:"username"`
+	Method       string `json:"method"` // ldap | normal
+	UserID       int    `json:"user_id"`
+	Nickname     string `json:"nickname"`
+	Role         string `json:"role"` // 默认角色
+	Token        string `json:"token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 // ActiveContext 当前激活的认证环境
@@ -40,20 +41,49 @@ type Manager struct {
 }
 
 func NewManager() (*Manager, error) {
+	m, err := newManager()
+	if err != nil {
+		return nil, err
+	}
+	if err := m.Load(); err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+	return m, nil
+}
+
+func newManager() (*Manager, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user config dir: %w", err)
 	}
 
-	path := filepath.Join(configDir, "crater", "state.json")
-	m := &Manager{Path: path}
-	if err := m.Load(); err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
+	return &Manager{Path: filepath.Join(configDir, "crater", "state.json")}, nil
+}
 
-	return m, nil
+// Update serializes read-modify-write transactions across CLI processes.
+func Update(change func(*State) error) error {
+	m, err := newManager()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(m.Path), 0755); err != nil {
+		return err
+	}
+	lock, err := os.OpenFile(m.Path+".lock", os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	if err := lockStateFile(lock); err != nil {
+		return err
+	}
+	if err := m.Load(); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err := change(&m.State); err != nil {
+		return err
+	}
+	return m.Save()
 }
 
 func (m *Manager) Load() error {

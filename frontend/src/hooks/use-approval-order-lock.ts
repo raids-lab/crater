@@ -13,15 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { getJobPhaseLabel } from '@/components/badge/job-phase-badge'
 
-import { type ApprovalOrder, reviewApprovalOrder } from '@/services/api/approvalorder'
-import { type IJupyterDetail, JobPhase, apiAdminGetJobDetail } from '@/services/api/vcjob'
+import { type ApprovalOrder, adminApproveJobOrder } from '@/services/api/approvalorder'
+import {
+  type IJupyterDetail,
+  type JobLockDuration,
+  JobPhase,
+  apiAdminGetJobDetail,
+} from '@/services/api/vcjob'
 
 import { showErrorToast } from '@/utils/toast'
 
@@ -31,22 +36,8 @@ export function useApprovalOrderLock() {
   const [selection, setSelection] = useState<{ order: ApprovalOrder; job: IJupyterDetail } | null>(
     null
   )
-  const [isDelayDialogOpen, setIsDelayDialogOpen] = useState(false)
   const [isFetchingJob, setIsFetchingJob] = useState(false)
-
-  const { mutate: approveOrder, isPending: isApprovingLock } = useMutation({
-    mutationFn: (order: ApprovalOrder) => reviewApprovalOrder(order.id, { status: 'Approved' }),
-    onSuccess: async (_response, order) => {
-      toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorder', order.id] }),
-        queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] }),
-        queryClient.invalidateQueries({ queryKey: ['approvalorders'] }),
-        queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] }),
-      ])
-    },
-    onError: showErrorToast,
-  })
+  const isDelayDialogOpen = selection !== null
 
   const handleApproveWithDelay = async (order: ApprovalOrder) => {
     setIsFetchingJob(true)
@@ -62,7 +53,6 @@ export function useApprovalOrderLock() {
       }
 
       setSelection({ order, job })
-      setIsDelayDialogOpen(true)
     } catch (error) {
       showErrorToast(error)
     } finally {
@@ -70,12 +60,24 @@ export function useApprovalOrderLock() {
     }
   }
 
-  const handleDelaySuccess = () => {
-    if (selection) {
-      void queryClient.invalidateQueries({ queryKey: ['job', 'detail', selection.job.jobName] })
-      void queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-jobs'] })
-      approveOrder(selection.order)
-    }
+  const submitApprovalLock = async (duration: JobLockDuration) => {
+    if (!selection) throw new Error(t('ApprovalOrderTable.toast.approveError'))
+
+    const { order, job } = selection
+    await adminApproveJobOrder(order.id, duration)
+    toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorder', order.id] }),
+      queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] }),
+      queryClient.invalidateQueries({ queryKey: ['approvalorders'] }),
+      queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] }),
+      queryClient.invalidateQueries({ queryKey: ['job', 'detail', job.jobName] }),
+      queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-jobs'] }),
+    ])
+  }
+
+  const onDelayDialogOpenChange = (open: boolean) => {
+    if (!open) setSelection(null)
   }
 
   const extensionHours = Number(selection?.order.content?.approvalorderExtensionHours)
@@ -87,9 +89,9 @@ export function useApprovalOrderLock() {
     selectedJob: selection?.job,
     selectedExtHours,
     isDelayDialogOpen,
-    isProcessingLock: isFetchingJob || isDelayDialogOpen || isApprovingLock,
+    isProcessingLock: isFetchingJob || isDelayDialogOpen,
     handleApproveWithDelay,
-    handleDelaySuccess,
-    setIsDelayDialogOpen,
+    submitApprovalLock,
+    onDelayDialogOpenChange,
   }
 }

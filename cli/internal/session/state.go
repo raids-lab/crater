@@ -18,18 +18,19 @@ func LoadState() (state.State, error) {
 
 // SaveState writes the given state.json to disk.
 func SaveState(st state.State) error {
-	if testSessionEnabled() {
+	return UpdateState(func(current *State) error {
+		*current = st
 		return nil
+	})
+}
+
+// UpdateState changes only the specified fields of the latest saved state.
+func UpdateState(change func(*State) error) error {
+	if testSessionEnabled() {
+		st := fakeAuthState()
+		return change(&st)
 	}
-	m, err := state.NewManager()
-	if err != nil {
-		return err
-	}
-	m.State = st
-	if err := m.Save(); err != nil {
-		return err
-	}
-	return nil
+	return state.Update(change)
 }
 
 // AuthInfoFor returns the AuthInfo that matches ac.

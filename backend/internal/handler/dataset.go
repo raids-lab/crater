@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
-	"k8s.io/klog/v2"
+	"gorm.io/gen/field"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -155,37 +156,16 @@ type DatasetResp struct {
 //	@Router			/v1/dataset/mydataset [get]
 func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 	token := util.GetToken(c)
-	ud := query.UserDataset
-	userDatasets, err := ud.WithContext(c).Where(ud.UserID.Eq(token.UserID)).Find()
+	d := query.Dataset
+	datasets, err := sharedDatasets(c, token).
+		Preload(d.User).
+		Order(d.UpdatedAt.Desc()).
+		Find()
 	if err != nil {
-		klog.Infof("Can't get , err: %v", err)
-		resputil.Error(c, "Can't get mydatasets", resputil.NotSpecified)
+		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get datasets failed"))
 		return
 	}
-	datasetIDs := make(map[uint]struct{}, len(userDatasets))
-	for _, association := range userDatasets {
-		datasetIDs[association.DatasetID] = struct{}{}
-	}
-
-	accountIDs := []uint{model.DefaultAccountID}
-	if token.AccountID != model.DefaultAccountID {
-		accountIDs = append(accountIDs, token.AccountID)
-	}
-	qd := query.AccountDataset
-	accountDatasets, err := qd.WithContext(c).Where(qd.AccountID.In(accountIDs...)).Find()
-	if err != nil {
-		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get account datasets failed"))
-		return
-	}
-	for _, association := range accountDatasets {
-		datasetIDs[association.DatasetID] = struct{}{}
-	}
-
-	ids := make([]uint, 0, len(datasetIDs))
-	for id := range datasetIDs {
-		ids = append(ids, id)
-	}
-	result, err := listDatasetResponses(c, ids)
+	result, err := convertDatasetBatch(c, datasets)
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "get datasets failed"))
 		return
@@ -1095,20 +1075,15 @@ func (mgr *DatasetMgr) ListQueueOfDataset(c *gin.Context) {
 	resputil.Success(c, resp)
 }
 
-func listDatasetResponses(c *gin.Context, ids []uint) ([]DatasetResp, error) {
-	if len(ids) == 0 {
-		return []DatasetResp{}, nil
-	}
+func sharedDatasets(ctx context.Context, token util.JWTMessage) query.IDatasetDo {
 	d := query.Dataset
-	datasets, err := d.WithContext(c).
-		Preload(d.User).
-		Where(d.ID.In(ids...)).
-		Order(d.UpdatedAt.Desc()).
-		Find()
-	if err != nil {
-		return nil, err
-	}
-	return convertDatasetBatch(c, datasets)
+	ud := query.UserDataset
+	ad := query.AccountDataset
+	userGrants := ud.WithContext(ctx).Select(ud.DatasetID).Where(ud.UserID.Eq(token.UserID))
+	accountGrants := ad.WithContext(ctx).Select(ad.DatasetID).
+		Where(ad.AccountID.In(model.DefaultAccountID, token.AccountID))
+	datasetID := d.WithContext(ctx).Columns(d.ID)
+	return d.WithContext(ctx).Where(field.Or(datasetID.In(userGrants), datasetID.In(accountGrants)))
 }
 
 // deduplicateDownloadedDatasets keeps one canonical row for a downloaded

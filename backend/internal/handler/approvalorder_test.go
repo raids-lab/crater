@@ -107,15 +107,17 @@ func newApprovalOrderTestDB(t *testing.T, status batch.JobPhase) *gorm.DB {
 
 func TestCreateApprovalOrderAutoApprovalBoundary(t *testing.T) {
 	for _, tc := range []struct {
-		name           string
-		hours          uint
-		recentApproval bool
-		want           model.ApprovalOrderStatus
+		name            string
+		hours           uint
+		recentApproval  bool
+		wantLockMinutes int64
 	}{
-		{"below limit", 11, false, model.ApprovalOrderStatusApproved},
-		{"at limit", 12, false, model.ApprovalOrderStatusApproved},
-		{"above limit", 13, false, model.ApprovalOrderStatusPending},
-		{"at limit with recent approval", 12, true, model.ApprovalOrderStatusPending},
+		{"zero hours", 0, false, 0},
+		{"one hour", 1, false, 60},
+		{"below limit", 11, false, 660},
+		{"at limit", 12, false, 720},
+		{"above limit", 13, false, 0},
+		{"at limit with recent approval", 12, true, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			db := newApprovalOrderTestDB(t, batch.Running)
@@ -128,33 +130,44 @@ func TestCreateApprovalOrderAutoApprovalBoundary(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			mgr := &ApprovalOrderMgr{}
-			router := gin.New()
-			router.Use(func(c *gin.Context) { util.SetJWTContext(c, util.JWTMessage{UserID: 1}) })
-			router.POST("/orders", mgr.CreateApprovalOrder)
-			recorder := httptest.NewRecorder()
-			body := fmt.Sprintf(`{"name":"test-job","type":"job","approvalOrderExtensionHours":%d}`, tc.hours)
-			request := httptest.NewRequest(http.MethodPost, "/orders", strings.NewReader(body))
-			request.Header.Set("Content-Type", "application/json")
-			router.ServeHTTP(recorder, request)
-			if recorder.Code != http.StatusOK {
-				t.Fatalf("HTTP status = %d: %s", recorder.Code, recorder.Body.String())
-			}
+			sendAutoApprovalRequest(t, tc.hours, http.StatusOK)
 			var order model.ApprovalOrder
 			if err := db.Where("name = ?", "test-job").First(&order).Error; err != nil {
 				t.Fatal(err)
 			}
-			if order.Status != tc.want {
-				t.Fatalf("order status = %s, want %s", order.Status, tc.want)
+			wantStatus := model.ApprovalOrderStatusApproved
+			if tc.wantLockMinutes == 0 {
+				wantStatus = model.ApprovalOrderStatusPending
 			}
-			var job model.Job
-			if err := db.First(&job).Error; err != nil {
-				t.Fatal(err)
+			if order.Status != wantStatus {
+				t.Fatalf("order status = %s, want %s", order.Status, wantStatus)
 			}
-			if locked := !job.LockedTimestamp.IsZero(); locked != (tc.want == model.ApprovalOrderStatusApproved) {
-				t.Fatalf("job locked = %t, order status = %s", locked, tc.want)
+			content := order.Content.Data()
+			if content.ApprovalOrderExtensionHours != tc.hours {
+				t.Fatalf("requested extension = %d, want %d", content.ApprovalOrderExtensionHours, tc.hours)
 			}
+			assertAutomaticApprovalLock(t, db, &order, tc.wantLockMinutes)
 		})
+	}
+}
+
+func assertAutomaticApprovalLock(t *testing.T, db *gorm.DB, order *model.ApprovalOrder, wantMinutes int64) {
+	t.Helper()
+	var job model.Job
+	if err := db.First(&job).Error; err != nil {
+		t.Fatal(err)
+	}
+	lock := order.Content.Data().ApprovedLock
+	if wantMinutes == 0 {
+		if lock != nil || !job.LockedTimestamp.IsZero() {
+			t.Fatalf("pending order has lock %+v, job deadline %v", lock, job.LockedTimestamp)
+		}
+		return
+	}
+	if lock == nil || lock.IsPermanent || lock.DurationMinutes != wantMinutes ||
+		job.LockedTimestamp.IsZero() || !lock.LockedUntil.Equal(job.LockedTimestamp) || order.ReviewerID != nil {
+		t.Fatalf("unexpected automatic approval: lock %+v, job deadline %v, reviewer %v",
+			lock, job.LockedTimestamp, order.ReviewerID)
 	}
 }
 

@@ -28,6 +28,7 @@ import {
   User,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -52,9 +53,9 @@ import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
 import {
   type ApprovalOrder,
   adminGetApprovalOrder,
+  listJobApprovalOrders,
   reviewApprovalOrder,
 } from '@/services/api/approvalorder'
-import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
 import {
   JobStatus,
   apiAdminGetJobDetail,
@@ -81,6 +82,7 @@ export const Route = createFileRoute('/admin/more/orders/$id')({
 })
 
 function RouteComponent() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const { id } = Route.useParams()
@@ -128,7 +130,7 @@ function RouteComponent() {
 
   const { data: ordersData } = useQuery({
     queryKey: ['approvalorders', 'byName', order?.name],
-    queryFn: () => listApprovalOrdersbyName(order!.name),
+    queryFn: () => listJobApprovalOrders(order!.name),
     select: (res) => res.data,
     enabled: !!order && order.type === 'job',
   })
@@ -158,8 +160,8 @@ function RouteComponent() {
     isDelayDialogOpen,
     isProcessingLock,
     handleApproveWithDelay,
-    handleDelaySuccess,
-    setIsDelayDialogOpen,
+    submitApprovalLock,
+    onDelayDialogOpenChange,
   } = useApprovalOrderLock()
 
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
@@ -265,6 +267,22 @@ function RouteComponent() {
 
   if (!order) {
     return <div className="text-muted-foreground p-6 text-center">工单不存在或已被删除</div>
+  }
+
+  const approvedLock = order.content?.approvedLock
+  let approvedLockDuration: string | undefined
+  if (approvedLock?.isPermanent) {
+    approvedLockDuration = t('ApprovalOrderTable.detail.approvedLockPermanent')
+  } else if (approvedLock?.durationMinutes != null) {
+    const hours = Math.floor(approvedLock.durationMinutes / 60)
+    const minutes = approvedLock.durationMinutes % 60
+    if (hours === 0) {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationMinutes', { minutes })
+    } else if (minutes === 0) {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationHours', { hours })
+    } else {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationHoursMinutes', { hours, minutes })
+    }
   }
 
   return (
@@ -378,8 +396,18 @@ function RouteComponent() {
                       <div className="flex justify-between border-t pt-2">
                         <span className="text-muted-foreground text-sm">延长时间</span>
                         <span className="font-medium">
-                          {order.content.approvalorderExtensionHours} 小时
+                          {t('ApprovalOrderTable.detail.durationHours', {
+                            hours: order.content.approvalorderExtensionHours,
+                          })}
                         </span>
+                      </div>
+                    )}
+                    {approvedLockDuration && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          {t('ApprovalOrderTable.detail.approvedLockDuration')}
+                        </span>
+                        <span>{approvedLockDuration}</span>
                       </div>
                     )}
                   </CardContent>
@@ -447,9 +475,8 @@ function RouteComponent() {
           key={`${selectedOrder.id}-${selectedExtHours}`}
           jobs={[selectedJob]}
           open={isDelayDialogOpen}
-          setOpen={setIsDelayDialogOpen}
-          onSuccess={handleDelaySuccess}
-          approval
+          setOpen={onDelayDialogOpenChange}
+          submitLock={submitApprovalLock}
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}
         />

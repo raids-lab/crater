@@ -39,7 +39,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 
 import { DurationFields } from '@/components/form/duration-fields'
 
-import { type IJobInfo, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
+import { type IJobInfo, type JobLockDuration, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
 
 import { showErrorToast } from '@/utils/toast'
 
@@ -69,8 +69,8 @@ interface DurationDialogProps {
   open: boolean
   setOpen: (open: boolean) => void
   onSuccess?: () => void
+  submitLock?: (duration: JobLockDuration) => Promise<void>
   setExtend?: boolean
-  approval?: boolean
   defaultDays?: number
   defaultHours?: number
 }
@@ -80,12 +80,13 @@ export function DurationDialog({
   open,
   setOpen,
   onSuccess,
+  submitLock,
   setExtend,
-  approval = false,
   defaultDays,
   defaultHours,
 }: DurationDialogProps) {
   const { t, i18n } = useTranslation()
+  const approval = Boolean(submitLock)
   const [previewNow, setPreviewNow] = useState(() => Date.now())
   const allLocked = jobs.length > 0 && jobs.every((job) => job.locked)
   const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked)
@@ -158,20 +159,20 @@ export function DurationDialog({
   const lockMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const { isPermanent, days, hours } = values
-      const promises = jobs.map((job) => {
-        const payload = {
-          name: job.jobName,
-          isPermanent,
-          days: days || 0,
-          hours: hours || 0,
-          minutes: 0,
-        }
-        return apiJobLock(payload)
-      })
-      return Promise.all(promises)
+      const duration: JobLockDuration = {
+        isPermanent,
+        days: isPermanent ? 0 : days || 0,
+        hours: isPermanent ? 0 : hours || 0,
+        minutes: 0,
+      }
+      if (submitLock) {
+        await submitLock(duration)
+        return
+      }
+      await Promise.all(jobs.map((job) => apiJobLock({ name: job.jobName, ...duration })))
     },
     onSuccess: () => {
-      toast.success(t('durationDialog.toast.lockSuccess', { count: jobs.length }))
+      if (!approval) toast.success(t('durationDialog.toast.lockSuccess', { count: jobs.length }))
       setOpen(false)
       onSuccess?.()
     },
