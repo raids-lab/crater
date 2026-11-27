@@ -87,6 +87,12 @@ npx skills add https://github.com/raids-lab/crater/tree/main/cli -l
 npx skills add https://github.com/raids-lab/crater/tree/main/cli -g --all
 ```
 
+如需社区维护的端到端平台运维工作流技能（[`cyjin-yl/crater-skill`](https://github.com/cyjin-yl/crater-skill)，涵盖作业生命周期与轮询、存储与模型下载、镜像构建及故障排查）：
+
+```bash
+npx skills add cyjin-yl/crater-skill
+```
+
 ## 许可证
 
 Crater CLI 使用 Apache License 2.0 许可证，详见 [LICENSE](LICENSE)。
