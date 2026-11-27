@@ -152,7 +152,7 @@ Crater 面向高校、科研机构、企业 AI 团队和内部平台团队中的
 ## 🏗️ 整体架构
 
 <div align="center">
-  <img src="../../website/content/docs/admin/assets/architecture.webp" alt="crater architecture" width="90%" />
+  <img src="../assets/readme-architecture.zh-CN.webp" alt="crater architecture" width="90%" />
   <br/>
   <sub>Crater 的整体架构与主要组件概览。</sub>
 </div>
@@ -219,6 +219,7 @@ helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 
 - 🐛 **Issues** — 反馈缺陷或提交需求：[GitHub Issues](https://github.com/raids-lab/crater/issues)
 - 💡 **Discussions** — 提问与交流想法：[GitHub Discussions](https://github.com/raids-lab/crater/discussions)
+- 📧 **联系邮箱** — 项目交流与合作请邮件联系 [jeffery_06@163.com](mailto:jeffery_06@163.com)。
 - 📚 **文档** — 管理员与用户指南：[raids-lab.github.io/crater](https://raids-lab.github.io/crater/zh/docs/admin/)
 - ⭐ 如果 Crater 对你有帮助，欢迎点亮 Star，让更多人发现它。
 
