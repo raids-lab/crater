@@ -44,6 +44,7 @@ interface DetailTabProps {
   children?: ReactNode
   subTabs?: DetailSubTabProps[]
   scrollable?: boolean
+  contentClassName?: string
   hidden?: boolean
 }
 
@@ -79,12 +80,14 @@ export const detailLinkOptions = (tab: string) =>
 interface DetailPageProps extends DetailPageCoreProps {
   header: ReactNode
   info: DetailInfoProps[]
+  infoLayout?: 'inline' | 'stacked'
   tabs: DetailTabProps[]
 }
 
 export default function DetailPage({
   header,
   info,
+  infoLayout = 'inline',
   tabs: rawTabs,
   currentTab,
   setCurrentTab,
@@ -123,14 +126,41 @@ export default function DetailPage({
 
   return (
     <div className="flex h-full w-full flex-col gap-6 overflow-hidden">
-      <div className="shrink-0 space-y-6">
+      <div
+        className={cn('shrink-0 space-y-6', infoLayout === 'stacked' && '@container/detail-info')}
+      >
         {header}
-        <div className="text-muted-foreground grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4">
+        <div
+          className={cn(
+            'text-muted-foreground grid gap-3 text-sm',
+            infoLayout === 'stacked'
+              ? 'grid-cols-2 @min-[42rem]/detail-info:grid-cols-3 @min-[68rem]/detail-info:grid-cols-6'
+              : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-4'
+          )}
+        >
           {info.map((data, index) => (
-            <div key={index} className={cn('flex min-w-0 items-center', data.className)}>
+            <div
+              key={index}
+              className={cn(
+                'flex min-w-0',
+                infoLayout === 'stacked' ? 'items-start' : 'items-center',
+                data.className
+              )}
+            >
               <data.icon className="text-muted-foreground mr-1.5 size-4 shrink-0" />
-              <span className="text-muted-foreground mr-1.5 truncate text-sm">{data.title}:</span>
-              <span className="min-w-0 truncate">{data.value}</span>
+              {infoLayout === 'stacked' ? (
+                <div className="flex min-w-0 flex-1 flex-col gap-1 [overflow-wrap:anywhere]">
+                  <span className="text-muted-foreground text-sm">{data.title}:</span>
+                  <span className="min-w-0">{data.value}</span>
+                </div>
+              ) : (
+                <>
+                  <span className="text-muted-foreground mr-1.5 truncate text-sm">
+                    {data.title}:
+                  </span>
+                  <span className="min-w-0 truncate">{data.value}</span>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -191,7 +221,7 @@ export default function DetailPage({
           <TabsContent key={tabItem.key} value={tabItem.key} asChild>
             <div
               key={`${tabItem.key}-${tab}`}
-              className="mt-0 min-h-0 w-full flex-1 overflow-hidden"
+              className={cn('mt-0 min-h-0 w-full flex-1 overflow-hidden', tabItem.contentClassName)}
             >
               {(() => {
                 // 如果有子选项卡，渲染对应的子选项卡内容
