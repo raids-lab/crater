@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -268,7 +267,6 @@ func (mgr *ResourceMgr) createUpdatedResource(existingResource *model.Resource, 
 	updatedResource := *existingResource
 	updatedResource.Amount = q.Total.Value()
 	updatedResource.AmountSingleMax = q.Max.Value()
-	updatedResource.DeletedAt = gorm.DeletedAt{}
 	return &updatedResource
 }
 
@@ -333,9 +331,9 @@ func (mgr *ResourceMgr) executeBatchOperations(
 			}
 		}
 
-		// Batch delete resources
+		// Retain the classification of retired resources for historical statistics.
 		if len(resourcesToDelete) > 0 {
-			_, deleteErr := txR.Where(tx.Resource.ID.In(resourcesToDelete...)).Unscoped().Delete()
+			_, deleteErr := txR.Where(tx.Resource.ID.In(resourcesToDelete...)).Delete()
 			if deleteErr != nil {
 				return fmt.Errorf("failed to delete resources: %w", deleteErr)
 			}
@@ -824,7 +822,7 @@ func (mgr *ResourceMgr) GetGPUVGPUResources(c *gin.Context) {
 		return
 	}
 
-	// Get all VGPU links for this GPU
+	// Get all active VGPU links for this GPU, excluding retired/soft-deleted VGPU resources.
 	rv := query.ResourceVGPU
 	vgpuLinks, err := rv.WithContext(c).
 		Preload(rv.VGPUResource).
@@ -835,7 +833,14 @@ func (mgr *ResourceMgr) GetGPUVGPUResources(c *gin.Context) {
 		return
 	}
 
-	resputil.Success(c, vgpuLinks)
+	activeLinks := make([]*model.ResourceVGPU, 0, len(vgpuLinks))
+	for _, link := range vgpuLinks {
+		if link.VGPUResource.ID != 0 {
+			activeLinks = append(activeLinks, link)
+		}
+	}
+
+	resputil.Success(c, activeLinks)
 }
 
 type UpdateGPUVGPULinkReq struct {

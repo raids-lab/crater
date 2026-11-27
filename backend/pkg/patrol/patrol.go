@@ -28,6 +28,8 @@ const (
 	TRIGGER_GPU_ANALYSIS_JOB = "trigger-gpu-analysis-job"
 	// Billing 基础循环
 	TRIGGER_BILLING_BASE_LOOP_JOB = "biling-base-loop"
+	// 每日资源统计汇总
+	TRIGGER_RESOURCE_USAGE_DAILY = "aggregate-resource-usage-daily"
 	// 未来可以扩展其他巡检任务，例如：
 	// CHECK_NODE_HEALTH = "check-node-health"
 )
@@ -40,6 +42,10 @@ type BillingServiceInterface interface {
 	RunBaseLoopOnce(ctx context.Context) (any, error)
 }
 
+type StatisticsServiceInterface interface {
+	RunDailyAggregation(ctx context.Context) (any, error)
+}
+
 // Clients 包含巡检任务所需的客户端
 type Clients struct {
 	Client             client.Client
@@ -48,6 +54,7 @@ type Clients struct {
 	PromClient         monitor.PrometheusInterface
 	GpuAnalysisService GpuAnalysisServiceInterface
 	BillingService     BillingServiceInterface
+	StatisticsService  StatisticsServiceInterface
 }
 
 func NewPatrolClients(
@@ -56,6 +63,7 @@ func NewPatrolClients(
 	promClient monitor.PrometheusInterface,
 	gpuAnalysisService GpuAnalysisServiceInterface,
 	billingService BillingServiceInterface,
+	statisticsService StatisticsServiceInterface,
 ) *Clients {
 	return &Clients{
 		Client:             cli,
@@ -63,6 +71,7 @@ func NewPatrolClients(
 		PromClient:         promClient,
 		GpuAnalysisService: gpuAnalysisService,
 		BillingService:     billingService,
+		StatisticsService:  statisticsService,
 	}
 }
 
@@ -86,6 +95,8 @@ func GetPatrolFunc(jobName string, clients *Clients, jobConfig datatypes.JSON) (
 			return RunTriggerBillingBaseLoop(ctx, clients)
 		}
 
+	case TRIGGER_RESOURCE_USAGE_DAILY:
+		f = clients.StatisticsService.RunDailyAggregation
 	default:
 		return nil, fmt.Errorf("unsupported patrol job name: %s", jobName)
 	}

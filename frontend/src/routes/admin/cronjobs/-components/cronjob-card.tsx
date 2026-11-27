@@ -212,7 +212,8 @@ export default function CronJobCard({
     return ''
   }
 
-  const getScheduleSummary = (value: string) => {
+  const getScheduleSummary = (spec: string) => {
+    const value = spec.replace(/^CRON_TZ=\S+\s+/, '')
     const everyMinutes = value.match(/^\*\/(\d+) \* \* \* \*$/)
     if (everyMinutes) {
       return t('cronPolicy.scheduleEveryMinutes', { count: Number(everyMinutes[1]) })

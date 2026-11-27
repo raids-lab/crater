@@ -446,19 +446,113 @@ definitions:
     - Desc
   github_com_raids-lab_crater_internal_payload.ResourceDetail:
     properties:
+      coverage:
+        description: 评估覆盖率
+        type: number
+        x-nullable: true
+      effectiveUsage:
+        description: 估算有效用量 (核时/卡时/GiB时)
+        type: number
       label:
         description: 显示名称 (例如 "NVIDIA V100", "CPU", "内存")
         type: string
+      profiledUsage:
+        description: 有监控摘要的分配用量 (核时/卡时/GiB时)
+        type: number
       type:
         description: 资源类型 (gpu, vgpu, rdma, common)
         type: string
       usage:
-        description: 用量 (核时/卡时/GiB时)
+        description: 分配用量 (核时/卡时/GiB时)
         type: number
+      utilization:
+        description: 加权平均利用率
+        type: number
+        x-nullable: true
+    type: object
+  github_com_raids-lab_crater_internal_payload.StatisticsProgress:
+    properties:
+      backfillComplete:
+        description: 历史回填是否全部完成
+        type: boolean
+      completeBefore:
+        description: 该日期之前均已完成 (YYYY-MM-DD)
+        type: string
+      coveredUntil:
+        description: 统计数据覆盖截止时间
+        format: date-time
+        type: string
+        x-nullable: true
+      firstDate:
+        description: 最早统计日期 (YYYY-MM-DD)
+        type: string
+      pendingDays:
+        description: 待补算天数
+        type: integer
+      ready:
+        description: 是否已完成至少一轮可用统计
+        type: boolean
+      updatedAt:
+        description: 最近更新时间
+        format: date-time
+        type: string
+        x-nullable: true
+    type: object
+  github_com_raids-lab_crater_internal_payload.StatisticsRankingResp:
+    properties:
+      progress:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsProgress'
+        description: 统计聚合进度
+      rows:
+        description: 排行列表
+        items:
+          $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsRankingRow'
+        type: array
+      total:
+        description: 总条数
+        type: integer
+    type: object
+  github_com_raids-lab_crater_internal_payload.StatisticsRankingRow:
+    properties:
+      coverage:
+        description: 评估覆盖率
+        type: number
+        x-nullable: true
+      effectiveUsage:
+        description: 估算有效用量
+        type: number
+      id:
+        description: 用户ID或账户ID
+        type: integer
+      name:
+        description: 用户名或账户名
+        type: string
+      nickname:
+        description: 昵称
+        type: string
+      profiledUsage:
+        description: 已评估分配用量
+        type: number
+      rank:
+        description: 名次
+        type: integer
+      usage:
+        description: 分配用量
+        type: number
+      utilization:
+        description: 加权平均利用率
+        type: number
+        x-nullable: true
     type: object
   github_com_raids-lab_crater_internal_payload.StatisticsResp:
     properties:
+      progress:
+        allOf:
+        - $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsProgress'
+        description: 统计聚合进度
       series:
+        description: 时间序列数据
         items:
           $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.TimePointData'
         type: array
@@ -537,13 +631,28 @@ definitions:
     - TensorboardStatusReasonReady
   github_com_raids-lab_crater_internal_payload.TimePointData:
     properties:
+      effectiveUsage:
+        additionalProperties:
+          format: float64
+          type: number
+        description: '估算有效用量 (Key: ResourceName)'
+        type: object
+      status:
+        description: 统计完成状态 (complete/partial/pending)
+        enum:
+        - complete
+        - partial
+        - pending
+        type: string
       timestamp:
+        description: 时间桶起始时间 (UTC)
+        format: date-time
         type: string
       usage:
         additionalProperties:
           format: float64
           type: number
-        description: 'Key: ResourceName, Value: Usage'
+        description: '分配用量 (Key: ResourceName)'
         type: object
     type: object
   github_com_raids-lab_crater_internal_resputil.FacetItem:
@@ -718,6 +827,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.CreateTensorboardResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsRankingResp:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/github_com_raids-lab_crater_internal_payload.StatisticsRankingResp'
       msg:
         type: string
     type: object
@@ -1401,6 +1520,8 @@ definitions:
       capacity:
         $ref: '#/definitions/v1.ResourceList'
       containerRuntimeVersion:
+        type: string
+      cpuModel:
         type: string
       gpuArch:
         type: string
@@ -6085,6 +6206,114 @@ paths:
         database
       tags:
       - Resource
+  /v1/admin/statistics:
+    get:
+      description: 按 UTC 自然日统计，最多 366 天。时间区间为左闭右开。
+      parameters:
+      - description: 开始 UTC 日，UTC 00:00 (RFC3339)
+        in: query
+        name: startTime
+        required: true
+        type: string
+      - description: 结束 UTC 日，不包含，必须晚于开始时间 (RFC3339)
+        in: query
+        name: endTime
+        required: true
+        type: string
+      - description: day/week，默认 day
+        in: query
+        name: step
+        type: string
+      - description: user/account/cluster
+        in: query
+        name: scope
+        required: true
+        type: string
+      - description: scope=user 或 account 时必填，scope=cluster 时忽略
+        in: query
+        name: targetID
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsResp'
+      security:
+      - Bearer: []
+      summary: 获取管理员资源统计
+      tags:
+      - statistics
+  /v1/admin/statistics/rankings:
+    get:
+      description: 按 UTC 自然日统计，最多 366 天。时间区间为左闭右开。
+      parameters:
+      - description: 开始 UTC 日，UTC 00:00 (RFC3339)
+        in: query
+        name: startTime
+        required: true
+        type: string
+      - description: 结束 UTC 日，不包含，必须晚于开始时间 (RFC3339)
+        in: query
+        name: endTime
+        required: true
+        type: string
+      - description: cluster/account
+        in: query
+        name: scope
+        required: true
+        type: string
+      - description: scope=account 时必填，scope=cluster 时忽略
+        in: query
+        name: targetID
+        type: integer
+      - description: scope=account 时仅支持 user，scope=cluster 时支持 user/account
+        enum:
+        - user
+        - account
+        in: query
+        name: dimension
+        required: true
+        type: string
+      - description: usage/effectiveUsage/utilization
+        in: query
+        name: metric
+        required: true
+        type: string
+      - description: asc/desc
+        in: query
+        name: order
+        required: true
+        type: string
+      - description: 完整资源名，与 resourceType 二选一
+        in: query
+        name: resourceName
+        type: string
+      - description: gpu：全部整卡 GPU 资源
+        in: query
+        name: resourceType
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最多 100
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsRankingResp'
+      security:
+      - Bearer: []
+      summary: 获取管理员资源排名
+      tags:
+      - statistics
   /v1/admin/storage/capabilities:
     get:
       description: Probe storage quota providers and return diagnostics to platform
@@ -10031,24 +10260,23 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取指定时间范围、指定维度的资源使用统计（核时/卡时）
+      description: 按 UTC 自然日统计，最多 366 天。个人维度查询本人返回完整指标，查询他人仅返回占用量。账户管理员可查询完整指标。
       parameters:
-      - description: 开始时间 (RFC3339)
+      - description: 开始 UTC 自然日，必须为 UTC 00:00 (RFC3339)
         in: query
         name: startTime
         required: true
         type: string
-      - description: 结束时间 (RFC3339)
+      - description: 结束 UTC 自然日，不包含，必须为 UTC 00:00 且晚于开始时间 (RFC3339)
         in: query
         name: endTime
         required: true
         type: string
-      - description: 聚合粒度 (day/week)
+      - description: 聚合粒度 (day/week)，默认 day
         in: query
         name: step
-        required: true
         type: string
-      - description: 统计范围 (user/account/cluster)
+      - description: 统计范围 (user/account)
         in: query
         name: scope
         required: true
@@ -10056,6 +10284,7 @@ paths:
       - description: 目标ID (user_id 或 account_id)
         in: query
         name: targetID
+        required: true
         type: integer
       produces:
       - application/json
@@ -10067,6 +10296,75 @@ paths:
       security:
       - Bearer: []
       summary: 获取资源统计信息
+      tags:
+      - statistics
+  /v1/statistics/rankings:
+    get:
+      description: 按 UTC 自然日统计，最多 366 天。利用率缺失的对象不进入利用率排名。
+      parameters:
+      - description: 开始 UTC 日 (RFC3339)
+        in: query
+        name: startTime
+        required: true
+        type: string
+      - description: 结束 UTC 日，不包含 (RFC3339)
+        in: query
+        name: endTime
+        required: true
+        type: string
+      - description: account
+        in: query
+        name: scope
+        required: true
+        type: string
+      - description: 账户 ID
+        in: query
+        name: targetID
+        required: true
+        type: integer
+      - description: user
+        enum:
+        - user
+        in: query
+        name: dimension
+        required: true
+        type: string
+      - description: usage/effectiveUsage/utilization
+        in: query
+        name: metric
+        required: true
+        type: string
+      - description: asc/desc
+        in: query
+        name: order
+        required: true
+        type: string
+      - description: 完整资源名，与 resourceType 二选一
+        in: query
+        name: resourceName
+        type: string
+      - description: gpu：全部整卡 GPU 资源
+        in: query
+        name: resourceType
+        type: string
+      - description: 页码，默认 1
+        in: query
+        name: page
+        type: integer
+      - description: 每页条数，默认 20，最多 100
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-github_com_raids-lab_crater_internal_payload_StatisticsRankingResp'
+      security:
+      - Bearer: []
+      summary: 获取资源用量与利用率排名
       tags:
       - statistics
   /v1/storage/capabilities:

@@ -1,0 +1,146 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- en/01-model-text/argv --
+crater node get with-model --no-interactive
+-- en/01-model-text/exit --
+0
+-- en/01-model-text/stdout --
+NAME: cpu-node
+STATUS: Ready
+ROLE: worker
+ARCH: amd64
+CPU Model: Intel Xeon Silver 4210
+ADDRESS: 192.0.2.10
+OS: linux Ubuntu 22.04
+Kubelet: v1.34.0
+Runtime: containerd://2.0.0
+CPU: 2/16
+Memory: 8Gi/64Gi
+-- en/01-model-text/stderr --
+-- en/02-model-json/argv --
+crater node get with-model --json --no-interactive
+-- en/02-model-json/exit --
+0
+-- en/02-model-json/stdout --
+{
+  "data": {
+    "node": {
+      "name": "cpu-node",
+      "role": "worker",
+      "isReady": "Ready",
+      "time": "",
+      "address": "192.0.2.10",
+      "os": "linux",
+      "osVersion": "Ubuntu 22.04",
+      "arch": "amd64",
+      "kubeletVersion": "v1.34.0",
+      "containerRuntimeVersion": "containerd://2.0.0",
+      "cpuModel": "Intel Xeon Silver 4210",
+      "allocatable": {
+        "cpu": "16",
+        "memory": "64Gi"
+      },
+      "used": {
+        "cpu": "2",
+        "memory": "8Gi"
+      }
+    }
+  },
+  "status": "OK"
+}
+-- en/02-model-json/stderr --
+-- en/03-legacy-text/argv --
+crater node get legacy --no-interactive
+-- en/03-legacy-text/exit --
+0
+-- en/03-legacy-text/stdout --
+NAME: cpu-node
+STATUS: Ready
+ROLE: worker
+ARCH: amd64
+CPU Model: -
+ADDRESS: 192.0.2.10
+OS: linux Ubuntu 22.04
+Kubelet: v1.34.0
+Runtime: containerd://2.0.0
+CPU: 2/16
+Memory: 8Gi/64Gi
+-- en/03-legacy-text/stderr --
+-- en/04-legacy-json/argv --
+crater node get legacy --json --no-interactive
+-- en/04-legacy-json/exit --
+0
+-- en/04-legacy-json/stdout --
+{
+  "data": {
+    "node": {
+      "name": "cpu-node",
+      "role": "worker",
+      "isReady": "Ready",
+      "time": "",
+      "address": "192.0.2.10",
+      "os": "linux",
+      "osVersion": "Ubuntu 22.04",
+      "arch": "amd64",
+      "kubeletVersion": "v1.34.0",
+      "containerRuntimeVersion": "containerd://2.0.0",
+      "allocatable": {
+        "cpu": "16",
+        "memory": "64Gi"
+      },
+      "used": {
+        "cpu": "2",
+        "memory": "8Gi"
+      }
+    }
+  },
+  "status": "OK"
+}
+-- en/04-legacy-json/stderr --
+-- en/05-empty-text/argv --
+crater node get empty-model --no-interactive
+-- en/05-empty-text/exit --
+0
+-- en/05-empty-text/stdout --
+NAME: cpu-node
+STATUS: Ready
+ROLE: worker
+ARCH: amd64
+CPU Model: -
+ADDRESS: 192.0.2.10
+OS: linux Ubuntu 22.04
+Kubelet: v1.34.0
+Runtime: containerd://2.0.0
+CPU: 2/16
+Memory: 8Gi/64Gi
+-- en/05-empty-text/stderr --
+-- en/06-empty-json/argv --
+crater node get empty-model --json --no-interactive
+-- en/06-empty-json/exit --
+0
+-- en/06-empty-json/stdout --
+{
+  "data": {
+    "node": {
+      "name": "cpu-node",
+      "role": "worker",
+      "isReady": "Ready",
+      "time": "",
+      "address": "192.0.2.10",
+      "os": "linux",
+      "osVersion": "Ubuntu 22.04",
+      "arch": "amd64",
+      "kubeletVersion": "v1.34.0",
+      "containerRuntimeVersion": "containerd://2.0.0",
+      "allocatable": {
+        "cpu": "16",
+        "memory": "64Gi"
+      },
+      "used": {
+        "cpu": "2",
+        "memory": "8Gi"
+      }
+    }
+  },
+  "status": "OK"
+}
+-- en/06-empty-json/stderr --

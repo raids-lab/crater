@@ -1,6 +1,6 @@
 ---
 name: crater-cli-read
-version: 1.3.4
+version: 1.3.5
 description: "Crater CLI 用户视图读取域：指导 AI Agent 通过 crater node、job、image、account、resource、dataset、model-download、pod 等用户可见命令查看平台只读信息。管理员视图请使用 crater-cli-admin-read。"
 metadata:
   requires:
@@ -31,6 +31,12 @@ metadata:
 - 脚本化或 Agent 场景优先使用 `--json --no-interactive`。
 - 不主动调用 token、secret、credential、websocket、terminal 或 log streaming 端点；这些不是普通只读清单能力。
 - 不要在普通用户场景调用管理员命令；如果用户明确要求管理员或平台级数据，切换到 `crater-cli-admin-read`。
+
+## 节点 CPU 型号
+
+`crater node get <name> --json` 的 `data.node.cpuModel` 是可选字符串，例如 `Intel Xeon Silver 4210`，来自后端读取的节点标签 `crater.raids.io/cpu-model`（标签中的下划线会还原为空格），用于识别 CPU 产品型号。它不同于 `arch`（架构）、CPU 核数和资源使用量，不能据此判断实时负载或保证调度性能。
+
+字段缺失或为空表示型号未知、节点未配置标签或后端尚未提供此字段，不代表节点没有 CPU；不要根据架构、family 或 model 编号猜测产品型号。面向用户的普通输出会在未知时显示 `-`。
 
 ## 常用范例
 
