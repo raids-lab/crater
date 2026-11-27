@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/imroc/req/v3"
 	"github.com/raids-lab/crater/cli/internal/testenv"
@@ -26,6 +27,8 @@ type Client struct {
 	httpClient *req.Client
 	BaseURL    string
 	token      string
+	sessionMu  sync.Mutex
+	session    *clientSession
 }
 
 // applyHTTPSim 按环境变量在 req Transport 上注册拦截（仅影响经 NewClient 创建的客户端）。
@@ -47,10 +50,9 @@ func applyHTTPSim(rc *req.Client) {
 	case "passthrough":
 		wrapLoopbackPassthrough(rc)
 	case "compatibility-compatible":
-		// The fixture backend keeps support for CLI contract v3 when the current contract advances.
-		wrapSimCompatibility(rc, internalversion.APIVersion, 3)
+		wrapSimCompatibility(rc, internalversion.APIVersion, internalversion.APIVersion)
 	case "compatibility-cli-too-old":
-		wrapSimCompatibility(rc, internalversion.APIVersion, internalversion.APIVersion+1)
+		wrapSimCompatibility(rc, internalversion.APIVersion+1, internalversion.APIVersion+1)
 	case "compatibility-backend-zero":
 		wrapSimCompatibility(rc, 0, 0)
 	case "compatibility-unavailable":

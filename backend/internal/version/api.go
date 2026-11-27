@@ -16,10 +16,10 @@ package version
 
 const (
 	// APIVersion identifies the current backend API contract used by the CLI.
-	// v7 adds the optional container command execution API.
-	APIVersion = 7
+	// v8 adds the atomic approval and lock operation for job orders.
+	APIVersion = 8
 
 	// MinSupportedCLIAPIVersion is the oldest CLI API contract the backend supports.
-	// v2 and older CLIs still call the removed prequeue endpoints and the dropped schedule_type filter with no fallback.
-	MinSupportedCLIAPIVersion = 3
+	// v7 and older CLIs use separate lock and review operations for job approval.
+	MinSupportedCLIAPIVersion = 8
 )

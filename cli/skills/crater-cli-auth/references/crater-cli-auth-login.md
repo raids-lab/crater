@@ -44,18 +44,18 @@ crater auth login --help
 ## 行为
 
 - 调用 `/api/auth/login`。
-- 登录成功后，token 明文写入 `state.json` 对应 `auth_infos` 条目。
+- 登录成功后，访问令牌及可用的刷新令牌写入 `state.json` 对应 `auth_infos` 条目。
 - 本地 `state.json` 会保存身份摘要，并把本次登录设为 `active_context`。
-- `auth login --json` 的 `user` **不含** `token`。
-- 同一 `(platform_url, username, method)` 重复登录会更新 token 和用户元数据，不会新增重复身份。
+- `auth login --json` 的 `user` 会过滤 `token` 与 `refresh_token`。
+- 同一 `(platform_url, username, method)` 重复登录会更新凭据和用户元数据，不会新增重复身份。
 
 ## 什么时候重新登录
 
 - `crater auth ls --json` 能看到目标身份，但后续访问平台的命令返回 `usage_error` / `ERR_NOT_FOUND`（无 `http_status`），`message` 为 `no token saved for these credentials; please log in again` 或 `当前账号未保存 token，请重新登录`。这表示身份还在、本地没有 token，不是 HTTP 404，也不是筛身份失败。`auth ls` 输出不含 `token` 字段是正常的，不能据此判断磁盘上有没有 token。
-- `crater auth ls --json` 能看到目标身份，但后续命令返回 401。
+- 访问令牌过期时，CLI 会用同一身份保存的刷新令牌自动续期。如果没有刷新令牌，或续期未通过令牌校验，CLI 会提示重新登录。保留错误输出中的 HTTP 状态和业务码，便于区分令牌问题、权限错误和服务故障。
 - 用户确认密码或权限已更新，需要刷新本地 token。
 
-重新登录同一 `(platform_url, username, method)` 会覆盖旧 token 和用户元数据，这是刷新认证状态的推荐方式。不要读取或粘贴 `state.json` 来确认 token。
+重新登录同一 `(platform_url, username, method)` 会覆盖旧凭据和用户元数据。不要读取或粘贴 `state.json` 来确认令牌。
 
 ## 注意
 

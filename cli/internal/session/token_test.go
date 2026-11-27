@@ -25,7 +25,7 @@ func TestSaveLoginPersistsTokenInState(t *testing.T) {
 		Nickname:    "Alice",
 		Role:        "user",
 	}
-	if err := SaveLogin(info, "secret-token"); err != nil {
+	if err := SaveLogin(info, "secret-token", "secret-refresh"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -37,8 +37,8 @@ func TestSaveLoginPersistsTokenInState(t *testing.T) {
 	if !ok {
 		t.Fatal("expected saved auth info")
 	}
-	if got.Token != "secret-token" {
-		t.Fatalf("token = %q, want secret-token", got.Token)
+	if got.Token != "secret-token" || got.RefreshToken != "secret-refresh" {
+		t.Fatal("login did not save both credentials")
 	}
 
 	raw, err := os.ReadFile(mustStatePath(t))
@@ -106,13 +106,14 @@ func TestLoadTokenAuthInfoNotFound(t *testing.T) {
 
 func TestPublicAuthInfoOmitsTokenFromJSON(t *testing.T) {
 	info := state.AuthInfo{
-		PlatformURL: "https://example.invalid",
-		Username:    "alice",
-		Method:      "ldap",
-		UserID:      1,
-		Nickname:    "Alice",
-		Role:        "user",
-		Token:       "secret-token",
+		PlatformURL:  "https://example.invalid",
+		Username:     "alice",
+		Method:       "ldap",
+		UserID:       1,
+		Nickname:     "Alice",
+		Role:         "user",
+		Token:        "secret-token",
+		RefreshToken: "secret-refresh",
 	}
 
 	stored, err := json.Marshal(info)
@@ -127,7 +128,8 @@ func TestPublicAuthInfoOmitsTokenFromJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(exported), "secret-token") || strings.Contains(string(exported), `"token"`) {
+	if strings.Contains(string(exported), "secret-token") || strings.Contains(string(exported), "secret-refresh") ||
+		strings.Contains(string(exported), `"token"`) || strings.Contains(string(exported), `"refresh_token"`) {
 		t.Fatalf("public JSON leaked token: %s", exported)
 	}
 }
@@ -163,11 +165,11 @@ func TestReplaceTokenRejectsMissingCredentials(t *testing.T) {
 	t.Setenv("CRATER_TEST_SANDBOX", "")
 	t.Setenv("CRATER_TEST_SANDBOX_SESSION", "")
 	active := ActiveContext{PlatformURL: "https://example.invalid", Username: "alice", Method: "ldap"}
-	if err := ReplaceToken(active, ""); !errors.Is(err, ErrNoToken) {
+	if err := ReplaceTokens(active, "", "", "", "", true); !errors.Is(err, ErrNoToken) {
 		t.Fatalf("empty token: got %v, want ErrNoToken", err)
 	}
-	if err := ReplaceToken(active, "new-access"); !errors.Is(err, ErrAuthInfoNotFound) {
-		t.Fatalf("missing identity: got %v, want ErrAuthInfoNotFound", err)
+	if err := ReplaceTokens(active, "", "", "new-access", "new-refresh", true); !errors.Is(err, ErrSessionChanged) {
+		t.Fatalf("missing identity: got %v, want ErrSessionChanged", err)
 	}
 	if _, err := os.Stat(mustStatePath(t)); !os.IsNotExist(err) {
 		t.Fatalf("failed replacement created a state file: %v", err)
@@ -181,7 +183,7 @@ func TestReplaceTokenSandboxDoesNotTouchDisk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ReplaceToken(st.ActiveContext, "new-access"); err != nil {
+	if err := ReplaceTokens(st.ActiveContext, "", "", "new-access", "new-refresh", true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(mustStatePath(t)); !os.IsNotExist(err) {

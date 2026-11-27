@@ -47,8 +47,11 @@ func (c *Client) RemoveFile(
 	recursive bool,
 ) (FileRemoveResult, error) {
 	requestPath := FileRemovePath + "/" + escapeRemotePath(remotePath)
-	resp, err := c.httpClient.R().
-		SetContext(ctx).
+	request, err := c.storageRequest(ctx)
+	if err != nil {
+		return FileRemoveResult{}, err
+	}
+	resp, err := request.
 		SetQueryParam("recursive", strconv.FormatBool(recursive)).
 		DisableAutoReadResponse().
 		Delete(requestPath)
