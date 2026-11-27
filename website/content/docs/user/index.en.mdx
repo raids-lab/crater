@@ -15,6 +15,8 @@ Crater provides a simple and user-friendly interface, allowing users to easily c
 
 The job management interface presents currently running jobs, job queues, and job history records, making it convenient for users to check task statuses and perform operations at any time.
 
+Volcano job lists support filtering by display stage, including Awaiting admission, Queued, Starting, and Created. Awaiting admission includes both legacy prequeued jobs and jobs not yet admitted. Counts beside the options cover all pages within your permissions, time range, search, and other filters. Changing the stage preserves the other filters. All stage options remain visible and selectable even when their count is zero. Clearing the stage filter removes selections without hiding options. Stage sorting covers all matching jobs before pagination. Ascending follows lifecycle order and descending reverses it, with unknown stages always last. Ties default to newest creation time and highest job ID first.
+
 ![jobshow](./assets/jobshow.webp)
 
 ### Efficient Resource Scheduling

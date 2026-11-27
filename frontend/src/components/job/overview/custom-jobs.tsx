@@ -48,7 +48,7 @@ import {
   getDisplayJobPhase,
 } from '@/services/api/vcjob'
 
-import useRemoteTableState from '@/hooks/use-remote-table-state'
+import useJobTableState from '@/hooks/use-job-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
@@ -67,7 +67,7 @@ const VolcanoOverview = () => {
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
-  const tableState = useRemoteTableState('portal_batch_job_overview', {
+  const tableState = useJobTableState('portal_batch_job_overview', {
     sorting: [{ id: 'createdAt', desc: true }],
   })
 
@@ -81,10 +81,7 @@ const VolcanoOverview = () => {
     queryKey: buildFacetQueryKey('jobs-batch', tableState.params),
     queryFn: async ({ signal }) => (await apiJobBatchFacets(tableState.params, signal)).data,
   })
-  const toolbarConfig = useMemo(
-    () => getRemoteJobToolbarConfig(facetsQuery.data, batchJobTypes),
-    [facetsQuery.data]
-  )
+  const toolbarConfig = getRemoteJobToolbarConfig(facetsQuery.data, batchJobTypes)
 
   const refetchTaskList = async () => {
     try {
