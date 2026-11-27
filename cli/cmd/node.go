@@ -383,6 +383,7 @@ func printNodeDetail(n *api.NodeDetail) {
 	fmt.Printf("%s: %s\n", i18n.T("table_status"), n.IsReady)
 	fmt.Printf("%s: %s\n", i18n.T("table_role"), n.Role)
 	fmt.Printf("%s: %s\n", i18n.T("table_arch"), n.Arch)
+	fmt.Printf("%s: %s\n", i18n.T("node_label_cpu_model"), emptyDash(n.CPUModel))
 	fmt.Printf("%s: %s\n", i18n.T("table_address"), emptyDash(n.Address))
 	fmt.Printf("%s: %s\n", "OS", strings.TrimSpace(n.OS+" "+n.OSVersion))
 	fmt.Printf("%s: %s\n", "Kubelet", n.KubeletVersion)

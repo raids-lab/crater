@@ -11,7 +11,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/dao/query"
@@ -22,8 +24,9 @@ import (
 )
 
 const (
-	VCJOBAPIVERSION = "batch.volcano.sh/v1alpha1"
-	VCJOBKIND       = "Job"
+	VCJOBAPIVERSION  = "batch.volcano.sh/v1alpha1"
+	VCJOBKIND        = "Job"
+	LabelKeyCPUModel = "crater.raids.io/cpu-model"
 )
 
 // formatOperatorInfo 格式化操作员信息为 "昵称(@用户名)" 形式
@@ -97,7 +100,11 @@ type Pod struct {
 	Locked           bool                    `json:"locked"`
 	PermanentLocked  bool                    `json:"permanentLocked"`
 	LockedTimestamp  metav1.Time             `json:"lockedTimestamp"`
-	// 管理员接口返回的字段（omitempty 表示字段为空时不序列化）
+
+	// The admin endpoint populates these fields when the Pod matches a Crater job.
+	JobName   string          `json:"jobName,omitempty"`
+	JobStatus *batch.JobPhase `json:"jobStatus,omitempty"`
+
 	UserName        string `json:"userName,omitempty"`        // 用户昵称（用于显示）
 	UserID          uint   `json:"userID,omitempty"`          // 用户ID（用于跳转）
 	UserRealName    string `json:"userRealName,omitempty"`    // 用户真实名称（用于tooltip）
@@ -135,6 +142,7 @@ type ClusterNodeDetail struct {
 	KubeletVersion          string                   `json:"kubeletVersion"`
 	ContainerRuntimeVersion string                   `json:"containerRuntimeVersion"`
 	KernelVersion           string                   `json:"kernelVersion"`
+	CPUModel                string                   `json:"cpuModel"`
 	Capacity                corev1.ResourceList      `json:"capacity"`
 	Allocatable             corev1.ResourceList      `json:"allocatable"`
 	Used                    corev1.ResourceList      `json:"used"`
@@ -292,6 +300,11 @@ func getNodeIP(node *corev1.Node) string {
 	return node.Status.Addresses[0].Address
 }
 
+func cpuModelFromLabels(node *corev1.Node) string {
+	// Label values use underscores because Kubernetes labels cannot contain spaces.
+	return strings.ReplaceAll(strings.TrimSpace(node.Labels[LabelKeyCPUModel]), "_", " ")
+}
+
 // ListNodes 获取所有 Node 列表
 func (nc *NodeClient) ListNodes(ctx context.Context) ([]NodeBriefInfo, error) {
 	var nodes corev1.NodeList
@@ -413,6 +426,7 @@ func (nc *NodeClient) GetNode(ctx context.Context, name string) (ClusterNodeDeta
 		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
 		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
 		KernelVersion:           node.Status.NodeInfo.KernelVersion,
+		CPUModel:                cpuModelFromLabels(node),
 		Capacity:                node.Status.Capacity,
 		Allocatable:             node.Status.Allocatable,
 		Used:                    usedResources,
@@ -551,6 +565,9 @@ func (nc *NodeClient) AdminGetPodsForNode(ctx context.Context, nodeName string) 
 					klog.Errorf("Get job %s failed, err: %v", owner.Name, err)
 					break
 				}
+
+				pods[i].JobName = job.JobName
+				pods[i].JobStatus = ptr.To(job.Status)
 
 				// 用户信息
 				pods[i].UserID = job.UserID

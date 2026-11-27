@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	// v8 adds the atomic approval and lock operation for job orders.
-	APIVersion = 8
+	// v9 adds the optional CPU model to node details.
+	APIVersion = 9
 	// Job order approval requires the v8 approve-and-lock endpoint.
 	MinSupportedBackendAPIVersion    = 8
 	APIVersionHeader                 = "X-Crater-API-Version"

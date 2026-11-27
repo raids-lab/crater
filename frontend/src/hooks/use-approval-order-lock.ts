@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -22,143 +22,76 @@ import { getJobPhaseLabel } from '@/components/badge/job-phase-badge'
 
 import { type ApprovalOrder, adminApproveJobOrder } from '@/services/api/approvalorder'
 import {
-  type IJobInfo,
+  type IJupyterDetail,
   type JobLockDuration,
   JobPhase,
-  apiAdminGetJobList,
+  apiAdminGetJobDetail,
 } from '@/services/api/vcjob'
 
-// Hook 用于管理工单锁定逻辑
+import { showErrorToast } from '@/utils/toast'
+
 export function useApprovalOrderLock() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [selectedOrder, setSelectedOrder] = useState<ApprovalOrder | null>(null)
-  const [selectedJob, setSelectedJob] = useState<IJobInfo | null>(null)
-  const [isDelayDialogOpen, setIsDelayDialogOpen] = useState(false)
+  const [selection, setSelection] = useState<{ order: ApprovalOrder; job: IJupyterDetail } | null>(
+    null
+  )
   const [isFetchingJob, setIsFetchingJob] = useState(false)
+  const isDelayDialogOpen = selection !== null
 
-  // 近 7 天窗口，避免 -1 带来的重负载
-  const JOB_DAYS_WINDOW = 7
-
-  // 选中工单的锁定小时（只用 content.approvalorderExtensionHours，空按 0 处理）
-  const selectedExtHours = useMemo(() => {
-    const n = Number(selectedOrder?.content?.approvalorderExtensionHours)
-    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0
-  }, [selectedOrder])
-
-  const isRunningPhase = (phase: IJobInfo['status']) => {
-    const enumVal = JobPhase[phase as keyof typeof JobPhase]
-    if (enumVal !== undefined) return enumVal === JobPhase.Running
-    return String(phase).toLowerCase() === 'running'
-  }
-
-  const phaseLabel = (phase: IJobInfo['status']) => {
-    const enumVal = JobPhase[phase as keyof typeof JobPhase]
-    if (enumVal !== undefined) return getJobPhaseLabel(enumVal).label
-    return '未知'
-  }
-
-  // 查找并验证作业状态
-  const findAndValidateJob = async (order: ApprovalOrder): Promise<IJobInfo | null> => {
-    const findTarget = (list?: IJobInfo[]) => list?.find((j) => j.jobName === order.name)
-
+  const handleApproveWithDelay = async (order: ApprovalOrder) => {
     setIsFetchingJob(true)
     try {
-      const tryDays = [JOB_DAYS_WINDOW, 14, 30]
-      let found: IJobInfo | undefined
-      let had502 = false
-
-      for (const d of tryDays) {
-        try {
-          const res = await apiAdminGetJobList({
-            page: 1,
-            page_size: 10,
-            search: order.name,
-            filters: { days: [String(d)] },
+      const { data: job } = await apiAdminGetJobDetail(order.name)
+      if (job.status !== JobPhase.Running) {
+        toast.error(
+          t('durationDialog.approval.jobNotRunning', {
+            status: getJobPhaseLabel(job.status).label,
           })
-          const list = res.data.items
-
-          const job = findTarget(list)
-          if (job) {
-            found = job
-            break
-          }
-        } catch (err) {
-          const status = (err as { response?: { status?: number } })?.response?.status
-          if (status === 502) {
-            had502 = true
-            continue
-          }
-          throw err
-        }
+        )
+        return
       }
 
-      if (!found) {
-        if (had502) {
-          toast.error('后端网关错误（502），请稍后重试或联系管理员扩大检索窗口')
-        } else {
-          toast.error('未找到对应作业，可能不在检索时间范围内')
-        }
-        return null
-      }
-
-      if (!isRunningPhase(found.status)) {
-        toast.error(`该作业当前状态为 ${phaseLabel(found.status)}，无法锁定（仅运行中可锁定）`)
-        return null
-      }
-
-      return found
-    } catch (err) {
-      const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 502) {
-        toast.error('后端网关错误（502），请稍后重试')
-      } else {
-        toast.error('获取作业列表失败')
-      }
-      return null
+      setSelection({ order, job })
+    } catch (error) {
+      showErrorToast(error)
     } finally {
       setIsFetchingJob(false)
     }
   }
 
-  // 处理批准并锁定
-  const handleApproveWithDelay = async (order: ApprovalOrder) => {
-    const job = await findAndValidateJob(order)
-    if (job) {
-      setSelectedOrder(order)
-      setSelectedJob(job)
-      setIsDelayDialogOpen(true)
-    }
+  const submitApprovalLock = async (duration: JobLockDuration) => {
+    if (!selection) throw new Error(t('ApprovalOrderTable.toast.approveError'))
+
+    const { order, job } = selection
+    await adminApproveJobOrder(order.id, duration)
+    toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorder', order.id] }),
+      queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] }),
+      queryClient.invalidateQueries({ queryKey: ['approvalorders'] }),
+      queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] }),
+      queryClient.invalidateQueries({ queryKey: ['job', 'detail', job.jobName] }),
+      queryClient.invalidateQueries({ queryKey: ['remote-list', 'admin-jobs'] }),
+    ])
   }
 
-  const submitApprovalLock = async (duration: JobLockDuration) => {
-    if (!selectedOrder) throw new Error(t('ApprovalOrderTable.toast.approveError'))
-    await adminApproveJobOrder(selectedOrder.id, duration)
-    toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
-    void queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
-    void queryClient.invalidateQueries({ queryKey: ['approvalorders'] })
-    void queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] })
-    void queryClient.invalidateQueries({ queryKey: ['job', 'detail', selectedOrder.name] })
+  const onDelayDialogOpenChange = (open: boolean) => {
+    if (!open) setSelection(null)
   }
+
+  const extensionHours = Number(selection?.order.content?.approvalorderExtensionHours)
+  const selectedExtHours =
+    Number.isFinite(extensionHours) && extensionHours > 0 ? Math.floor(extensionHours) : 0
 
   return {
-    // 状态
-    selectedOrder,
-    selectedJob,
+    selectedOrder: selection?.order,
+    selectedJob: selection?.job,
     selectedExtHours,
     isDelayDialogOpen,
-    isFetchingJob,
-
-    // 操作函数
+    isProcessingLock: isFetchingJob || isDelayDialogOpen,
     handleApproveWithDelay,
     submitApprovalLock,
-    setIsDelayDialogOpen,
-
-    // 清空状态
-    clearSelection: () => {
-      setSelectedOrder(null)
-      setSelectedJob(null)
-      setIsDelayDialogOpen(false)
-    },
+    onDelayDialogOpenChange,
   }
 }

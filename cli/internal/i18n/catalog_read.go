@@ -151,6 +151,7 @@ var catalogRead = map[Language]map[string]string{
 		"flag_available":          "List images available for creating jobs",
 
 		"node_label_name":          "node name",
+		"node_label_cpu_model":     "CPU Model",
 		"job_label_name":           "job name",
 		"account_label_id":         "account id",
 		"account_label_id_or_name": "account id or name",
@@ -357,6 +358,7 @@ var catalogRead = map[Language]map[string]string{
 		"flag_available":          "列出创建作业时可用的镜像",
 
 		"node_label_name":          "节点名称",
+		"node_label_cpu_model":     "CPU 型号",
 		"job_label_name":           "作业名称",
 		"account_label_id":         "账户 ID",
 		"account_label_id_or_name": "账户 ID 或名称",

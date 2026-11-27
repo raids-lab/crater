@@ -17,8 +17,8 @@ package version
 import "testing"
 
 func TestAtomicJobApprovalContractVersion(t *testing.T) {
-	if APIVersion != 8 || MinSupportedCLIAPIVersion != 8 {
-		t.Fatalf("atomic job approval contract = %d, minimum CLI = %d, want 8/8",
+	if APIVersion < 8 || MinSupportedCLIAPIVersion != 8 {
+		t.Fatalf("atomic job approval contract = %d, minimum CLI = %d, want >=8/8",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}
 }

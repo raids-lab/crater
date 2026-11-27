@@ -18,6 +18,7 @@ import {
   Cable,
   CpuIcon,
   HardDriveIcon,
+  LucideIcon,
   MemoryStick,
   ServerIcon,
   Zap,
@@ -27,7 +28,7 @@ import { useTranslation } from 'react-i18next'
 import { Cell, Label, Pie, PieChart, ResponsiveContainer } from 'recharts'
 
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -43,6 +44,33 @@ import { cn } from '@/lib/utils'
 type NodeInfoTabProps = {
   nodeDetail?: IClusterNodeDetail
   gpuDetail?: IClusterNodeGPU
+}
+
+function NodeInfoField({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+}) {
+  return (
+    <div className="min-w-0 space-y-2">
+      <dt className="text-muted-foreground flex items-start gap-2 text-sm">
+        <Icon className="mt-0.5 size-4 shrink-0" />
+        <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
+      </dt>
+      <dd>
+        <Badge
+          variant="secondary"
+          className="max-w-full min-w-0 font-mono text-xs [overflow-wrap:anywhere] whitespace-normal"
+        >
+          {value}
+        </Badge>
+      </dd>
+    </div>
+  )
 }
 
 export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
@@ -107,328 +135,309 @@ export const NodeInfoTab = ({ nodeDetail, gpuDetail }: NodeInfoTabProps) => {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <Card>
-        <CardContent className="py-2.4 space-y-4 px-6">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
-            <ActivityIcon className="size-4" />
-            {t('nodeDetail.info.basicInfo')}
-          </h3>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <div className="text-muted-foreground flex items-center gap-2">
-                  <MemoryStick className="size-3.5" />
-                  <span>{t('nodeDetail.info.memoryCapacity')}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-medium">
-                    {memoryUsedGi !== undefined && memoryCapacityGi !== undefined
-                      ? `${memoryUsedGi.toFixed(2)} / ${memoryCapacityGi.toFixed(2)} GB`
-                      : memoryCapacityGi !== undefined
-                        ? `- / ${memoryCapacityGi.toFixed(2)} GB`
-                        : '-'}
-                  </span>
-                  {memoryPercentage > 0 && (
-                    <span className="text-muted-foreground font-mono text-[10px]">
-                      ({memoryPercentage.toFixed(1)}%)
+    <div className="@container/node-info w-full min-w-0">
+      <div className="grid min-w-0 grid-cols-1 gap-4 @min-[56rem]/node-info:grid-cols-2">
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ActivityIcon className="size-4 shrink-0" />
+              {t('nodeDetail.info.basicInfo')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="min-w-0 space-y-4">
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-xs">
+                  <div className="text-muted-foreground flex items-center gap-2">
+                    <MemoryStick className="size-3.5 shrink-0" />
+                    <span>{t('nodeDetail.info.memoryCapacity')}</span>
+                  </div>
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="font-mono font-medium [overflow-wrap:anywhere]">
+                      {memoryUsedGi !== undefined && memoryCapacityGi !== undefined
+                        ? `${memoryUsedGi.toFixed(2)} / ${memoryCapacityGi.toFixed(2)} GB`
+                        : memoryCapacityGi !== undefined
+                          ? `- / ${memoryCapacityGi.toFixed(2)} GB`
+                          : '-'}
                     </span>
-                  )}
-                </div>
-              </div>
-              <Progress value={memoryPercentage} className="h-1.5" />
-            </div>
-
-            <Separator className="mt-6" />
-
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-8">
-              <div>
-                <div className="flex items-center">
-                  <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
-                    <HardDriveIcon className="size-4" />
-                    <span>{t('nodeDetail.info.diskCapacity')}</span>
+                    {memoryPercentage > 0 && (
+                      <span className="text-muted-foreground font-mono text-[10px]">
+                        ({memoryPercentage.toFixed(1)}%)
+                      </span>
+                    )}
                   </div>
-                  <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
-                    {diskCapacityGi !== undefined ? `${diskCapacityGi.toFixed(2)} GB` : '-'}
-                  </Badge>
                 </div>
+                <Progress value={memoryPercentage} className="h-1.5" />
               </div>
-              <div>
-                <div className="flex items-center">
-                  <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
-                    <ServerIcon className="size-4" />
-                    <span>{t('nodeDetail.info.kernelVersion')}</span>
-                  </div>
-                  <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
-                    {nodeDetail.kernelVersion || '-'}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardContent className="py-2.4 flex flex-col px-6">
-          <h3 className="mb-6 flex items-center gap-2 text-base font-semibold">
-            <CpuIcon className="size-4" />
-            {t('nodeDetail.info.cpuInfo')}
-          </h3>
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col items-center gap-2">
-              <div className="relative h-[100px] w-[100px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={cpuChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={30}
-                      outerRadius={45}
-                      startAngle={90}
-                      endAngle={-270}
-                      dataKey="value"
-                      stroke="none"
-                      isAnimationActive={isDataLoaded}
-                      animationBegin={0}
-                      animationDuration={800}
-                    >
-                      <Cell fill={CHART_COLORS.used} />
-                      <Cell fill={CHART_COLORS.free} />
-                      <Label
-                        content={({ viewBox }) => {
-                          if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                            return (
-                              <text
-                                x={viewBox.cx}
-                                y={viewBox.cy}
-                                textAnchor="middle"
-                                dominantBaseline="middle"
-                              >
-                                <tspan
+              <Separator className="mt-6" />
+
+              <dl className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-4">
+                <NodeInfoField
+                  icon={HardDriveIcon}
+                  label={t('nodeDetail.info.diskCapacity')}
+                  value={diskCapacityGi !== undefined ? `${diskCapacityGi.toFixed(2)} GB` : '-'}
+                />
+                <NodeInfoField
+                  icon={ServerIcon}
+                  label={t('nodeDetail.info.kernelVersion')}
+                  value={nodeDetail.kernelVersion || '-'}
+                />
+              </dl>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="@container/cpu min-w-0">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <CpuIcon className="size-4 shrink-0" />
+              {t('nodeDetail.info.cpuInfo')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="min-w-0">
+            <div className="flex min-w-0 flex-col items-center gap-6 @min-[28rem]/cpu:flex-row">
+              <div className="flex shrink-0 flex-col items-center gap-2">
+                <div className="relative h-[100px] w-[100px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={cpuChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={30}
+                        outerRadius={45}
+                        startAngle={90}
+                        endAngle={-270}
+                        dataKey="value"
+                        stroke="none"
+                        isAnimationActive={isDataLoaded}
+                        animationBegin={0}
+                        animationDuration={800}
+                      >
+                        <Cell fill={CHART_COLORS.used} />
+                        <Cell fill={CHART_COLORS.free} />
+                        <Label
+                          content={({ viewBox }) => {
+                            if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                              return (
+                                <text
                                   x={viewBox.cx}
                                   y={viewBox.cy}
-                                  className="fill-foreground text-lg font-bold"
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
                                 >
-                                  {cpuPercentage}%
-                                </tspan>
-                              </text>
-                            )
-                          }
-                        }}
-                      />
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              {cpuUsedValue !== undefined && cpuCapacityValue !== undefined && (
-                <div className="text-muted-foreground font-mono text-[10px]">
-                  {cpuUsedValue.toFixed(2)} / {cpuCapacityValue.toFixed(2)} Cores
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={viewBox.cy}
+                                    className="fill-foreground text-lg font-bold"
+                                  >
+                                    {cpuPercentage}%
+                                  </tspan>
+                                </text>
+                              )
+                            }
+                          }}
+                        />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              )}
+                {cpuUsedValue !== undefined && cpuCapacityValue !== undefined && (
+                  <div className="text-muted-foreground font-mono text-[10px]">
+                    {cpuUsedValue.toFixed(2)} / {cpuCapacityValue.toFixed(2)} Cores
+                  </div>
+                )}
+              </div>
+              <div className="flex w-full min-w-0 flex-1 flex-col justify-center gap-4">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-4">
+                  <div className="min-w-0">
+                    <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
+                      {t('nodeDetail.info.architecture')}
+                    </div>
+                    <div className="text-lg font-bold [overflow-wrap:anywhere]">
+                      {nodeDetail.arch.toUpperCase()}
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
+                      {t('nodeDetail.info.cpuCount')}
+                    </div>
+                    <div className="flex flex-wrap items-baseline gap-1">
+                      <span className="text-lg font-bold [overflow-wrap:anywhere]">
+                        {cpuCapacity}
+                      </span>
+                      <span className="text-muted-foreground text-xs">Cores</span>
+                    </div>
+                  </div>
+                </div>
+                <dl className="min-w-0 border-t pt-4">
+                  <NodeInfoField
+                    icon={CpuIcon}
+                    label={t('nodeDetail.info.cpuModel')}
+                    value={nodeDetail.cpuModel || '-'}
+                  />
+                </dl>
+              </div>
             </div>
-            <div className="flex flex-1 flex-col justify-center gap-4 pl-0 sm:pl-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
-                    {t('nodeDetail.info.architecture')}
-                  </div>
-                  <div className="text-lg font-bold">{nodeDetail.arch.toUpperCase()}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground mb-1 text-[10px] tracking-wider uppercase">
-                    {t('nodeDetail.info.cpuCount')}
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-lg font-bold">{cpuCapacity}</span>
-                    <span className="text-muted-foreground text-xs">Cores</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center border-t pt-4">
-                <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
-                  <CpuIcon className="size-4" />
-                  <span>{t('nodeDetail.info.cpuModel')}</span>
-                </div>
-                <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
-                  {'-'}
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {gpuDetail?.haveGPU && (
-        <div className="space-y-4 md:col-span-2">
-          {gpuDetail.gpuDevices?.map((device, deviceIdx) => {
-            let gpuStartIdx = 0
-            for (let i = 0; i < deviceIdx; i++) {
-              gpuStartIdx += gpuDetail.gpuDevices?.[i]?.count || 0
-            }
-            const gpuEndIdx = gpuStartIdx + device.count
-
-            let deviceUsedCount = 0
-            for (let i = gpuStartIdx; i < gpuEndIdx; i++) {
-              const gpuId = i.toString()
-              const jobs = relateJobsMap[gpuId] || []
-              const isAllocated = jobs.length > 0
-              if (isAllocated) {
-                deviceUsedCount++
+        {gpuDetail?.haveGPU && (
+          <div className="min-w-0 space-y-4 @min-[56rem]/node-info:col-span-2">
+            {gpuDetail.gpuDevices?.map((device, deviceIdx) => {
+              let gpuStartIdx = 0
+              for (let i = 0; i < deviceIdx; i++) {
+                gpuStartIdx += gpuDetail.gpuDevices?.[i]?.count || 0
               }
-            }
-            const deviceUnusedCount = device.count - deviceUsedCount
+              const gpuEndIdx = gpuStartIdx + device.count
 
-            return (
-              <Card key={deviceIdx}>
-                <CardContent className="py-2.4 px-6">
-                  <h3 className="mb-4 flex items-center gap-2 text-base font-semibold">
-                    <Zap className="size-4" />
-                    {t('nodeDetail.info.acceleratorInfo')} - {device.label.toUpperCase()}
-                  </h3>
+              let deviceUsedCount = 0
+              for (let i = gpuStartIdx; i < gpuEndIdx; i++) {
+                const gpuId = i.toString()
+                const jobs = relateJobsMap[gpuId] || []
+                const isAllocated = jobs.length > 0
+                if (isAllocated) {
+                  deviceUsedCount++
+                }
+              }
+              const deviceUnusedCount = device.count - deviceUsedCount
 
-                  <div className="flex flex-col gap-8 lg:flex-row">
-                    <div className="flex-1 space-y-6">
-                      <div>
-                        <div className="bg-muted text-foreground flex items-center gap-5 rounded-md px-4 py-3 shadow-sm">
-                          <AcceleratorBadge acceleratorString={device.resourceName} />
-                          <span className="text-lg font-semibold tracking-tight">
-                            {device.product?.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-                        {[
-                          {
-                            icon: Cable,
-                            label: t('nodeDetail.gpu.driverVersion'),
-                            value: device.driver || '-',
-                          },
-                          {
-                            icon: ActivityIcon,
-                            label: device.vendorDomain?.includes('nvidia')
-                              ? `CUDA ${t('nodeDetail.info.version')}`
-                              : device.vendorDomain?.includes('amd')
-                                ? `ROCm ${t('nodeDetail.info.version')}`
-                                : t('nodeDetail.info.version'),
-                            value: device.runtimeVersion || '-',
-                          },
-                          {
-                            icon: MemoryStick,
-                            label: t('nodeDetail.gpu.memory'),
-                            value: device.memory ? `${parseInt(device.memory) / 1024} GB` : '-',
-                          },
-                          {
-                            icon: CpuIcon,
-                            label: t('nodeDetail.gpu.architecture'),
-                            value: device.arch || '-',
-                          },
-                        ].map(({ icon: Icon, label, value }, idx) => (
-                          <div key={idx} className="col-span-1">
-                            <div className="flex items-center">
-                              <div className="text-muted-foreground flex w-32 shrink-0 items-center gap-2 text-sm">
-                                <Icon className="size-4" />
-                                <span>{label}</span>
-                              </div>
-                              <Badge variant="secondary" className="ml-1 font-mono text-[10px]">
-                                {value}
-                              </Badge>
-                            </div>
+              return (
+                <Card key={deviceIdx} className="@container/gpu min-w-0">
+                  <CardHeader>
+                    <CardTitle className="flex items-start gap-2 text-base">
+                      <Zap className="size-4 shrink-0" />
+                      <span className="min-w-0 [overflow-wrap:anywhere]">
+                        {t('nodeDetail.info.acceleratorInfo')} - {device.label.toUpperCase()}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="min-w-0">
+                    <div className="grid min-w-0 grid-cols-1 gap-6 @min-[56rem]/gpu:grid-cols-2">
+                      <div className="min-w-0 space-y-6">
+                        <div>
+                          <div className="bg-muted text-foreground flex min-w-0 flex-wrap items-center gap-3 rounded-md px-4 py-3">
+                            <AcceleratorBadge acceleratorString={device.resourceName} />
+                            <span className="min-w-0 text-base font-semibold tracking-tight [overflow-wrap:anywhere]">
+                              {device.product?.toUpperCase()}
+                            </span>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 border-t pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8">
-                      <div className="mb-4 flex items-center justify-between">
-                        <div className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
-                          {t('nodeDetail.gpu.allocationStatus')}
                         </div>
-                        <div className="flex gap-2">
-                          <Badge
-                            variant="outline"
-                            className="border-primary/20 bg-primary/10 text-primary h-5 px-2 text-[10px]"
-                          >
-                            {t('nodeDetail.gpu.allocatedCount', { count: deviceUsedCount })}
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="border-border bg-muted text-muted-foreground h-5 px-2 text-[10px]"
-                          >
-                            {t('nodeDetail.gpu.unallocatedCount', {
-                              count: deviceUnusedCount,
-                            })}
-                          </Badge>
-                        </div>
+
+                        <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-4">
+                          {[
+                            {
+                              icon: Cable,
+                              label: t('nodeDetail.gpu.driverVersion'),
+                              value: device.driver || '-',
+                            },
+                            {
+                              icon: ActivityIcon,
+                              label: device.vendorDomain?.includes('nvidia')
+                                ? `CUDA ${t('nodeDetail.info.version')}`
+                                : device.vendorDomain?.includes('amd')
+                                  ? `ROCm ${t('nodeDetail.info.version')}`
+                                  : t('nodeDetail.info.version'),
+                              value: device.runtimeVersion || '-',
+                            },
+                            {
+                              icon: MemoryStick,
+                              label: t('nodeDetail.gpu.memory'),
+                              value: device.memory ? `${parseInt(device.memory) / 1024} GB` : '-',
+                            },
+                            {
+                              icon: CpuIcon,
+                              label: t('nodeDetail.gpu.architecture'),
+                              value: device.arch || '-',
+                            },
+                          ].map(({ icon: Icon, label, value }, idx) => (
+                            <NodeInfoField key={idx} icon={Icon} label={label} value={value} />
+                          ))}
+                        </dl>
                       </div>
 
-                      <div
-                        className={cn(
-                          'gap-3',
-                          device.count < 4
-                            ? 'flex flex-wrap'
-                            : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
-                        )}
-                      >
-                        {Array.from({ length: device.count }).map((_, i) => {
-                          const gpuId = (gpuStartIdx + i).toString()
-                          const jobs = relateJobsMap[gpuId] || []
-                          const isAllocated = jobs.length > 0
-                          const displayJobs = jobs.filter((job) => !job.startsWith('__'))
-                          const hasDisplayJobs = displayJobs.length > 0
-
-                          const gpuCard = (
-                            <div
-                              key={gpuId}
-                              className={cn(
-                                'group bg-card relative flex flex-col items-center justify-center gap-2 rounded-lg border p-3 shadow-sm transition-all hover:shadow-md',
-                                device.count < 4 && 'w-[calc((100%-0.75rem*3)/4)]',
-                                isAllocated && 'border-primary/30'
-                              )}
+                      <div className="min-w-0 border-t pt-6 @min-[56rem]/gpu:border-t-0 @min-[56rem]/gpu:border-l @min-[56rem]/gpu:pt-0 @min-[56rem]/gpu:pl-6">
+                        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                          <div className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
+                            {t('nodeDetail.gpu.allocationStatus')}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge
+                              variant="outline"
+                              className="border-primary/20 bg-primary/10 text-primary h-5 px-2 text-[10px]"
                             >
+                              {t('nodeDetail.gpu.allocatedCount', { count: deviceUsedCount })}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="border-border bg-muted text-muted-foreground h-5 px-2 text-[10px]"
+                            >
+                              {t('nodeDetail.gpu.unallocatedCount', {
+                                count: deviceUnusedCount,
+                              })}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,5rem),1fr))] gap-3">
+                          {Array.from({ length: device.count }).map((_, i) => {
+                            const gpuId = (gpuStartIdx + i).toString()
+                            const jobs = relateJobsMap[gpuId] || []
+                            const isAllocated = jobs.length > 0
+                            const displayJobs = jobs.filter((job) => !job.startsWith('__'))
+                            const hasDisplayJobs = displayJobs.length > 0
+
+                            const gpuCard = (
                               <div
-                                className={`rounded-full p-2 ${isAllocated ? 'bg-primary/10' : 'bg-muted'}`}
+                                key={gpuId}
+                                className={cn(
+                                  'group bg-card relative flex flex-col items-center justify-center gap-2 rounded-lg border p-3 shadow-sm transition-all hover:shadow-md',
+                                  isAllocated && 'border-primary/30'
+                                )}
                               >
-                                <Zap
-                                  className={`size-4 ${isAllocated ? 'text-primary fill-primary' : 'text-muted-foreground'}`}
-                                />
+                                <div
+                                  className={`rounded-full p-2 ${isAllocated ? 'bg-primary/10' : 'bg-muted'}`}
+                                >
+                                  <Zap
+                                    className={`size-4 ${isAllocated ? 'text-primary fill-primary' : 'text-muted-foreground'}`}
+                                  />
+                                </div>
+                                <div className="text-muted-foreground font-mono text-xs font-medium">
+                                  GPU-{gpuId}
+                                </div>
                               </div>
-                              <div className="text-muted-foreground font-mono text-xs font-medium">
-                                GPU-{gpuId}
-                              </div>
-                            </div>
-                          )
-
-                          if (hasDisplayJobs) {
-                            return (
-                              <Tooltip key={gpuId}>
-                                <TooltipTrigger asChild>{gpuCard}</TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs">
-                                  <div className="space-y-0.5">
-                                    {displayJobs.map((job, idx) => (
-                                      <div key={idx} className="text-xs">
-                                        {job}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
                             )
-                          }
 
-                          return gpuCard
-                        })}
+                            if (hasDisplayJobs) {
+                              return (
+                                <Tooltip key={gpuId}>
+                                  <TooltipTrigger asChild>{gpuCard}</TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <div className="space-y-0.5">
+                                      {displayJobs.map((job, idx) => (
+                                        <div key={idx} className="text-xs">
+                                          {job}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )
+                            }
+
+                            return gpuCard
+                          })}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -40,6 +40,7 @@ interface DataTableShellProps<TData> {
   refetch: () => void
   dataUpdatedAt: number
   totalItems?: number
+  pageSizeOptions?: number[]
 }
 
 export function DataTableShell<TData>({
@@ -57,6 +58,7 @@ export function DataTableShell<TData>({
   refetch,
   dataUpdatedAt,
   totalItems,
+  pageSizeOptions,
 }: DataTableShellProps<TData>) {
   const { t } = useTranslation()
   const updatedAt = dataUpdatedAt
@@ -151,6 +153,7 @@ export function DataTableShell<TData>({
         updatedAt={updatedAt}
         multipleHandlers={multipleHandlers}
         totalItems={totalItems}
+        pageSizeOptions={pageSizeOptions}
       />
     </div>
   )

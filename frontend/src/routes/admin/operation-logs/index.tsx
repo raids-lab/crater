@@ -973,7 +973,7 @@ function OperationLogsPage() {
               setPagination((prev) => ({ ...prev, pageIndex: 0 }))
             }}
           >
-            <SelectTrigger className="bg-background h-9 w-[156px] pr-2 pl-3">
+            <SelectTrigger className="bg-background h-9 w-max min-w-[156px] shrink-0 pr-2 pl-3">
               <CalendarIcon />
               <SelectValue />
             </SelectTrigger>

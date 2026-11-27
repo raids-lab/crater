@@ -152,7 +152,7 @@ Crater fits shared AI computing environments in universities, research institute
 ## 🏗️ Architecture
 
 <div align="center">
-  <img src="./website/content/docs/admin/assets/architecture.webp" alt="Crater architecture" width="90%" />
+  <img src="./docs/assets/readme-architecture.en.webp" alt="Crater architecture" width="90%" />
   <br/>
   <sub>High-level architecture of Crater and its major components.</sub>
 </div>
@@ -218,6 +218,7 @@ helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 
 - 🐛 **Issues** — report bugs or request features: [GitHub Issues](https://github.com/raids-lab/crater/issues)
 - 💡 **Discussions** — ask questions and share ideas: [GitHub Discussions](https://github.com/raids-lab/crater/discussions)
+- 📧 **Contact** — for project inquiries or collaboration, email [jeffery_06@163.com](mailto:jeffery_06@163.com).
 - 📚 **Docs** — admin and user guides: [raids-lab.github.io/crater](https://raids-lab.github.io/crater/en/docs/admin/)
 - ⭐ **Star the project** if you find Crater useful — it helps others discover it.
 

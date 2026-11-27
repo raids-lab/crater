@@ -3,53 +3,61 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"math"
+	"slices"
 	"time"
 
 	"github.com/prometheus/common/model"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func (p *PrometheusClient) queryMetric(expression string) (float32, error) {
-	// 构建查询参数
-
-	// 执行查询
-	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
-	defer cancel()
-	result, _, err := p.v1api.Query(ctx, expression, time.Now())
-	if err != nil {
-		return 0.0, err
-	}
-
-	// 处理查询结果
-	if result.Type() == model.ValVector {
-		vector := result.(model.Vector)
-		if len(vector) > 0 {
-			// 获取最新的样本值
-			latestSample := vector[0]
-			// 提取最新的值
-			latestValue := latestSample.Value
-			return float32(latestValue), nil
-		}
-	}
-
-	return 0.0, fmt.Errorf("no data found for expression: %s", expression)
+	return p.queryMetricAt(expression, time.Now())
 }
 
-// 公共的查询执行和结果验证逻辑
+func (p *PrometheusClient) queryMetricAt(expression string, at time.Time) (float32, error) {
+	vector, err := p.queryVectorAt(context.Background(), expression, at)
+	if err != nil {
+		return 0, err
+	}
+	for _, sample := range vector {
+		if value := finiteFloat32(float64(sample.Value)); value != nil {
+			return *value, nil
+		}
+	}
+	return 0, fmt.Errorf("no finite data found for expression: %s", expression)
+}
+
+func isFinite(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0)
+}
+
+func finiteFloat32(value float64) *float32 {
+	narrowed := float32(value)
+	if !isFinite(float64(narrowed)) {
+		return nil
+	}
+	return &narrowed
+}
+
 func (p *PrometheusClient) queryVector(query string) (model.Vector, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
+	return p.queryVectorAt(context.Background(), query, time.Now())
+}
+
+func (p *PrometheusClient) queryVectorAt(ctx context.Context, query string, at time.Time) (model.Vector, error) {
+	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
-	result, _, err := p.v1api.Query(ctx, query, time.Now())
+	result, _, err := p.v1api.Query(ctx, query, at)
 	if err != nil {
 		return nil, err
 	}
-
-	if result.Type() != model.ValVector {
-		return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
+	vector, ok := result.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("expected vector result for %q, got %T", query, result)
 	}
-
-	return result.(model.Vector), nil
+	return slices.DeleteFunc(vector, func(sample *model.Sample) bool {
+		return !isFinite(float64(sample.Value))
+	}), nil
 }
 
 // float32MapQuery 使用 queryVector 函数并处理 float32 类型的映射
@@ -62,8 +70,9 @@ func (p *PrometheusClient) float32MapQuery(query, key string) (map[string]float3
 	cpuUsages := make(map[string]float32)
 	for _, sample := range vector {
 		instance := string(sample.Metric[model.LabelName(key)])
-		value := float32(sample.Value)
-		cpuUsages[instance] = value
+		if value := finiteFloat32(float64(sample.Value)); value != nil {
+			cpuUsages[instance] = *value
+		}
 	}
 
 	return cpuUsages, nil
@@ -87,63 +96,27 @@ func (p *PrometheusClient) intMapQuery(query, key string) (map[string]int, error
 }
 
 func (p *PrometheusClient) getNodeGPUUtil(expression string) ([]NodeGPUUtil, error) {
-	// 执行查询
-	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
-	defer cancel()
-	result, _, err := p.v1api.Query(ctx, expression, time.Now())
+	vector, err := p.queryVector(expression)
 	if err != nil {
 		return nil, err
 	}
-
-	// 定义返回的结构体
-	var nodeGPUUtils []NodeGPUUtil
-
-	// 检查结果类型是否为向量
-	if result.Type() == model.ValVector {
-		vector := result.(model.Vector)
-		for _, sample := range vector {
-			metric := sample.Metric
-
-			// 提取metric中的标签和value中的值
-			hostname := metric["Hostname"]
-			uuid := metric["UUID"]
-			container := metric["container"]
-			device := metric["device"]
-			endpoint := metric["endpoint"]
-			gpu := metric["gpu"]
-			instance := metric["instance"]
-			job := metric["job"]
-			modelName := metric["modelName"]
-			namespace := metric["namespace"]
-			var pod model.LabelValue
-			if exportedPod, ok := metric["pod"]; ok {
-				pod = exportedPod
-			}
-			service := metric["service"]
-			util := float32(sample.Value)
-
-			nodeGPUUtilData := NodeGPUUtil{
-				Hostname:  string(hostname),
-				UUID:      string(uuid),
-				Container: string(container),
-				Device:    string(device),
-				Endpoint:  string(endpoint),
-				Gpu:       string(gpu),
-				Instance:  string(instance),
-				Job:       string(job),
-				ModelName: string(modelName),
-				Namespace: string(namespace),
-				Pod:       string(pod),
-				Service:   string(service),
-				Util:      util,
-			}
-			nodeGPUUtils = append(nodeGPUUtils, nodeGPUUtilData)
+	nodeGPUUtils := make([]NodeGPUUtil, 0, len(vector))
+	for _, sample := range vector {
+		util := finiteFloat32(float64(sample.Value))
+		if util == nil {
+			continue
 		}
-
-		return nodeGPUUtils, nil
+		metric := sample.Metric
+		nodeGPUUtils = append(nodeGPUUtils, NodeGPUUtil{
+			Hostname: string(metric["Hostname"]), UUID: string(metric["UUID"]),
+			Container: string(metric["container"]), Device: string(metric["device"]),
+			Endpoint: string(metric["endpoint"]), Gpu: string(metric["gpu"]),
+			Instance: string(metric["instance"]), Job: string(metric["job"]),
+			ModelName: string(metric["modelName"]), Namespace: string(metric["namespace"]),
+			Pod: string(metric["pod"]), Service: string(metric["service"]), Util: *util,
+		})
 	}
-
-	return nil, fmt.Errorf("expected vector type result but got %s", result.Type())
+	return nodeGPUUtils, nil
 }
 
 func (p *PrometheusClient) getJobPods(expression string) (map[string][]string, error) {
@@ -192,14 +165,4 @@ func (p *PrometheusClient) checkGPUUsed(expression string) (int, error) {
 	}
 
 	return 0, fmt.Errorf("expected vector type result but got %s", result.Type())
-}
-
-// checkIfGPURequested 检查 Pod 是否申请了 GPU
-func (p *PrometheusClient) checkIfGPURequested(namespacedName types.NamespacedName) bool {
-	// 这里实现检查逻辑，例如通过查询 Pod 的资源请求或 Prometheus 中的相关指标
-	// 返回 true 表示 Pod 申请了 GPU，false 表示没有申请
-	// 这是一个示例实现，具体逻辑需要根据实际情况调整
-	query := fmt.Sprintf("count(DCGM_FI_DEV_GPU_UTIL{namespace=%q,pod=%q})", namespacedName.Namespace, namespacedName.Name)
-	value, err := p.queryMetric(query)
-	return err == nil && value > 0
 }
