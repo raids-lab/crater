@@ -97,6 +97,7 @@ func (mgr *VolcanojobMgr) CreateWebIDEJob(c *gin.Context) {
 		baseURL,
 		&req.CreateJobCommon,
 		waitingToleranceSeconds,
+		util.GetClientInfo(c),
 	)
 
 	// 5. Create the pod spec

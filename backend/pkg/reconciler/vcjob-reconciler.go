@@ -47,6 +47,7 @@ import (
 	"github.com/raids-lab/crater/internal/handler/vcjob"
 	"github.com/raids-lab/crater/internal/service"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
+	"github.com/raids-lab/crater/internal/util"
 	"github.com/raids-lab/crater/pkg/alert"
 	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
@@ -381,6 +382,8 @@ func (r *VcJobReconciler) createOrUpdateJobRecord(ctx context.Context, record *m
 			"user_id",
 			"account_id",
 			"job_type",
+			"client_type",
+			"client_version",
 			"waiting_tolerance_seconds",
 			"status",
 			"pod_group_phase",
@@ -404,7 +407,20 @@ func (r *VcJobReconciler) createOrUpdateJobRecord(ctx context.Context, record *m
 	}).Create(record)
 }
 
+func jobClientInfo(job *batch.Job) (clientType model.ClientType, clientVersion *string) {
+	if job == nil {
+		return model.ClientTypeUnknown, nil
+	}
+	clientType = util.NormalizeClientType(job.Annotations[vcjobservice.AnnotationKeyClientType])
+	version := util.NormalizeClientVersion(job.Annotations[vcjobservice.AnnotationKeyClientVersion])
+	if clientType != model.ClientTypeCLI || version == "" {
+		return clientType, nil
+	}
+	return clientType, ptr.To(version)
+}
+
 func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch.Job) (*model.Job, error) {
+	clientType, clientVersion := jobClientInfo(job)
 	resources := make(v1.ResourceList, 0)
 	for i := range job.Spec.Tasks {
 		task := &job.Spec.Tasks[i]
@@ -464,6 +480,8 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		UserID:                  user.ID,
 		AccountID:               queue.ID,
 		JobType:                 model.JobType(job.Labels[crclient.LabelKeyTaskType]),
+		ClientType:              clientType,
+		ClientVersion:           clientVersion,
 		WaitingToleranceSeconds: waitingToleranceSeconds,
 		Status:                  job.Status.State.Phase,
 		PodGroupPhase:           podGroupPhase,

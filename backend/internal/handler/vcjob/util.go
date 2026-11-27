@@ -534,6 +534,7 @@ func getLabelAndAnnotations(
 	baseURL string,
 	c *CreateJobCommon,
 	waitingToleranceSeconds *int64,
+	clientInfo util.ClientInfo,
 ) (
 	labels map[string]string,
 	jobAnnotations map[string]string,
@@ -552,6 +553,7 @@ func getLabelAndAnnotations(
 		AnnotationKeyUserID:       strconv.FormatUint(uint64(token.UserID), 10),
 	}
 	vcjobservice.ApplyScheduleMetadataAnnotations(jobAnnotations, waitingToleranceSeconds)
+	vcjobservice.ApplyClientInfoAnnotations(jobAnnotations, clientInfo.Type, clientInfo.Version)
 	if len(c.Forwards) > 0 {
 		if data, err := json.Marshal(c.Forwards); err == nil {
 			jobAnnotations[AnnotationKeyForwards] = string(data)

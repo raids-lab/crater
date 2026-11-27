@@ -27,6 +27,7 @@ import ResourceBadges from '@/components/badge/resource-badges'
 import DocsButton from '@/components/button/docs-button'
 import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
+import { jobClientColumn } from '@/components/job/job-client-column'
 import JobResourceSummary from '@/components/job/job-resource-summary'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { getHeader, getRemoteJobToolbarConfig } from '@/components/job/statuses'
@@ -119,6 +120,7 @@ const VolcanoOverview = () => {
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.getValue<JobType>('jobType')} />,
       },
+      jobClientColumn(),
       {
         accessorKey: 'name',
         header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,

@@ -24,6 +24,7 @@ interface SessionOptions {
   onInvalid: (error: HTTPError) => void
   fetch?: typeof fetch
   timeout?: number
+  clientHeaders?: Record<string, string>
 }
 
 // One refresh serves concurrent expired requests. Each original request is replayed
@@ -34,6 +35,7 @@ export function createSessionClient(settings: SessionOptions) {
     retry: 0,
     timeout: settings.timeout ?? 10000,
     ...(settings.fetch ? { fetch: settings.fetch } : {}),
+    ...(settings.clientHeaders ? { headers: settings.clientHeaders } : {}),
   })
   // Other APIs reuse UserBanned for job-only restrictions. Those do not revoke
   // platform login; only the session check/refresh can establish a platform ban.

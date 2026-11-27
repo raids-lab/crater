@@ -134,7 +134,8 @@ func NewClient(baseURL string) *Client {
 	rc := req.C().
 		SetBaseURL(baseURL).
 		SetUserAgent(internalversion.UserAgent()).
-		SetCommonHeader(internalversion.APIVersionHeader, strconv.Itoa(internalversion.APIVersion))
+		SetCommonHeader(internalversion.APIVersionHeader, strconv.Itoa(internalversion.APIVersion)).
+		SetCommonHeader(internalversion.ClientHeader, internalversion.ClientTypeCLI)
 	applyHTTPSim(rc)
 	return &Client{
 		httpClient: rc,

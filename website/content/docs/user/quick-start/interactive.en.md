@@ -102,7 +102,7 @@ You can see that a job with the same configuration as the cloned job is automati
 
 ## Job Details Page
 
-The job details page includes basic information such as the job's associated account, creator, job status, creation time, start time, and completion time.
+The job details page includes basic information such as the job's associated account, creator, creation method (Web / CLI / Unknown), job status, creation time, start time, and completion time.
 
 It also provides various ways to monitor and manage the job.
 

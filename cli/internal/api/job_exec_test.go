@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/raids-lab/crater/cli/internal/version"
 )
 
 func newExecServer(t *testing.T, serve func(*websocket.Conn, *http.Request)) *httptest.Server {
@@ -41,6 +43,9 @@ func TestJobExecExactArgvAndBytes(t *testing.T) {
 	server := newExecServer(t, func(ws *websocket.Conn, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer fixture-token" || r.URL.Query().Has("token") || r.URL.Path != VCJobsPrefix+"/cpu-job/exec" || r.URL.Query().Get("pod") != "cpu-worker" {
 			t.Errorf("unexpected exec request path or authentication")
+		}
+		if got := r.Header.Get(version.ClientHeader); got != version.ClientTypeCLI {
+			t.Errorf("%s = %q, want %q", version.ClientHeader, got, version.ClientTypeCLI)
 		}
 		var start execFrame
 		if err := ws.ReadJSON(&start); err != nil {

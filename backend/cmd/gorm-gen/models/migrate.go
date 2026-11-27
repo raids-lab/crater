@@ -1723,6 +1723,7 @@ func main() {
 		userContainerSysAdminMigration(),
 		agentFoundationMigration(),
 		approvalOrderReviewerMigration(),
+		jobClientIdentityMigration(),
 	})
 
 	m.InitSchema(func(tx *gorm.DB) error {
@@ -1978,6 +1979,37 @@ func approvalOrderReviewerMigration() *gormigrate.Migration {
 			// Keep NULL: restoring zero IDs would violate the reviewer foreign key.
 			// No schema change is needed when rolling back the Go representation.
 			return nil
+		},
+	}
+}
+
+// jobClientIdentityMigration records which client submitted a job. The value is
+// self-declared by the client and is used for display and diagnostics only.
+func jobClientIdentityMigration() *gormigrate.Migration {
+	type Job struct {
+		ClientType    string  `gorm:"type:varchar(16);not null;default:unknown;comment:作业创建客户端类型"`
+		ClientVersion *string `gorm:"type:varchar(64);comment:作业创建客户端版本"`
+	}
+	return &gormigrate.Migration{
+		ID: "202611261000",
+		Migrate: func(tx *gorm.DB) error {
+			if err := addColumnIfMissing(tx, "jobs", &Job{}, "ClientType"); err != nil {
+				return err
+			}
+			if err := addColumnIfMissing(tx, "jobs", &Job{}, "ClientVersion"); err != nil {
+				return err
+			}
+			// The column default covers existing rows on most databases. This
+			// update also repairs partially migrated schemas with empty values.
+			return tx.Table("jobs").
+				Where("client_type IS NULL OR client_type = ?", "").
+				Update("client_type", string(model.ClientTypeUnknown)).Error
+		},
+		Rollback: func(tx *gorm.DB) error {
+			if err := dropColumnIfPresent(tx, "jobs", &Job{}, "ClientVersion"); err != nil {
+				return err
+			}
+			return dropColumnIfPresent(tx, "jobs", &Job{}, "ClientType")
 		},
 	}
 }

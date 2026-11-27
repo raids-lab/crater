@@ -18,6 +18,7 @@ import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
 import { TimeDistance } from '@/components/custom/time-distance'
+import { jobClientColumn } from '@/components/job/job-client-column'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
 import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
@@ -108,6 +109,7 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
         ),
         cell: ({ row }) => <JobTypeLabel jobType={row.original.jobType} />,
       },
+      jobClientColumn(),
       ...(isAdmin
         ? ([
             {

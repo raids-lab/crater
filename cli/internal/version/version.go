@@ -24,8 +24,12 @@ const (
 	// v7 adds the container command execution API.
 	APIVersion = 7
 	// job exec requires the v7 endpoint and has no equivalent fallback.
-	MinSupportedBackendAPIVersion    = 7
-	APIVersionHeader                 = "X-Crater-API-Version"
+	MinSupportedBackendAPIVersion = 7
+	APIVersionHeader              = "X-Crater-API-Version"
+	// ClientHeader declares the client type. The backend records it as job
+	// provenance for display only; it is not an authentication mechanism.
+	ClientHeader                     = "X-Crater-Client"
+	ClientTypeCLI                    = "cli"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"
 	unknownBuildValue                = "unknown"

@@ -45,6 +45,8 @@ export enum JobType {
   OpenMPI = 'openmpi',
 }
 
+export type JobClientType = 'cli' | 'web' | 'unknown'
+
 export const isInteracitveJob = (jobType: JobType) => {
   return jobType === JobType.Jupyter || jobType === JobType.WebIDE
 }
@@ -59,6 +61,8 @@ export interface IJobInfo {
   owner: string
   userInfo: IUserInfo
   jobType: JobType
+  clientType?: JobClientType
+  clientVersion?: string
   queue: string
   status: JobPhase
   podGroupPhase?: PodGroupPhase
@@ -418,6 +422,8 @@ export interface IJupyterDetail {
   userInfo: IUserInfo
   jobName: string
   jobType: JobType
+  clientType?: JobClientType
+  clientVersion?: string
   retry: string
   queue: string
   status: JobPhase
