@@ -26,6 +26,10 @@ func localSession(t *testing.T, shell string) (run Runner, home string, env []st
 		t.Skip("session scripts execute on Linux containers")
 	}
 	dir := t.TempDir()
+	// Isolate host login banners while retaining each fixture's own startup output.
+	if err := os.WriteFile(filepath.Join(dir, ".hushlogin"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	bin := filepath.Join(dir, "bin")
 	if err := os.Mkdir(bin, 0o700); err != nil {
 		t.Fatal(err)

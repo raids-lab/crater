@@ -48,6 +48,7 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   options?: DataTableFacetedFilterOption[]
   defaultValues?: string[]
   remoteFacets?: boolean
+  showZeroCountOptions?: boolean
 }
 
 export function DataTableFacetedFilter<TData, TValue>({
@@ -56,6 +57,7 @@ export function DataTableFacetedFilter<TData, TValue>({
   options: rawOptions,
   defaultValues,
   remoteFacets = false,
+  showZeroCountOptions = false,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const { t } = useTranslation()
   const facets = column?.getFacetedUniqueValues()
@@ -140,7 +142,8 @@ export function DataTableFacetedFilter<TData, TValue>({
               {options
                 .filter((option) =>
                   remoteFacets
-                    ? option.count === undefined ||
+                    ? showZeroCountOptions ||
+                      option.count === undefined ||
                       option.count > 0 ||
                       selectedValues.has(option.value)
                     : 0 < (facets?.get(option.value) || 0)

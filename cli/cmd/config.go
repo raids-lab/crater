@@ -41,11 +41,6 @@ var languageCmd = &cobra.Command{
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		st, err := session.LoadState()
-		if err != nil {
-			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
-		}
-
 		var targetLang string
 		if len(args) > 0 {
 			targetLang = args[0]
@@ -97,8 +92,10 @@ var languageCmd = &cobra.Command{
 		}
 
 		// Update config
-		st.Language = targetLang
-		if err := session.SaveState(st); err != nil {
+		if err := session.UpdateState(func(st *session.State) error {
+			st.Language = targetLang
+			return nil
+		}); err != nil {
 			return &clierror.Error{Category: errorcodes.CategorySystem, Code: errorcodes.ErrConfigWriteFailed, Message: i18n.T("err_config_write", err.Error())}
 		}
 

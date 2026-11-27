@@ -13,15 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { getJobPhaseLabel } from '@/components/badge/job-phase-badge'
 
-import { type ApprovalOrder, reviewApprovalOrder } from '@/services/api/approvalorder'
-import { type IJobInfo, JobPhase, apiAdminGetJobList } from '@/services/api/vcjob'
+import { type ApprovalOrder, adminApproveJobOrder } from '@/services/api/approvalorder'
+import {
+  type IJobInfo,
+  type JobLockDuration,
+  JobPhase,
+  apiAdminGetJobList,
+} from '@/services/api/vcjob'
 
 // Hook 用于管理工单锁定逻辑
 export function useApprovalOrderLock() {
@@ -53,36 +58,9 @@ export function useApprovalOrderLock() {
     return '未知'
   }
 
-  // 批准操作 mutation
-  const { mutate: approveOrder } = useMutation({
-    mutationFn: async (order: ApprovalOrder) => {
-      await reviewApprovalOrder(order.id, { status: 'Approved' })
-      return order
-    },
-    onSuccess: () => {
-      toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
-      queryClient.invalidateQueries({
-        queryKey: ['admin', 'approvalorders'],
-      })
-      queryClient.invalidateQueries({
-        queryKey: ['approvalorders'],
-      })
-      queryClient.invalidateQueries({
-        queryKey: ['portal', 'approvalorders'],
-      })
-      setIsDelayDialogOpen(false)
-      setSelectedOrder(null)
-      setSelectedJob(null)
-    },
-    onError: () => {
-      toast.error(t('ApprovalOrderTable.toast.approveError'))
-    },
-  })
-
   // 查找并验证作业状态
   const findAndValidateJob = async (order: ApprovalOrder): Promise<IJobInfo | null> => {
-    const findTarget = (list?: IJobInfo[]) =>
-      list?.find((j) => j.jobName === order.name || j.name === order.name)
+    const findTarget = (list?: IJobInfo[]) => list?.find((j) => j.jobName === order.name)
 
     setIsFetchingJob(true)
     try {
@@ -153,13 +131,14 @@ export function useApprovalOrderLock() {
     }
   }
 
-  // DurationDialog 成功后的回调（作业已经被锁定，现在批准工单）
-  const handleDelaySuccess = async () => {
-    if (selectedOrder) {
-      // DurationDialog的onSuccess已经处理了作业锁定
-      // 这里只需要批准工单
-      approveOrder(selectedOrder)
-    }
+  const submitApprovalLock = async (duration: JobLockDuration) => {
+    if (!selectedOrder) throw new Error(t('ApprovalOrderTable.toast.approveError'))
+    await adminApproveJobOrder(selectedOrder.id, duration)
+    toast.success(t('ApprovalOrderTable.toast.approveSuccess'))
+    void queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
+    void queryClient.invalidateQueries({ queryKey: ['approvalorders'] })
+    void queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] })
+    void queryClient.invalidateQueries({ queryKey: ['job', 'detail', selectedOrder.name] })
   }
 
   return {
@@ -172,7 +151,7 @@ export function useApprovalOrderLock() {
 
     // 操作函数
     handleApproveWithDelay,
-    handleDelaySuccess,
+    submitApprovalLock,
     setIsDelayDialogOpen,
 
     // 清空状态

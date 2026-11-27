@@ -71,7 +71,7 @@
 - 访问 Crater 后端应通过 `internal/api` 的客户端、path 常量与领域方法；review 时应留意是否出现临时 HTTP client、手写 URL path、重复 DTO 或绕过统一错误类型的实现。
 - 对依赖后端的命令，应确认对应后端版本真实支持该 API 和语义，请求中的 flag、query、body 字段确实被后端消费，展示给用户的信息来自有效后端响应或明确的本地状态来源。
 - 读写本地状态应通过统一的 session/state 入口；不应在命令代码里直接拼配置目录、读写 `state.json`，或绕开测试沙箱。
-- 读写 token、密码等敏感凭据应通过 `internal/session`；命令成功/错误 JSON、人类可读输出、测试与 golden 不得暴露 `state.json` 中的 token 明文。序列化 `AuthInfo` 给用户看之前必须去掉 `token`。
+- 读写 token、密码等敏感凭据应通过 `internal/session`；命令成功/错误 JSON、人类可读输出、测试与 golden 不得暴露 `state.json` 中的 token 明文。序列化 `AuthInfo` 给用户看之前必须去掉 `token` 和 `refresh_token`。
 - 测试或补全路径中的网络、存储与凭据访问应遵守 sandbox 和快路径约束；新增访问点需要确认不会触达真实 HOME、真实 `state.json` 或真实网络。
 - 新增公共逻辑应放在既有职责匹配的包中；若需要改变边界，应同步更新 `ARCHITECTURE.md`。
 
