@@ -94,14 +94,59 @@ func jobFilterPhaseSortExpr(descending bool) field.Expr {
 	).Asc()
 }
 
-func scanJobPhaseFacet(ctx context.Context, scope jobListScope, request *jobListQuery, defaultDays int) ([]resputil.FacetItem, error) {
-	items := make([]resputil.FacetItem, 0)
+func jobPhaseCountQuery(
+	ctx context.Context,
+	scope jobListScope,
+	request *jobListQuery,
+	defaultDays int,
+	extraColumns ...field.Expr,
+) query.IJobDo {
+	columns := []field.Expr{jobFilterPhaseExpr().As("value"), query.Job.ID.Count().As("count")}
 	// Group by the output alias so PostgreSQL does not see two CASE expressions
 	// with different bind parameter numbers as different grouping expressions.
-	err := applyJobFilters(ctx, scope, request, defaultDays).
-		Select(jobFilterPhaseExpr().As("value"), query.Job.ID.Count().As("count")).
-		Group(field.NewString("", "value")).
+	return applyJobFilters(ctx, scope, request, defaultDays).
+		Select(append(columns, extraColumns...)...).
+		Group(field.NewString("", "value"))
+}
+
+func scanJobPhaseFacet(ctx context.Context, scope jobListScope, request *jobListQuery, defaultDays int) ([]resputil.FacetItem, error) {
+	items := make([]resputil.FacetItem, 0)
+	err := jobPhaseCountQuery(ctx, scope, request, defaultDays).
 		Order(query.Job.ID.Count().Desc(), field.NewString("", "value").Asc()).
 		Scan(&items)
 	return items, err
+}
+
+type ActiveJobCounts struct {
+	Running     int64 `json:"running"`
+	Waiting     int64 `json:"waiting"`
+	ActiveUsers int64 `json:"activeUsers"`
+}
+
+func countActiveJobs(ctx context.Context) (ActiveJobCounts, error) {
+	request := jobListQuery{
+		Statuses: []string{"", string(batch.Running), string(batch.Pending), string(model.Prequeue)},
+	}
+	var phases []struct {
+		Value      string
+		Count      int64
+		Submitters int64
+	}
+	err := jobPhaseCountQuery(ctx, jobListScope{}, &request, -1, query.Job.UserID.Distinct().Count().As("submitters")).
+		Scan(&phases)
+	if err != nil {
+		return ActiveJobCounts{}, err
+	}
+
+	var counts ActiveJobCounts
+	for _, phase := range phases {
+		switch phase.Value {
+		case string(batch.Running):
+			counts.Running = phase.Count
+			counts.ActiveUsers = phase.Submitters
+		case string(batch.Pending), string(scheduling.PodGroupInqueue), filterPhaseStarting:
+			counts.Waiting += phase.Count
+		}
+	}
+	return counts, nil
 }

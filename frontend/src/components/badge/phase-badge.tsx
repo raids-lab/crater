@@ -31,34 +31,48 @@ interface PhaseBadgeProps<T> {
   phase: T
   getPhaseLabel: (phase: T) => PhaseBadgeData
   disableDefaultTooltip?: boolean
+  onClick?: () => void
 }
 
 export const PhaseBadge = <T,>({
   phase,
   getPhaseLabel,
   disableDefaultTooltip = false,
+  onClick,
 }: PhaseBadgeProps<T>) => {
   const data = getPhaseLabel(phase)
-
-  // 如果禁用 tooltip,直接返回 badge
-  if (disableDefaultTooltip) {
-    return (
-      <Badge className={cn('border-none', data.color)} variant="outline">
-        {data.icon}
-        <div>{data.label}</div>
-      </Badge>
-    )
-  }
+  const contents = (
+    <>
+      {data.icon}
+      <span>{data.label}</span>
+    </>
+  )
+  const badge = (
+    <Badge
+      className={cn(
+        'border-none',
+        data.color,
+        onClick && 'cursor-pointer',
+        !onClick && !disableDefaultTooltip && 'cursor-help'
+      )}
+      variant="outline"
+      asChild={!!onClick}
+    >
+      {onClick ? (
+        <button type="button" onClick={onClick}>
+          {contents}
+        </button>
+      ) : (
+        contents
+      )}
+    </Badge>
+  )
+  if (disableDefaultTooltip) return badge
 
   return (
     <TooltipProvider delayDuration={100}>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge className={cn('cursor-help border-none', data.color)} variant="outline">
-            {data.icon}
-            <div>{data.label}</div>
-          </Badge>
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
         <TooltipContent>
           <p>{data.description}</p>
         </TooltipContent>

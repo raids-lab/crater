@@ -115,15 +115,50 @@ func TestListNodesReportsIndependentStatusFields(t *testing.T) {
 		Value:  "research",
 		Effect: corev1.TaintEffectNoSchedule,
 	}}
+	ownerTolerations := []corev1.Toleration{{
+		Key:      occupied[0].Key,
+		Operator: corev1.TolerationOpEqual,
+		Value:    occupied[0].Value,
+		Effect:   occupied[0].Effect,
+	}}
+	diskPressure := corev1.Taint{
+		Key: "node.kubernetes.io/disk-pressure", Effect: corev1.TaintEffectNoSchedule,
+	}
 	tests := []struct {
-		name          string
-		spec          corev1.NodeSpec
-		conditions    []corev1.NodeCondition
-		labels        map[string]string
-		wantStatus    corev1.NodeConditionType
-		wantReadiness corev1.ConditionStatus
-		wantPressures []corev1.NodeConditionType
+		name            string
+		spec            corev1.NodeSpec
+		conditions      []corev1.NodeCondition
+		labels          map[string]string
+		wantStatus      corev1.NodeConditionType
+		wantReadiness   corev1.ConditionStatus
+		wantPressures   []corev1.NodeConditionType
+		tolerations     []corev1.Toleration
+		wantSchedulable bool
 	}{
+		{
+			name:          "ready exclusive node in the public account",
+			spec:          corev1.NodeSpec{Taints: occupied},
+			conditions:    []corev1.NodeCondition{{Type: corev1.NodeReady, Status: corev1.ConditionTrue}},
+			wantStatus:    NodeStatusOccupied,
+			wantReadiness: corev1.ConditionTrue,
+		},
+		{
+			name:            "ready exclusive node in the owning account",
+			spec:            corev1.NodeSpec{Taints: occupied},
+			conditions:      []corev1.NodeCondition{{Type: corev1.NodeReady, Status: corev1.ConditionTrue}},
+			wantStatus:      NodeStatusOccupied,
+			wantReadiness:   corev1.ConditionTrue,
+			tolerations:     ownerTolerations,
+			wantSchedulable: true,
+		},
+		{
+			name:          "exclusive node with untolerated disk taint",
+			spec:          corev1.NodeSpec{Taints: append([]corev1.Taint{diskPressure}, occupied...)},
+			conditions:    []corev1.NodeCondition{{Type: corev1.NodeReady, Status: corev1.ConditionTrue}},
+			wantStatus:    NodeStatusOccupied,
+			wantReadiness: corev1.ConditionTrue,
+			tolerations:   ownerTolerations,
+		},
 		{
 			name:          "occupied and not ready before the taint is added",
 			spec:          corev1.NodeSpec{Taints: occupied},
@@ -140,6 +175,7 @@ func TestListNodesReportsIndependentStatusFields(t *testing.T) {
 		},
 		{
 			name: "ready with memory and disk pressure",
+			spec: corev1.NodeSpec{Taints: []corev1.Taint{diskPressure}},
 			conditions: []corev1.NodeCondition{
 				{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
 				{Type: corev1.NodeMemoryPressure, Status: corev1.ConditionTrue},
@@ -183,11 +219,14 @@ func TestListNodesReportsIndependentStatusFields(t *testing.T) {
 					return []string{obj.(*corev1.Pod).Spec.NodeName}
 				}).
 				Build()}
-			nodes, err := c.ListNodes(t.Context())
+			nodes, err := c.ListNodes(t.Context(), tt.tolerations...)
 			if err != nil || len(nodes) != 1 {
 				t.Fatalf("ListNodes returned %d nodes, err = %v", len(nodes), err)
 			}
 			got := nodes[0]
+			if got.SchedulableForAccount != tt.wantSchedulable {
+				t.Errorf("schedulableForAccount = %t, want %t", got.SchedulableForAccount, tt.wantSchedulable)
+			}
 			if got.Status != tt.wantStatus || got.ReadyStatus != tt.wantReadiness ||
 				got.Unschedulable != tt.spec.Unschedulable || !slices.Equal(got.Pressures, tt.wantPressures) {
 				t.Errorf("got status=%q readyStatus=%q unschedulable=%t pressures=%v, want %q %q %t %v",

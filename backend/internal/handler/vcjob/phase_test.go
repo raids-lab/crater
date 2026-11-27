@@ -112,6 +112,118 @@ func assertJobPhaseFacet(t *testing.T, items []resputil.FacetItem, want map[stri
 	}
 }
 
+func TestGetActiveJobCountsAcrossSubmissionDates(t *testing.T) {
+	db := phaseTestDB(t)
+	recent := time.Now().UTC()
+	if err := db.Exec("INSERT INTO users (id, name, nickname) VALUES (1, 'first', 'Same'), (2, 'second', 'Same'), (3, 'waiting', 'Waiting')").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`INSERT INTO jobs
+		(id, user_id, status, pod_group_phase, job_type, creation_timestamp, deleted_at) VALUES
+		(1, 1, 'Running',   'Running', 'custom',      '2000-01-01', NULL),
+		(2, 1, 'Running',   'Running', 'jupyter',     ?, NULL),
+		(3, 2, 'Running',   'Running', 'custom',      '2000-01-01', NULL),
+		(4, 3, 'Pending',   'Pending', 'custom',      '2000-01-01', NULL),
+		(5, 3, 'Pending',   'Inqueue', 'custom',      '2000-01-01', NULL),
+		(6, 3, 'Pending',   'Running', 'custom',      '2000-01-01', NULL),
+		(7, 3, 'Prequeue',  NULL,      'custom',      '2000-01-01', NULL),
+		(8, 3, '',          NULL,      'custom',      '2000-01-01', NULL),
+		(9, 3, 'Completed', 'Running', 'custom',      '2000-01-01', NULL),
+		(10,3, 'Running',   'Running', 'tensorboard', '2000-01-01', NULL),
+		(11,3, 'Pending',   'Inqueue', 'custom',      '2000-01-01', ?)`, recent, recent).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	counts, err := countActiveJobs(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := ActiveJobCounts{Running: 3, Waiting: 4, ActiveUsers: 2}
+	if counts != want {
+		t.Fatalf("active counts = %+v, want %+v", counts, want)
+	}
+}
+
+func TestOverviewJobSubmissionWindow(t *testing.T) {
+	db := phaseTestDB(t)
+	now := time.Now().UTC()
+	if err := db.Exec("INSERT INTO users (id, name, nickname) VALUES (1, 'one', 'Same'), (2, 'two', 'Same')").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec(`INSERT INTO jobs (id, user_id, status, job_type, name, creation_timestamp) VALUES
+		(1, 1, 'Running',    'custom', 'training-old',   ?),
+		(2, 2, 'Completed',  'custom', 'training-ended', ?),
+		(3, 2, 'Completed',  'custom', 'training-new',   ?),
+		(4, 1, 'Failed',     'custom', 'training-fail',  ?),
+		(5, 1, 'Terminated', 'custom', 'training-stop',  ?)`,
+		now.AddDate(0, 0, -10), now.AddDate(0, 0, -10), now, now, now,
+	).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		query  string
+		total  int64
+		phases map[string]int64
+		owners map[string]int64
+	}{
+		{
+			name:   "recent submissions",
+			query:  "days=7",
+			total:  3,
+			phases: map[string]int64{"Completed": 1, "Failed": 1, "Terminated": 1},
+			owners: map[string]int64{"1": 2, "2": 1},
+		},
+		{
+			name:   "wider submission range",
+			query:  "days=14",
+			total:  5,
+			phases: map[string]int64{"Running": 1, "Completed": 2, "Failed": 1, "Terminated": 1},
+			owners: map[string]int64{"1": 3, "2": 2},
+		},
+		{
+			name:   "cluster jobs with older running job",
+			query:  "days=7&include_running=true",
+			total:  4,
+			phases: map[string]int64{"Running": 1, "Completed": 1, "Failed": 1, "Terminated": 1},
+			owners: map[string]int64{"1": 3, "2": 1},
+		},
+		{
+			name:   "search still applies to older running jobs",
+			query:  "days=7&include_running=true&search=training-new",
+			total:  1,
+			phases: map[string]int64{"Completed": 1},
+			owners: map[string]int64{"2": 1},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodGet, "/all?summary=submissions&"+tc.query, http.NoBody)
+			request, err := bindJobListQuery(c, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scope := jobListScope{}
+			_, total, err := findJobs(t.Context(), scope, &request, allJobsDefaultDays)
+			if err != nil || total != tc.total {
+				t.Fatalf("total = %d, err = %v, want %d", total, err, tc.total)
+			}
+			facets, err := findJobFacets(t.Context(), scope, &request, allJobsDefaultDays, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertJobPhaseFacet(t, facets["phase"], tc.phases)
+			assertJobPhaseFacet(t, facets["submitter"], tc.owners)
+			for _, submitter := range facets["submitter"] {
+				if submitter.Label != "Same" {
+					t.Errorf("submitter %s label = %q, want Same", submitter.Value, submitter.Label)
+				}
+			}
+		})
+	}
+}
+
 func TestJobPhaseFacetsRetainAllOtherFilters(t *testing.T) {
 	db := phaseTestDB(t)
 	now := time.Now().UTC()

@@ -28,6 +28,8 @@ import { IResponse } from '@/services/types'
 
 import useIsAdmin from '@/hooks/use-admin'
 
+import { cn } from '@/lib/utils'
+
 interface ResourceBadgesProps {
   namespace?: string
   podName?: string
@@ -35,6 +37,7 @@ interface ResourceBadgesProps {
   resources?: Record<string, string>
   requestResources?: Record<string, string> // 添加 requests 资源
   showEdit?: boolean
+  className?: string
 }
 
 type UpdateResourceVars = {
@@ -137,6 +140,7 @@ export default function ResourceBadges({
   resources = {},
   requestResources = {},
   showEdit = false,
+  className,
 }: ResourceBadgesProps) {
   const isAdmin = useIsAdmin()
   const queryClient = useQueryClient()
@@ -194,7 +198,7 @@ export default function ResourceBadges({
   }, [resources, requestResources])
 
   return (
-    <div className="flex flex-col flex-wrap gap-1 lg:flex-row">
+    <div className={cn('flex flex-col flex-wrap gap-1 lg:flex-row', className)}>
       {sortedEntries.map(([rawKey, rawValue]) => {
         const key = rawKey.includes('/') ? rawKey.split('/').slice(1).join('') : rawKey
         // 检查是否可编辑：管理员、CPU/Memory资源、非绑核状态

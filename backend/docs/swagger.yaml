@@ -550,6 +550,8 @@ definitions:
     properties:
       count:
         type: integer
+      label:
+        type: string
       value:
         type: string
     type: object
@@ -1201,6 +1203,16 @@ definitions:
       msg:
         type: string
     type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_ActiveJobCounts:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler_vcjob.ActiveJobCounts'
+      msg:
+        type: string
+    type: object
   github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_JupyterTokenResp:
     properties:
       code:
@@ -1208,6 +1220,16 @@ definitions:
         type: integer
       data:
         $ref: '#/definitions/internal_handler_vcjob.JupyterTokenResp'
+      msg:
+        type: string
+    type: object
+  github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_QueueSnapshot:
+    properties:
+      code:
+        description: 依然保持 int (ErrorCode) 类型
+        type: integer
+      data:
+        $ref: '#/definitions/internal_handler_vcjob.QueueSnapshot'
       msg:
         type: string
     type: object
@@ -3310,6 +3332,15 @@ definitions:
           $ref: '#/definitions/internal_handler_tool.PodNodeport'
         type: array
     type: object
+  internal_handler_vcjob.ActiveJobCounts:
+    properties:
+      activeUsers:
+        type: integer
+      running:
+        type: integer
+      waiting:
+        type: integer
+    type: object
   internal_handler_vcjob.CreateCustomReq:
     properties:
       alertEnabled:
@@ -3527,6 +3558,42 @@ definitions:
         type: string
       port:
         type: integer
+    type: object
+  internal_handler_vcjob.QueueJob:
+    properties:
+      account:
+        type: string
+      accountId:
+        type: integer
+      createdAt:
+        type: string
+      jobName:
+        type: string
+      jobType:
+        type: string
+      name:
+        type: string
+      phase:
+        type: string
+      reason:
+        type: string
+      resources:
+        additionalProperties:
+          type: string
+        type: object
+      userInfo:
+        $ref: '#/definitions/github_com_raids-lab_crater_dao_model.UserInfo'
+    type: object
+  internal_handler_vcjob.QueueSnapshot:
+    properties:
+      jobs:
+        items:
+          $ref: '#/definitions/internal_handler_vcjob.QueueJob'
+        type: array
+      observedAt:
+        type: string
+      reasonsAvailable:
+        type: boolean
     type: object
   internal_handler_vcjob.SSHInfo:
     properties:
@@ -6672,6 +6739,18 @@ paths:
       security:
       - Bearer: []
       summary: Admin delete the job
+      tags:
+      - VolcanoJob
+  /v1/admin/vcjobs/queue:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_QueueSnapshot'
+      security:
+      - Bearer: []
+      summary: List current unscheduled jobs across accounts
       tags:
       - VolcanoJob
   /v1/agent/chat:
@@ -10867,13 +10946,17 @@ paths:
     get:
       consumes:
       - application/json
-      description: 返回指定天数内的所有作业，默认为14天
+      description: List jobs submitted within the requested time range.
       parameters:
-      - default: 14
-        description: Number of days to look back, default is 14
+      - default: 7
+        description: Number of days to look back, -1 for all
         in: query
         name: days
         type: integer
+      - description: Include jobs still running from before the time range
+        in: query
+        name: include_running
+        type: boolean
       - description: Page number
         in: query
         name: page
@@ -10953,6 +11036,21 @@ paths:
       summary: Get all of the jobs
       tags:
       - VolcanoJob
+  /v1/vcjobs/all/active-counts:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_ActiveJobCounts'
+      security:
+      - Bearer: []
+      summary: Count current running jobs, waiting jobs, and distinct submitters of
+        running jobs
+      tags:
+      - VolcanoJob
   /v1/vcjobs/all/facets:
     get:
       description: Each facet ignores its own filter. Other filters, including the
@@ -10962,6 +11060,17 @@ paths:
         in: query
         name: days
         type: integer
+      - description: Include jobs still running from before the time range
+        in: query
+        name: include_running
+        type: boolean
+      - description: Return submitter counts across all statuses in place of running-only
+          owner and GPU counts
+        enum:
+        - submissions
+        in: query
+        name: summary
+        type: string
       - description: Search jobs
         in: query
         name: search
@@ -11159,6 +11268,23 @@ paths:
       security:
       - Bearer: []
       summary: Create a PyTorch job
+      tags:
+      - VolcanoJob
+  /v1/vcjobs/queue:
+    get:
+      parameters:
+      - description: Limit to the signed-in user
+        in: query
+        name: mine
+        type: boolean
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_raids-lab_crater_internal_resputil.Response-internal_handler_vcjob_QueueSnapshot'
+      security:
+      - Bearer: []
+      summary: List current unscheduled jobs in the active account
       tags:
       - VolcanoJob
   /v1/vcjobs/tensorflow:

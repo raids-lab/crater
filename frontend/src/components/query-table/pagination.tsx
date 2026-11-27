@@ -47,6 +47,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui-custom/alert-dialog'
 
+import { cn } from '@/lib/utils'
+
 import TooltipButton from '../button/tooltip-button'
 
 const DOTS = '...'
@@ -196,12 +198,13 @@ export function PaginationNav({
 }
 
 interface DataTablePaginationProps<TData> {
-  updatedAt: string
+  updatedAt: string | number
   refetch: () => void
   table: Table<TData>
   multipleHandlers?: MultipleHandler<TData>[]
   pageSizeOptions?: number[]
   totalItems?: number
+  className?: string
 }
 
 export function DataTablePagination<TData>({
@@ -211,8 +214,19 @@ export function DataTablePagination<TData>({
   multipleHandlers,
   pageSizeOptions = [10, 20, 50, 100, 200],
   totalItems,
+  className,
 }: DataTablePaginationProps<TData>) {
   const { t } = useTranslation()
+  const updatedAtText =
+    typeof updatedAt === 'string'
+      ? updatedAt
+      : updatedAt
+        ? new Date(updatedAt).toLocaleString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          })
+        : '--'
 
   const currentPage = table.getState().pagination.pageIndex + 1
   const totalPages = table.getPageCount()
@@ -222,7 +236,12 @@ export function DataTablePagination<TData>({
   }
 
   return (
-    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      className={cn(
+        'flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
+        className
+      )}
+    >
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         {table.getFilteredSelectedRowModel().rows.length > 0 &&
           multipleHandlers &&
@@ -293,7 +312,7 @@ export function DataTablePagination<TData>({
           </SelectContent>
         </Select>
         <p className="text-muted-foreground min-w-0 pl-1.5 font-medium">
-          {t('dataTablePagination.updatedAt', { time: updatedAt })}
+          {t('dataTablePagination.updatedAt', { time: updatedAtText })}
           {', '}
           {table.getFilteredSelectedRowModel().rows.length === 0 ? (
             <>

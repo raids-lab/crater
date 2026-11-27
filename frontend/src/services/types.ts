@@ -51,6 +51,7 @@ export interface IPage<T> {
 
 export interface IFacetItem {
   value: string
+  label?: string
   count: number
 }
 

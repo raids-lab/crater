@@ -17,9 +17,9 @@ import { queryOptions } from '@tanstack/react-query'
 
 import { NodeRole, apiGetNodes } from '@/services/api/cluster'
 
-export const queryNodes = (onlyWorker?: boolean) => {
+export const queryNodes = (onlyWorker?: boolean, account?: string) => {
   return queryOptions({
-    queryKey: ['overview', 'nodes'],
+    queryKey: account === undefined ? ['overview', 'nodes'] : ['overview', 'nodes', account],
     queryFn: apiGetNodes,
     select: (res) =>
       res.data

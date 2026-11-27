@@ -29,6 +29,7 @@ import { BillingPointsBadge } from '@/components/custom/billing-points-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import JobResourceSummary from '@/components/job/job-resource-summary'
 import { JobActionsMenu } from '@/components/job/overview/job-actions-menu'
+import { QueueShortcut } from '@/components/job/queue/navigation'
 import { getHeader, getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import { JobNameCell } from '@/components/label/job-name-label'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
@@ -245,6 +246,7 @@ const VolcanoOverview = () => {
       ]}
     >
       <div className="flex flex-row gap-3">
+        <QueueShortcut />
         <DocsButton title="查看文档" url="quick-start/batchprocess" />
         <ListedNewJobButton mode="custom" />
       </div>

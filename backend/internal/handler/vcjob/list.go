@@ -1,6 +1,7 @@
 package vcjob
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -39,16 +40,18 @@ func selfJobScope(c *gin.Context) jobListScope {
 }
 
 type jobListQuery struct {
-	Page     int      `form:"page,default=1" binding:"min=1"`
-	PageSize int      `form:"page_size,default=10" binding:"min=1,max=200"`
-	Sort     string   `form:"sort"`
-	Search   string   `form:"search"`
-	Days     *int     `form:"days" binding:"omitempty,eq=-1|gt=0"`
-	JobTypes []string `form:"job_type" binding:"max=20,dive,required"`
-	Statuses []string `form:"status" binding:"max=20,dive,required"`
-	Phases   []string `form:"phase" binding:"max=20,dive,required"`
-	Node     *string  `form:"node"`
-	sorts    []jobSort
+	Page           int      `form:"page,default=1" binding:"min=1"`
+	PageSize       int      `form:"page_size,default=10" binding:"min=1,max=200"`
+	Sort           string   `form:"sort"`
+	Search         string   `form:"search"`
+	Days           *int     `form:"days" binding:"omitempty,eq=-1|gt=0"`
+	IncludeRunning bool     `form:"include_running"`
+	Summary        string   `form:"summary" binding:"omitempty,oneof=submissions"`
+	JobTypes       []string `form:"job_type" binding:"max=20,dive,required"`
+	Statuses       []string `form:"status" binding:"max=20,dive,required"`
+	Phases         []string `form:"phase" binding:"max=20,dive,required"`
+	Node           *string  `form:"node"`
+	sorts          []jobSort
 }
 
 type jobSort struct {
@@ -210,7 +213,11 @@ func applyJobFilters(
 		q = q.Where(j.AccountID.Eq(*scope.AccountID))
 	}
 	if days := request.days(defaultDays); days != -1 {
-		q = q.Where(j.CreationTimestamp.Gte(time.Now().AddDate(0, 0, -days)))
+		withinRange := j.CreationTimestamp.Gte(time.Now().AddDate(0, 0, -days))
+		if request.IncludeRunning {
+			withinRange = field.Or(withinRange, j.Status.Eq("Running"))
+		}
+		q = q.Where(withinRange)
 	}
 	if len(request.JobTypes) > 0 {
 		q = q.Where(j.JobType.In(request.JobTypes...))
@@ -290,6 +297,10 @@ func findJobFacets(
 	if !includeOverview {
 		return result, nil
 	}
+	if request.Summary == "submissions" {
+		result["submitter"], err = scanJobSubmitterFacet(ctx, scope, request, defaultDays)
+		return result, err
+	}
 	// Running-only summaries still honor the requested status and phase filters.
 	result["owner"], err = scanJobStringFacet(
 		ctx, scope, request, defaultDays, &query.User.Nickname, query.Job.Status.Eq("Running"),
@@ -338,6 +349,38 @@ func scanJobStringFacet(
 	items := make([]resputil.FacetItem, len(rows))
 	for index, row := range rows {
 		items[index] = resputil.FacetItem{Value: row.Value, Count: row.Count}
+	}
+	return items, nil
+}
+
+func scanJobSubmitterFacet(
+	ctx context.Context,
+	scope jobListScope,
+	request *jobListQuery,
+	defaultDays int,
+) ([]resputil.FacetItem, error) {
+	j, u := query.Job, query.User
+	rows := make([]struct {
+		UserID   uint
+		Username string
+		Nickname string
+		Count    int64
+	}, 0)
+	err := applyJobFilters(ctx, scope, request, defaultDays).
+		Select(j.UserID, u.Name.As("username"), u.Nickname, j.ID.Count().As("count")).
+		Group(j.UserID, u.Name, u.Nickname).
+		Order(j.ID.Count().Desc(), j.UserID.Asc()).
+		Scan(&rows)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]resputil.FacetItem, len(rows))
+	for i, row := range rows {
+		items[i] = resputil.FacetItem{
+			Value: strconv.FormatUint(uint64(row.UserID), 10),
+			Label: cmp.Or(row.Nickname, row.Username),
+			Count: row.Count,
+		}
 	}
 	return items, nil
 }

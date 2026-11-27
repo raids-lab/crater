@@ -165,21 +165,6 @@ func GenerateVolumeMounts(
 	return pvc, volumeMounts, nil
 }
 
-func GenerateTaintTolerationsForAccount(token util.JWTMessage) (tolerations []v1.Toleration) {
-	// If current account is not default account (which account id is 1), add toleration
-	if token.AccountID == model.DefaultAccountID {
-		return nil
-	}
-	return []v1.Toleration{
-		{
-			Key:      "crater.raids.io/account",
-			Operator: v1.TolerationOpEqual,
-			Value:    token.AccountName,
-			Effect:   v1.TaintEffectNoSchedule,
-		},
-	}
-}
-
 // ArchitectureType represents the architecture type of an image
 type ArchitectureType int
 
@@ -625,7 +610,7 @@ func generateInteractivePodSpec(
 	baseAffinity := GenerateNodeAffinity(req.Selectors, resourceList)
 	affinity := GenerateArchitectureNodeAffinity(image, baseAffinity)
 
-	tolerations := GenerateTaintTolerationsForAccount(token)
+	tolerations := util.AccountTolerations(token)
 
 	imagePullSecrets := []v1.LocalObjectReference{}
 	if config.GetConfig().Secrets.ImagePullSecretName != "" {

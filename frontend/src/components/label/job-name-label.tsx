@@ -22,11 +22,16 @@ import { IJobInfo, JobStatus, getJobStateType } from '@/services/api/vcjob'
 
 import useIsAdmin from '@/hooks/use-admin'
 
+import { cn } from '@/lib/utils'
+
 import TipBadge from '../badge/tip-badge'
 import SimpleTooltip from './simple-tooltip'
 
 interface JobNameCellProps {
-  jobInfo: IJobInfo
+  jobInfo: Pick<IJobInfo, 'jobName' | 'name'> &
+    Partial<Pick<IJobInfo, 'status' | 'locked' | 'permanentLocked' | 'lockedTimestamp'>>
+  linkable?: boolean
+  nameClassName?: string
 }
 
 // 格式化锁定日期为中文格式
@@ -47,8 +52,21 @@ const portalJobLinkOptions = linkOptions({
   search: { tab: '' },
 })
 
-export const JobNameCell = ({ jobInfo }: JobNameCellProps) => {
+export const JobNameCell = ({ jobInfo, linkable = true, nameClassName }: JobNameCellProps) => {
   const isAdminView = useIsAdmin()
+  const name = (
+    <div className="flex min-w-0 flex-row items-center">
+      <p className={cn('max-w-36 truncate', nameClassName)} title={jobInfo.name}>
+        {jobInfo.name}
+      </p>
+      {jobInfo.locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4 shrink-0" />}
+    </div>
+  )
+
+  if (!linkable) return name
+
+  const showEvents =
+    jobInfo.status !== undefined && getJobStateType(jobInfo.status) === JobStatus.NotStarted
 
   return (
     <SimpleTooltip
@@ -72,14 +90,9 @@ export const JobNameCell = ({ jobInfo }: JobNameCellProps) => {
         {...(isAdminView ? adminJobLinkOptions : portalJobLinkOptions)}
         preload="intent"
         params={{ name: jobInfo.jobName }}
-        search={{
-          tab: getJobStateType(jobInfo.status) === JobStatus.NotStarted ? 'event' : undefined,
-        }}
+        search={{ tab: showEvents ? 'event' : undefined }}
       >
-        <div className="flex flex-row items-center">
-          <p className="max-w-36 truncate">{jobInfo.name}</p>
-          {jobInfo.locked && <LockIcon className="text-muted-foreground ml-1 h-4 w-4" />}
-        </div>
+        {name}
       </Link>
     </SimpleTooltip>
   )
