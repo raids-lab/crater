@@ -133,8 +133,7 @@ export function NavUser() {
                     }}
                   >
                     <Sparkles />
-                    {t('navUser.switchTo') +
-                      (isAdminView ? t('navUser.normalUser') : t('navUser.admin'))}
+                    {isAdminView ? t('navUser.userView') : t('navUser.adminView')}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />

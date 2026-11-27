@@ -190,7 +190,6 @@ function RouteComponent() {
             approveOrder(order)
           }
         },
-        label: order.type === 'job' ? '批准并锁定' : '批准',
         disabled: () => isApproving || isRejecting || isFetchingJob,
       },
       reject: {

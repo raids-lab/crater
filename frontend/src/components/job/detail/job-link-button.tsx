@@ -15,6 +15,7 @@
  */
 import { ExternalLink } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import ListedButton, { SplitButtonItem } from '../../button/listed-button'
 
@@ -25,6 +26,7 @@ interface PrefixLinkButtonProps {
 }
 
 const PrefixLinkButton = ({ names = [], prefixes = [], title = ' ' }: PrefixLinkButtonProps) => {
+  const { t } = useTranslation()
   // 用 useMemo 优化过滤和 items 构建
   const filtered = useMemo(
     () =>
@@ -55,11 +57,11 @@ const PrefixLinkButton = ({ names = [], prefixes = [], title = ' ' }: PrefixLink
       icon={<ExternalLink className="size-4" />}
       renderTitle={(title) => (
         <div className="flex items-center gap-1">
-          访问
+          {t('jobs.visit')}
           <span className="uppercase">{title}</span>
         </div>
       )}
-      itemTitle="外部访问"
+      itemTitle={t('jobs.externalAccess')}
       items={items}
       cacheKey={title}
       variant="secondary"

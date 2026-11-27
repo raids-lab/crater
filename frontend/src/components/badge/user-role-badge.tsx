@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { t } from 'i18next'
+import { useTranslation } from 'react-i18next'
+
 import { Role } from '@/services/api/auth'
 
 import { PhaseBadge } from './phase-badge'
@@ -20,15 +23,23 @@ import { PhaseBadge } from './phase-badge'
 export const userRoles = [
   {
     value: Role.Admin.toString(),
-    label: '管理员',
+    get label() {
+      return t('accountDetail.form.userRole.admin')
+    },
     color: 'text-highlight-purple bg-highlight-purple/20',
-    description: '账户内的用户管理、资源分配等操作，将由账户管理员负责',
+    get description() {
+      return t('accountDetail.role.adminDescription')
+    },
   },
   {
     value: Role.User.toString(),
-    label: '用户',
+    get label() {
+      return t('accountDetail.form.userRole.normal')
+    },
     color: 'text-highlight-blue bg-highlight-blue/20',
-    description: '账户内的普通用户，只能使用资源，无法进行管理操作',
+    get description() {
+      return t('accountDetail.role.userDescription')
+    },
   },
 ]
 
@@ -44,14 +55,15 @@ const getUserRoleLabel = (
     return foundPhase
   } else {
     return {
-      label: '未知',
+      label: t('accountDetail.role.unknown'),
       color: 'text-highlight-slate bg-highlight-slate/20',
-      description: '由于某些原因无法获取用户角色信息',
+      description: t('accountDetail.role.unknownDescription'),
     }
   }
 }
 
 const UserRoleBadge = ({ role }: { role: string }) => {
+  useTranslation()
   return <PhaseBadge phase={role} getPhaseLabel={getUserRoleLabel} />
 }
 

@@ -194,17 +194,17 @@ export function DataView({ apiGetDataset, sourceType, organization }: DatesetTab
         <ListedButton
           icon={<PlusIcon />}
           renderTitle={(title) => title || t('dataView.addButton', { sourceTitle })}
-          itemTitle="操作"
+          itemTitle={t('common.actions')}
           cacheKey={`${sourceType}-action`}
           items={[
             {
               key: 'download',
-              title: sourceType === 'model' ? '下载模型' : '下载数据集',
+              title: t('dataView.downloadAction'),
               action: () => setOpenDownloadSheet(true),
             },
             {
               key: 'add',
-              title: t('dataView.addButton', { sourceTitle }),
+              title: t('dataView.addAction'),
               action: () => setOpenSheet(true),
             },
           ]}

@@ -32,6 +32,7 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import { type FC, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -463,6 +464,7 @@ const Actions: FC<ActionsProps> = ({
   onChangeTags,
   onChangeArchs,
 }) => {
+  const { t } = useTranslation()
   const [openDialog, setOpenDialog] = useState(false)
   const [openShareSheet, setOpenShareSheet] = useState(false)
   const [dialog, setDialog] = useState<Dialogs | undefined>(undefined)
@@ -473,12 +475,14 @@ const Actions: FC<ActionsProps> = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">操作</span>
+              <span className="sr-only">{t('common.openMenu')}</span>
               <DotsHorizontalIcon className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-muted-foreground text-xs">操作</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-muted-foreground text-xs">
+              {t('common.actions')}
+            </DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => {
                 navigator.clipboard
@@ -493,7 +497,7 @@ const Actions: FC<ActionsProps> = ({
               }}
             >
               <CopyIcon className="text-blue-600" />
-              复制链接
+              {t('common.copyLink')}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
@@ -502,7 +506,7 @@ const Actions: FC<ActionsProps> = ({
               }}
             >
               <CheckCheck className="text-green-600" />
-              检验有效性
+              {t('imageActions.check')}
             </DropdownMenuItem>
             {isAdminMode && (
               <DropdownMenuItem
@@ -517,7 +521,9 @@ const Actions: FC<ActionsProps> = ({
                 ) : (
                   <Globe className="text-green-600" />
                 )}
-                {imageInfo.isPublic === true ? '设为私有' : '设为公共'}
+                {imageInfo.isPublic === true
+                  ? t('imageActions.makePrivate')
+                  : t('imageActions.makePublic')}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -527,7 +533,7 @@ const Actions: FC<ActionsProps> = ({
               }}
             >
               <ListTodo className="text-green-600" />
-              镜像分享
+              {t('imageActions.share')}
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={isDisabled}
@@ -537,7 +543,7 @@ const Actions: FC<ActionsProps> = ({
               }}
             >
               <Tags className="text-cyan-600" />
-              修改标签
+              {t('imageActions.labels')}
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={isDisabled || imageInfo.imageBuildSource === 1}
@@ -547,7 +553,7 @@ const Actions: FC<ActionsProps> = ({
               }}
             >
               <SquareCheckBig className="text-indigo-600" />
-              设置架构
+              {t('imageActions.architecture')}
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={isDisabled}
@@ -557,7 +563,7 @@ const Actions: FC<ActionsProps> = ({
               }}
             >
               <ListCheck className="text-orange-600" />
-              重命名
+              {t('common.rename')}
             </DropdownMenuItem>
 
             <DropdownMenuItem
@@ -568,7 +574,7 @@ const Actions: FC<ActionsProps> = ({
               }}
             >
               <Trash2Icon className="text-red-600" />
-              删除镜像
+              {t('common.delete')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
