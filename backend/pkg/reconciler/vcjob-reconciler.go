@@ -21,11 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
 	"gorm.io/datatypes"
-	"gorm.io/gen"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	v1 "k8s.io/api/core/v1"
@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -48,7 +49,6 @@ import (
 	"github.com/raids-lab/crater/internal/service"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/pkg/alert"
-	"github.com/raids-lab/crater/pkg/config"
 	"github.com/raids-lab/crater/pkg/crclient"
 	"github.com/raids-lab/crater/pkg/monitor"
 	"github.com/raids-lab/crater/pkg/utils"
@@ -65,6 +65,8 @@ type VcJobReconciler struct {
 	prometheusClient monitor.PrometheusInterface // get monitor data
 	kubeClient       kubernetes.Interface
 	billingService   *service.BillingService
+	deletions        sync.Map // client.ObjectKey to vcJobDeletion
+	profileQueue     *vcJobProfileQueue
 }
 
 // NewVcJobReconciler returns a new reconcile.Reconciler
@@ -82,14 +84,20 @@ func NewVcJobReconciler(
 		prometheusClient: prometheusClient,
 		kubeClient:       kubeClient,
 		billingService:   billingService,
+		profileQueue:     newVCJobProfileQueue(),
 	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *VcJobReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		return r.profileQueue.run(ctx, r.retryJobProfile)
+	})); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("vcjob-reconciler").
-		For(&batch.Job{}).
+		For(&batch.Job{}, builder.WithPredicates(predicate.Funcs{DeleteFunc: r.observeVCJobDeletion})).
 		Owns(&scheduling.PodGroup{}, builder.WithPredicates(podGroupPhaseChanged())).
 		WithEventFilter(predicate.NewPredicateFuncs(shouldReconcileVCJob)).
 		WithOptions(controller.Options{}).
@@ -146,79 +154,7 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	if k8serrors.IsNotFound(err) {
-		// Cancel approval orders immediately as job is missing from K8s
-		r.cancelPendingApprovalOrders(ctx, req.Name, "job not found in cluster")
-
-		// set job status to deleted
-		var record *model.Job
-		record, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).First()
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				logger.Info("job not found in database")
-				return ctrl.Result{}, nil
-			} else {
-				logger.Error(err, "unable to fetch job record")
-				return ctrl.Result{Requeue: true}, err
-			}
-		}
-		if record.Status == model.Prequeue {
-			return ctrl.Result{}, nil
-		}
-
-		if record.Status == model.Deleted {
-			if err = r.updateMissingJobProfile(ctx, req.Name, record); err != nil {
-				logger.Error(err, "unable to update job profile data")
-				return ctrl.Result{Requeue: true}, err
-			}
-			return ctrl.Result{}, nil
-		}
-
-		// 如果数据库的纪录中，作业已经处于终止态，则无需将作业标记为被释放
-		if record.Status == model.Deleted || record.Status == model.Freed ||
-			record.Status == batch.Failed || record.Status == batch.Completed ||
-			record.Status == batch.Aborted || record.Status == batch.Terminated {
-			if record.Status == model.Deleted && r.billingService != nil {
-				if settleErr := r.billingService.OnJobFinishedSettlement(ctx, record); settleErr != nil {
-					logger.Error(settleErr, "billing final settlement hook failed for deleted job")
-				}
-			}
-			if record.ProfileData == nil {
-				if err = r.updateMissingJobProfile(ctx, req.Name, record); err != nil {
-					logger.Error(err, "unable to update job profile data")
-					return ctrl.Result{Requeue: true}, err
-				}
-			}
-			return ctrl.Result{}, nil
-		}
-
-		// 作业被定时策略释放，进行性能数据收集
-		podName := getPodNameFromJobTemplate(record.Attributes.Data())
-		profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
-			Namespace: config.GetConfig().Namespaces.Job,
-			Name:      podName,
-		}, record.RunningTimestamp)
-
-		var info gen.ResultInfo
-		info, err = j.WithContext(ctx).Where(j.JobName.Eq(req.Name)).Updates(model.Job{
-			Status:             model.Freed,
-			CompletedTimestamp: time.Now(),
-			ProfileData:        ptr.To(datatypes.NewJSONType(profileData)),
-		})
-		if err != nil {
-			logger.Error(err, "unable to update job status to freed")
-			return ctrl.Result{Requeue: true}, err
-		}
-		if info.RowsAffected == 0 {
-			logger.Info("job not found in database")
-		}
-		if r.billingService != nil {
-			record.Status = model.Freed
-			record.CompletedTimestamp = time.Now()
-			if settleErr := r.billingService.OnJobFinishedSettlement(ctx, record); settleErr != nil {
-				logger.Error(settleErr, "billing final settlement hook failed")
-			}
-		}
-		return ctrl.Result{}, nil
+		return r.reconcileMissingVCJob(ctx, req.NamespacedName)
 	}
 
 	// create or update db record
@@ -240,6 +176,9 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if err != nil {
 			logger.Error(err, "unable to create job record")
 			return ctrl.Result{Requeue: true}, err
+		}
+		if utils.IsJobPhaseTerminal(newRecord.Status) && !r.enqueueJobProfile(job.Namespace, newRecord) {
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
 		}
 		return ctrl.Result{}, nil
 	}
@@ -309,6 +248,18 @@ func (r *VcJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		r.cancelPendingApprovalOrders(ctx, job.Name, fmt.Sprintf("job is not running (status: %s), order is canceled", job.Status.State.Phase))
 	}
 
+	if !updateRecord.CompletedTimestamp.IsZero() {
+		oldRecord.CompletedTimestamp = updateRecord.CompletedTimestamp
+	}
+	if !updateRecord.RunningTimestamp.IsZero() {
+		oldRecord.RunningTimestamp = updateRecord.RunningTimestamp
+	}
+	if updateRecord.Attributes.Data() != nil {
+		oldRecord.Attributes = updateRecord.Attributes
+	}
+	if utils.IsJobPhaseTerminal(updateRecord.Status) && !r.enqueueJobProfile(job.Namespace, oldRecord) {
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	}
 	return ctrl.Result{}, nil
 }
 
@@ -329,29 +280,6 @@ func (r *VcJobReconciler) getPodGroup(ctx context.Context, job *batch.Job) (*sch
 		}
 	}
 	return nil, nil
-}
-
-func (r *VcJobReconciler) updateMissingJobProfile(ctx context.Context, jobName string, record *model.Job) error {
-	if record == nil || record.ProfileData != nil || record.Attributes.Data() == nil {
-		return nil
-	}
-
-	podName := getPodNameFromJobTemplate(record.Attributes.Data())
-	profileData := r.prometheusClient.QueryProfileData(types.NamespacedName{
-		Namespace: config.GetConfig().Namespaces.Job,
-		Name:      podName,
-	}, record.RunningTimestamp)
-
-	info, err := query.Job.WithContext(ctx).Where(query.Job.JobName.Eq(jobName)).Updates(model.Job{
-		ProfileData: ptr.To(datatypes.NewJSONType(profileData)),
-	})
-	if err != nil {
-		return err
-	}
-	if info.RowsAffected == 0 {
-		r.log.Info("job not found in database", "job", jobName)
-	}
-	return nil
 }
 
 func (r *VcJobReconciler) cancelPendingApprovalOrders(ctx context.Context, jobName, reason string) {
@@ -458,6 +386,15 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 	if podGroup != nil {
 		podGroupPhase = podGroup.Status.Phase
 	}
+	key := client.ObjectKeyFromObject(job)
+	pods, err := r.listVCJobPods(ctx, key, job)
+	if err != nil {
+		return nil, err
+	}
+	started, ended := observedVCJobTimestamps(job)
+	started = resolveJobRunningTimestamp(started, time.Time{}, terminatedContainerStates(pods))
+	attributes := keepVCJobProfilePods(key, job, job, pods)
+
 	return &model.Job{
 		Name:                    job.Annotations[vcjob.AnnotationKeyTaskName],
 		JobName:                 job.Name,
@@ -469,8 +406,10 @@ func (r *VcJobReconciler) generateCreateJobModel(ctx context.Context, job *batch
 		PodGroupPhase:           podGroupPhase,
 		Queue:                   job.Spec.Queue,
 		CreationTimestamp:       job.CreationTimestamp.Time,
+		RunningTimestamp:        started,
+		CompletedTimestamp:      ended,
 		Resources:               datatypes.NewJSONType(resources),
-		Attributes:              datatypes.NewJSONType(job),
+		Attributes:              datatypes.NewJSONType(attributes),
 		Template:                job.Annotations[vcjob.AnnotationKeyTaskTemplate],
 		AlertEnabled:            alertEnabled,
 	}, nil
@@ -487,158 +426,84 @@ func (r *VcJobReconciler) generateUpdateJobModel(
 	if podGroup != nil {
 		podGroupPhase = podGroup.Status.Phase
 	}
-	record := r.buildUpdateJobModel(ctx, job, oldRecord)
+	pods, err := r.listVCJobPods(ctx, client.ObjectKeyFromObject(job), job)
+	if err != nil {
+		return nil, err
+	}
+	record := r.buildUpdateJobModel(ctx, job, oldRecord, pods)
 	// Updates skips the zero value, so a missing PodGroup leaves the last observed phase in place.
 	record.PodGroupPhase = podGroupPhase
 	return record, nil
 }
 
-//nolint:gocyclo // refactor later
 func (r *VcJobReconciler) buildUpdateJobModel(
-	ctx context.Context, job *batch.Job, oldRecord *model.Job,
+	ctx context.Context, job *batch.Job, oldRecord *model.Job, pods []v1.Pod,
 ) *model.Job {
 	status := job.Status.State.Phase
-	conditions := job.Status.Conditions
-
-	var runningTimestamp time.Time
-	var completedTimestamp time.Time
-	for _, condition := range conditions {
-		if condition.LastTransitionTime == nil {
-			continue
-		}
-		switch condition.Status {
-		case batch.Running:
-			runningTimestamp = condition.LastTransitionTime.Time
-		case batch.Completed, batch.Failed, batch.Aborted, batch.Terminated:
-			completedTimestamp = condition.LastTransitionTime.Time
-		}
-	}
-	if runningTimestamp.IsZero() && job.Status.State.Phase == batch.Running && !job.Status.State.LastTransitionTime.IsZero() {
-		runningTimestamp = job.Status.State.LastTransitionTime.Time
-	}
-	if completedTimestamp.IsZero() &&
-		(job.Status.State.Phase == batch.Completed || job.Status.State.Phase == batch.Failed ||
-			job.Status.State.Phase == batch.Aborted || job.Status.State.Phase == batch.Terminated) &&
-		!job.Status.State.LastTransitionTime.IsZero() {
-		completedTimestamp = job.Status.State.LastTransitionTime.Time
-	}
-
-	var terminatedStatesPtr *datatypes.JSONType[[]v1.ContainerStateTerminated]
+	runningTimestamp, completedTimestamp := observedVCJobTimestamps(job)
+	record := &model.Job{Status: status, CompletedTimestamp: completedTimestamp}
 	var terminatedStates []v1.ContainerStateTerminated
 	if utils.IsJobPhaseTerminal(status) {
 		if oldRecord.TerminatedStates != nil {
 			terminatedStates = oldRecord.TerminatedStates.Data()
-		} else {
-			terminatedStates = r.getTerminatedStates(ctx, job, oldRecord)
+		}
+		if len(terminatedStates) == 0 {
+			terminatedStates = terminatedContainerStates(pods)
 			if len(terminatedStates) > 0 {
-				terminatedStatesPtr = ptr.To(datatypes.NewJSONType(terminatedStates))
+				record.TerminatedStates = ptr.To(datatypes.NewJSONType(terminatedStates))
 			}
 		}
 	}
-	runningTimestamp = resolveJobRunningTimestamp(runningTimestamp, oldRecord.RunningTimestamp, terminatedStates)
+	record.RunningTimestamp = resolveJobRunningTimestamp(runningTimestamp, oldRecord.RunningTimestamp, terminatedStates)
 
-	nodes := make([]string, 0)
-	for i := range job.Spec.Tasks {
-		task := &job.Spec.Tasks[i]
-		replicas := task.Replicas
-		for j := int32(0); j < replicas; j++ {
-			podName := fmt.Sprintf("%s-%s-%d", job.Name, task.Name, j)
-			var pod v1.Pod
-			err := r.Get(ctx, types.NamespacedName{
-				Namespace: config.GetConfig().Namespaces.Job,
-				Name:      podName,
-			}, &pod)
-			if err != nil {
-				continue
-			}
-			if pod.Status.Phase == v1.PodRunning {
-				nodes = append(nodes, pod.Spec.NodeName)
-			}
-		}
+	nodes := runningVCJobNodes(pods)
+	if len(nodes) > 0 {
+		record.Nodes = datatypes.NewJSONType(nodes)
 	}
-	var waitingToleranceSeconds *int64
-	if waitingToleranceSecondsInt, err := strconv.ParseInt(
-		job.Annotations[vcjobservice.AnnotationKeyWaitingToleranceSeconds], 10, 64,
-	); err == nil {
-		waitingToleranceSeconds = ptr.To(waitingToleranceSecondsInt)
+	if tolerance, err := strconv.ParseInt(job.Annotations[vcjobservice.AnnotationKeyWaitingToleranceSeconds], 10, 64); err == nil {
+		record.WaitingToleranceSeconds = ptr.To(tolerance)
 	}
 
-	// do not update nodes info if job is not running on any node
-	if len(nodes) == 0 {
-		var profilePtr *datatypes.JSONType[*monitor.ProfileData]
-		var eventsPtr *datatypes.JSONType[[]v1.Event]
-
-		if !completedTimestamp.IsZero() {
-			// 作业进入了终止态
-			if oldRecord.ProfileData == nil {
-				// 进行性能数据收集
-				profile := r.prometheusClient.QueryProfileData(types.NamespacedName{
-					Namespace: job.Namespace,
-					Name:      getPodNameFromJobTemplate(job),
-				}, runningTimestamp)
-				if profile != nil {
-					profilePtr = ptr.To(datatypes.NewJSONType(profile))
-				}
-			}
-			if utils.IsJobPhaseTerminal(status) {
-				events := r.getNewEventsForJob(ctx, job, oldRecord)
-				if len(events) > 0 {
-					eventsPtr = ptr.To(datatypes.NewJSONType(events))
-				}
-			}
-		}
-
-		return &model.Job{
-			Status:                  status,
-			RunningTimestamp:        runningTimestamp,
-			CompletedTimestamp:      completedTimestamp,
-			ProfileData:             profilePtr,
-			Events:                  eventsPtr,
-			TerminatedStates:        terminatedStatesPtr,
-			WaitingToleranceSeconds: waitingToleranceSeconds,
-		}
+	saved := oldRecord.Attributes.Data()
+	base := saved
+	if base == nil {
+		base = job
 	}
-
-	// 作业运行，采集调度数据和事件
-	if status == batch.Running {
-		var scheduleDataPtr *datatypes.JSONType[*model.ScheduleData]
-		var eventsPtr *datatypes.JSONType[[]v1.Event]
-		// 采集事件
-		events := r.getNewEventsForJob(ctx, job, oldRecord)
+	attributes := keepVCJobProfilePods(client.ObjectKeyFromObject(job), base, job, pods)
+	if attributes != saved {
+		record.Attributes = datatypes.NewJSONType(attributes)
+	}
+	if (status == batch.Running && len(nodes) > 0) || (!completedTimestamp.IsZero() && utils.IsJobPhaseTerminal(status)) {
+		podNames := compactProfilePodNames(append(profilePodNames(attributes), getPodNamesFromJobTemplate(job)...))
+		events := r.getNewEventsForJob(ctx, job.Namespace, podNames, oldRecord)
 		if len(events) > 0 {
-			eventsPtr = ptr.To(datatypes.NewJSONType(events))
-		}
-		for i := range events {
-			jobEvent := &events[i]
-			if jobEvent.Reason == "Pulled" {
-				// 解析事件消息，获取镜像拉取时间和大小
-				msg := jobEvent.Message
-				var scheduleData model.ScheduleData
-				err := scheduleData.Init(msg)
-				if err != nil {
-					continue
-				}
-				scheduleDataPtr = ptr.To(datatypes.NewJSONType(&scheduleData))
-				break
+			record.Events = ptr.To(datatypes.NewJSONType(events))
+			if status == batch.Running {
+				record.ScheduleData = scheduleDataFromEvents(events)
 			}
 		}
-		return &model.Job{
-			Status:                  status,
-			RunningTimestamp:        runningTimestamp,
-			CompletedTimestamp:      completedTimestamp,
-			Nodes:                   datatypes.NewJSONType(nodes),
-			ScheduleData:            scheduleDataPtr,
-			Events:                  eventsPtr,
-			WaitingToleranceSeconds: waitingToleranceSeconds,
+	}
+	return record
+}
+
+func runningVCJobNodes(pods []v1.Pod) []string {
+	var nodes []string
+	for i := range pods {
+		if pods[i].Status.Phase == v1.PodRunning {
+			nodes = append(nodes, pods[i].Spec.NodeName)
 		}
 	}
+	return nodes
+}
 
-	return &model.Job{
-		Status:                  status,
-		RunningTimestamp:        runningTimestamp,
-		CompletedTimestamp:      completedTimestamp,
-		Nodes:                   datatypes.NewJSONType(nodes),
-		TerminatedStates:        terminatedStatesPtr,
-		WaitingToleranceSeconds: waitingToleranceSeconds,
+func scheduleDataFromEvents(events []v1.Event) *datatypes.JSONType[*model.ScheduleData] {
+	for i := range events {
+		if events[i].Reason == "Pulled" {
+			var data model.ScheduleData
+			if err := data.Init(events[i].Message); err == nil {
+				return ptr.To(datatypes.NewJSONType(&data))
+			}
+		}
 	}
+	return nil
 }

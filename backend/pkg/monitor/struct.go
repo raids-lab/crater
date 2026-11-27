@@ -23,22 +23,30 @@ type NodeGPUUtil struct {
 	Util      float32 `json:"util"`
 }
 
+// ProfileDataVersion 标记覆盖作业全部 Pod 的采集结果。
+const ProfileDataVersion = 2
+
 type ProfileData struct {
+	Version int `json:"version,omitempty"` // 采集版本，历史记录可能没有此字段。
+
 	// CPU and Memory
 	CPURequest *float32 `json:"cpu_request,omitempty"`
 	CPULimit   *float32 `json:"cpu_limit,omitempty"`
 	MemRequest *float32 `json:"mem_request,omitempty"`
 	MemLimit   *float32 `json:"mem_limit,omitempty"`
 
+	// CPU usage is total cores across all job containers.
 	CPUUsageAvg *float32 `json:"cpu_usage_avg,omitempty"`
 	CPUUsageMax *float32 `json:"cpu_usage_max,omitempty"`
 	CPUUsageStd *float32 `json:"cpu_usage_std,omitempty"`
 
+	// Memory is the simultaneous job total in MiB, evaluated at original sample timestamps.
 	CPUMemAvg *float32 `json:"cpu_mem_avg,omitempty"`
 	CPUMemMax *float32 `json:"cpu_mem_max,omitempty"`
 	CPUMemStd *float32 `json:"cpu_mem_std,omitempty"`
 
 	// GPU
+	// Utilization pools observed durations across job pods and GPUs; values are ratios (0–1).
 	GPUUtilAvg *float32 `json:"gpu_util_avg,omitempty"`
 	GPUUtilMax *float32 `json:"gpu_util_max,omitempty"`
 	GPUUtilStd *float32 `json:"gpu_util_std,omitempty"`
@@ -65,6 +73,7 @@ type ProfileData struct {
 	PCIERxAvg *float32 `json:"pcie_rx_avg,omitempty"`
 	PCIERxMax *float32 `json:"pcie_rx_max,omitempty"`
 
+	// GPU memory is the simultaneous total across all job GPUs, in MiB.
 	GPUMemTotal *float32 `json:"gpu_mem_total,omitempty"`
 	GPUMemMax   *float32 `json:"gpu_mem_max,omitempty"`
 	GPUMemAvg   *float32 `json:"gpu_mem_avg,omitempty"`
