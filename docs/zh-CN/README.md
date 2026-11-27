@@ -59,14 +59,14 @@
 
 **Crater** 是一个面向共享 AI 算力集群的 Kubernetes 原生平台。它帮助组织管理异构算力资源，提交和治理 AI 工作负载，快速部署大模型训练与推理环境，并通过统一的 Web 控制台、CLI 与 AI 辅助运维入口观察集群运行状态。
 
-Crater 适用于多个团队和多类工作负载共享同一套 GPU 集群的场景：长时间运行的训练任务、集中爆发的实验课程、交互式 Notebook、在线 AI 服务、大模型推理服务，以及离线数据处理流水线。它在 Kubernetes 与 Volcano 之上构建运维控制平面，将用户、项目、队列、配额、镜像、数据集、模型、作业、服务和可观测性连接成完整工作流。
+Crater 适用于多个团队和多类工作负载共享同一套 GPU 集群的场景：长时间运行的训练任务、集中爆发的实验课程、交互式 Notebook、在线 AI 服务、大模型推理服务，以及离线数据处理流水线。它在 Kubernetes 与 Volcano 之上构建运维控制平面，将用户、账号、队列、配额、镜像、数据集、模型、作业、服务和可观测性连接成完整工作流。
 
 <div align="center">
 
 |  |  |
 | :---: | :---: |
-| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 交互式开发** — Jupyter、WebIDE、终端与外部访问 | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI 工作负载** — 训练、推理、模板与批处理作业 |
-| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 监控** — 实时指标与日志 | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 模型与数据集** — 集中管理资产 |
+| <img src="../../frontend/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 交互式开发** — Jupyter、WebIDE、终端与外部访问 | <img src="../../frontend/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI 工作负载** — 训练、推理、模板与批处理作业 |
+| <img src="../../frontend/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 监控** — 实时指标与日志 | <img src="../../frontend/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 模型与数据集** — 集中管理资产 |
 
 </div>
 
@@ -100,7 +100,7 @@ Crater 面向高校、科研机构、企业 AI 团队和内部平台团队中的
   <tr>
     <td width="50%" valign="top">
       <h3>🏢 多租户资源治理</h3>
-      面向共享集群管理用户、项目、队列、配额、审批，以及面向计费和成本归因的资源可见性，将原始 GPU 集群转化为可治理、可追踪的团队级算力服务。
+      面向共享集群管理用户、账号、队列、配额、审批，以及面向计费和成本归因的资源可见性，将原始 GPU 集群转化为可治理、可追踪的团队级算力服务。
     </td>
     <td width="50%" valign="top">
       <h3>⚙️ 策略化调度</h3>
@@ -152,17 +152,17 @@ Crater 面向高校、科研机构、企业 AI 团队和内部平台团队中的
 ## 🏗️ 整体架构
 
 <div align="center">
-  <img src="../../website/content/docs/admin/assets/architecture.webp" alt="crater architecture" width="90%" />
+  <a href="../assets/readme-architecture.zh-CN.webp"><img src="../assets/readme-architecture.zh-CN.webp" alt="Crater 架构图，展示 AI 工作负载、控制平面、调度与执行以及集群资源" width="100%" /></a>
   <br/>
-  <sub>Crater 的整体架构与主要组件概览。</sub>
+  <sub>Crater 系统设计，出自王靖皓博士论文第 7 章。</sub>
 </div>
 
-Crater 由四个层次组成：
+用户可通过 Web 控制台、CLI 和 HTTP API 使用 Crater 的统一控制平面。
 
-- **用户入口**：Web 控制台、CLI、HTTP API，以及面向 AI Agent 的命令 Skills。
-- **控制平面**：认证、项目、配额、调度策略、作业、服务、模板、镜像、数据集、模型、审批与运维操作。
-- **执行层**：面向训练、推理和交互式环境的 Kubernetes 工作负载、Volcano 调度、加速卡资源、Pod、Service、PVC 和外部访问规则。
-- **可观测与 AI 运维层**：指标、日志、Grafana Dashboard、操作记录、运行时诊断、AI 助手工作流和管理员侧智能运维。
+- **作业与环境**涵盖训练和微调作业、Jupyter 和 WebIDE 环境、可复用的作业模板与镜像、训练断点恢复，以及 Agent 辅助配置。
+- **模型服务**涵盖模型部署与分布式推理。
+- **调度与资源治理**通过 Volcano 和 Kubernetes 将租户账号、队列和配额与异构资源上的作业放置衔接起来。
+- **共享资产与运维**涵盖模型、数据集、持久化存储、作业指标与日志。
 
 ## 🚀 快速开始
 
@@ -170,7 +170,7 @@ Crater 由四个层次组成：
 
 - 一个可用的 Kubernetes 集群
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/)
-- [Helm v3](https://helm.sh/docs/intro/install/)
+- [Helm v3](https://helm.sh/docs/v3/intro/install/)
 
 ### 2. 准备集群
 
@@ -184,12 +184,14 @@ Crater 由四个层次组成：
 
 ### 3. 通过 Helm（OCI）安装
 
-```bash
-helm registry login ghcr.io
-helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
-```
+按下方部署指南安装集群依赖并准备 `values.yaml`，再将 `<chart-version>` 替换为已发布的版本。[查看 Chart 版本](https://github.com/raids-lab/crater/pkgs/container/crater)
 
-> 💡 Chart 版本可在 `charts/crater/Chart.yaml`（字段 `version`）或 GitHub releases 中查看。
+```bash
+helm install crater oci://ghcr.io/raids-lab/crater \
+  --version '<chart-version>' \
+  --namespace crater-system --create-namespace \
+  --values values.yaml
+```
 
 **部署指南：**
 
@@ -218,7 +220,8 @@ helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 ## 💬 社区与支持
 
 - 🐛 **Issues** — 反馈缺陷或提交需求：[GitHub Issues](https://github.com/raids-lab/crater/issues)
-- 💡 **Discussions** — 提问与交流想法：[GitHub Discussions](https://github.com/raids-lab/crater/discussions)
+- 💬 **微信群** — 查看 [Crater 反馈群入群方式](https://github.com/raids-lab/crater/issues/213)。
+- 📧 **联系邮箱** — 项目交流与合作请邮件联系 [jeffery_06@163.com](mailto:jeffery_06@163.com)。
 - 📚 **文档** — 管理员与用户指南：[raids-lab.github.io/crater](https://raids-lab.github.io/crater/zh/docs/admin/)
 - ⭐ 如果 Crater 对你有帮助，欢迎点亮 Star，让更多人发现它。
 
