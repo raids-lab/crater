@@ -13,7 +13,7 @@ Operate shared **GPU clusters**, **LLM training and serving workloads**, **devel
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/raids-lab/crater?style=flat-square&logo=github&color=f5b301)](https://github.com/raids-lab/crater/stargazers)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](./CONTRIBUTING.md)
-[![Docs](https://img.shields.io/badge/Docs-raids--lab.github.io-brightgreen?style=flat-square)](https://raids-lab.github.io/crater/en/docs/admin/)
+[![Docs](https://img.shields.io/badge/Docs-raids--lab.github.io-brightgreen?style=flat-square)](https://raids-lab.github.io/crater/zh)
 [![Backend Build](https://img.shields.io/github/actions/workflow/status/raids-lab/crater/backend-build.yml?style=flat-square&label=backend)](https://github.com/raids-lab/crater/actions/workflows/backend-build.yml)
 [![Helm Chart Validate](https://img.shields.io/github/actions/workflow/status/raids-lab/crater/helm-chart-validate.yml?style=flat-square&label=helm)](https://github.com/raids-lab/crater/actions/workflows/helm-chart-validate.yml)
 
@@ -24,7 +24,7 @@ Operate shared **GPU clusters**, **LLM training and serving workloads**, **devel
 
 **English** · [简体中文](docs/zh-CN/README.md)
 
-[**Documentation**](https://raids-lab.github.io/crater/en/docs/admin/) ·
+[**Documentation**](https://raids-lab.github.io/crater/zh/docs/admin/) ·
 [Helm Chart](./charts/crater) ·
 [Backend](./backend/README.md) ·
 [Frontend](./frontend/README.md) ·
@@ -45,7 +45,7 @@ Operate shared **GPU clusters**, **LLM training and serving workloads**, **devel
 - [Why Crater](#-why-crater)
 - [Designed For](#-designed-for)
 - [Features](#-features)
-- [Architecture](#️-architecture)
+- [Architecture](#-architecture)
 - [Getting Started](#-getting-started)
 - [Documentation](#-documentation)
 - [Repository Structure](#-repository-structure)
@@ -65,8 +65,8 @@ Crater is designed for environments where different teams and workloads share th
 
 |  |  |
 | :---: | :---: |
-| <img src="./frontend/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 Interactive Development** — Jupyter, WebIDE, terminals, and external access | <img src="./frontend/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI Workloads** — training, serving, templates, and batch jobs |
-| <img src="./frontend/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 Monitoring** — real-time metrics & logs | <img src="./frontend/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 Models & Datasets** — manage assets in one place |
+| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 Interactive Development** — Jupyter, WebIDE, terminals, and external access | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI Workloads** — training, serving, templates, and batch jobs |
+| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 Monitoring** — real-time metrics & logs | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 Models & Datasets** — manage assets in one place |
 
 </div>
 
@@ -152,17 +152,17 @@ Crater fits shared AI computing environments in universities, research institute
 ## 🏗️ Architecture
 
 <div align="center">
-  <a href="./docs/assets/readme-architecture.en.webp"><img src="./docs/assets/readme-architecture.en.webp" alt="Crater architecture showing AI workloads, the control plane, scheduling, execution, and cluster resources" width="100%" /></a>
+  <img src="./docs/assets/readme-architecture.en.webp" alt="Crater architecture" width="90%" />
   <br/>
-  <sub>Crater system design from Chapter 7 of Jinghao Wang’s doctoral dissertation.</sub>
+  <sub>High-level architecture of Crater and its major components.</sub>
 </div>
 
-Users reach Crater’s shared control plane through the web console, CLI, and HTTP API.
+Crater is organized around four layers:
 
-- **Workloads and environments** include training and fine-tuning jobs, Jupyter and WebIDE sessions, reusable job templates and images, checkpoint recovery, and agent-assisted job setup.
-- **Model serving** covers model deployment and distributed inference.
-- **Scheduling and governance** connect tenant accounts, queues, and quotas to workload placement with Volcano and Kubernetes on heterogeneous hardware.
-- **Shared assets and operations** include models, datasets, persistent storage, workload metrics, and logs.
+- **User interfaces**: web console, CLI, HTTP APIs, and agent-friendly command skills.
+- **Control plane**: authentication, accounts, quotas, scheduling policies, jobs, services, templates, images, datasets, models, approvals, and operations.
+- **Execution layer**: Kubernetes workloads, Volcano scheduling, accelerator resources, Pods, Services, PVCs, and external access rules for training, serving, and interactive environments.
+- **Observability and AI operations layer**: metrics, logs, Grafana dashboards, operation records, runtime diagnostics, AI assistant workflows, and admin-side intelligent operations.
 
 ## 🚀 Getting Started
 
@@ -170,7 +170,7 @@ Users reach Crater’s shared control plane through the web console, CLI, and HT
 
 - A running Kubernetes cluster
 - [`kubectl`](https://kubernetes.io/docs/tasks/tools/)
-- [Helm v3](https://helm.sh/docs/v3/intro/install/)
+- [Helm v3](https://helm.sh/docs/intro/install/)
 
 ### 2. Set up a cluster
 
@@ -184,14 +184,12 @@ Pick the option that fits your scenario:
 
 ### 3. Install via Helm (OCI)
 
-Follow one of the deployment guides below to install the cluster dependencies and prepare `values.yaml`. Replace `<chart-version>` with a [published chart version](https://github.com/raids-lab/crater/pkgs/container/crater).
-
 ```bash
-helm install crater oci://ghcr.io/raids-lab/crater \
-  --version '<chart-version>' \
-  --namespace crater-system --create-namespace \
-  --values values.yaml
+helm registry login ghcr.io
+helm install crater oci://ghcr.io/raids-lab/crater --version <chart-version>
 ```
+
+> 💡 The chart version is in `charts/crater/Chart.yaml` (field `version`) or in the GitHub releases.
 
 **Deployment guides:**
 
@@ -219,7 +217,7 @@ helm install crater oci://ghcr.io/raids-lab/crater \
 ## 💬 Community & Support
 
 - 🐛 **Issues** — report bugs or request features: [GitHub Issues](https://github.com/raids-lab/crater/issues)
-- 💬 **WeChat** — join the [Crater feedback group](https://github.com/raids-lab/crater/issues/213).
+- 💡 **Discussions** — ask questions and share ideas: [GitHub Discussions](https://github.com/raids-lab/crater/discussions)
 - 📧 **Contact** — for project inquiries or collaboration, email [jeffery_06@163.com](mailto:jeffery_06@163.com).
 - 📚 **Docs** — admin and user guides: [raids-lab.github.io/crater](https://raids-lab.github.io/crater/en/docs/admin/)
 - ⭐ **Star the project** if you find Crater useful — it helps others discover it.
