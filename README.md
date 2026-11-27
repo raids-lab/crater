@@ -65,8 +65,8 @@ Crater is designed for environments where different teams and workloads share th
 
 |  |  |
 | :---: | :---: |
-| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 Interactive Development** — Jupyter, WebIDE, terminals, and external access | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI Workloads** — training, serving, templates, and batch jobs |
-| <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 Monitoring** — real-time metrics & logs | <img src="https://github.com/raids-lab/crater-frontend/blob/main/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 Models & Datasets** — manage assets in one place |
+| <img src="./frontend/docs/images/jupyter.gif" alt="Jupyter Lab" width="420" /><br/>**🧪 Interactive Development** — Jupyter, WebIDE, terminals, and external access | <img src="./frontend/docs/images/ray.gif" alt="Batch Jobs" width="420" /><br/>**🚀 AI Workloads** — training, serving, templates, and batch jobs |
+| <img src="./frontend/docs/images/monitor.gif" alt="Monitor" width="420" /><br/>**📈 Monitoring** — real-time metrics & logs | <img src="./frontend/docs/images/datasets.gif" alt="Models" width="420" /><br/>**📦 Models & Datasets** — manage assets in one place |
 
 </div>
 
