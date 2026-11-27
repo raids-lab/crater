@@ -19,7 +19,14 @@ import (
 	"github.com/raids-lab/crater/cli/internal/version"
 )
 
-const execSubprotocol = "crater.exec.v1"
+const (
+	execSubprotocol = "crater.exec.v1"
+	execAdminScope  = "admin"
+	execScopeHeader = "X-Crater-Exec-Scope"
+)
+
+// ErrAdminExecScopeUnconfirmed means the platform upgraded the connection without confirming administrator access.
+var ErrAdminExecScopeUnconfirmed = errors.New("platform did not confirm administrator exec scope")
 
 // TerminalSize is independent of the node's CPU or accelerator type.
 type TerminalSize struct {
@@ -34,6 +41,7 @@ type JobExecOptions struct {
 	Command        []string
 	EnvMode        string
 	TTY            bool
+	Admin          bool
 	Input          io.ReadCloser
 	Size           TerminalSize
 	Resize         <-chan TerminalSize
@@ -118,6 +126,9 @@ func (c *Client) dialJobExec(ctx context.Context, name string, options JobExecOp
 	if options.Container != "" {
 		query.Set("container", options.Container)
 	}
+	if options.Admin {
+		query.Set("scope", execAdminScope)
+	}
 	u.RawQuery = query.Encode()
 	if u.Scheme == "https" {
 		u.Scheme = "wss"
@@ -146,6 +157,10 @@ func (c *Client) dialJobExec(ctx context.Context, name string, options JobExecOp
 	if conn.Subprotocol() != execSubprotocol {
 		_ = conn.Close()
 		return nil, &ExecStreamError{Cause: errors.New("platform did not negotiate crater.exec.v1")}
+	}
+	if options.Admin && resp.Header.Get(execScopeHeader) != execAdminScope {
+		_ = conn.Close()
+		return nil, &ExecStreamError{Cause: ErrAdminExecScopeUnconfirmed}
 	}
 	conn.SetReadLimit(1 << 20)
 	return conn, nil

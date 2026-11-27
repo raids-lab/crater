@@ -1226,6 +1226,7 @@
   "operationLog.status.failed": "Failed",
   "operationLog.status.success": "Success",
   "operationLog.title": "Operation Logs",
+  "operationLog.type.AdminJobExec": "관리자 권한으로 작업 내 명령 실행",
   "operationLog.type.CancelExclusive": "Cancel Exclusive",
   "operationLog.type.CancelUnschedulable": "Unmark Unschedulable",
   "operationLog.type.DeleteJob": "작업 삭제",

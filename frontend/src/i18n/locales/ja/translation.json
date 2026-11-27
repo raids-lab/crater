@@ -1229,6 +1229,7 @@
   "operationLog.status.failed": "Failed",
   "operationLog.status.success": "Success",
   "operationLog.title": "Operation Logs",
+  "operationLog.type.AdminJobExec": "管理者によるジョブ内実行",
   "operationLog.type.CancelExclusive": "Cancel Exclusive",
   "operationLog.type.CancelUnschedulable": "Unmark Unschedulable",
   "operationLog.type.DeleteJob": "ジョブを削除",

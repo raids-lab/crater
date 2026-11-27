@@ -227,6 +227,61 @@ crater job exec cpu-job --env-mode=container --json -- env
   "status": "OK"
 }
 -- zh-CN/16-container-environment/stderr --
+-- zh-CN/17-admin-exec-help/argv --
+crater admin job exec --help
+-- zh-CN/17-admin-exec-help/exit --
+0
+-- zh-CN/17-admin-exec-help/stdout --
+使用当前平台管理员身份访问其他用户的运行中作业。执行时沿用目标任务账号的环境，命令选项与 job exec 一致。
+
+Usage:
+  crater admin job exec <name> [flags] [-- COMMAND [ARG...]]
+
+Flags:
+  -c, --container string   按名称选择运行中的容器
+      --env-mode string    环境来源：user（默认）或 container（跳过配置探测） (default "user")
+      --pod string         选择属于该作业的 Pod
+  -i, --stdin              向命令转发标准输入
+  -t, --tty                分配终端（要求 -i 且本地输入输出为终端）
+
+Global Flags:
+  -h, --help             显示帮助信息
+      --json             以原始 JSON 格式输出
+      --no-interactive   禁用交互式提示
+-- zh-CN/17-admin-exec-help/stderr --
+-- zh-CN/18-admin-exec-json/argv --
+crater admin job exec admin-job --json -- uname -m
+-- zh-CN/18-admin-exec-json/exit --
+0
+-- zh-CN/18-admin-exec-json/stdout --
+{
+  "data": {
+    "exec": {
+      "namespace": "real-ns",
+      "pod": "cpu-worker",
+      "container": "main",
+      "exit_code": 0,
+      "stdout": "hello CPU/ARM\n",
+      "stderr": "diagnostic\n"
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/18-admin-exec-json/stderr --
+-- zh-CN/19-admin-exec-unconfirmed/argv --
+crater admin job exec legacy-job --json -- uname -m
+-- zh-CN/19-admin-exec-unconfirmed/exit --
+4
+-- zh-CN/19-admin-exec-unconfirmed/stdout --
+-- zh-CN/19-admin-exec-unconfirmed/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_API_OTHER",
+  "message": "平台未确认管理员执行模式。请运行 crater compatibility 检查后端是否支持。",
+  "context": {
+    "msg": "platform did not confirm administrator exec scope"
+  }
+}
 -- zh-CN/13-exec-timeout-json/argv --
 crater job exec cpu-job --json -- uname
 -- zh-CN/13-exec-timeout-json/exit --

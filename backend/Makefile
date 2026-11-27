@@ -186,8 +186,10 @@ test-tensorboard-launcher: ## Test the embedded launcher with Python 3 (standard
 .PHONY: test-job-sessions
 test-job-sessions: ## Test job sessions and browser/native request compatibility without infrastructure.
 	go test -race ./pkg/jobsession ./pkg/jobexec ./internal/service/vcjob
-	# Test request parsing separately from service initialization and its database migration.
-	go test -race ./internal/middleware/jwt_request.go ./internal/middleware/jwt_request_test.go
+	# Test credential parsing and access logs without service initialization.
+	go test -race \
+		./internal/middleware/jwt_request.go ./internal/middleware/jwt_request_test.go \
+		./internal/middleware/access_log.go ./internal/middleware/access_log_test.go
 
 ##@ Build
 

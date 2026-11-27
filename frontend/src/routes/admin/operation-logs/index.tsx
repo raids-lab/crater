@@ -88,6 +88,7 @@ const DEFAULT_SORTING: SortingState = [
 
 const OPERATION_TYPE_KEYS = [
   'DeleteJob',
+  'AdminJobExec',
   'SetExclusive',
   'CancelExclusive',
   'SetUnschedulable',
@@ -758,6 +759,7 @@ function OperationLogsPage() {
   const operationTypeLabelMap = useMemo<Record<string, string>>(
     () => ({
       DeleteJob: t('operationLog.type.DeleteJob', { defaultValue: '删除作业' }),
+      AdminJobExec: t('operationLog.type.AdminJobExec', { defaultValue: '管理员进入作业' }),
       SetExclusive: t('operationLog.type.SetExclusive', { defaultValue: '设为独占' }),
       CancelExclusive: t('operationLog.type.CancelExclusive', { defaultValue: '取消独占' }),
       SetUnschedulable: t('operationLog.type.SetUnschedulable', {

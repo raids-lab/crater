@@ -1229,6 +1229,7 @@
   "operationLog.status.failed": "Failed",
   "operationLog.status.success": "Success",
   "operationLog.title": "Operation Logs",
+  "operationLog.type.AdminJobExec": "Admin Job Exec",
   "operationLog.type.CancelExclusive": "Cancel Exclusive",
   "operationLog.type.CancelUnschedulable": "Unmark Unschedulable",
   "operationLog.type.DeleteJob": "Delete Job",

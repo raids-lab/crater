@@ -15,7 +15,7 @@ import (
 	"github.com/raids-lab/crater/internal/bizerr"
 )
 
-func TestSessionAccessPreservesWebSSHAdminAccess(t *testing.T) {
+func TestJobSessionAccess(t *testing.T) {
 	job := &model.Job{UserID: 7, AccountID: 11}
 	for _, tt := range []struct {
 		name      string
@@ -29,6 +29,8 @@ func TestSessionAccessPreservesWebSSHAdminAccess(t *testing.T) {
 		{"owner exec", 7, 11, model.RoleUser, ExecSession, true},
 		{"admin SSH to other user and account", 99, 22, model.RoleAdmin, SSHSession, true},
 		{"admin exec still requires ownership", 99, 22, model.RoleAdmin, ExecSession, false},
+		{"admin exec to other user and account", 99, 22, model.RoleAdmin, AdminExecSession, true},
+		{"owner cannot request admin exec", 7, 11, model.RoleUser, AdminExecSession, false},
 		{"same account other user SSH denied", 99, 11, model.RoleUser, SSHSession, false},
 		{"same user other account SSH denied", 7, 22, model.RoleUser, SSHSession, false},
 		{"same user other account exec denied", 7, 22, model.RoleUser, ExecSession, false},

@@ -655,6 +655,14 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **`--json` 的 `data`**：`jobs`（当前页数组）和 `pagination`；`--all-pages` 时省略 `pagination`。
 - **状态**: [x] Completed
 
+### `crater admin job exec <name> [--pod POD] [-c CONTAINER] [-i] [-t] [--env-mode user|container] [-- COMMAND [ARG...]]`
+
+- 平台管理员可用当前登录身份进入其他用户或项目的运行中作业。用 `crater admin job ls` 查找平台作业名。选项、容器内账号、输出和退出状态与 `crater job exec` 一致。
+- 管理员命令使用后端 API v10，在现有 `GET /api/v1/vcjobs/{name}/exec` 请求中带 `scope=admin`，沿用 `crater.exec.v1`。凭证通过 `Authorization: Bearer` 请求头传递。后端在连接前校验平台管理员角色和目标，校验通过的 WebSocket 升级响应包含 `X-Crater-Exec-Scope: admin`。
+- CLI 收到管理员模式确认后才发送执行请求。握手成功但缺少正确确认时，命令关闭连接并提示运行 `crater compatibility`。握手前的 `403` 等失败按普通 API 错误返回。
+- 普通 `crater job exec` 发起本人会话，检查作业所有者和当前项目。仅有项目管理员权限的账号调用管理员模式会收到 `403`。
+- 平台接受有效的管理员执行请求后，会在启动容器命令前记录 `AdminJobExec` 操作。可用 `crater admin operation-logs --operation-type AdminJobExec` 查询操作者、作业、项目、Pod 和容器。
+
 ### `crater admin job delete <name>`
 - **描述**: 使用 `/api/v1/admin/vcjobs/{name}` 管理员删除作业。
 - **位置参数**:
