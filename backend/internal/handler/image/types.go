@@ -74,7 +74,7 @@ type (
 	}
 
 	GetKanikoRequest struct {
-		ImagePackName string `form:"name"`
+		ImagePackName string `form:"name" binding:"required"`
 		ID            uint   `form:"id"`
 	}
 
