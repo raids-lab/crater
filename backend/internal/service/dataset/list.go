@@ -40,6 +40,17 @@ type ListOptions struct {
 	UserID        uint
 }
 
+func listScope(ctx context.Context, options *ListOptions) *gorm.DB {
+	if options.Scope != nil {
+		return options.Scope
+	}
+	if options.AccessibleIDs == nil {
+		return nil
+	}
+	return query.Dataset.WithContext(ctx).UnderlyingDB().Model(&model.Dataset{}).
+		Where("datasets.id IN ?", options.AccessibleIDs)
+}
+
 // List canonicalizes permission-scoped resources before display filters and pagination.
 // Sort expressions are selected by the handler's whitelist and always include ID
 // as a tie-breaker so adjacent pages remain stable when timestamps are equal.
@@ -48,11 +59,7 @@ func List(ctx context.Context, options *ListOptions) ([]*model.Dataset, int64, e
 		return []*model.Dataset{}, 0, nil
 	}
 
-	scope := options.Scope
-	if scope == nil && options.AccessibleIDs != nil {
-		scope = query.Dataset.WithContext(ctx).UnderlyingDB().Model(&model.Dataset{}).
-			Where("datasets.id IN ?", options.AccessibleIDs)
-	}
+	scope := listScope(ctx, options)
 	if scope == nil {
 		return []*model.Dataset{}, 0, nil
 	}
