@@ -1,33 +1,38 @@
 package monitor
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
-
-	"github.com/raids-lab/crater/pkg/config"
 )
 
-func TestQueryPodUtilMetric(t *testing.T) {
-	// 请替换为你的 Prometheus API 地址
-	apiURL := config.GetConfig().PrometheusAPI
-	_ = NewPrometheusClient(apiURL)
-	// print url
-	t.Log(apiURL)
-	//nolint:gocritic // TODO: remove no linter
-	// podUtil, err := client.queryMetric("kube_gpu_scheduler_pod_bind_gpu")
-	// if err != nil {
-	// 	t.Errorf("Error querying PodUtilMetric: %v", err)
-	// 	return
-	// }
-	// fmt.Printf("PodUtilMetric: %+v\n", podUtil)
+func TestQueryPodProfileMetric(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Error(err)
+		}
+		if !strings.Contains(r.Form.Get("query"), `namespace="workspace",pod="job-0"`) {
+			t.Errorf("query lost pod name or namespace: %s", r.Form.Get("query"))
+		}
+		writeProfileVector(t, w, "2")
+	}))
+	defer server.Close()
+
+	data, err := NewPrometheusClient(server.URL).QueryPodProfileMetric("workspace", "job-0")
+	if err != nil || data.CPUMemMax != 2 || data.GPUUtilAvg != 2 {
+		t.Fatalf("unexpected pod metrics: %+v, %v", data, err)
+	}
 }
 
-func TestQueryPodUtilMetric3(t *testing.T) {
-	// 请替换为你的 Prometheus API 地址
-	apiURL := config.GetConfig().PrometheusAPI
-	client := NewPrometheusClient(apiURL)
+func TestQueryNodeGPUUtilOmitsNonFiniteSamples(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writeProfileVector(t, w, "NaN", "20", "-Inf", "+Inf")
+	}))
+	defer server.Close()
 
-	// print url
-	t.Log(apiURL)
-	data := client.QueryNodeGPUUtil()
-	t.Logf("data: %+v\n", data)
+	data := NewPrometheusClient(server.URL).QueryNodeGPUUtil()
+	if len(data) != 1 || data[0].Instance != "1" || data[0].Util != 20 {
+		t.Fatalf("expected one finite GPU sample, got %+v", data)
+	}
 }

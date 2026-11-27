@@ -1,9 +1,8 @@
 package monitor
 
 import (
+	"context"
 	"time"
-
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // PrometheusClient is a client for Prometheus
@@ -58,8 +57,8 @@ type PrometheusInterface interface {
 	// QueryPodProfileMetric queries the profile metric of a pod (used for AiJob)
 	QueryPodProfileMetric(namespace, podname string) (PodUtil, error)
 
-	// QueryProfileData queries the profile data of a pod
-	QueryProfileData(namespacedName types.NamespacedName, from time.Time) *ProfileData
+	// QueryProfileDataContext returns nil, nil when no samples are available.
+	QueryProfileDataContext(ctx context.Context, namespace string, podNames []string, from, to time.Time) (*ProfileData, error)
 
 	GetPodOwner(podName string) string
 

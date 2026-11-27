@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { t } from 'i18next'
 import { AlarmClockIcon } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
@@ -48,6 +48,11 @@ export const Route = createFileRoute('/admin/cronjobs/')({
 })
 
 const JOB_CONFIGS = [
+  {
+    jobId: 'aggregate-resource-usage-daily',
+    jobName: 'cronPolicy.statisticsTitle',
+    jobType: 'patrol_function',
+  },
   {
     jobId: 'clean-long-time-job',
     jobName: 'cronPolicy.longTimeTitle',
@@ -97,7 +102,6 @@ function CronPolicy({ className }: { className?: string }) {
 
   const showGpuAnalysis = gpuStatus?.enabled ?? false
   const showBilling = billingStatus?.featureEnabled ?? false
-  const showPatrolTab = showGpuAnalysis || showBilling
 
   const jobsQuery = useQuery({
     queryKey: ['admin', 'cronjobs', 'configs'],
@@ -148,12 +152,6 @@ function CronPolicy({ className }: { className?: string }) {
     cleaner_function: cleanerJobs.map((j) => j.jobId),
     patrol_function: patrolJobs.map((j) => j.jobId),
   }
-
-  useEffect(() => {
-    if (!showPatrolTab && activeTab === 'patrol_function') {
-      setActiveTab('cleaner_function')
-    }
-  }, [activeTab, showPatrolTab])
 
   const renderJobCards = (jobs: typeof JOB_CONFIGS) => {
     if (jobsQuery.isLoading) {
@@ -206,34 +204,28 @@ function CronPolicy({ className }: { className?: string }) {
               <CardTitle>{t('cronPolicy.title')}</CardTitle>
             </div>
             <CardDescription>{t('cronPolicy.description')}</CardDescription>
-            <TabsList
-              className={cn('grid w-full max-w-md', showPatrolTab ? 'grid-cols-2' : 'grid-cols-1')}
-            >
+            <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="cleaner_function">
                 {t('cronPolicy.cleanerJobsTitle')}
                 <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
                   {cleanerJobs.length}
                 </Badge>
               </TabsTrigger>
-              {showPatrolTab && (
-                <TabsTrigger value="patrol_function">
-                  {t('cronPolicy.patrolJobsTitle')}
-                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
-                    {patrolJobs.length}
-                  </Badge>
-                </TabsTrigger>
-              )}
+              <TabsTrigger value="patrol_function">
+                {t('cronPolicy.patrolJobsTitle')}
+                <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5">
+                  {patrolJobs.length}
+                </Badge>
+              </TabsTrigger>
             </TabsList>
           </CardHeader>
           <CardContent>
             <TabsContent value="cleaner_function" className="mt-0">
               {renderJobCards(cleanerJobs)}
             </TabsContent>
-            {showPatrolTab && (
-              <TabsContent value="patrol_function" className="mt-0">
-                {renderJobCards(patrolJobs)}
-              </TabsContent>
-            )}
+            <TabsContent value="patrol_function" className="mt-0">
+              {renderJobCards(patrolJobs)}
+            </TabsContent>
           </CardContent>
         </Card>
       </Tabs>

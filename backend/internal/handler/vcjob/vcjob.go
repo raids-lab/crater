@@ -381,8 +381,17 @@ func (mgr *VolcanojobMgr) applyDeleteJobPlan(c *gin.Context, record *model.Job, 
 		if err := mgr.settleJobBeforeDelete(c, record, plan.clusterJob); err != nil {
 			return err
 		}
-		_, err := j.WithContext(c).Where(j.JobName.Eq(record.JobName)).Delete()
-		return err
+		completedAt := resolveDeleteSettlementTime(record, plan.clusterJob)
+		return query.Q.Transaction(func(tx *query.Query) error {
+			j := tx.Job
+			withoutCompletion := j.WithContext(c).Where(j.CompletedTimestamp.IsNull()).Or(j.CompletedTimestamp.Eq(time.Time{}))
+			if _, err := j.WithContext(c).Where(j.JobName.Eq(record.JobName), withoutCompletion).
+				UpdateSimple(j.CompletedTimestamp.Value(completedAt)); err != nil {
+				return err
+			}
+			_, err := j.WithContext(c).Where(j.JobName.Eq(record.JobName)).Delete()
+			return err
+		})
 	}
 
 	completedAt := time.Now()
