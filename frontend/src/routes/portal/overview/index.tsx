@@ -22,7 +22,7 @@ import { ClockIcon, FlaskConicalIcon, GpuIcon, UsersRoundIcon } from 'lucide-rea
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import JobPhaseLabel, { getJobPhaseLabel, jobPhases } from '@/components/badge/job-phase-badge'
+import JobPhaseLabel, { jobPhases } from '@/components/badge/job-phase-badge'
 import JobTypeLabel from '@/components/badge/job-type-badge'
 import NodeBadges from '@/components/badge/node-badges'
 import ResourceBadges from '@/components/badge/resource-badges'
@@ -34,7 +34,7 @@ import { BillingSummaryCards } from '@/components/custom/billing-summary-cards'
 import { TimeDistance } from '@/components/custom/time-distance'
 import ListedNewJobButton from '@/components/job/new-job-button'
 import { getHeader } from '@/components/job/overview/admin-jobs'
-import { getRemoteJobToolbarConfig } from '@/components/job/statuses'
+import { getJobOverviewSummary, getRemoteJobToolbarConfig } from '@/components/job/statuses'
 import UserLabel from '@/components/label/user-label'
 import PageTitle from '@/components/layout/page-title'
 import { SectionCards } from '@/components/metrics/section-cards'
@@ -63,7 +63,7 @@ import {
 import { queryNodes } from '@/services/query/node'
 import { queryResources } from '@/services/query/resource'
 
-import useRemoteTableState from '@/hooks/use-remote-table-state'
+import useJobTableState from '@/hooks/use-job-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { getUserPseudonym } from '@/utils/pseudonym'
@@ -93,11 +93,11 @@ function Overview() {
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
-  const tableState = useRemoteTableState('overview_joblist', {
+  const tableState = useJobTableState('overview_joblist', {
     sorting: [{ id: 'createdAt', desc: true }],
     columnFilters: [
       { id: 'days', value: ['7'] },
-      { id: 'status', value: ['Running', 'Pending'] },
+      { id: 'status', value: ['Running', 'Pending', 'Inqueue', 'Starting'] },
     ],
   })
 
@@ -252,16 +252,18 @@ function Overview() {
     queryFn: async ({ signal }) => (await apiJobAllFacets(overviewSummaryParams, signal)).data,
     refetchInterval: REFETCH_INTERVAL,
   })
-  const toolbarConfig = useMemo(() => {
+  const toolbarConfig = (() => {
     const config = getRemoteJobToolbarConfig(jobFacetsQuery.data)
     return {
       ...config,
       getHeader,
       filterOptions: config.filterOptions.map((filter) =>
-        filter.key === 'status' ? { ...filter, defaultValues: ['Running', 'Pending'] } : filter
+        filter.key === 'status'
+          ? { ...filter, defaultValues: ['Running', 'Pending', 'Inqueue', 'Starting'] }
+          : filter
       ),
     }
-  }, [jobFacetsQuery.data])
+  })()
 
   const resourcesQuery = useQuery(
     queryResources(true, (resource) => {
@@ -274,15 +276,11 @@ function Overview() {
     enabled: billingVisible,
   })
 
-  const jobStatus = useMemo(() => {
-    return (jobSummaryFacetsQuery.data?.facets.status ?? [])
-      .filter(({ value }) => value !== JobPhase.Deleted && value !== JobPhase.Freed)
-      .map(({ value, count }) => ({
-        id: value,
-        label: getJobPhaseLabel(value as JobPhase).label,
-        value: count,
-      }))
-  }, [jobSummaryFacetsQuery.data])
+  const {
+    phases: jobStatus,
+    runningCount,
+    waitingCount,
+  } = getJobOverviewSummary(jobSummaryFacetsQuery.data)
 
   const hideUsername = useAtomValue(globalHideUsername)
   const userStatus = useMemo(() => {
@@ -343,16 +341,16 @@ function Overview() {
           items={[
             {
               title: '运行中作业',
-              value: jobStatus.find(({ id }) => id === JobPhase.Running)?.value ?? 0,
+              value: runningCount,
               className: 'text-highlight-blue',
               description: '正在运行的作业数量',
               icon: FlaskConicalIcon,
             },
             {
-              title: t('jobs.statuses.pending.label'),
-              value: jobStatus.find(({ id }) => id === JobPhase.Pending)?.value ?? 0,
+              title: t('jobs.statuses.waiting.label'),
+              value: waitingCount,
               className: 'text-highlight-purple',
-              description: t('jobs.statuses.pending.description'),
+              description: t('jobs.statuses.waiting.description'),
               icon: ClockIcon,
             },
             {

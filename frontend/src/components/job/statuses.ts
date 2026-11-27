@@ -15,10 +15,15 @@
  */
 import { t } from 'i18next'
 
-import { jobPhases } from '@/components/badge/job-phase-badge'
+import {
+  getJobFilterOptions,
+  getJobPhaseLabel,
+  jobPhases,
+} from '@/components/badge/job-phase-badge'
 import { jobTypes } from '@/components/badge/job-type-badge'
 import { DataTableToolbarConfig } from '@/components/query-table/toolbar'
 
+import { JobDisplayPhase, type JobDisplayPhaseValue, JobPhase } from '@/services/api/vcjob'
 import type { IFacetResponse } from '@/services/types'
 
 export const getHeader = (key: string): string => {
@@ -56,18 +61,24 @@ export const getHeader = (key: string): string => {
 
 export const jobToolbarConfig: DataTableToolbarConfig = {
   filterInput: {
-    placeholder: t('jobs.toolbar.searchPlaceholder'),
+    get placeholder() {
+      return t('jobs.toolbar.searchPlaceholder')
+    },
     key: 'name',
   },
   filterOptions: [
     {
       key: 'jobType',
-      title: t('jobs.filters.jobType'),
+      get title() {
+        return t('jobs.filters.jobType')
+      },
       option: jobTypes,
     },
     {
       key: 'status',
-      title: t('jobs.filters.status'),
+      get title() {
+        return t('jobs.filters.status')
+      },
       option: jobPhases,
     },
   ],
@@ -80,14 +91,15 @@ export function getRemoteJobToolbarConfig(
 ): DataTableToolbarConfig {
   const facetKeys: Record<string, string> = {
     jobType: 'job_type',
-    status: 'status',
+    status: 'phase',
   }
   return {
     globalSearch: { enabled: true, placeholder: t('jobs.toolbar.searchPlaceholder') },
     filterOptions: jobToolbarConfig.filterOptions.map((filter) => ({
       ...filter,
       remoteFacets: true,
-      option: filter.option
+      showZeroCountOptions: filter.key === 'status',
+      option: (filter.key === 'status' ? getJobFilterOptions() : filter.option)
         ?.filter(
           (option) =>
             filter.key !== 'jobType' ||
@@ -105,5 +117,28 @@ export function getRemoteJobToolbarConfig(
         }),
     })),
     getHeader,
+  }
+}
+
+export function getJobOverviewSummary(facets?: IFacetResponse) {
+  const phases = (facets?.facets.phase ?? [])
+    .filter(({ value }) => value !== JobPhase.Deleted && value !== JobPhase.Freed)
+    .map(({ value, count }) => ({
+      id: value,
+      label: getJobPhaseLabel(value === 'Init' ? JobPhase.Init : (value as JobDisplayPhaseValue))
+        .label,
+      value: count,
+    }))
+  const waitingPhases: ReadonlyArray<string> = [
+    JobPhase.Pending,
+    JobDisplayPhase.Inqueue,
+    JobDisplayPhase.Starting,
+  ]
+  return {
+    phases,
+    runningCount: phases.find(({ id }) => id === JobPhase.Running)?.value ?? 0,
+    waitingCount: phases
+      .filter(({ id }) => waitingPhases.includes(id))
+      .reduce((total, { value }) => total + value, 0),
   }
 }

@@ -21,11 +21,12 @@ import (
 )
 
 const (
-	// v7 adds container command execution.
-	// v8 consolidates optionally paginated database lists with legacy complete reads.
-	APIVersion = 8
-	// v8 requires the backend pagination contract and has no fallback to legacy list responses.
-	MinSupportedBackendAPIVersion    = 8
+	// v8 adds the atomic approval and lock operation for job orders.
+	// v9 consolidates optionally paginated database lists with legacy complete reads.
+	APIVersion = 9
+	// Job order approval requires the v8 approve-and-lock endpoint, and the
+	// unified list pagination contract requires v9.
+	MinSupportedBackendAPIVersion    = 9
 	APIVersionHeader                 = "X-Crater-API-Version"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"

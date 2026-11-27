@@ -23,6 +23,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/raids-lab/crater/cli/internal/api"
@@ -134,12 +135,13 @@ func TestAccountUsePersistsCredentialsForSubsequentRequests(t *testing.T) {
 		}
 	}
 	want.AuthInfos[0].Token = "scoped-access"
+	want.AuthInfos[0].RefreshToken = "private-refresh"
 	got, err := session.LoadState()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatal("switch must change only the original identity's access token")
+		t.Fatal("switch must replace both tokens for the original identity")
 	}
 	current, err := captureAccountOutput(t, func() error { return runAccountCurrent(accountCurrentCmd, nil) })
 	if err != nil || !strings.Contains(current, `"queue": "research"`) {
@@ -292,5 +294,92 @@ func TestAccountContextPreservesRoleAndAccessValues(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestAccountCurrentPersistsRenewalAndPreservesConcurrentStateChanges(t *testing.T) {
+	for _, change := range []string{"language", "logout", "identity switch", "project switch", "other renewal"} {
+		t.Run(change, func(t *testing.T) {
+			var requests atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				if r.URL.Path != api.AuthRefreshPath {
+					requests.Add(1)
+					if r.Header.Get("Authorization") == "Bearer original-access" {
+						w.WriteHeader(http.StatusUnauthorized)
+						io.WriteString(w, `{"code":40101,"msg":"access expired"}`)
+						return
+					}
+					if r.Header.Get("Authorization") != "Bearer renewed-access" {
+						t.Error("wrong credential after renewal")
+					}
+					io.WriteString(w, `{"data":{"context":{"queue":"research"}}}`)
+					return
+				}
+				var body map[string]string
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body["refreshToken"] != "original-refresh" {
+					t.Error("wrong refresh credential")
+				}
+				if err := session.UpdateState(func(st *session.State) error {
+					switch change {
+					case "language":
+						st.Language = "en"
+					case "logout":
+						st.ActiveContext = session.ActiveContext{}
+						st.AuthInfos = st.AuthInfos[1:]
+					case "identity switch":
+						st.ActiveContext = authIdentity(st.AuthInfos[1])
+					case "project switch", "other renewal":
+						st.AuthInfos[0].Token = "concurrent-access"
+						st.AuthInfos[0].RefreshToken = "concurrent-refresh"
+					}
+					return nil
+				}); err != nil {
+					t.Error(err)
+					w.WriteHeader(500)
+					return
+				}
+				io.WriteString(w, `{"data":{"accessToken":"renewed-access","refreshToken":"renewed-refresh"}}`)
+			}))
+			defer server.Close()
+			st := setupAccountSession(t, server.URL)
+			st.AuthInfos[0].RefreshToken = "original-refresh"
+			if err := session.SaveState(st); err != nil {
+				t.Fatal(err)
+			}
+			client, err := activeAPIClient()
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = client.CurrentAccount()
+			if change == "language" {
+				if err != nil || requests.Load() != 2 {
+					t.Fatalf("expected renewal and one replay: %v", err)
+				}
+			} else if !errors.Is(err, session.ErrSessionChanged) || requests.Load() != 1 {
+				t.Fatalf("stale session should not replay: %v", err)
+			}
+			got, err := session.LoadState()
+			if err != nil {
+				t.Fatal(err)
+			}
+			switch change {
+			case "language":
+				st.Language = "en"
+				st.AuthInfos[0].Token = "renewed-access"
+				st.AuthInfos[0].RefreshToken = "renewed-refresh"
+			case "logout":
+				st.ActiveContext = session.ActiveContext{}
+				st.AuthInfos = st.AuthInfos[1:]
+			case "identity switch":
+				st.ActiveContext = authIdentity(st.AuthInfos[1])
+			case "project switch", "other renewal":
+				st.AuthInfos[0].Token = "concurrent-access"
+				st.AuthInfos[0].RefreshToken = "concurrent-refresh"
+			}
+			if !reflect.DeepEqual(got, st) {
+				t.Fatal("renewal did not preserve the latest saved state")
+			}
+		})
 	}
 }

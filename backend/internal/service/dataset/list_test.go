@@ -107,6 +107,12 @@ func createTestUser(t *testing.T, db *gorm.DB, id uint, name string) {
 	}
 }
 
+func datasetScope(t *testing.T, ids ...uint) *gorm.DB {
+	t.Helper()
+	return query.Dataset.WithContext(t.Context()).UnderlyingDB().Model(&model.Dataset{}).
+		Where("id IN ?", ids)
+}
+
 func TestListPaginatesAndFiltersBeforePagination(t *testing.T) {
 	db := setupListTestDB(t)
 	createTestUser(t, db, 1, "alice")
@@ -121,7 +127,7 @@ func TestListPaginatesAndFiltersBeforePagination(t *testing.T) {
 	}
 
 	firstPage, total, err := List(t.Context(), &ListOptions{
-		AccessibleIDs: []uint{1, 2, 3},
+		Scope: datasetScope(t, 1, 2, 3),
 		Offset:        0,
 		Limit:         1,
 		Search:        "测试",
@@ -132,7 +138,7 @@ func TestListPaginatesAndFiltersBeforePagination(t *testing.T) {
 		t.Fatalf("list first page: %v", err)
 	}
 	secondPage, secondTotal, err := List(t.Context(), &ListOptions{
-		AccessibleIDs: []uint{1, 2, 3},
+		Scope: datasetScope(t, 1, 2, 3),
 		Offset:        1,
 		Limit:         1,
 		Search:        "测试",
@@ -166,7 +172,7 @@ func TestListStableSortAndOwnerFilter(t *testing.T) {
 	}
 
 	items, total, err := List(t.Context(), &ListOptions{
-		AccessibleIDs: []uint{1, 2, 3},
+		Scope: datasetScope(t, 1, 2, 3),
 		Offset:        0,
 		Limit:         10,
 		Owner:         "others",
@@ -182,7 +188,7 @@ func TestListStableSortAndOwnerFilter(t *testing.T) {
 	}
 
 	allItems, _, err := List(t.Context(), &ListOptions{
-		AccessibleIDs: []uint{1, 2},
+		Scope: datasetScope(t, 1, 2),
 		Offset:        0,
 		Limit:         1,
 		Type:          model.DataTypeShareFile,
@@ -221,7 +227,7 @@ func TestListReturnsEmptyPageWhenOffsetIsOutOfRange(t *testing.T) {
 	}
 
 	items, total, err := List(t.Context(), &ListOptions{
-		AccessibleIDs: []uint{1, 2},
+		Scope: datasetScope(t, 1, 2),
 		Offset:        10,
 		Limit:         10,
 		Type:          model.DataTypeShareFile,

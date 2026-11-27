@@ -16,59 +16,135 @@ import (
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/pagination"
 	"github.com/raids-lab/crater/internal/resputil"
+	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
 )
 
 // UserRemoveKanikoByID godoc
 //
 //	@Summary		删除或取消镜像制作任务（批量）
-//	@Description	根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+//	@Description	Cancel active builds or delete terminal builds. Omit action to choose by status.
 //	@Tags			ImagePack
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			idList	body	[]uint	true	"镜像构建任务ID列表"
+//	@Param			request	body	DeleteKanikoByIDListRequest	true	"Build IDs and optional action"
+//	@Failure		409	{object}	resputil.Response[any]
 //	@Router			/v1/images/remove [POST]
 func (mgr *ImagePackMgr) UserRemoveKanikoByID(c *gin.Context) {
-	var err error
-	var removeKanikoListRequest DeleteKanikoByIDListRequest
-	if err = c.ShouldBindJSON(&removeKanikoListRequest); err != nil {
-		msg := fmt.Sprintf("validate remove parameters failed, err %v", err)
-		resputil.BadRequestError(c, msg)
-		return
-	}
-	flag := mgr.removeKanikoByIDList(c, false, removeKanikoListRequest.IDList)
-	if flag {
-		resputil.Success(c, "")
-	} else {
-		resputil.Error(c, "failed to remove kaniko", resputil.NotSpecified)
-	}
+	mgr.handleImageBuildRemoval(c, false)
 }
 
 // AdminRemoveKanikoByIDList godoc
 //
 //	@Summary		管理员模式下删除或取消镜像制作任务（批量）
-//	@Description	管理员模式下根据任务状态智能处理：若任务状态为 Finished/Failed/Canceled 则执行删除操作；否则执行取消操作
+//	@Description	Cancel active builds or delete terminal builds as an administrator. Omit action to choose by status.
 //	@Tags			ImagePack
 //	@Accept			json
 //	@Produce		json
 //	@Security		Bearer
-//	@Param			idList	body	[]uint	true	"镜像构建任务ID列表"
+//	@Param			request	body	DeleteKanikoByIDListRequest	true	"Build IDs and optional action"
+//	@Failure		409	{object}	resputil.Response[any]
 //	@Router			/v1/admin/images/remove [POST]
 func (mgr *ImagePackMgr) AdminRemoveKanikoByIDList(c *gin.Context) {
-	var err error
-	var removeKanikoListRequest DeleteKanikoByIDListRequest
-	if err = c.ShouldBindJSON(&removeKanikoListRequest); err != nil {
-		msg := fmt.Sprintf("validate remove parameters failed, err %v", err)
-		resputil.BadRequestError(c, msg)
+	mgr.handleImageBuildRemoval(c, true)
+}
+
+type imageBuildRemovalAction string
+
+const (
+	cancelImageBuild imageBuildRemovalAction = "cancel"
+	deleteImageBuild imageBuildRemovalAction = "delete"
+)
+
+func (mgr *ImagePackMgr) handleImageBuildRemoval(c *gin.Context, isAdminMode bool) {
+	var req DeleteKanikoByIDListRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "Provide build IDs and an optional cancel or delete action."))
 		return
 	}
-	flag := mgr.removeKanikoByIDList(c, true, removeKanikoListRequest.IDList)
-	if flag {
+	if req.Action != "" {
+		if err := mgr.applyImageBuildRemoval(c, isAdminMode, req); err != nil {
+			resputil.HandleError(c, err)
+			return
+		}
 		resputil.Success(c, "")
-	} else {
-		resputil.Success(c, "remove kaniko encountered some errors")
+		return
 	}
+	if mgr.removeKanikoByIDList(c, isAdminMode, req.IDList) {
+		resputil.Success(c, "")
+	} else if isAdminMode {
+		resputil.Success(c, "remove kaniko encountered some errors")
+	} else {
+		resputil.HandleError(c, bizerr.Internal.ServiceError.New("Failed to remove image builds."))
+	}
+}
+
+func (mgr *ImagePackMgr) applyImageBuildRemoval(c *gin.Context, isAdminMode bool, req DeleteKanikoByIDListRequest) error {
+	if len(req.IDList) == 0 {
+		return bizerr.BadRequest.ParameterError.New("Provide at least one image build ID.")
+	}
+	userID := util.GetToken(c).UserID
+	builds := make([]*model.Kaniko, 0, len(req.IDList))
+	seen := make(map[uint]struct{}, len(req.IDList))
+	for _, id := range req.IDList {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		build, err := findKanikoForRemoval(c, isAdminMode, id, userID)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return bizerr.NotFound.DataBaseNotFound.New("Image build not found.")
+		}
+		if err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "Unable to read image build.")
+		}
+		if err := validateImageBuildRemoval(req.Action, build.Status); err != nil {
+			return err
+		}
+		builds = append(builds, build)
+	}
+	for _, build := range builds {
+		if req.Action == cancelImageBuild {
+			if err := mgr.imagePacker.DeleteJob(c, build.ImagePackName, UserNameSpace); err != nil {
+				return bizerr.Internal.K8sServiceError.Wrap(err, "Unable to cancel image build.")
+			}
+			continue
+		}
+		if ok, msg := mgr.deleteKaniko(c, build); !ok || msg != "" {
+			return bizerr.Internal.ServiceError.New("Unable to complete image build deletion.")
+		}
+	}
+	return nil
+}
+
+func validateImageBuildRemoval(action imageBuildRemovalAction, status model.BuildStatus) error {
+	switch action {
+	case cancelImageBuild:
+		if isTerminalImageBuild(status) {
+			return bizerr.Conflict.ResourceStatusError.New("The image build has already ended and cannot be canceled.")
+		}
+	case deleteImageBuild:
+		if !isTerminalImageBuild(status) {
+			return bizerr.Conflict.ResourceStatusError.New("Cancel the active image build before deleting it.")
+		}
+	default:
+		return bizerr.BadRequest.InvalidRequest.New("Image build action must be cancel or delete.")
+	}
+	return nil
+}
+
+func isTerminalImageBuild(status model.BuildStatus) bool {
+	return status == model.BuildJobFinished || status == model.BuildJobFailed || status == model.BuildJobCanceled
+}
+
+func findKanikoForRemoval(c *gin.Context, isAdminMode bool, kanikoID, userID uint) (*model.Kaniko, error) {
+	k := query.Kaniko
+	q := k.WithContext(c).Where(k.ID.Eq(kanikoID))
+	if !isAdminMode {
+		q = q.Where(k.UserID.Eq(userID))
+	}
+	return q.First()
 }
 
 func (mgr *ImagePackMgr) removeKanikoByIDList(c *gin.Context, isAdminMode bool, kanikoIDList []uint) (isSuccess bool) {
@@ -85,16 +161,7 @@ func (mgr *ImagePackMgr) removeKanikoByIDList(c *gin.Context, isAdminMode bool, 
 
 // removeKanikoByID 统一的删除/取消接口：根据任务状态自动判断执行删除还是取消
 func (mgr *ImagePackMgr) removeKanikoByID(c *gin.Context, isAdminMode bool, kanikoID, userID uint) (isSuccess bool, msg string) {
-	k := query.Kaniko
-
-	// 构造查询并进行权限过滤
-	kanikoQuery := k.WithContext(c)
-	if !isAdminMode {
-		kanikoQuery = kanikoQuery.Where(k.UserID.Eq(userID))
-	}
-
-	// 获取 Kaniko 记录
-	kaniko, err := kanikoQuery.Where(k.ID.Eq(kanikoID)).First()
+	kaniko, err := findKanikoForRemoval(c, isAdminMode, kanikoID, userID)
 	if err != nil || kaniko == nil {
 		msg := fmt.Sprintf("kaniko not exist or have no permission %+v", err)
 		klog.Error(msg)
@@ -102,9 +169,7 @@ func (mgr *ImagePackMgr) removeKanikoByID(c *gin.Context, isAdminMode bool, kani
 	}
 
 	// 根据状态判断执行删除还是取消
-	if kaniko.Status == model.BuildJobFinished ||
-		kaniko.Status == model.BuildJobFailed ||
-		kaniko.Status == model.BuildJobCanceled {
+	if isTerminalImageBuild(kaniko.Status) {
 		// 任务已结束，执行删除操作
 		return mgr.deleteKanikoByID(c, isAdminMode, kanikoID, userID)
 	}
@@ -119,160 +184,105 @@ func (mgr *ImagePackMgr) removeKanikoByID(c *gin.Context, isAdminMode bool, kani
 }
 
 func (mgr *ImagePackMgr) deleteKanikoByID(c *gin.Context, isAdminMode bool, kanikoID, userID uint) (isSuccess bool, errMsg string) {
-	var kaniko *model.Kaniko
-	var err error
-	var errorMsg string
-	flag := true
-	k := query.Kaniko
-	// 0. specify user & admin query
-	kanikoQuery := k.WithContext(c)
-	if !isAdminMode {
-		kanikoQuery = kanikoQuery.Where(k.UserID.Eq(userID))
-	}
-	// 1. check if kaniko exist and have permission
-	if kaniko, err = kanikoQuery.Where(k.ID.Eq(kanikoID)).First(); err != nil {
-		errorMsg = fmt.Sprintf("kaniko not exist or have no permission %+v", err)
+	kaniko, err := findKanikoForRemoval(c, isAdminMode, kanikoID, userID)
+	if err != nil {
+		errorMsg := fmt.Sprintf("kaniko not exist or have no permission %+v", err)
 		klog.Error(errorMsg)
 		return false, errorMsg
 	}
+	return mgr.deleteKaniko(c, kaniko)
+}
+
+func (mgr *ImagePackMgr) deleteKaniko(c *gin.Context, kaniko *model.Kaniko) (isSuccess bool, errMsg string) {
+	var errorMsg string
+	k := query.Kaniko
 	// 2. if kaniko is finished, delete image entity
 	if kaniko.Status == model.BuildJobFinished {
-		if _, err = query.Image.WithContext(c).Where(query.Image.ImagePackName.Eq(kaniko.ImagePackName)).Delete(); err != nil {
+		if _, err := query.Image.WithContext(c).Where(query.Image.ImagePackName.Eq(kaniko.ImagePackName)).Delete(); err != nil {
 			errorMsg = fmt.Sprintf("delete image entity failed! err:%v", err)
 			klog.Error(errorMsg)
 		}
 	}
 	// 3. delete kaniko entity from database
-	if _, err = k.WithContext(c).Where(k.ID.Eq(kanikoID)).Delete(); err != nil {
+	if _, err := k.WithContext(c).Where(k.ID.Eq(kaniko.ID)).Delete(); err != nil {
 		errorMsg = fmt.Sprintf("delete kaniko entity failed! err:%v", err)
 		klog.Error(errorMsg)
 		return false, errorMsg
 	}
 	// 4. if buildkit finished, then delete image from harbor
 	if kaniko.Status == model.BuildJobFinished {
-		if err = mgr.imageRegistry.DeleteImageFromProject(c, kaniko.ImageLink); err != nil {
+		if err := mgr.imageRegistry.DeleteImageFromProject(c, kaniko.ImageLink); err != nil {
 			errorMsg = fmt.Sprintf("delete imagepack artifact failed! err:%+v", err)
 			klog.Error(errorMsg)
 		}
 	}
-	return flag, errorMsg
+	return true, errorMsg
 }
 
-// GetKanikoByImagePackName godoc
+// UserGetKanikoByImagePackName godoc
 //
-//	@Summary		获取imagepack的详细信息
-//	@Description	按名称获取镜像构建详情；也兼容通过 id 查询，列表页优先使用 id
-//	@Tags			ImagePack
-//	@Accept			json
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			name	query	string	false	"兼容：获取ImagePack的name"
-//	@Param			id	query	uint	false	"镜像构建记录 ID"
-//	@Failure		400	{object}	resputil.Response[any]	"Legacy parameter or lookup failure"
-//	@Router			/v1/images/getbyname [GET]
-func (mgr *ImagePackMgr) GetKanikoByImagePackName(c *gin.Context) {
+// @Summary Get a visible image build
+// @Description Owners receive full build details. Public and shared image readers receive configuration without pod or node information.
+// @Tags ImagePack
+// @Produce json
+// @Security Bearer
+// @Param name query string true "Image build name"
+// @Success 200 {object} resputil.Response[GetKanikoResponse]
+// @Failure 400,403,404,500 {object} resputil.Response[any]
+// @Router /v1/images/getbyname [get]
+func (mgr *ImagePackMgr) UserGetKanikoByImagePackName(c *gin.Context) {
+	mgr.getKanikoByImagePackName(c, false)
+}
+
+// AdminGetKanikoByImagePackName godoc
+//
+// @Summary Get any image build as an administrator
+// @Description Returns full build configuration and pod information through the admin route.
+// @Tags ImagePack
+// @Produce json
+// @Security Bearer
+// @Param name query string true "Image build name"
+// @Success 200 {object} resputil.Response[GetKanikoResponse]
+// @Failure 400,403,404,500 {object} resputil.Response[any]
+// @Router /v1/admin/images/getbyname [get]
+func (mgr *ImagePackMgr) AdminGetKanikoByImagePackName(c *gin.Context) {
+	mgr.getKanikoByImagePackName(c, true)
+}
+
+func (mgr *ImagePackMgr) getKanikoByImagePackName(c *gin.Context, admin bool) {
 	var req GetKanikoRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		msg := fmt.Sprintf("validate image get parameters failed, err %v", err)
-		resputil.BadRequestError(c, msg)
+		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "Image build name is required"))
 		return
 	}
-	if req.ImagePackName == "" && req.ID == 0 {
-		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.New("either name or id is required"))
-		return
-	}
-	kaniko, err := mgr.findCurrentUserKaniko(c, req.ImagePackName, req.ID)
+	token := util.GetToken(c)
+	kaniko, canManage, err := service.NewImageBuildDetailService(query.Q).Get(
+		c, req.ImagePackName, token.UserID, token.AccountID, admin,
+	)
 	if err != nil {
-		// Keep the CLI's legacy 400/40001 classification without exposing database causes.
-		klog.Errorf("fetch kaniko by name failed: %v", err)
-		msg := "fetch kaniko by name failed"
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			msg += ", err record not found"
-		}
-		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, msg))
+		resputil.HandleError(c, err)
 		return
 	}
-
-	resputil.Success(c, mgr.buildKanikoDetailResponse(c, kaniko))
-}
-
-// GetKanikoByID returns the current user's image build detail by its stable database ID.
-//
-//	@Summary		获取当前用户的镜像构建详情
-//	@Description	通过镜像构建记录 ID 获取详情；按名称查询保留在 getbyname 作为兼容接口
-//	@Tags			ImagePack
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			id	query	uint	true	"镜像构建记录 ID"
-//	@Success		200	{object}	resputil.Response[GetKanikoResponse]	"Image build details"
-//	@Failure		400	{object}	resputil.Response[any]	"Invalid request parameter"
-//	@Failure		404	{object}	resputil.Response[any]	"Image build not found or inaccessible"
-//	@Router			/v1/images/getbyid [GET]
-func (mgr *ImagePackMgr) GetKanikoByID(c *gin.Context) {
-	var req GetKanikoPodRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid image build id"))
-		return
+	response := GetKanikoResponse{
+		ID:               kaniko.ID,
+		ImageLink:        kaniko.ImageLink,
+		Status:           kaniko.Status,
+		BuildSource:      kaniko.BuildSource,
+		CreatedAt:        kaniko.CreatedAt,
+		ImagePackName:    kaniko.ImagePackName,
+		CanManage:        canManage,
+		CanViewBuildLogs: canManage,
 	}
-	kaniko, err := mgr.findCurrentUserKaniko(c, "", req.ID)
-	if err != nil {
-		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "image build not found"))
-		return
-	}
-	resputil.Success(c, mgr.buildKanikoDetailResponse(c, kaniko))
-}
-
-// AdminGetKanikoByID returns an image build detail by its stable database ID.
-//
-//	@Summary		管理员获取镜像构建详情
-//	@Tags			ImagePack
-//	@Produce		json
-//	@Security		Bearer
-//	@Param			id	query	uint	true	"镜像构建记录 ID"
-//	@Success		200	{object}	resputil.Response[GetKanikoResponse]	"Image build details"
-//	@Failure		400	{object}	resputil.Response[any]	"Invalid request parameter"
-//	@Failure		404	{object}	resputil.Response[any]	"Image build not found"
-//	@Router			/v1/admin/images/getbyid [GET]
-func (mgr *ImagePackMgr) AdminGetKanikoByID(c *gin.Context) {
-	var req GetKanikoPodRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		resputil.HandleError(c, bizerr.BadRequest.ParameterError.Wrap(err, "invalid image build id"))
-		return
-	}
-	kaniko, err := query.Kaniko.WithContext(c).Where(query.Kaniko.ID.Eq(req.ID)).First()
-	if err != nil {
-		resputil.HandleError(c, bizerr.NotFound.DataBaseNotFound.Wrap(err, "image build not found"))
-		return
-	}
-	resputil.Success(c, mgr.buildKanikoDetailResponse(c, kaniko))
-}
-
-func (mgr *ImagePackMgr) buildKanikoDetailResponse(c *gin.Context, kaniko *model.Kaniko) GetKanikoResponse {
-	// The database record has already been loaded by the detail handler. Avoid
-	// querying it a second time: a concurrent cleanup could otherwise produce a
-	// misleading "fetch kaniko by name" error while the detail itself is valid.
-	podName, podNameSpace, nodeName := mgr.getPodNameByImagePackName(c, kaniko.ImagePackName)
-	description := ""
 	if kaniko.Description != nil {
-		description = *kaniko.Description
+		response.Description = *kaniko.Description
 	}
-	dockerfile := ""
 	if kaniko.Dockerfile != nil {
-		dockerfile = *kaniko.Dockerfile
+		response.Dockerfile = *kaniko.Dockerfile
 	}
-	return GetKanikoResponse{
-		ID:            kaniko.ID,
-		ImageLink:     kaniko.ImageLink,
-		Status:        kaniko.Status,
-		BuildSource:   kaniko.BuildSource,
-		CreatedAt:     kaniko.CreatedAt,
-		ImagePackName: kaniko.ImagePackName,
-		Description:   description,
-		Dockerfile:    dockerfile,
-		PodName:       podName,
-		PodNameSpace:  podNameSpace,
-		NodeName:      nodeName,
+	if canManage {
+		response.PodName, response.PodNameSpace, response.NodeName = mgr.getBuildPodName(c, kaniko.ImagePackName)
 	}
+	resputil.Success(c, response)
 }
 
 // GetKanikoTemplateByImagePackName godoc
@@ -360,13 +370,10 @@ func (mgr *ImagePackMgr) getPodName(c *gin.Context, kanikoID uint) (name, ns, no
 		resputil.BadRequestError(c, msg)
 		return "", UserNameSpace, ""
 	}
-	return mgr.getPodNameByImagePackName(c, kaniko.ImagePackName)
+	return mgr.getBuildPodName(c, kaniko.ImagePackName)
 }
 
-func (mgr *ImagePackMgr) getPodNameByImagePackName(c *gin.Context, imagePackName string) (name, ns, nodeName string) {
-	if imagePackName == "" {
-		return "", UserNameSpace, ""
-	}
+func (mgr *ImagePackMgr) getBuildPodName(c *gin.Context, imagePackName string) (name, ns, nodeName string) {
 	var pod *corev1.Pod
 	pod, err := mgr.imagepackClient.GetImagePackPod(c, imagePackName, UserNameSpace)
 	if err != nil || pod == nil {

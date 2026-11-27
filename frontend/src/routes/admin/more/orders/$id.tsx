@@ -27,7 +27,8 @@ import {
   Type,
   User,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -54,7 +55,7 @@ import {
   adminGetApprovalOrder,
   reviewApprovalOrder,
 } from '@/services/api/approvalorder'
-import { listApprovalOrdersbyName } from '@/services/api/approvalorder'
+import { listJobApprovalOrders } from '@/services/api/approvalorder'
 import { JobStatus, apiJobGetDetail, apiJobGetPods, getJobStateType } from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 import { invalidateApprovalOrderLists } from '@/services/query/pagination-cache'
@@ -77,6 +78,7 @@ export const Route = createFileRoute('/admin/more/orders/$id')({
 })
 
 function RouteComponent() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const grafanaJob = useAtomValue(configGrafanaJobAtom)
   const { id } = Route.useParams()
@@ -124,7 +126,7 @@ function RouteComponent() {
 
   const { data: ordersData } = useQuery({
     queryKey: ['approvalorders', 'byName', order?.name],
-    queryFn: () => listApprovalOrdersbyName(order!.name),
+    queryFn: () => listJobApprovalOrders(order!.name),
     select: (res) => res.data,
     enabled: !!order && order.type === 'job',
   })
@@ -154,6 +156,7 @@ function RouteComponent() {
     isDelayDialogOpen,
     isFetchingJob,
     handleApproveWithDelay,
+    submitApprovalLock,
     setIsDelayDialogOpen,
     clearSelection,
   } = useApprovalOrderLock()
@@ -161,12 +164,12 @@ function RouteComponent() {
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
   const [rejectionReason, setRejectionReason] = useState('')
 
-  const selectedOrderRef = useRef<ApprovalOrder | null>(null)
-  useEffect(() => {
-    selectedOrderRef.current = selectedOrder ?? null
-  }, [selectedOrder])
-
-  const invalidateOrderLists = () => void invalidateApprovalOrderLists(queryClient)
+  const invalidateOrderLists = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin', 'approvalorders'] })
+    queryClient.invalidateQueries({ queryKey: ['approvalorders'] })
+    queryClient.invalidateQueries({ queryKey: ['portal', 'approvalorders'] })
+    void invalidateApprovalOrderLists(queryClient)
+  }
 
   const approveMutation = useMutation({
     mutationFn: async (target: ApprovalOrder) => {
@@ -262,6 +265,22 @@ function RouteComponent() {
 
   if (!order) {
     return <div className="text-muted-foreground p-6 text-center">工单不存在或已被删除</div>
+  }
+
+  const approvedLock = order.content?.approvedLock
+  let approvedLockDuration: string | undefined
+  if (approvedLock?.isPermanent) {
+    approvedLockDuration = t('ApprovalOrderTable.detail.approvedLockPermanent')
+  } else if (approvedLock?.durationMinutes != null) {
+    const hours = Math.floor(approvedLock.durationMinutes / 60)
+    const minutes = approvedLock.durationMinutes % 60
+    if (hours === 0) {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationMinutes', { minutes })
+    } else if (minutes === 0) {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationHours', { hours })
+    } else {
+      approvedLockDuration = t('ApprovalOrderTable.detail.durationHoursMinutes', { hours, minutes })
+    }
   }
 
   return (
@@ -375,8 +394,18 @@ function RouteComponent() {
                       <div className="flex justify-between border-t pt-2">
                         <span className="text-muted-foreground text-sm">延长时间</span>
                         <span className="font-medium">
-                          {order.content.approvalorderExtensionHours} 小时
+                          {t('ApprovalOrderTable.detail.durationHours', {
+                            hours: order.content.approvalorderExtensionHours,
+                          })}
                         </span>
+                      </div>
+                    )}
+                    {approvedLockDuration && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground text-sm">
+                          {t('ApprovalOrderTable.detail.approvedLockDuration')}
+                        </span>
+                        <span>{approvedLockDuration}</span>
                       </div>
                     )}
                   </CardContent>
@@ -446,25 +475,10 @@ function RouteComponent() {
           open={isDelayDialogOpen}
           setOpen={(open) => {
             setIsDelayDialogOpen(open)
-            if (!open && !approveMutation.isPending) {
-              clearSelection()
-            }
+            if (!open) clearSelection()
           }}
-          onSuccess={async () => {
-            const target = selectedOrderRef.current
-            if (!target) {
-              toast.error('未找到工单，无法批准')
-              return
-            }
-            try {
-              await approveMutation.mutateAsync(target)
-            } catch {
-              // 错误提示已在 mutation onError 中处理
-            } finally {
-              clearSelection()
-              await refetch()
-            }
-          }}
+          submitLock={submitApprovalLock}
+          onSuccess={() => void refetch()}
           setExtend={selectedJob.locked}
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}

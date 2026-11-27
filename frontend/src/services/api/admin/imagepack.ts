@@ -21,7 +21,13 @@ import {
 import { apiV1Get, apiV1Post } from '@/services/client'
 import { IPage, IResponse } from '@/services/types'
 
-import { ImageInfoResponse, KanikoInfoResponse, UpdateDescription } from '../imagepack'
+import {
+  ImageBuildRemovalAction,
+  ImageInfoResponse,
+  KanikoDetailResponse,
+  KanikoInfoResponse,
+  UpdateDescription,
+} from '../imagepack'
 
 export const apiAdminImagePublicStatusChange = async (id: number) => {
   const response = await apiV1Post<IResponse<string>>('admin/images/change', id)
@@ -34,20 +40,16 @@ export const apiAdminListImagePage = (params: RemoteTableParams, signal?: AbortS
     signal,
   })
 
-export const apiAdminDeleteKanikoList = (idList: number[]) =>
-  apiV1Post<IResponse<string>>('admin/images/deletekaniko', {
+export const apiAdminDeleteKanikoList = (idList: number[], action: ImageBuildRemovalAction) =>
+  apiV1Post<IResponse<string>>('admin/images/remove', {
     idList,
+    action,
   })
 
 export const apiAdminListKanikoPage = (params: RemoteTableParams, signal?: AbortSignal) =>
   apiV1Get<IResponse<IPage<KanikoInfoResponse>>>('admin/images/kaniko', {
     searchParams: buildRemoteSearchParams(params),
     signal,
-  })
-
-export const apiAdminGetKanikoByID = (id: number) =>
-  apiV1Get<IResponse<KanikoInfoResponse>>('admin/images/getbyid', {
-    searchParams: { id: String(id) },
   })
 
 export const apiAdminDeleteImageList = (idList: number[]) =>
@@ -60,3 +62,8 @@ export const apiAdminChangeImagePublicStatus = (id: number) =>
 
 export const apiAdminChangeImageDescription = (data: UpdateDescription) =>
   apiV1Post<IResponse<string>>('admin/images/description', data)
+
+export const apiAdminGetKaniko = (name: string) =>
+  apiV1Get<IResponse<KanikoDetailResponse>>(
+    `admin/images/getbyname?name=${encodeURIComponent(name)}`
+  )

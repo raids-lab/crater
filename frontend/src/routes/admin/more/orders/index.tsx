@@ -94,7 +94,7 @@ function RouteComponent() {
     isDelayDialogOpen,
     isFetchingJob,
     handleApproveWithDelay,
-    handleDelaySuccess,
+    submitApprovalLock,
     setIsDelayDialogOpen,
   } = useApprovalOrderLock()
 
@@ -292,7 +292,7 @@ function RouteComponent() {
           jobs={[selectedJob]}
           open={isDelayDialogOpen}
           setOpen={setIsDelayDialogOpen}
-          onSuccess={handleDelaySuccess}
+          submitLock={submitApprovalLock}
           setExtend={selectedJob.locked}
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}

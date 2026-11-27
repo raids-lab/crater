@@ -1,27 +1,32 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import RegistryDetail from '@/components/image/registry/registry-detail'
-import { detailValidateSearch } from '@/components/layout/detail-page'
-import NotFound from '@/components/placeholder/not-found'
+import RegistryDetailError from '@/components/image/registry/registry-detail-error'
+import { detailLinkOptions, detailValidateSearch } from '@/components/layout/detail-page'
+
+import { queryBuildDetail } from '@/services/query/image'
 
 export const Route = createFileRoute('/admin/env/registry/$name')({
   validateSearch: detailValidateSearch,
   component: RouteComponent,
-  errorComponent: () => <NotFound />,
-  loader: ({ params }) => ({ crumb: params.name }),
+  errorComponent: RegistryDetailError,
+  loader: async ({ params, context: { queryClient } }) => {
+    const { data } = await queryClient.ensureQueryData(queryBuildDetail(params.name, true))
+    return {
+      crumb: data?.description || params.name,
+    }
+  },
 })
 
 function RouteComponent() {
   const name = Route.useParams().name
-  const { tab, id } = Route.useSearch()
+  const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
     <RegistryDetail
       name={name}
-      id={id}
-      isAdmin
       currentTab={tab}
-      setCurrentTab={(tab) => navigate({ search: { tab, id } })}
+      setCurrentTab={(tab) => navigate(detailLinkOptions(tab))}
     />
   )
 }

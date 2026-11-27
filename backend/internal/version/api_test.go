@@ -17,27 +17,34 @@ package version
 import "testing"
 
 func TestJobExecContractVersion(t *testing.T) {
-	if APIVersion < 7 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("job exec contract = %d, minimum CLI = %d, want >=7/3", APIVersion, MinSupportedCLIAPIVersion)
+	if APIVersion < 7 || MinSupportedCLIAPIVersion < 3 {
+		t.Fatalf("job exec contract = %d, minimum CLI = %d, want >=7/>=3", APIVersion, MinSupportedCLIAPIVersion)
 	}
 }
 
 func TestUserContainerPermissionContractVersion(t *testing.T) {
-	if APIVersion < 6 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("user container permission contract = %d, minimum CLI = %d, want >=6/3",
+	if APIVersion < 6 || MinSupportedCLIAPIVersion < 3 {
+		t.Fatalf("user container permission contract = %d, minimum CLI = %d, want >=6/>=3",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}
 }
 
 func TestTensorboardLogDirContractVersion(t *testing.T) {
-	if APIVersion < 5 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("TensorBoard log directory contract = %d, minimum CLI = %d, want >=5/3",
+	if APIVersion < 5 || MinSupportedCLIAPIVersion < 3 {
+		t.Fatalf("TensorBoard log directory contract = %d, minimum CLI = %d, want >=5/>=3",
+			APIVersion, MinSupportedCLIAPIVersion)
+	}
+}
+
+func TestAtomicJobApprovalContractVersion(t *testing.T) {
+	if APIVersion < 8 || MinSupportedCLIAPIVersion < 8 {
+		t.Fatalf("atomic job approval contract = %d, minimum CLI = %d, want >=8/>=8",
 			APIVersion, MinSupportedCLIAPIVersion)
 	}
 }
 
 func TestUnifiedListContractVersion(t *testing.T) {
-	if APIVersion != 8 || MinSupportedCLIAPIVersion != 3 {
-		t.Fatalf("paginated list contract = %d, minimum CLI = %d, want 8/3", APIVersion, MinSupportedCLIAPIVersion)
+	if APIVersion != 9 || MinSupportedCLIAPIVersion != 8 {
+		t.Fatalf("paginated list contract = %d, minimum CLI = %d, want 9/8", APIVersion, MinSupportedCLIAPIVersion)
 	}
 }

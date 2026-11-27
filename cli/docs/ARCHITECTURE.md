@@ -69,7 +69,7 @@ CLI 与 Crater 平台之间的请求、响应解析与传输层异常，集中�
 - `compatibility.go`：调用公开的 `/api/cli/compatibility` 并解包版本范围与可选后端构建信息；`internal/version` 保存 CLI 当前 API 版本、最低后端 API 版本与产品版本，统一客户端据此写入 `User-Agent` 和 `X-Crater-API-Version`。兼容性判断只读取 API 版本字段；后端产品版本、短提交 SHA、构建类型和构建时间仅用于诊断展示。
 - 按域文件（如 `auth.go`）：该域请求/响应 DTO、对外小接口（如 `AuthClient`）、`NewXxxClient` 及 `(*Client)` 上的 HTTP 方法；测试可注入假实现而不必连网。
 
-账户上下文命令复用 `internal/api/auth.go` 的认证 DTO：`CurrentAccount` 从 `/api/auth/check` 获取服务端确认的当前账户，`SwitchAccount` 调用 `/api/v1/auth/switch` 获取目标账户的凭据。命令层通过 `activeAPIClientWithContext` 在请求前记录登录身份，校验切换响应后调用 `session.ReplaceToken` 更新该身份的 access token；即使请求期间激活身份发生变化，也不会把新 token 写入另一个身份。当前账户始终由服务端查询，不另建本地账户缓存，切换结果的用户输出只包含身份标识和账户上下文。
+账户上下文命令复用 `internal/api/auth.go` 的认证 DTO：`CurrentAccount` 从 `/api/auth/check` 获取服务端确认的当前账户，`SwitchAccount` 调用 `/api/v1/auth/switch` 获取目标账户的凭据。命令层通过 `activeAPIClientWithContext` 在请求前记录登录身份，校验切换响应后通过会话客户端成对更新该身份的访问令牌和刷新令牌；即使请求期间激活身份发生变化，也不会把新 token 写入另一个身份。当前账户始终由服务端查询，不另建本地账户缓存，切换结果的用户输出只包含身份标识和账户上下文。
 
 `cmd` 将 `RequestError` / `NetworkError` 等映射为 `*clierror.Error`（见 `cmd/errors.go` 的 `cliErrFromAPI` 与 `apiCodeForHTTP`）；`internal/api` 不打印、不决定 `--json`。
 
@@ -198,6 +198,8 @@ CLI 的多语言由 `internal/i18n` 提供，命令层只负责“选择语言�
 
 ## 本地数据与配置
 
-`internal/state` 管理 `state.json`（身份摘要与 access token 明文同文件）；`internal/session` 是命令层读写本地状态与 token 的入口，输出前必须去掉 `token`；`internal/i18n` 提供多语言文案。命令层不应直接拼配置路径或把磁盘上的 `AuthInfo` 原样打到 stdout。
+`internal/state` 管理 `state.json`（身份摘要与 access、refresh token 明文同文件）；`internal/session` 是命令层读写本地状态与 token 的入口，输出前必须去掉 `token` 和 `refresh_token`；`internal/i18n` 提供多语言文案。命令层不应直接拼配置路径或把磁盘上的 `AuthInfo` 原样打到 stdout。
 
 状态保存由 `internal/state.Manager.Save` 统一负责：在目标文件同目录创建权限为 `0600` 的临时文件，完成写入、同步与关闭后通过重命名替换 `state.json`。发布前失败不会截断原文件，临时文件在失败后清理；成功保存后的文件权限为 `0600`。
+
+会话状态修改在跨进程文件锁内重新读取状态，然后用同一套原子保存流程写回。续期与项目切换在写入前比较发起请求时的身份与令牌对，避免覆盖较新的凭据。统一客户端处理 HTTP 过期响应，exec 握手复用相同的续期逻辑。storage 文件请求在入口读取 access token 的过期时间，仅在令牌已过期且有刷新令牌时续期，然后发送请求。storage 仍负责验签和鉴权。

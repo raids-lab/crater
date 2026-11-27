@@ -56,9 +56,12 @@ func (c *Client) UploadFile(
 	overwrite bool,
 ) (FileUploadResult, error) {
 	requestPath := FileUploadPath + "/" + escapeRemotePath(remotePath)
+	request, err := c.storageRequest(ctx)
+	if err != nil {
+		return FileUploadResult{}, err
+	}
 	tracked := &uploadSourceReader{source: source}
-	request := c.httpClient.R().
-		SetContext(ctx).
+	request.
 		SetContentType("application/octet-stream").
 		SetQueryParam("overwrite", strconv.FormatBool(overwrite)).
 		SetBody(tracked).

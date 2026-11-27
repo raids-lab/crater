@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
+	"gorm.io/gen/field"
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
@@ -169,38 +171,6 @@ func bindDatasetListPageQuery(c *gin.Context) (datasetListPageQuery, error) {
 	return request, nil
 }
 
-func accessibleDatasetIDs(c *gin.Context, token util.JWTMessage) ([]uint, error) {
-	ud := query.UserDataset
-	userDatasets, err := ud.WithContext(c).Where(ud.UserID.Eq(token.UserID)).Find()
-	if err != nil {
-		klog.Infof("Can't get user datasets, err: %v", err)
-		return nil, bizerr.Internal.DatabaseError.Wrap(err, "get user datasets failed")
-	}
-	datasetIDs := make(map[uint]struct{}, len(userDatasets))
-	for _, association := range userDatasets {
-		datasetIDs[association.DatasetID] = struct{}{}
-	}
-
-	accountIDs := []uint{model.DefaultAccountID}
-	if token.AccountID != model.DefaultAccountID {
-		accountIDs = append(accountIDs, token.AccountID)
-	}
-	qd := query.AccountDataset
-	accountDatasets, err := qd.WithContext(c).Where(qd.AccountID.In(accountIDs...)).Find()
-	if err != nil {
-		return nil, bizerr.Internal.DatabaseError.Wrap(err, "get account datasets failed")
-	}
-	for _, association := range accountDatasets {
-		datasetIDs[association.DatasetID] = struct{}{}
-	}
-
-	ids := make([]uint, 0, len(datasetIDs))
-	for id := range datasetIDs {
-		ids = append(ids, id)
-	}
-	return ids, nil
-}
-
 // GetDatasets serves management tables and complete-list consumers through one paginated endpoint.
 //
 //	@Summary	获取可访问数据资源分页
@@ -227,21 +197,17 @@ func (mgr *DatasetMgr) GetDatasets(c *gin.Context) {
 	}
 
 	token := util.GetToken(c)
-	ids, err := accessibleDatasetIDs(c, token)
-	if err != nil {
-		resputil.HandleError(c, err)
-		return
-	}
+	scope := sharedDatasets(c, token).UnderlyingDB().Model(&model.Dataset{})
 	offset, limit := pagination.Bounds(c.Request.URL.Query(), request.Page, request.PageSize)
 	datasets, total, err := datasetservice.List(c, &datasetservice.ListOptions{
-		AccessibleIDs: ids,
-		Offset:        offset,
-		Limit:         limit,
-		Search:        request.Search,
-		Owner:         request.Owner,
-		Sort:          request.Sort,
-		Type:          request.Type,
-		UserID:        token.UserID,
+		Scope:  scope,
+		Offset: offset,
+		Limit:  limit,
+		Search: request.Search,
+		Owner:  request.Owner,
+		Sort:   request.Sort,
+		Type:   request.Type,
+		UserID: token.UserID,
 	})
 	if err != nil {
 		resputil.HandleError(c, bizerr.Internal.DatabaseError.Wrap(err, "list datasets failed"))
@@ -1126,6 +1092,17 @@ func (mgr *DatasetMgr) ListQueueOfDataset(c *gin.Context) {
 		return
 	}
 	resputil.Success(c, resp)
+}
+
+func sharedDatasets(ctx context.Context, token util.JWTMessage) query.IDatasetDo {
+	d := query.Dataset
+	ud := query.UserDataset
+	ad := query.AccountDataset
+	userGrants := ud.WithContext(ctx).Select(ud.DatasetID).Where(ud.UserID.Eq(token.UserID))
+	accountGrants := ad.WithContext(ctx).Select(ad.DatasetID).
+		Where(ad.AccountID.In(model.DefaultAccountID, token.AccountID))
+	datasetID := d.WithContext(ctx).Columns(d.ID)
+	return d.WithContext(ctx).Where(field.Or(datasetID.In(userGrants), datasetID.In(accountGrants)))
 }
 
 // deduplicateDownloadedDatasets keeps one canonical row for a downloaded

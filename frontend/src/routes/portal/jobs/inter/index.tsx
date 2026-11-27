@@ -61,7 +61,7 @@ import {
 } from '@/services/query/account-list-scope'
 
 import { useAccountListScope } from '@/hooks/use-account-list-scope'
-import useRemoteTableState from '@/hooks/use-remote-table-state'
+import useJobTableState from '@/hooks/use-job-table-state'
 
 import { isBillingVisibleForUser } from '@/utils/billing-visibility'
 import { logger } from '@/utils/loglevel'
@@ -100,7 +100,7 @@ function InteractiveJobs({
     queryFn: () => apiGetBillingStatus().then((res) => res.data),
   })
   const billingVisible = isBillingVisibleForUser(billingStatus)
-  const tableState = useRemoteTableState(`portal_job_interactive-${scope}`, {
+  const tableState = useJobTableState(`portal_job_interactive-${scope}`, {
     sorting: [{ id: 'createdAt', desc: true }],
   })
 
@@ -126,10 +126,7 @@ function InteractiveJobs({
       async (signal) => (await apiJobInteractiveFacets(tableState.params, signal)).data
     ),
   })
-  const toolbarConfig = useMemo(
-    () => getRemoteJobToolbarConfig(facetsQuery.data, interactiveJobTypes),
-    [facetsQuery.data]
-  )
+  const toolbarConfig = getRemoteJobToolbarConfig(facetsQuery.data, interactiveJobTypes)
 
   const refetchTaskList = async () => {
     try {

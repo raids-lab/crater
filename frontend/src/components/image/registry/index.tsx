@@ -69,6 +69,7 @@ import {
 } from '@/components/ui-custom/alert-dialog'
 
 import {
+  ImageBuildRemovalAction,
   ImageLinkPair,
   ImagePackSource,
   ImagePackStatus,
@@ -76,6 +77,8 @@ import {
   getHeader,
   imagepackStatuses,
 } from '@/services/api/imagepack'
+import { getApiErrorData } from '@/services/client'
+import { ERROR_RESOURCE_STATUS_ERROR } from '@/services/error_code'
 import { invalidateImageBuildLists } from '@/services/query/pagination-cache'
 import { IPage, IResponse } from '@/services/types'
 
@@ -85,6 +88,7 @@ import useRemoteTableState from '@/hooks/use-remote-table-state'
 import { formatBytes } from '@/utils/formatter'
 import { logger } from '@/utils/loglevel'
 import { atomUserInfo } from '@/utils/store'
+import { showErrorToast } from '@/utils/toast'
 
 import { ValidDialog } from '../images/valid-dialog'
 import { CudaBaseImageSheet } from './cuda-base-image-sheet'
@@ -115,7 +119,10 @@ interface KanikoListTableProps {
     params: RemoteTableParams,
     signal?: AbortSignal
   ) => Promise<IResponse<IPage<KanikoInfoResponse>>>
-  apiRemoveKanikoList: (idList: number[]) => Promise<IResponse<string>>
+  apiRemoveKanikoList: (
+    idList: number[],
+    action: ImageBuildRemovalAction
+  ) => Promise<IResponse<string>>
   isAdminMode: boolean
 }
 
@@ -179,8 +186,8 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
 
   // 统一的移除函数(删除和取消都使用这个)
   const { mutate: removeKaniko, isPending } = useMutation({
-    mutationFn: (params: { idList: number[]; isCancel?: boolean }) =>
-      apiRemoveKanikoList(params.idList),
+    mutationFn: (params: { idList: number[]; isCancel: boolean }) =>
+      apiRemoveKanikoList(params.idList, params.isCancel ? 'cancel' : 'delete'),
     onSuccess: async (_, variables) => {
       // 只在取消操作时等待1.5秒让后端有足够时间更新数据
       if (variables.isCancel) {
@@ -194,13 +201,10 @@ export const KanikoListTable: FC<KanikoListTableProps> = ({
         toast.success('镜像已删除')
       }
     },
-    onError: (err, variables) => {
-      if (variables.isCancel) {
-        logger.error('取消镜像构建失败', err)
-        toast.error('取消失败,请稍后重试')
-      } else {
-        logger.error('删除镜像失败', err)
-        toast.error('删除失败,请稍后重试')
+    onError: async (error) => {
+      showErrorToast(error)
+      if (getApiErrorData(error)?.code === ERROR_RESOURCE_STATUS_ERROR) {
+        await refetchImagePackList()
       }
     },
   })

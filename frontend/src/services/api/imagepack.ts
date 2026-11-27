@@ -44,6 +44,24 @@ export type KanikoInfoResponse = {
   archs: string[]
 }
 
+export type KanikoDetailResponse = Pick<
+  KanikoInfoResponse,
+  | 'ID'
+  | 'imageLink'
+  | 'status'
+  | 'buildSource'
+  | 'createdAt'
+  | 'imagepackName'
+  | 'description'
+  | 'dockerfile'
+  | 'podName'
+  | 'podNameSpace'
+  | 'nodeName'
+> & {
+  canManage?: boolean
+  canViewBuildLogs?: boolean
+}
+
 export type ListImageResponse = {
   imageList: ImageInfoResponse[]
 }
@@ -420,19 +438,17 @@ export const apiUserCreateByEnvd = async (envdInfo: EnvdCreate) => {
   return response.data
 }
 
-export const apiUserRemoveKanikoList = (idList: number[]) =>
+export type ImageBuildRemovalAction = 'cancel' | 'delete'
+
+export const apiUserRemoveKanikoList = (idList: number[], action: ImageBuildRemovalAction) =>
   apiV1Post<IResponse<string>>('images/remove', {
     idList,
+    action,
   })
 
-export const apiUserGetKaniko = (name: string) =>
-  apiV1Get<IResponse<KanikoInfoResponse>>('images/getbyname', {
-    searchParams: { name },
-  })
-
-export const apiUserGetKanikoByID = (id: number) =>
-  apiV1Get<IResponse<KanikoInfoResponse>>('images/getbyid', {
-    searchParams: { id: String(id) },
+export const apiUserGetKaniko = (name: string, signal?: AbortSignal) =>
+  apiV1Get<IResponse<KanikoDetailResponse>>(`images/getbyname?name=${encodeURIComponent(name)}`, {
+    signal,
   })
 
 export const apiUserListImage = async (): Promise<IResponse<ListImageResponse>> => {

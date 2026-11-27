@@ -19,6 +19,7 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/internal/handler/vcjob/testdata/filter_phases.json"
       - "hack/set-build-version.sh"
       - ".github/workflows/frontend-pr.yml"
 
@@ -58,6 +59,9 @@ jobs:
 
       - name: Run frontend regression tests
         run: make test
+
+      - name: Test job phases
+        run: make test-job-phases
 
   frontend-build-check:
     runs-on: ubuntu-latest
