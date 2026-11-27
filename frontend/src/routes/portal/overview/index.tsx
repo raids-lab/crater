@@ -169,7 +169,9 @@ function Overview() {
       },
       {
         accessorKey: 'name',
-        header: ({ column }) => <DataTableColumnHeader column={column} title={getHeader('name')} />,
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title={getHeader('jobName')} />
+        ),
         cell: ({ row }) => (
           <JobNameCell
             jobInfo={row.original}
