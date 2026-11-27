@@ -18,7 +18,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { InfoIcon, Lock, UnlockIcon } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -39,7 +39,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/
 
 import { DurationFields } from '@/components/form/duration-fields'
 
-import { IJobInfo, type JobLockDuration, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
+import { type IJobInfo, type JobLockDuration, apiJobLock, apiJobUnlock } from '@/services/api/vcjob'
+
+import { showErrorToast } from '@/utils/toast'
+
+const MINUTE_MS = 60_000
 
 // Moved Zod schema to component
 const getFormSchema = (t: (key: string) => string) =>
@@ -55,8 +59,13 @@ const getFormSchema = (t: (key: string) => string) =>
 
 type FormValues = z.infer<ReturnType<typeof getFormSchema>>
 
+export type JobLockTarget = Pick<
+  IJobInfo,
+  'jobName' | 'locked' | 'permanentLocked' | 'lockedTimestamp'
+>
+
 interface DurationDialogProps {
-  jobs: IJobInfo[]
+  jobs: JobLockTarget[]
   open: boolean
   setOpen: (open: boolean) => void
   onSuccess?: () => void
@@ -76,12 +85,18 @@ export function DurationDialog({
   defaultDays,
   defaultHours,
 }: DurationDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const approval = Boolean(submitLock)
+  const [previewNow, setPreviewNow] = useState(() => Date.now())
   const allLocked = jobs.length > 0 && jobs.every((job) => job.locked)
   const allUnlocked = jobs.length > 0 && jobs.every((job) => !job.locked)
   const mixedState = !allLocked && !allUnlocked
-  const isExtendDialogOpen = setExtend && allLocked
-  const showUnlock = allLocked && !isExtendDialogOpen && !submitLock
+  const singleJob = jobs.length === 1 ? jobs[0] : undefined
+  const lockEnd = Date.parse(singleJob?.lockedTimestamp ?? '')
+  const alreadyPermanent = approval && singleJob?.permanentLocked
+  const isExtendDialogOpen = approval ? lockEnd > previewNow : setExtend && allLocked
+  const isUnlockDialog = !approval && allLocked && !isExtendDialogOpen
+  const action = isUnlockDialog ? 'unlock' : isExtendDialogOpen ? 'extend' : 'lock'
 
   // Initialize form with translated schema
   const form = useForm<FormValues>({
@@ -92,6 +107,30 @@ export function DurationDialog({
       hours: defaultHours ?? 0,
     },
   })
+  const isPermanent = form.watch('isPermanent')
+  const approvalAction = isPermanent ? 'lockPermanently' : action
+  const title = alreadyPermanent
+    ? t('durationDialog.approval.permanentTitle')
+    : approval
+      ? t(`durationDialog.approval.${approvalAction}`)
+      : t(`durationDialog.title.${action}`)
+
+  useEffect(() => {
+    if (!open || alreadyPermanent || mixedState || isUnlockDialog) return
+
+    let timer: ReturnType<typeof setTimeout>
+    const updatePreviewTime = () => {
+      const now = Date.now()
+      setPreviewNow(now)
+
+      const nextMinute = MINUTE_MS - (now % MINUTE_MS)
+      const untilExpiry = lockEnd > now ? lockEnd - now : nextMinute
+      timer = setTimeout(updatePreviewTime, Math.min(nextMinute, untilExpiry))
+    }
+
+    updatePreviewTime()
+    return () => clearTimeout(timer)
+  }, [open, alreadyPermanent, mixedState, isUnlockDialog, lockEnd])
 
   // Update form values when props change
   useEffect(() => {
@@ -120,7 +159,7 @@ export function DurationDialog({
   const lockMutation = useMutation({
     mutationFn: async (values: FormValues) => {
       const { isPermanent, days, hours } = values
-      const duration = {
+      const duration: JobLockDuration = {
         isPermanent,
         days: isPermanent ? 0 : days || 0,
         hours: isPermanent ? 0 : hours || 0,
@@ -128,20 +167,16 @@ export function DurationDialog({
       }
       if (submitLock) {
         await submitLock(duration)
-      } else {
-        await Promise.all(jobs.map((job) => apiJobLock({ name: job.jobName, ...duration })))
+        return
       }
+      await Promise.all(jobs.map((job) => apiJobLock({ name: job.jobName, ...duration })))
     },
     onSuccess: () => {
-      if (!submitLock) {
-        toast.success(t('durationDialog.toast.lockSuccess', { count: jobs.length }))
-      }
+      if (!approval) toast.success(t('durationDialog.toast.lockSuccess', { count: jobs.length }))
       setOpen(false)
       onSuccess?.()
     },
-    onError: () => {
-      toast.error(t('durationDialog.toast.lockError'))
-    },
+    onError: showErrorToast,
   })
 
   // Use React Query for unlock mutation
@@ -155,31 +190,51 @@ export function DurationDialog({
       setOpen(false)
       onSuccess?.()
     },
-    onError: () => {
-      toast.error(t('durationDialog.toast.unlockError'))
-    },
+    onError: showErrorToast,
   })
+
+  const isPending = lockMutation.isPending || unlockMutation.isPending
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!lockMutation.isPending && !unlockMutation.isPending) setOpen(nextOpen)
+        if (!isPending) setOpen(nextOpen)
       }}
     >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {showUnlock ? t('durationDialog.title.unlock') : t('durationDialog.title.lock')}
-          </DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {showUnlock
-              ? t('durationDialog.description.unlock', { count: jobs.length })
-              : t('durationDialog.description.lock', { count: jobs.length })}
+            {alreadyPermanent
+              ? t('durationDialog.approval.permanent')
+              : isUnlockDialog
+                ? t('durationDialog.description.unlock', { count: jobs.length })
+                : t('durationDialog.description.lock', { count: jobs.length })}
           </DialogDescription>
+          {singleJob && <p className="font-mono text-sm break-all">{singleJob.jobName}</p>}
         </DialogHeader>
 
-        {mixedState ? (
+        {approval && !alreadyPermanent && (
+          <p className="bg-muted rounded-md p-3 text-sm">
+            {isExtendDialogOpen
+              ? t('durationDialog.approval.lockedUntil', {
+                  time: new Intl.DateTimeFormat(i18n.language, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }).format(lockEnd),
+                })
+              : t('durationDialog.approval.unlocked')}
+          </p>
+        )}
+
+        {alreadyPermanent ? (
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              {t('common.cancel')}
+            </Button>
+          </DialogFooter>
+        ) : mixedState ? (
           <div className="py-4">
             <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
               <CardContent className="flex items-start gap-2 pt-6">
@@ -193,7 +248,7 @@ export function DurationDialog({
               </CardContent>
             </Card>
           </div>
-        ) : showUnlock ? (
+        ) : isUnlockDialog ? (
           <Button
             onClick={() => unlockMutation.mutate()}
             className="w-full"
@@ -232,7 +287,7 @@ export function DurationDialog({
                 )}
               />
 
-              {!form.watch('isPermanent') && (
+              {!isPermanent && (
                 <>
                   <DurationFields
                     value={{
@@ -244,7 +299,8 @@ export function DurationDialog({
                       form.setValue('hours', val.hours, { shouldValidate: true, shouldDirty: true })
                     }}
                     origin={isExtendDialogOpen ? jobs[0]?.lockedTimestamp : null}
-                    showPreview={true}
+                    previewNow={previewNow}
+                    jobLockPreview
                   />
                 </>
               )}
@@ -262,11 +318,9 @@ export function DurationDialog({
                   <Lock className="mr-2 h-4 w-4" />
                   {lockMutation.isPending
                     ? t('durationDialog.button.locking')
-                    : t(
-                        submitLock
-                          ? 'ApprovalOrderTable.actions.approveAndLock'
-                          : 'durationDialog.button.lock'
-                      )}
+                    : approval || isExtendDialogOpen
+                      ? title
+                      : t('durationDialog.button.lock')}
                 </Button>
               </DialogFooter>
             </form>

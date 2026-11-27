@@ -53,10 +53,15 @@ import GrafanaIframe from '@/components/layout/embed/grafana-iframe'
 import {
   type ApprovalOrder,
   adminGetApprovalOrder,
+  listJobApprovalOrders,
   reviewApprovalOrder,
 } from '@/services/api/approvalorder'
-import { listJobApprovalOrders } from '@/services/api/approvalorder'
-import { JobStatus, apiJobGetDetail, apiJobGetPods, getJobStateType } from '@/services/api/vcjob'
+import {
+  JobStatus,
+  apiAdminGetJobDetail,
+  apiJobGetPods,
+  getJobStateType,
+} from '@/services/api/vcjob'
 import { queryNodes } from '@/services/query/node'
 
 import { useApprovalOrderLock } from '@/hooks/use-approval-order-lock'
@@ -104,8 +109,8 @@ function RouteComponent() {
 
   // Fetch job detail if it's a job
   const { data: jobDetail } = useQuery({
-    queryKey: ['job', 'detail', order?.name],
-    queryFn: () => apiJobGetDetail(order!.name),
+    queryKey: ['job', 'detail', order?.name, 'admin'],
+    queryFn: () => apiAdminGetJobDetail(order!.name),
     select: (res) => res.data,
     enabled: !!order && order.type === 'job',
   })
@@ -153,11 +158,10 @@ function RouteComponent() {
     selectedJob,
     selectedExtHours,
     isDelayDialogOpen,
-    isFetchingJob,
+    isProcessingLock,
     handleApproveWithDelay,
     submitApprovalLock,
-    setIsDelayDialogOpen,
-    clearSelection,
+    onDelayDialogOpenChange,
   } = useApprovalOrderLock()
 
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
@@ -259,7 +263,7 @@ function RouteComponent() {
   }
 
   const isPendingStatus = order?.status === 'Pending'
-  const isProcessing = approveMutation.isPending || rejectMutation.isPending || isFetchingJob
+  const isProcessing = approveMutation.isPending || rejectMutation.isPending || isProcessingLock
 
   if (!order) {
     return <div className="text-muted-foreground p-6 text-center">工单不存在或已被删除</div>
@@ -471,13 +475,8 @@ function RouteComponent() {
           key={`${selectedOrder.id}-${selectedExtHours}`}
           jobs={[selectedJob]}
           open={isDelayDialogOpen}
-          setOpen={(open) => {
-            setIsDelayDialogOpen(open)
-            if (!open) clearSelection()
-          }}
+          setOpen={onDelayDialogOpenChange}
           submitLock={submitApprovalLock}
-          onSuccess={() => void refetch()}
-          setExtend={selectedJob.locked}
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}
         />

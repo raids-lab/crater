@@ -84,10 +84,10 @@ function RouteComponent() {
     selectedJob,
     selectedExtHours,
     isDelayDialogOpen,
-    isFetchingJob,
+    isProcessingLock,
     handleApproveWithDelay,
     submitApprovalLock,
-    setIsDelayDialogOpen,
+    onDelayDialogOpenChange,
   } = useApprovalOrderLock()
 
   const query = useQuery({
@@ -191,7 +191,7 @@ function RouteComponent() {
           }
         },
         label: order.type === 'job' ? '批准并锁定' : '批准',
-        disabled: () => isApproving || isRejecting || isFetchingJob,
+        disabled: () => isApproving || isRejecting || isProcessingLock,
       },
       reject: {
         show: isPending,
@@ -200,7 +200,7 @@ function RouteComponent() {
           setRejectReason('')
           setRejectDialogOpen(true)
         },
-        disabled: () => isApproving || isRejecting,
+        disabled: () => isApproving || isRejecting || isProcessingLock,
       },
     }
   }
@@ -307,9 +307,8 @@ function RouteComponent() {
           key={`${selectedOrder.id}-${selectedExtHours}`} // 默认值变化时重建
           jobs={[selectedJob]}
           open={isDelayDialogOpen}
-          setOpen={setIsDelayDialogOpen}
+          setOpen={onDelayDialogOpenChange}
           submitLock={submitApprovalLock}
-          setExtend={selectedJob.locked}
           defaultDays={Math.floor(selectedExtHours / 24)}
           defaultHours={selectedExtHours % 24}
         />
