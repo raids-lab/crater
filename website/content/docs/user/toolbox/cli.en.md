@@ -53,6 +53,10 @@ crater job exec JOB -- /opt/conda/envs/myenv/bin/python script.py
 ```
 
 
+## Enter Jobs as a Platform Administrator
+
+Platform administrators can find a job name with `crater admin job ls` and open its shell with `crater admin job exec JOB`. Use `crater admin job exec JOB -- COMMAND` to run a command. This uses the current login and accepts the same targeting and output options as `job exec`. It requires backend API v10.
+
 ## Use Local SSH
 
 Configure the container SSH service and public key using the [SSH guide](./ssh/ssh-func.md), then run:

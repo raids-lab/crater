@@ -53,6 +53,10 @@ crater job exec JOB -- /opt/conda/envs/myenv/bin/python script.py
 ```
 
 
+## 平台管理员进入作业
+
+平台管理员可从 `crater admin job ls` 查到作业名，使用 `crater admin job exec JOB` 打开交互式 shell，或用 `crater admin job exec JOB -- COMMAND` 执行命令。命令使用当前登录账号，支持 `job exec` 的目标选择和输出选项，需要后端 API v10。
+
 ## 使用本机 SSH
 
 先按 [SSH 连接指南](./ssh/ssh-func.md) 配置容器 SSH 服务和公钥，再执行：

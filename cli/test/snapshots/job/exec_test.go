@@ -1,11 +1,14 @@
 package job_test
 
 import (
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/raids-lab/crater/cli/internal/snaptest"
@@ -19,8 +22,27 @@ func runExecSnapshots(t *testing.T, lang string) {
 			_, _ = io.WriteString(w, `{"code":0,"data":{"ip":"cpu.example.test","port":"30222"}}`)
 			return
 		}
+		var handshake http.Header
+		scope := r.URL.Query().Get("scope")
+		switch r.URL.Path {
+		case "/api/v1/vcjobs/admin-job/exec", "/api/v1/vcjobs/legacy-job/exec":
+			if scope != "admin" {
+				t.Errorf("admin exec scope = %q, want admin", scope)
+			}
+			if r.URL.Path == "/api/v1/vcjobs/admin-job/exec" {
+				handshake = http.Header{"X-Crater-Exec-Scope": {"admin"}}
+			}
+		case "/api/v1/vcjobs/cpu-job/exec":
+			if r.URL.Query().Has("scope") {
+				t.Errorf("regular exec requested a scope: %q", scope)
+			}
+		default:
+			t.Errorf("unexpected exec path: %q", r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
 		upgrader := websocket.Upgrader{Subprotocols: []string{"crater.exec.v1"}}
-		ws, err := upgrader.Upgrade(w, r, nil)
+		ws, err := upgrader.Upgrade(w, r, handshake)
 		if err != nil {
 			t.Error(err)
 			return
@@ -28,6 +50,18 @@ func runExecSnapshots(t *testing.T, lang string) {
 		defer ws.Close()
 		var start struct {
 			Command []string `json:"command"`
+		}
+		if r.URL.Path == "/api/v1/vcjobs/legacy-job/exec" {
+			if err := ws.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+				t.Error(err)
+				return
+			}
+			err := ws.ReadJSON(&start)
+			var networkErr net.Error
+			if err == nil || errors.As(err, &networkErr) && networkErr.Timeout() {
+				t.Errorf("client should close an unconfirmed admin connection without sending start, got %v", err)
+			}
+			return
 		}
 		if err := ws.ReadJSON(&start); err != nil {
 			t.Error(err)
@@ -65,6 +99,9 @@ func runExecSnapshots(t *testing.T, lang string) {
 		{ID: "12-ssh-help", Args: []string{"job", "ssh", "--help"}},
 		{ID: "15-invalid-environment-mode", Args: []string{"job", "exec", "cpu-job", "--env-mode=invalid", "--json", "--", "env"}},
 		{ID: "16-container-environment", Args: []string{"job", "exec", "cpu-job", "--env-mode=container", "--json", "--", "env"}},
+		{ID: "17-admin-exec-help", Args: []string{"admin", "job", "exec", "--help"}},
+		{ID: "18-admin-exec-json", Args: []string{"admin", "job", "exec", "admin-job", "--json", "--", "uname", "-m"}},
+		{ID: "19-admin-exec-unconfirmed", Args: []string{"admin", "job", "exec", "legacy-job", "--json", "--", "uname", "-m"}},
 	}
 	bin := snaptest.CraterExecutable(t)
 	baseEnv := append(snaptest.EnvMinimal(t.TempDir(), lang), "CRATER_TEST_SANDBOX_HTTP=passthrough", "CRATER_TEST_SANDBOX_PLATFORM_URL="+server.URL)

@@ -21,10 +21,10 @@ import (
 )
 
 const (
-	// v9 adds the optional CPU model to node details.
-	APIVersion = 9
-	// Job order approval requires the v8 approve-and-lock endpoint.
-	MinSupportedBackendAPIVersion    = 8
+	// v10 adds administrator scope and acknowledgement to job exec.
+	APIVersion = 10
+	// Administrator job exec requires v10 scope handling and acknowledgement.
+	MinSupportedBackendAPIVersion    = 10
 	APIVersionHeader                 = "X-Crater-API-Version"
 	defaultDevelopmentProductVersion = "dev"
 	defaultDevelopmentBuildType      = "development"

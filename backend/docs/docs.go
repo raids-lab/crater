@@ -11442,11 +11442,11 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.\nEmpty command opens a user login shell with stdin/tty.\nenv_mode=user (default) loads user shell configuration; container skips probing.\nNon-TTY commands use a bounded environment probe; TTY commands use the user login shell.\nExec resolves HOME and shell from the task account. Byte payloads use Base64 JSON strings.",
+                "description": "Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.\nThe caller must own the job in the current project by default.\nscope=admin requires a platform administrator and a Bearer header.\nClients using scope=admin must wait for X-Crater-Exec-Scope: admin on upgrade before sending start.\nEmpty command opens a user login shell with stdin/tty.\nenv_mode=user (default) loads user shell configuration; container skips probing.\nNon-TTY commands use a bounded environment probe; TTY commands use the user login shell.\nExec resolves HOME and shell from the task account. Byte payloads use Base64 JSON strings.",
                 "tags": [
                     "VolcanoJob"
                 ],
-                "summary": "Open a user shell or execute argv in your current-project job",
+                "summary": "Open a user shell or execute argv in a running job",
                 "parameters": [
                     {
                         "type": "string",
@@ -11466,6 +11466,15 @@ const docTemplate = `{
                         "description": "Container name; required for multiple regular containers",
                         "name": "container",
                         "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "admin"
+                        ],
+                        "type": "string",
+                        "description": "Request administrator job access",
+                        "name": "scope",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -11473,16 +11482,28 @@ const docTemplate = `{
                         "description": "WebSocket exec session",
                         "schema": {
                             "type": "string"
+                        },
+                        "headers": {
+                            "X-Crater-Exec-Scope": {
+                                "type": "string",
+                                "description": "admin for an authorized administrator exec request"
+                            }
                         }
                     },
                     "400": {
-                        "description": "Invalid target or subprotocol",
+                        "description": "Invalid target, scope or subprotocol",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials or missing administrator Bearer header",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }
                     },
                     "403": {
-                        "description": "Job is outside the current user/project",
+                        "description": "Job or requested scope is outside the caller's permissions",
                         "schema": {
                             "$ref": "#/definitions/github_com_raids-lab_crater_internal_resputil.Response-any"
                         }

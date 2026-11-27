@@ -1229,6 +1229,7 @@
   "operationLog.status.failed": "失败",
   "operationLog.status.success": "成功",
   "operationLog.title": "操作日志",
+  "operationLog.type.AdminJobExec": "管理员进入作业",
   "operationLog.type.CancelExclusive": "取消独占",
   "operationLog.type.CancelUnschedulable": "取消不可调度",
   "operationLog.type.DeleteJob": "删除作业",

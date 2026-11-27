@@ -21,17 +21,33 @@ import (
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/bizerr"
+	"github.com/raids-lab/crater/internal/handler"
 	"github.com/raids-lab/crater/internal/resputil"
 	vcjobservice "github.com/raids-lab/crater/internal/service/vcjob"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/jobexec"
 	"github.com/raids-lab/crater/pkg/jobsession"
 )
 
+const (
+	execAdminScope  = "admin"
+	execScopeHeader = "X-Crater-Exec-Scope"
+)
+
+type execSessionTarget struct {
+	job       *model.Job
+	pod       *v1.Pod
+	container string
+}
+
 // UserExec godoc
 //
-// @Summary Open a user shell or execute argv in your current-project job
+// @Summary Open a user shell or execute argv in a running job
 // @Description Subprotocol crater.exec.v1: start, stdin/eof/resize, ready/stdout/stderr/exit/error.
+// @Description The caller must own the job in the current project by default.
+// @Description scope=admin requires a platform administrator and a Bearer header.
+// @Description Clients using scope=admin must wait for X-Crater-Exec-Scope: admin on upgrade before sending start.
 // @Description Empty command opens a user login shell with stdin/tty.
 // @Description env_mode=user (default) loads user shell configuration; container skips probing.
 // @Description Non-TTY commands use a bounded environment probe; TTY commands use the user login shell.
@@ -41,15 +57,37 @@ import (
 // @Param name path string true "Platform job name"
 // @Param pod query string false "Pod name; required for multiple pods"
 // @Param container query string false "Container name; required for multiple regular containers"
+// @Param scope query string false "Request administrator job access" Enums(admin)
 // @Success 101 {string} string "WebSocket exec session"
-// @Failure 400 {object} resputil.Response[any] "Invalid target or subprotocol"
-// @Failure 403 {object} resputil.Response[any] "Job is outside the current user/project"
+// @Header 101 {string} X-Crater-Exec-Scope "admin for an authorized administrator exec request"
+// @Failure 400 {object} resputil.Response[any] "Invalid target, scope or subprotocol"
+// @Failure 401 {object} resputil.Response[any] "Invalid credentials or missing administrator Bearer header"
+// @Failure 403 {object} resputil.Response[any] "Job or requested scope is outside the caller's permissions"
 // @Failure 404 {object} resputil.Response[any] "Job or pod not found"
 // @Failure 409 {object} resputil.Response[any] "Container is not running"
 // @Failure 500 {object} resputil.Response[any] "Platform failure"
 // @Router /v1/vcjobs/{name}/exec [get]
 func (mgr *VolcanojobMgr) UserExec(c *gin.Context) {
-	pod, container, err := mgr.userExecTarget(c)
+	kind := vcjobservice.ExecSession
+	var headers http.Header
+	if scopes, present := c.GetQueryArray("scope"); present {
+		if len(scopes) != 1 || scopes[0] != execAdminScope {
+			resputil.HandleError(c, bizerr.BadRequest.ParameterError.New("exec scope must be admin when specified"))
+			return
+		}
+		// AuthProtected validates a supplied Bearer header. Admin exec excludes its browser token fallback.
+		if c.GetHeader("Authorization") == "" {
+			resputil.HandleError(c, bizerr.Auth.TokenInvalid.New("Administrator exec requires an Authorization Bearer header."))
+			return
+		}
+		if err := vcjobservice.CheckAdminExecAccess(util.GetToken(c).RolePlatform); err != nil {
+			resputil.HandleError(c, err)
+			return
+		}
+		kind = vcjobservice.AdminExecSession
+		headers = http.Header{execScopeHeader: {execAdminScope}}
+	}
+	target, err := mgr.execTarget(c, kind)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -59,31 +97,38 @@ func (mgr *VolcanojobMgr) UserExec(c *gin.Context) {
 		return
 	}
 	upgrader := websocket.Upgrader{Subprotocols: []string{jobexec.Subprotocol}}
-	ws, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	ws, err := upgrader.Upgrade(c.Writer, c.Request, headers)
 	if err != nil {
 		return
 	}
 	defer ws.Close()
-	mgr.runUserExec(c, ws, pod, container)
+	mgr.runUserExec(c, ws, target, kind)
 }
 
-func (mgr *VolcanojobMgr) userExecTarget(c *gin.Context) (*v1.Pod, string, error) {
-	_, live, err := mgr.liveSessionJob(c, vcjobservice.ExecSession)
+func (mgr *VolcanojobMgr) execTarget(c *gin.Context, kind vcjobservice.SessionKind) (execSessionTarget, error) {
+	job, live, err := mgr.liveSessionJob(c, kind)
 	if err != nil {
-		return nil, "", err
+		return execSessionTarget{}, err
 	}
 	pods := &v1.PodList{}
 	if err = mgr.client.List(c.Request.Context(), pods, client.InNamespace(live.Namespace),
 		client.MatchingLabels{batch.JobNameKey: live.Name}); err != nil {
-		return nil, "", execLookupError(err)
+		return execSessionTarget{}, execLookupError(err)
 	}
-	return vcjobservice.SelectExecTarget(live, pods.Items, c.Query("pod"), c.Query("container"))
+	pod, container, err := vcjobservice.SelectExecTarget(live, pods.Items, c.Query("pod"), c.Query("container"))
+	if err != nil {
+		return execSessionTarget{}, err
+	}
+	return execSessionTarget{job: job, pod: pod, container: container}, nil
 }
 
 func (mgr *VolcanojobMgr) liveSessionJob(c *gin.Context, kind vcjobservice.SessionKind) (job *model.Job, live *batch.Job, err error) {
 	token := util.GetToken(c)
 	job, err = getJob(c, c.Param("name"), &token)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
+		if kind == vcjobservice.AdminExecSession {
+			return nil, nil, bizerr.NotFound.DataBaseNotFound.New("job not found")
+		}
 		return nil, nil, bizerr.NotFound.DataBaseNotFound.New("job not found in the current user and project")
 	}
 	if err != nil {
@@ -103,11 +148,18 @@ func (mgr *VolcanojobMgr) liveSessionJob(c *gin.Context, kind vcjobservice.Sessi
 	return job, live, nil
 }
 
-func (mgr *VolcanojobMgr) runUserExec(c *gin.Context, ws *websocket.Conn, pod *v1.Pod, container string) {
+func (mgr *VolcanojobMgr) runUserExec(
+	c *gin.Context, ws *websocket.Conn, target execSessionTarget, kind vcjobservice.SessionKind,
+) {
 	start, err := jobexec.ReadStart(ws)
 	message := "could not initialize exec; check the command and platform connection"
 	var prepared jobsession.Prepared
+	pod, container := target.pod, target.container
 	if err == nil {
+		if kind == vcjobservice.AdminExecSession {
+			// Record the accepted session before environment probing or command execution.
+			target.recordAdminExec(c)
+		}
 		prepared, err = jobsession.Command(c.Request.Context(), mgr.sessionRunner(pod, container), start.Command, start.EnvMode, start.TTY)
 		if err != nil {
 			message = err.Error()
@@ -131,6 +183,21 @@ func (mgr *VolcanojobMgr) runUserExec(c *gin.Context, ws *websocket.Conn, pod *v
 			klog.ErrorS(writeErr, "Exec initialization error could not be delivered")
 		}
 	}
+}
+
+func (target execSessionTarget) recordAdminExec(c *gin.Context) {
+	operator := util.GetToken(c)
+	handler.RecordOperationLog(c, constants.OpTypeAdminJobExec, target.job.JobName, constants.OpStatusSuccess, "", map[string]any{
+		"operatorUsername": operator.Username,
+		"operatorUserID":   operator.UserID,
+		"owner":            target.job.User.Name,
+		"ownerUserID":      target.job.UserID,
+		"account":          target.job.Account.Name,
+		"accountID":        target.job.AccountID,
+		"namespace":        target.pod.Namespace,
+		"pod":              target.pod.Name,
+		"container":        target.container,
+	})
 }
 
 func (mgr *VolcanojobMgr) sessionRunner(pod *v1.Pod, container string) jobsession.Runner {

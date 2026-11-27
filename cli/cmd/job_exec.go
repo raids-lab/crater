@@ -23,9 +23,23 @@ import (
 
 const maxExecJSONBytes = 16 << 20
 
-var jobExecCmd = &cobra.Command{
-	Use: "exec <name> [flags] [-- COMMAND [ARG...]]", Short: "Open a user shell or execute a command in a running job",
-	Args: validateJobExecArgs, RunE: runJobExec,
+func newJobExecCommand(admin bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "exec <name> [flags] [-- COMMAND [ARG...]]", Short: "Open a user shell or execute a command in a running job",
+		Args: validateJobExecArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runJobExec(cmd, args, admin)
+		},
+	}
+	cmd.Flags().String("pod", "", "Select a pod by name")
+	cmd.Flags().StringP("container", "c", "", "Select a container by name")
+	cmd.Flags().BoolP("stdin", "i", false, "Forward standard input")
+	cmd.Flags().BoolP("tty", "t", false, "Allocate a terminal")
+	cmd.Flags().String("env-mode", "user", "Load user configuration or use the container environment")
+	_ = cmd.RegisterFlagCompletionFunc("env-mode", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+		return []string{"user", "container"}, cobra.ShellCompDirectiveNoFileComp
+	})
+	return cmd
 }
 
 func validateJobExecArgs(cmd *cobra.Command, args []string) error {
@@ -83,7 +97,7 @@ func jobExecStreams(cmd *cobra.Command, args []string) (stdin, tty bool) {
 	return stdin, tty
 }
 
-func runJobExec(cmd *cobra.Command, args []string) (runErr error) {
+func runJobExec(cmd *cobra.Command, args []string, admin bool) (runErr error) {
 	client, err := activeAPIClient()
 	if err != nil {
 		return err
@@ -94,7 +108,10 @@ func runJobExec(cmd *cobra.Command, args []string) (runErr error) {
 	envMode, _ := cmd.Flags().GetString("env-mode")
 	ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt)
 	defer cancel()
-	options := api.JobExecOptions{Pod: strings.TrimSpace(pod), Container: strings.TrimSpace(container), Command: args[1:], EnvMode: envMode, TTY: tty}
+	options := api.JobExecOptions{
+		Pod: strings.TrimSpace(pod), Container: strings.TrimSpace(container),
+		Command: args[1:], EnvMode: envMode, TTY: tty, Admin: admin,
+	}
 	if tty {
 		state, err := term.MakeRaw(int(os.Stdin.Fd()))
 		if err != nil {
@@ -136,7 +153,11 @@ func runJobExec(cmd *cobra.Command, args []string) (runErr error) {
 		if errors.As(err, &streamErr) && streamErr.Local {
 			return execLocalError(err)
 		}
-		return cliErrFromAPI(err)
+		cliErr := cliErrFromAPI(err)
+		if errors.Is(err, api.ErrAdminExecScopeUnconfirmed) {
+			cliErr.Message = i18n.T("err_admin_exec_unconfirmed")
+		}
+		return cliErr
 	}
 	if result.ExitCode != 0 {
 		facts := map[string]interface{}{"namespace": result.Namespace, "pod": result.Pod, "container": result.Container, "exit_code": result.ExitCode}
@@ -221,13 +242,6 @@ func watchTerminalSize(ctx context.Context) <-chan api.TerminalSize {
 }
 
 func init() {
-	jobExecCmd.Flags().String("pod", "", "Select a pod by name")
-	jobExecCmd.Flags().StringP("container", "c", "", "Select a container by name")
-	jobExecCmd.Flags().BoolP("stdin", "i", false, "Forward standard input")
-	jobExecCmd.Flags().BoolP("tty", "t", false, "Allocate a terminal")
-	jobExecCmd.Flags().String("env-mode", "user", "Load user configuration or use the container environment")
-	_ = jobExecCmd.RegisterFlagCompletionFunc("env-mode", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
-		return []string{"user", "container"}, cobra.ShellCompDirectiveNoFileComp
-	})
-	jobCmd.AddCommand(jobExecCmd)
+	jobCmd.AddCommand(newJobExecCommand(false))
+	adminJobCmd.AddCommand(newJobExecCommand(true))
 }

@@ -153,18 +153,21 @@ func TestFileContractCompatibility(t *testing.T) {
 	}
 }
 
-func TestAtomicJobApprovalContractCompatibility(t *testing.T) {
-	if APIVersion < 8 || MinSupportedBackendAPIVersion != 8 {
-		t.Fatalf("atomic job approval contract = %d, minimum backend = %d, want >=8/8",
+func TestAdminJobExecContractCompatibility(t *testing.T) {
+	if APIVersion != 10 || MinSupportedBackendAPIVersion != 10 {
+		t.Fatalf("admin job exec contract = %d, minimum backend = %d, want 10/10",
 			APIVersion, MinSupportedBackendAPIVersion)
 	}
-	if got := EvaluateCompatibility(7, 3); got != CompatibilityBackendTooOld {
-		t.Fatalf("backend without approve-and-lock: got %s, want %s", got, CompatibilityBackendTooOld)
+	if got := EvaluateCompatibility(9, 8); got != CompatibilityBackendTooOld {
+		t.Fatalf("backend without admin job exec: got %s, want %s", got, CompatibilityBackendTooOld)
 	}
-	if got := evaluateCompatibility(7, 7, 8, 8); got != CompatibilityCLITooOld {
+	if got := evaluateCompatibility(7, 7, 10, 8); got != CompatibilityCLITooOld {
 		t.Fatalf("CLI with split job approval: got %s, want %s", got, CompatibilityCLITooOld)
 	}
-	if got := EvaluateCompatibility(8, 8); got != CompatibilityCompatible {
-		t.Fatalf("backend with approve-and-lock: got %s, want %s", got, CompatibilityCompatible)
+	if got := evaluateCompatibility(8, 8, 10, 8); got != CompatibilityCompatible {
+		t.Fatalf("v8 CLI on new backend: got %s, want %s", got, CompatibilityCompatible)
+	}
+	if got := EvaluateCompatibility(10, 8); got != CompatibilityCompatible {
+		t.Fatalf("backend with admin job exec: got %s, want %s", got, CompatibilityCompatible)
 	}
 }

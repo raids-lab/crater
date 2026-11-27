@@ -227,6 +227,61 @@ crater job exec cpu-job --env-mode=container --json -- env
   "status": "OK"
 }
 -- en/16-container-environment/stderr --
+-- en/17-admin-exec-help/argv --
+crater admin job exec --help
+-- en/17-admin-exec-help/exit --
+0
+-- en/17-admin-exec-help/stdout --
+Access another user's running job with the current platform administrator login. The command uses the target task user's environment and the same options as job exec.
+
+Usage:
+  crater admin job exec <name> [flags] [-- COMMAND [ARG...]]
+
+Flags:
+  -c, --container string   Select a running container by name
+      --env-mode string    Environment source: user (default) or container (skip configuration probing) (default "user")
+      --pod string         Select a pod belonging to the job
+  -i, --stdin              Forward standard input to the command
+  -t, --tty                Allocate a terminal (requires -i and local terminals)
+
+Global Flags:
+  -h, --help             Help for crater
+      --json             Output in raw JSON format
+      --no-interactive   Disable interactive prompts
+-- en/17-admin-exec-help/stderr --
+-- en/18-admin-exec-json/argv --
+crater admin job exec admin-job --json -- uname -m
+-- en/18-admin-exec-json/exit --
+0
+-- en/18-admin-exec-json/stdout --
+{
+  "data": {
+    "exec": {
+      "namespace": "real-ns",
+      "pod": "cpu-worker",
+      "container": "main",
+      "exit_code": 0,
+      "stdout": "hello CPU/ARM\n",
+      "stderr": "diagnostic\n"
+    }
+  },
+  "status": "OK"
+}
+-- en/18-admin-exec-json/stderr --
+-- en/19-admin-exec-unconfirmed/argv --
+crater admin job exec legacy-job --json -- uname -m
+-- en/19-admin-exec-unconfirmed/exit --
+4
+-- en/19-admin-exec-unconfirmed/stdout --
+-- en/19-admin-exec-unconfirmed/stderr --
+{
+  "category": "api_error",
+  "code": "ERR_API_OTHER",
+  "message": "The platform did not confirm administrator exec mode. Run crater compatibility to check backend support.",
+  "context": {
+    "msg": "platform did not confirm administrator exec scope"
+  }
+}
 -- en/13-exec-timeout-json/argv --
 crater job exec cpu-job --json -- uname
 -- en/13-exec-timeout-json/exit --

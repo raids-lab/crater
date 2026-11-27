@@ -2,6 +2,9 @@ package i18n
 
 var catalogJobExec = map[Language]map[string]string{
 	En: {
+		"admin_job_exec_short":       "Open a shell or execute a command in a job as a platform administrator",
+		"admin_job_exec_long":        "Access another user's running job with the current platform administrator login. The command uses the target task user's environment and the same options as job exec.",
+		"err_admin_exec_unconfirmed": "The platform did not confirm administrator exec mode. Run crater compatibility to check backend support.",
 		"job_exec_short":             "Open a user shell or execute a command in a running job",
 		"job_exec_long":              "Open the task user's login shell when no command is given. Commands after -- retain argv boundaries and use that user's HOME and exported shell environment. --env-mode container skips environment probing. Select --pod and --container when there are multiple candidates; no SSH or GPU dependency.",
 		"job_exec_flag_env-mode":     "Environment source: user (default) or container (skip configuration probing)",
@@ -28,6 +31,9 @@ var catalogJobExec = map[Language]map[string]string{
 		"err_job_ssh_address":        "platform returned an invalid SSH host or port",
 	},
 	ZhCN: {
+		"admin_job_exec_short":       "以平台管理员身份进入作业或执行命令",
+		"admin_job_exec_long":        "使用当前平台管理员身份访问其他用户的运行中作业。执行时沿用目标任务账号的环境，命令选项与 job exec 一致。",
+		"err_admin_exec_unconfirmed": "平台未确认管理员执行模式。请运行 crater compatibility 检查后端是否支持。",
 		"job_exec_short":             "进入作业用户 shell 或执行命令",
 		"job_exec_long":              "不指定命令时进入任务用户的登录 shell；-- 后的命令保留参数边界，使用该用户的 HOME 和 shell 导出环境。--env-mode container 跳过环境探测。存在多个候选时用 --pod 和 --container 指定目标；不依赖 SSH 或 GPU。",
 		"job_exec_flag_env-mode":     "环境来源：user（默认）或 container（跳过配置探测）",

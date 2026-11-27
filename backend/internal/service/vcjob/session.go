@@ -18,10 +18,23 @@ const (
 	ExecSession SessionKind = iota
 	// SSHSession preserves the existing platform administrator access policy.
 	SSHSession
+	// AdminExecSession requires platform administrator access even for an owned job.
+	AdminExecSession
 )
+
+// CheckAdminExecAccess can run before looking up any job.
+func CheckAdminExecAccess(role model.Role) error {
+	if role != model.RoleAdmin {
+		return bizerr.Forbidden.PermissionDenied.New("Administrator permission is required.")
+	}
+	return nil
+}
 
 // CheckSessionAccess authorizes the resolved job before accessing live resources.
 func CheckSessionAccess(job *model.Job, userID, accountID uint, role model.Role, kind SessionKind) error {
+	if kind == AdminExecSession {
+		return CheckAdminExecAccess(role)
+	}
 	if kind != ExecSession && kind != SSHSession {
 		return bizerr.Forbidden.PermissionDenied.New("unsupported job session access policy")
 	}

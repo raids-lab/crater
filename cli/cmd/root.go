@@ -227,6 +227,9 @@ func updateAllCommands(cmd *cobra.Command) {
 
 func translatedFlagUsage(keyPath, flagName string) (string, bool) {
 	keys := []string{keyPath + "_flag_" + flagName}
+	if keyPath == "admin_job_exec" {
+		keys = append(keys, "job_exec_flag_"+flagName)
+	}
 	if isImageCommandPath(keyPath) {
 		keys = append(keys, "image_flag_"+flagName)
 	}

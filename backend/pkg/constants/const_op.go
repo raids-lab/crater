@@ -9,6 +9,7 @@ const (
 	OpTypeDrainNode           = "DrainNode"
 	OpTypeUpdateVPA           = "UpdateVPA"
 	OpTypeDeleteJob           = "DeleteJob"
+	OpTypeAdminJobExec        = "AdminJobExec"
 	OpTypeSetStorageQuota     = "SetStorageQuota"
 
 	// Execution Status
