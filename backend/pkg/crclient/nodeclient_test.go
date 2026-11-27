@@ -27,6 +27,56 @@ import (
 	"github.com/raids-lab/crater/pkg/indexer"
 )
 
+func TestCPUModelFromLabels(t *testing.T) {
+	tests := []struct {
+		name   string
+		labels map[string]string
+		want   string
+	}{
+		{
+			name: "explicit model overrides ambiguous hardware identifiers",
+			labels: map[string]string{
+				LabelKeyCPUModel: "Intel_Xeon_Silver_4210",
+				"feature.node.kubernetes.io/cpu-model.vendor_id": "Intel",
+				"feature.node.kubernetes.io/cpu-model.family":    "6",
+				"feature.node.kubernetes.io/cpu-model.id":        "85",
+			},
+			want: "Intel Xeon Silver 4210",
+		},
+		{
+			name: "arm model",
+			labels: map[string]string{
+				LabelKeyCPUModel: "HUAWEI_Kunpeng_920_5250",
+			},
+			want: "HUAWEI Kunpeng 920 5250",
+		},
+		{
+			name: "hardware identifiers alone do not identify a product",
+			labels: map[string]string{
+				"feature.node.kubernetes.io/cpu-model.vendor_id": "VendorUnknown",
+				"feature.node.kubernetes.io/cpu-model.family":    "15",
+				"feature.node.kubernetes.io/cpu-model.id":        "34336",
+			},
+			want: "",
+		},
+		{
+			name: "no cpu labels",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			node := &corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{Labels: tt.labels},
+			}
+			if got := cpuModelFromLabels(node); got != tt.want {
+				t.Errorf("cpuModelFromLabels() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPodInfoFromKubePodIncludesStartTime(t *testing.T) {
 	createdAt := metav1.NewTime(time.Date(2026, 8, 24, 2, 55, 51, 0, time.UTC))
 	startedAt := metav1.NewTime(time.Date(2026, 8, 24, 17, 50, 32, 0, time.UTC))

@@ -76,6 +76,7 @@ type NodeDetail struct {
 	KubeletVersion          string       `json:"kubeletVersion"`
 	ContainerRuntimeVersion string       `json:"containerRuntimeVersion"`
 	KernelVersion           string       `json:"kernelVersion,omitempty"`
+	CPUModel                string       `json:"cpuModel,omitempty"`
 	Capacity                ResourceList `json:"capacity,omitempty"`
 	Allocatable             ResourceList `json:"allocatable,omitempty"`
 	Used                    ResourceList `json:"used,omitempty"`

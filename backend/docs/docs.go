@@ -13888,6 +13888,9 @@ const docTemplate = `{
                 "containerRuntimeVersion": {
                     "type": "string"
                 },
+                "cpuModel": {
+                    "type": "string"
+                },
                 "gpuArch": {
                     "type": "string"
                 },

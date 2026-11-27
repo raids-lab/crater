@@ -621,6 +621,7 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
   return (
     <DetailPage
       {...props}
+      infoLayout="stacked"
       header={<PageTitle title={nodeDetail?.name} description={gpuDetail?.gpuProduct} />}
       info={[
         {
@@ -661,6 +662,8 @@ export const NodeDetail = ({ nodeName, ...props }: NodeDetailProps) => {
           label: t('nodeDetail.tabs.nodeInfo'),
           children: <NodeInfoTab nodeDetail={nodeDetail} gpuDetail={gpuDetail} />,
           scrollable: true,
+          // Keep Radix's intrinsic-width wrapper from expanding the responsive cards.
+          contentClassName: '[&_[data-slot=scroll-area-viewport]>div]:!block',
         },
         {
           key: 'pods',

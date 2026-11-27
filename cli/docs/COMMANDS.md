@@ -433,7 +433,8 @@ CLI 发出的平台请求带 `User-Agent: crater-cli/<product-version>` 与 `X-C
 - **处理逻辑**:
   - 调用 `/api/v1/nodes/{name}`。
   - 缺少 `<name>` 时返回 `usage_error`。
-- **`--json` 的 `data`**：`node`（对象，平台节点详情响应）。
+  - 默认输出包含 CPU 型号；后端未提供或型号为空时显示 `-`。
+- **`--json` 的 `data`**：`node`（对象，平台节点详情响应）；可选字符串 `node.cpuModel` 为后端从节点标签读取的 CPU 产品型号，例如 `Intel Xeon Silver 4210`。未知或旧后端未提供时省略，不代表节点没有 CPU。
 - **状态**: [x] Completed
 
 ### `crater node pods <name>`

@@ -1,0 +1,146 @@
+# Crater CLI snapshot bundle (txtar). Regenerate: make snapshot-update (or UPDATE_SNAPSHOTS=1 go test ./test/snapshots/...)
+-- zh-CN/01-model-text/argv --
+crater node get with-model --no-interactive
+-- zh-CN/01-model-text/exit --
+0
+-- zh-CN/01-model-text/stdout --
+名称: cpu-node
+状态: Ready
+角色: worker
+架构: amd64
+CPU 型号: Intel Xeon Silver 4210
+地址: 192.0.2.10
+OS: linux Ubuntu 22.04
+Kubelet: v1.34.0
+Runtime: containerd://2.0.0
+CPU: 2/16
+Memory: 8Gi/64Gi
+-- zh-CN/01-model-text/stderr --
+-- zh-CN/02-model-json/argv --
+crater node get with-model --json --no-interactive
+-- zh-CN/02-model-json/exit --
+0
+-- zh-CN/02-model-json/stdout --
+{
+  "data": {
+    "node": {
+      "name": "cpu-node",
+      "role": "worker",
+      "isReady": "Ready",
+      "time": "",
+      "address": "192.0.2.10",
+      "os": "linux",
+      "osVersion": "Ubuntu 22.04",
+      "arch": "amd64",
+      "kubeletVersion": "v1.34.0",
+      "containerRuntimeVersion": "containerd://2.0.0",
+      "cpuModel": "Intel Xeon Silver 4210",
+      "allocatable": {
+        "cpu": "16",
+        "memory": "64Gi"
+      },
+      "used": {
+        "cpu": "2",
+        "memory": "8Gi"
+      }
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/02-model-json/stderr --
+-- zh-CN/03-legacy-text/argv --
+crater node get legacy --no-interactive
+-- zh-CN/03-legacy-text/exit --
+0
+-- zh-CN/03-legacy-text/stdout --
+名称: cpu-node
+状态: Ready
+角色: worker
+架构: amd64
+CPU 型号: -
+地址: 192.0.2.10
+OS: linux Ubuntu 22.04
+Kubelet: v1.34.0
+Runtime: containerd://2.0.0
+CPU: 2/16
+Memory: 8Gi/64Gi
+-- zh-CN/03-legacy-text/stderr --
+-- zh-CN/04-legacy-json/argv --
+crater node get legacy --json --no-interactive
+-- zh-CN/04-legacy-json/exit --
+0
+-- zh-CN/04-legacy-json/stdout --
+{
+  "data": {
+    "node": {
+      "name": "cpu-node",
+      "role": "worker",
+      "isReady": "Ready",
+      "time": "",
+      "address": "192.0.2.10",
+      "os": "linux",
+      "osVersion": "Ubuntu 22.04",
+      "arch": "amd64",
+      "kubeletVersion": "v1.34.0",
+      "containerRuntimeVersion": "containerd://2.0.0",
+      "allocatable": {
+        "cpu": "16",
+        "memory": "64Gi"
+      },
+      "used": {
+        "cpu": "2",
+        "memory": "8Gi"
+      }
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/04-legacy-json/stderr --
+-- zh-CN/05-empty-text/argv --
+crater node get empty-model --no-interactive
+-- zh-CN/05-empty-text/exit --
+0
+-- zh-CN/05-empty-text/stdout --
+名称: cpu-node
+状态: Ready
+角色: worker
+架构: amd64
+CPU 型号: -
+地址: 192.0.2.10
+OS: linux Ubuntu 22.04
+Kubelet: v1.34.0
+Runtime: containerd://2.0.0
+CPU: 2/16
+Memory: 8Gi/64Gi
+-- zh-CN/05-empty-text/stderr --
+-- zh-CN/06-empty-json/argv --
+crater node get empty-model --json --no-interactive
+-- zh-CN/06-empty-json/exit --
+0
+-- zh-CN/06-empty-json/stdout --
+{
+  "data": {
+    "node": {
+      "name": "cpu-node",
+      "role": "worker",
+      "isReady": "Ready",
+      "time": "",
+      "address": "192.0.2.10",
+      "os": "linux",
+      "osVersion": "Ubuntu 22.04",
+      "arch": "amd64",
+      "kubeletVersion": "v1.34.0",
+      "containerRuntimeVersion": "containerd://2.0.0",
+      "allocatable": {
+        "cpu": "16",
+        "memory": "64Gi"
+      },
+      "used": {
+        "cpu": "2",
+        "memory": "8Gi"
+      }
+    }
+  },
+  "status": "OK"
+}
+-- zh-CN/06-empty-json/stderr --
