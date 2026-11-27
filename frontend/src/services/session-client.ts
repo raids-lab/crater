@@ -111,10 +111,12 @@ export function createSessionClient(settings: SessionOptions) {
       ],
       afterResponse: [
         async (request, options, response) => {
-          if (
-            response.ok ||
-            /\/auth\/(login|signup|mode|refresh)$/.test(new URL(request.url).pathname)
-          )
+          if (response.ok) {
+            // Ky clones the response for this hook. Release the unused branch of the stream.
+            void response.body?.cancel().catch(() => {})
+            return
+          }
+          if (/\/auth\/(login|signup|mode|refresh)$/.test(new URL(request.url).pathname))
             return response
           const data = await response
             .clone()

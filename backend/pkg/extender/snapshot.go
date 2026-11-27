@@ -94,6 +94,9 @@ func (s *Server) buildSnapshot(ctx context.Context, current *settings) (*snapsho
 			snap.usageByOwner[key] = utils.SumResources(snap.usageByOwner[key], view.resources)
 		}
 	}
+	if err := s.addServingViews(ctx, snap, &groups, namespace); err != nil {
+		return nil, err
+	}
 	// Oldest first, so blockerFor names the longest-waiting blocker.
 	sort.Slice(snap.views, func(i, j int) bool {
 		a, b := snap.views[i], snap.views[j]

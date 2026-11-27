@@ -102,6 +102,7 @@ func (ci *ConfigInitializer) SetupManagerDependencies(registerConfig *handler.Re
 	registerConfig.AgentConversationService = service.NewAgentConversationService(query.GetDB())
 	registerConfig.BillingService = service.NewBillingService(query.Q)
 	registerConfig.QueueQuotaService = service.NewQueueQuotaService(query.Q, registerConfig.ConfigService)
+	registerConfig.QueueQuotaService.SetServingClient(mgr.GetAPIReader(), config.GetConfig().Namespaces.Job)
 	registerConfig.UserBanService = service.NewUserBanService(query.Q)
 
 	registerConfig.GpuAnalysisService = service.NewGpuAnalysisService(

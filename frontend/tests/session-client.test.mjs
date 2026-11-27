@@ -52,6 +52,38 @@ function harness(handler, timeout) {
 const renewal = () =>
   json(200, { data: { accessToken: 'new-access', refreshToken: 'new-refresh' } })
 
+test(
+  'streaming responses release the hook clone so the original stream can be canceled',
+  { timeout: 3000 },
+  async (t) => {
+    const chunk = new TextEncoder().encode('event: delta\ndata: hello\n\n')
+    let controller
+    let canceled = false
+    const upstream = new Response(
+      new ReadableStream({
+        start(stream) {
+          controller = stream
+          stream.enqueue(chunk)
+        },
+        cancel() {
+          canceled = true
+        },
+      }),
+      { headers: { 'Content-Type': 'text/event-stream' } }
+    )
+    t.after(() => {
+      if (!canceled) controller.close()
+    })
+    const h = harness(async () => upstream)
+    const response = await h.client.get('v1/stream')
+    assert.equal(response, upstream)
+    const reader = response.body.getReader()
+    assert.deepEqual(await reader.read(), { value: chunk, done: false })
+    await reader.cancel()
+    assert.equal(canceled, true)
+  }
+)
+
 test('concurrent expired requests share one renewal and replay POST bodies once', async () => {
   let renewals = 0,
     initial = 0,

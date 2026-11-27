@@ -71,6 +71,9 @@ import { atomUserInfo, globalHideUsername } from '@/utils/store'
 
 import { REFETCH_INTERVAL } from '@/lib/constants'
 
+import { DeploymentOverview } from './-deployment-overview'
+import { OverviewSection } from './-overview-section'
+
 export const Route = createFileRoute('/portal/overview/')({
   component: Overview,
 })
@@ -95,11 +98,12 @@ function Overview() {
   const billingVisible = isBillingVisibleForUser(billingStatus)
   const tableState = useJobTableState('overview_joblist', {
     sorting: [{ id: 'createdAt', desc: true }],
-    columnFilters: [
-      { id: 'days', value: ['7'] },
-      { id: 'status', value: ['Running', 'Pending', 'Inqueue', 'Starting'] },
-    ],
+    columnFilters: [{ id: 'status', value: ['Running', 'Pending', 'Inqueue', 'Starting'] }],
   })
+  const overviewTableParams = {
+    ...tableState.params,
+    filters: { ...tableState.params.filters, ...overviewSummaryParams.filters },
+  }
 
   // 获取当前语言对应的 date-fns locale
   const getDateLocale = useCallback((): Locale => {
@@ -237,14 +241,14 @@ function Overview() {
   )
 
   const jobQuery = useQuery({
-    queryKey: buildRemoteQueryKey('overview-jobs', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobAllList(tableState.params, signal)).data,
+    queryKey: buildRemoteQueryKey('overview-jobs', overviewTableParams),
+    queryFn: async ({ signal }) => (await apiJobAllList(overviewTableParams, signal)).data,
     placeholderData: keepPreviousData,
     refetchInterval: REFETCH_INTERVAL,
   })
   const jobFacetsQuery = useQuery({
-    queryKey: buildFacetQueryKey('overview-jobs', tableState.params),
-    queryFn: async ({ signal }) => (await apiJobAllFacets(tableState.params, signal)).data,
+    queryKey: buildFacetQueryKey('overview-jobs', overviewTableParams),
+    queryFn: async ({ signal }) => (await apiJobAllFacets(overviewTableParams, signal)).data,
     refetchInterval: REFETCH_INTERVAL,
   })
   const jobSummaryFacetsQuery = useQuery({
@@ -394,17 +398,21 @@ function Overview() {
           <NivoPie data={userStatus} margin={{ top: 20, bottom: 30 }} />
         </PieCard>
       </div>
-      <RemoteDataTable
-        info={{
-          title: '作业信息',
-          description: '查看近 7 天集群作业的运行情况',
-        }}
-        query={jobQuery}
-        state={tableState}
-        columns={jobColumns}
-        getRowId={(row) => row.jobName}
-        toolbarConfig={toolbarConfig}
-      />
+      <OverviewSection
+        title={t('overview.jobs.title')}
+        description={t('overview.jobs.description')}
+        icon={FlaskConicalIcon}
+        accent="bg-highlight-blue/15 text-highlight-blue"
+      >
+        <RemoteDataTable
+          query={jobQuery}
+          state={tableState}
+          columns={jobColumns}
+          getRowId={(row) => row.jobName}
+          toolbarConfig={toolbarConfig}
+        />
+      </OverviewSection>
+      <DeploymentOverview />
       <DataTable
         info={{
           title: '节点信息',

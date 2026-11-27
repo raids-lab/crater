@@ -61,6 +61,7 @@ type Server struct {
 	accumulator   *sessionAccumulator
 	address       string
 	logger        logr.Logger
+	decisionMu    sync.Mutex
 
 	mu          sync.Mutex
 	session     *sessionState
@@ -98,6 +99,10 @@ type heldWarning struct {
 // warnHeld records a job's hold reason when it changes and every heldWarningRefresh. Repeats must stop
 // here: client-go drops events once its queue is full, before its own dedup sees them.
 func (s *Server) warnHeld(job *jobView, reason, message string) {
+	// Only Volcano Job views have an identity for the job event timeline.
+	if job.uid == "" {
+		return
+	}
 	now := utils.GetLocalTime()
 	if value, ok := s.lastWarned.Get(job.uid); ok {
 		if last := value.(heldWarning); last.reason == reason && now.Sub(last.at) < heldWarningRefresh {

@@ -1,3 +1,10 @@
+# Kthena v1.1.0 ModelServing init-container image. Mirror it if required.
+kthena:
+  downloaderImage: ghcr.io/volcano-sh/downloader:v1.1.0
+  enabledProfiles: []
+  # Exact image references per profile; overrides built-in images. Use version tags or sha256 digests.
+  runtimeImages: {}
+
 # Enable leader election for controller manager to ensure high availability
 # Optional: Defaults to false if not specified
 enableLeaderElection: false

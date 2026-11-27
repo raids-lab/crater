@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"gorm.io/datatypes"
 	"gorm.io/gen/field"
 	"gorm.io/gorm"
@@ -75,8 +77,10 @@ type UserResourceUsageSummary struct {
 }
 
 type QueueQuotaService struct {
-	q             *query.Query
-	configService *ConfigService
+	servingClient    client.Reader
+	servingNamespace string
+	q                *query.Query
+	configService    *ConfigService
 }
 
 type resourceUsageMetric struct {
@@ -536,6 +540,16 @@ func (s *QueueQuotaService) listUserQueueOccupiedJobs(
 	if err != nil {
 		return nil, fmt.Errorf("failed to query jobs: %w", err)
 	}
+
+	jobs, err = s.liveJobReservations(ctx, userID, accountID, jobs, false)
+	if err != nil {
+		return nil, err
+	}
+	serving, err := s.servingUsage(ctx, userID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	jobs = append(jobs, serving...)
 
 	return jobs, nil
 }

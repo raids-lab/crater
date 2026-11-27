@@ -33,6 +33,9 @@ var (
 	Job                     *job
 	Jobtemplate             *jobtemplate
 	Kaniko                  *kaniko
+	KthenaChatMessage       *kthenaChatMessage
+	KthenaChatSession       *kthenaChatSession
+	KthenaInferenceTemplate *kthenaInferenceTemplate
 	ModelDatasetDiscovery   *modelDatasetDiscovery
 	ModelDatasetSource      *modelDatasetSource
 	ModelDownload           *modelDownload
@@ -41,6 +44,7 @@ var (
 	Resource                *resource
 	ResourceNetwork         *resourceNetwork
 	ResourceVGPU            *resourceVGPU
+	ServingUsage            *servingUsage
 	SystemConfig            *systemConfig
 	User                    *user
 	UserAccount             *userAccount
@@ -67,6 +71,9 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Job = &Q.Job
 	Jobtemplate = &Q.Jobtemplate
 	Kaniko = &Q.Kaniko
+	KthenaChatMessage = &Q.KthenaChatMessage
+	KthenaChatSession = &Q.KthenaChatSession
+	KthenaInferenceTemplate = &Q.KthenaInferenceTemplate
 	ModelDatasetDiscovery = &Q.ModelDatasetDiscovery
 	ModelDatasetSource = &Q.ModelDatasetSource
 	ModelDownload = &Q.ModelDownload
@@ -75,6 +82,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Resource = &Q.Resource
 	ResourceNetwork = &Q.ResourceNetwork
 	ResourceVGPU = &Q.ResourceVGPU
+	ServingUsage = &Q.ServingUsage
 	SystemConfig = &Q.SystemConfig
 	User = &Q.User
 	UserAccount = &Q.UserAccount
@@ -102,6 +110,9 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Job:                     newJob(db, opts...),
 		Jobtemplate:             newJobtemplate(db, opts...),
 		Kaniko:                  newKaniko(db, opts...),
+		KthenaChatMessage:       newKthenaChatMessage(db, opts...),
+		KthenaChatSession:       newKthenaChatSession(db, opts...),
+		KthenaInferenceTemplate: newKthenaInferenceTemplate(db, opts...),
 		ModelDatasetDiscovery:   newModelDatasetDiscovery(db, opts...),
 		ModelDatasetSource:      newModelDatasetSource(db, opts...),
 		ModelDownload:           newModelDownload(db, opts...),
@@ -110,6 +121,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Resource:                newResource(db, opts...),
 		ResourceNetwork:         newResourceNetwork(db, opts...),
 		ResourceVGPU:            newResourceVGPU(db, opts...),
+		ServingUsage:            newServingUsage(db, opts...),
 		SystemConfig:            newSystemConfig(db, opts...),
 		User:                    newUser(db, opts...),
 		UserAccount:             newUserAccount(db, opts...),
@@ -138,6 +150,9 @@ type Query struct {
 	Job                     job
 	Jobtemplate             jobtemplate
 	Kaniko                  kaniko
+	KthenaChatMessage       kthenaChatMessage
+	KthenaChatSession       kthenaChatSession
+	KthenaInferenceTemplate kthenaInferenceTemplate
 	ModelDatasetDiscovery   modelDatasetDiscovery
 	ModelDatasetSource      modelDatasetSource
 	ModelDownload           modelDownload
@@ -146,6 +161,7 @@ type Query struct {
 	Resource                resource
 	ResourceNetwork         resourceNetwork
 	ResourceVGPU            resourceVGPU
+	ServingUsage            servingUsage
 	SystemConfig            systemConfig
 	User                    user
 	UserAccount             userAccount
@@ -175,6 +191,9 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Job:                     q.Job.clone(db),
 		Jobtemplate:             q.Jobtemplate.clone(db),
 		Kaniko:                  q.Kaniko.clone(db),
+		KthenaChatMessage:       q.KthenaChatMessage.clone(db),
+		KthenaChatSession:       q.KthenaChatSession.clone(db),
+		KthenaInferenceTemplate: q.KthenaInferenceTemplate.clone(db),
 		ModelDatasetDiscovery:   q.ModelDatasetDiscovery.clone(db),
 		ModelDatasetSource:      q.ModelDatasetSource.clone(db),
 		ModelDownload:           q.ModelDownload.clone(db),
@@ -183,6 +202,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Resource:                q.Resource.clone(db),
 		ResourceNetwork:         q.ResourceNetwork.clone(db),
 		ResourceVGPU:            q.ResourceVGPU.clone(db),
+		ServingUsage:            q.ServingUsage.clone(db),
 		SystemConfig:            q.SystemConfig.clone(db),
 		User:                    q.User.clone(db),
 		UserAccount:             q.UserAccount.clone(db),
@@ -219,6 +239,9 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Job:                     q.Job.replaceDB(db),
 		Jobtemplate:             q.Jobtemplate.replaceDB(db),
 		Kaniko:                  q.Kaniko.replaceDB(db),
+		KthenaChatMessage:       q.KthenaChatMessage.replaceDB(db),
+		KthenaChatSession:       q.KthenaChatSession.replaceDB(db),
+		KthenaInferenceTemplate: q.KthenaInferenceTemplate.replaceDB(db),
 		ModelDatasetDiscovery:   q.ModelDatasetDiscovery.replaceDB(db),
 		ModelDatasetSource:      q.ModelDatasetSource.replaceDB(db),
 		ModelDownload:           q.ModelDownload.replaceDB(db),
@@ -227,6 +250,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Resource:                q.Resource.replaceDB(db),
 		ResourceNetwork:         q.ResourceNetwork.replaceDB(db),
 		ResourceVGPU:            q.ResourceVGPU.replaceDB(db),
+		ServingUsage:            q.ServingUsage.replaceDB(db),
 		SystemConfig:            q.SystemConfig.replaceDB(db),
 		User:                    q.User.replaceDB(db),
 		UserAccount:             q.UserAccount.replaceDB(db),
@@ -253,6 +277,9 @@ type queryCtx struct {
 	Job                     IJobDo
 	Jobtemplate             IJobtemplateDo
 	Kaniko                  IKanikoDo
+	KthenaChatMessage       IKthenaChatMessageDo
+	KthenaChatSession       IKthenaChatSessionDo
+	KthenaInferenceTemplate IKthenaInferenceTemplateDo
 	ModelDatasetDiscovery   IModelDatasetDiscoveryDo
 	ModelDatasetSource      IModelDatasetSourceDo
 	ModelDownload           IModelDownloadDo
@@ -261,6 +288,7 @@ type queryCtx struct {
 	Resource                IResourceDo
 	ResourceNetwork         IResourceNetworkDo
 	ResourceVGPU            IResourceVGPUDo
+	ServingUsage            IServingUsageDo
 	SystemConfig            ISystemConfigDo
 	User                    IUserDo
 	UserAccount             IUserAccountDo
@@ -287,6 +315,9 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Job:                     q.Job.WithContext(ctx),
 		Jobtemplate:             q.Jobtemplate.WithContext(ctx),
 		Kaniko:                  q.Kaniko.WithContext(ctx),
+		KthenaChatMessage:       q.KthenaChatMessage.WithContext(ctx),
+		KthenaChatSession:       q.KthenaChatSession.WithContext(ctx),
+		KthenaInferenceTemplate: q.KthenaInferenceTemplate.WithContext(ctx),
 		ModelDatasetDiscovery:   q.ModelDatasetDiscovery.WithContext(ctx),
 		ModelDatasetSource:      q.ModelDatasetSource.WithContext(ctx),
 		ModelDownload:           q.ModelDownload.WithContext(ctx),
@@ -295,6 +326,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Resource:                q.Resource.WithContext(ctx),
 		ResourceNetwork:         q.ResourceNetwork.WithContext(ctx),
 		ResourceVGPU:            q.ResourceVGPU.WithContext(ctx),
+		ServingUsage:            q.ServingUsage.WithContext(ctx),
 		SystemConfig:            q.SystemConfig.WithContext(ctx),
 		User:                    q.User.WithContext(ctx),
 		UserAccount:             q.UserAccount.WithContext(ctx),

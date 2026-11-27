@@ -33,6 +33,18 @@ func (mgr *VolcanojobMgr) submitJob(
 	if err := service.ApplyUserJobCapabilities(ctx, token.UserID, sysAdminEnabled, pods...); err != nil {
 		return err
 	}
+	return service.WithWorkloadAdmission(ctx, token.UserID, token.AccountID, func() error {
+		if mgr.queueQuotaSvc != nil {
+			if err := service.CheckWorkloadSubmission(ctx, mgr.userBanService, mgr.billingService,
+				mgr.queueQuotaSvc, token.UserID, token.AccountID); err != nil {
+				return err
+			}
+		}
+		return mgr.submitJobLocked(ctx, token, job)
+	})
+}
+
+func (mgr *VolcanojobMgr) submitJobLocked(ctx context.Context, token util.JWTMessage, job *batch.Job) error {
 	if err := mgr.ensureJobAdmitted(ctx, job); err != nil {
 		return err
 	}

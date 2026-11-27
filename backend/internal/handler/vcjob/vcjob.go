@@ -178,23 +178,14 @@ const (
 
 type Forward = vcjobservice.Forward
 
-func (mgr *VolcanojobMgr) checkBillingBeforeCreate(c *gin.Context, userID, accountID uint) error {
-	if mgr.billingService == nil {
-		return nil
-	}
-	return mgr.billingService.OnJobCreateCheck(c.Request.Context(), userID, accountID)
-}
-
 func (mgr *VolcanojobMgr) preCheckCreateJob(
 	c *gin.Context,
 	token util.JWTMessage,
 	requireInteractiveLimit bool,
 ) bool {
-	if !handler.RequireUserBanCapability(c, mgr.userBanService, service.UserBanCapabilityJobSubmission) {
-		return false
-	}
-	if err := mgr.checkBillingBeforeCreate(c, token.UserID, token.AccountID); err != nil {
-		resputil.Error(c, err.Error(), resputil.BusinessLogicError)
+	if err := service.CheckWorkloadSubmission(c.Request.Context(), mgr.userBanService, mgr.billingService,
+		mgr.queueQuotaSvc, token.UserID, token.AccountID); err != nil {
+		resputil.HandleError(c, err)
 		return false
 	}
 	if requireInteractiveLimit {
