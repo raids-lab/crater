@@ -36,7 +36,7 @@ import {
 } from '@/services/api/vcjob'
 
 import useIsAdmin from '@/hooks/use-admin'
-import useRemoteTableState from '@/hooks/use-remote-table-state'
+import useJobTableState from '@/hooks/use-job-table-state'
 
 // Define the props for the component
 interface UserJobsOverviewProps {
@@ -51,7 +51,7 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
   const queryClient = useQueryClient()
   const isAdmin = useIsAdmin()
   const resourceKey = `user-jobs-${username}-${isAdmin}`
-  const tableState = useRemoteTableState(`user_jobs_overview_${username}_${isAdmin}`, {
+  const tableState = useJobTableState(`user_jobs_overview_${username}_${isAdmin}`, {
     sorting: [{ id: 'createdAt', desc: true }],
     columnFilters: [{ id: 'days', value: ['30'] }],
   })
@@ -93,10 +93,7 @@ export function UserJobsOverview({ username }: UserJobsOverviewProps) {
     },
   })
 
-  const toolbarConfig = useMemo(
-    () => getRemoteJobToolbarConfig(facetsQuery.data),
-    [facetsQuery.data]
-  )
+  const toolbarConfig = getRemoteJobToolbarConfig(facetsQuery.data)
 
   // Define table columns
   const userJobsColumns = useMemo<ColumnDef<IJobInfo>[]>(() => {
