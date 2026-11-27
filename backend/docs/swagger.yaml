@@ -10432,7 +10432,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort up to 3 fields including phase and id, prefix - for descending,
+          unknown phases last
         in: query
         name: sort
         type: string
@@ -10457,6 +10458,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -10896,7 +10921,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort up to 3 fields including phase and id, prefix - for descending,
+          unknown phases last
         in: query
         name: sort
         type: string
@@ -10917,6 +10943,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -10944,6 +10994,8 @@ paths:
       - VolcanoJob
   /v1/vcjobs/all/facets:
     get:
+      description: Each facet ignores its own filter. Other filters, including the
+        other status dimension, and scopes apply.
       parameters:
       - description: Number of days to look back, -1 for all
         in: query
@@ -10966,6 +11018,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -10985,6 +11061,8 @@ paths:
       - VolcanoJob
   /v1/vcjobs/facets:
     get:
+      description: Each facet ignores its own filter. Other filters, including the
+        other status dimension, and scopes apply.
       parameters:
       - description: Number of days to look back, -1 for all
         in: query
@@ -11007,6 +11085,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -11197,7 +11299,8 @@ paths:
         in: query
         name: page_size
         type: integer
-      - description: Sort fields
+      - description: Sort up to 3 fields including phase and id, prefix - for descending,
+          unknown phases last
         in: query
         name: sort
         type: string
@@ -11218,6 +11321,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
@@ -11253,6 +11380,8 @@ paths:
       - VolcanoJob
   /v1/vcjobs/user/{username}/facets:
     get:
+      description: Each facet ignores its own filter. Other filters, including the
+        other status dimension, and scopes apply.
       parameters:
       - description: Username
         in: path
@@ -11280,6 +11409,30 @@ paths:
         items:
           type: string
         name: status
+        type: array
+      - collectionFormat: multi
+        description: UI phases AND status, repeat or comma-separate up to 20 values.
+          Init encodes empty. Pending includes legacy Prequeue
+        in: query
+        items:
+          enum:
+          - Init
+          - Pending
+          - Inqueue
+          - Starting
+          - Running
+          - Restarting
+          - Completing
+          - Completed
+          - Aborting
+          - Aborted
+          - Terminating
+          - Terminated
+          - Failed
+          - Deleted
+          - Freed
+          type: string
+        name: phase
         type: array
       - description: Node name
         in: query
