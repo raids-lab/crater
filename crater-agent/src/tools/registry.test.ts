@@ -97,11 +97,9 @@ void test("all entry points share read tools; navigation stays role scoped", asy
     },
   });
   const form = selectSkill("user", context);
-  for (const name of user.activeTools.filter(
-    (tool) => tool !== "navigate_to_page",
-  ))
+  for (const name of user.activeTools)
     assert.ok(form.activeTools.includes(name));
-  assert.ok(!form.activeTools.includes("navigate_to_page"));
+  assert.ok(form.activeTools.includes("navigate_to_page"));
   assert.ok(form.activeTools.includes("propose_form_patch"));
   const tools = selectSkillTools(admin.activeTools, config, "signed", "admin");
   const schema = tools.navigate_to_page?.inputSchema;

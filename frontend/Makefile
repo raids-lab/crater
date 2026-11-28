@@ -140,8 +140,8 @@ pre-commit-check: test-model-download test-tensorboard-templates test-job-phases
 	fi
 
 .PHONY: test-agent-assistant
-test-agent-assistant: ## Check Agent response progress and translated welcome guidance.
-	node --test hack/agent_assistant.test.mjs
+test-agent-assistant: ## Check Agent guidance, progress and navigation behavior.
+	node --test hack/agent_assistant.test.mjs hack/agent_navigation.test.mjs
 
 .PHONY: lint-fix
 lint-fix: ## 🔧 Fix ESLint issues automatically

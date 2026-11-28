@@ -28,6 +28,33 @@ export function isAgentFormDestination(path: string): boolean {
   return Object.values(agentFormCapabilities).some((capability) => capability.route === path)
 }
 
+export function needsAgentFormOptions(input: unknown, path: string): boolean {
+  return (
+    isAgentFormDestination(path) &&
+    typeof input === 'object' &&
+    input !== null &&
+    !Array.isArray(input) &&
+    'assistForm' in input &&
+    input.assistForm === true
+  )
+}
+
+export function isAgentNavigationBlocked(
+  parts: readonly { type: string; toolCallId?: string; state?: string }[],
+  toolCallID: string
+): boolean {
+  const index = parts.findIndex((part) => part.toolCallId === toolCallID)
+  if (index < 0) return true
+  if (!isNavigationPart(parts[index]?.type)) return false
+  return parts
+    .slice(0, index)
+    .some((part) => isNavigationPart(part.type) && part.state === 'input-available')
+}
+
+function isNavigationPart(type: string | undefined) {
+  return type === 'tool-navigate_to_page' || type === 'tool-navigate_to_job_detail'
+}
+
 export const agentUserNavigationDestinations = [
   '/portal/overview',
   '/portal/monitor/gpu',

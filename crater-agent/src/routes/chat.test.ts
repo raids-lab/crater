@@ -4,6 +4,164 @@ import type { UIMessage } from "ai";
 
 import { boundRunCompletion, createChatRoutes } from "./chat.js";
 
+void test("query nodes before proposing both requested pages without form assistance", async (t) => {
+  const config = {
+    port: 8000,
+    backendInternalURL: "http://backend.invalid",
+    internalToken: "isolated-test-internal-token-value",
+  };
+  const events: string[] = [];
+  const destinations = [
+    {
+      path: "/portal/jobs/new/jupyter-job",
+      label: "New Jupyter job",
+      reason: "Open the requested creation page without filling it",
+      assistForm: false,
+    },
+    {
+      path: "/portal/env/images",
+      label: "Image list",
+      reason: "Open the image list last",
+      assistForm: false,
+    },
+  ];
+  let modelCalls = 0;
+  let saved: UIMessage | undefined;
+  t.mock.method(
+    globalThis,
+    "fetch",
+    (input: string | URL | Request, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      if (url.endsWith("/llm/chat/completions")) {
+        assert.ok(init && typeof init.body === "string");
+        const first = modelCalls++ === 0;
+        events.push(first ? "model-query" : "model-navigation");
+        const body = JSON.parse(init.body) as {
+          messages: unknown[];
+          tools: unknown[];
+        };
+        assert.match(JSON.stringify(body.tools), /multiple requested pages/);
+        if (!first) {
+          assert.deepEqual(events, [
+            "model-query",
+            "nodes",
+            "model-navigation",
+          ]);
+          assert.match(JSON.stringify(body.messages), /worker-amd64/);
+        }
+        const delta = first
+          ? {
+              tool_calls: [
+                {
+                  index: 0,
+                  id: "nodes",
+                  type: "function",
+                  function: { name: "list_nodes", arguments: "{}" },
+                },
+              ],
+            }
+          : {
+              content:
+                "worker-amd64: amd64; worker-arm64: arm64. Confirm Jupyter first, then the image list. No form will be filled.",
+              tool_calls: destinations.map((destination, index) => ({
+                index,
+                id: `navigation-${String(index)}`,
+                type: "function",
+                function: {
+                  name: "navigate_to_page",
+                  arguments: JSON.stringify(destination),
+                },
+              })),
+            };
+        return Promise.resolve(
+          new Response(
+            `data: ${JSON.stringify({ choices: [{ index: 0, delta, finish_reason: null }] })}\n\n` +
+              `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] })}\n\n` +
+              "data: [DONE]\n\n",
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+        );
+      }
+      if (url.endsWith("/api/agent/nodes")) {
+        events.push("nodes");
+        return Promise.resolve(
+          Response.json({
+            code: 0,
+            data: [
+              { name: "worker-amd64", architecture: "amd64" },
+              { name: "worker-arm64", architecture: "arm64" },
+            ],
+          }),
+        );
+      }
+      assert.ok(url.endsWith("/complete"));
+      assert.ok(init && typeof init.body === "string");
+      events.push("complete");
+      const completion = JSON.parse(init.body) as {
+        status: string;
+        message: UIMessage;
+      };
+      assert.equal(completion.status, "completed");
+      saved = completion.message;
+      return Promise.resolve(Response.json({ code: 0 }));
+    },
+  );
+  const response = await createChatRoutes(config).request("/chat", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.internalToken}`,
+      "X-Crater-Agent-Context": "signed-test-context",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      runId: "9ed49cd2-c1be-4f55-8985-032cd72b4865",
+      identityScope: "user",
+      messages: [
+        {
+          id: "nodes-then-pages",
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: "先查询并列出集群节点的名称和架构，再带我进入新建 Jupyter 作业页面，暂时不要填写表单。最后跳转镜像列表页面。",
+            },
+          ],
+        },
+      ],
+    }),
+  });
+  assert.equal(response.status, 200);
+  const stream = await response.text();
+  assert.match(stream, /worker-amd64/);
+  assert.doesNotMatch(stream, /propose_form_patch|"type":"error"/);
+  assert.deepEqual(events, [
+    "model-query",
+    "nodes",
+    "model-navigation",
+    "complete",
+  ]);
+  assert.ok(saved);
+  const cards = saved.parts.filter(
+    (part) => part.type === "tool-navigate_to_page",
+  );
+  assert.equal(cards.length, 2);
+  assert.ok(
+    cards.every((part) => "state" in part && part.state === "input-available"),
+  );
+  assert.deepEqual(
+    cards.map((part) => ("input" in part ? part.input : undefined)),
+    destinations,
+  );
+  assert.ok(
+    saved.parts.findIndex((part) => part.type === "tool-list_nodes") <
+      saved.parts.findIndex((part) => part.type === "text"),
+  );
+  assert.ok(
+    saved.parts.findIndex((part) => part.type === "text") <
+      saved.parts.findIndex((part) => part.type === "tool-navigate_to_page"),
+  );
+});
+
 void test("whole-message budgeting preserves the answer and navigation but not oversized read evidence", () => {
   const message: UIMessage = {
     id: "large-answer",

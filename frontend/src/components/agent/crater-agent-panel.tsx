@@ -61,8 +61,9 @@ import {
 import { AgentWelcome } from '@/components/agent/agent-welcome'
 import { ConversationSidebar } from '@/components/agent/conversation-sidebar'
 import {
-  isAgentFormDestination,
+  isAgentNavigationBlocked,
   isAgentNavigationDestination,
+  needsAgentFormOptions,
 } from '@/components/agent/form-capabilities'
 import { MarkdownRenderer } from '@/components/form/markdown-renderer'
 import { UserAvatar } from '@/components/user/user-avatar'
@@ -473,6 +474,10 @@ function ChatMessage({
                   part={part}
                   runtime={runtime}
                   busy={busy}
+                  navigationBlocked={isAgentNavigationBlocked(
+                    confirmationToolParts,
+                    part.toolCallId
+                  )}
                   onNavigate={(path) => onNavigate(message.id, part, path)}
                   onNavigateJob={(jobName) => onNavigateJob(message.id, part, jobName)}
                   onApply={(patches) => onApply(message.id, part, patches)}
@@ -1101,15 +1106,23 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     }
   }
 
+  const ensureNavigationOrder = (messageID: string, part: AgentToolPart) => {
+    const message = messages.find((candidate) => candidate.id === messageID)
+    if (isAgentNavigationBlocked(message?.parts ?? [], part.toolCallId)) {
+      throw new Error(t('craterAgent.navigationWaiting'))
+    }
+  }
+
   const navigateFromTool = async (messageID: string, part: AgentToolPart, path: string) => {
     return withToolAction(async () => {
+      ensureNavigationOrder(messageID, part)
       if (!isAgentNavigationDestination(identity, path)) {
         throw new Error(t('craterAgent.navigationNotAllowed'))
       }
       await navigate({ to: path })
-      if (isAgentFormDestination(path)) {
+      if (needsAgentFormOptions(part.input, path)) {
         const ready = await waitForFormOptions(path, formRuntimeRef)
-        if (!ready) toast.error(t('craterAgent.formOptionUnavailable'))
+        if (!ready) toast.error(t('craterAgent.formNotReady'))
       }
       await saveToolOutput(messageID, part, { status: 'accepted', path })
     })
@@ -1121,6 +1134,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     jobName: string
   ) => {
     return withToolAction(async () => {
+      ensureNavigationOrder(messageID, part)
       if (!jobName) throw new Error(t('craterAgent.navigationNotAllowed'))
       if (identity === 'admin') {
         await navigate({ to: '/admin/jobs/$name', params: { name: jobName } })

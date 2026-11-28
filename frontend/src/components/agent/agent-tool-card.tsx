@@ -39,6 +39,7 @@ interface AgentToolCardProps {
   sequence?: number
   runtime?: AgentFormRuntime
   busy: boolean
+  navigationBlocked?: boolean
   onNavigate: (path: string) => Promise<void>
   onNavigateJob: (jobName: string) => Promise<void>
   onApply: (patches: readonly AgentFormPatch[]) => Promise<string[]>
@@ -77,6 +78,7 @@ export function AgentToolCard({
   sequence,
   runtime,
   busy,
+  navigationBlocked = false,
   onNavigate,
   onNavigateJob,
   onApply,
@@ -122,11 +124,14 @@ export function AgentToolCard({
         errorText={errorText}
       >
         <p className="text-sm font-medium wrap-anywhere">{stringValue(input.label) || path}</p>
+        {!resolved && navigationBlocked && (
+          <p className="text-muted-foreground text-xs">{t('craterAgent.navigationWaiting')}</p>
+        )}
         {resolved ? (
           <ToolResult accepted={output.status === 'accepted'} />
         ) : (
           <ToolActions
-            disabled={busy || working || !awaitingConfirmation}
+            disabled={busy || working || !awaitingConfirmation || navigationBlocked}
             confirmDisabled={!allowed}
             working={working}
             confirmLabel={t('craterAgent.openPage')}
@@ -148,11 +153,14 @@ export function AgentToolCard({
         errorText={errorText}
       >
         <p className="text-sm font-medium wrap-anywhere">{stringValue(input.label) || jobName}</p>
+        {!resolved && navigationBlocked && (
+          <p className="text-muted-foreground text-xs">{t('craterAgent.navigationWaiting')}</p>
+        )}
         {resolved ? (
           <ToolResult accepted={output.status === 'accepted'} />
         ) : (
           <ToolActions
-            disabled={busy || working || !awaitingConfirmation}
+            disabled={busy || working || !awaitingConfirmation || navigationBlocked}
             confirmDisabled={!isAgentJobName(jobName)}
             working={working}
             confirmLabel={t('craterAgent.openJobDetail')}

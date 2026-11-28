@@ -69,8 +69,8 @@ function createNavigationTool(identity: AgentIdentity) {
   return tool({
     description:
       identity === "admin"
-        ? "After completing the user-facing answer, propose navigation to one allowlisted Crater administrator page as the final response item. Never call this before the answer and never use a /portal path."
-        : "After completing the user-facing answer, propose navigation to one allowlisted Crater user page as the final response item. Never call this before the answer and never use an /admin path.",
+        ? "After completing requested read queries and the user-facing answer, propose allowlisted Crater administrator destinations as final confirmation cards. For multiple requested pages, call this tool once per destination in the requested order; do not skip intermediate pages or claim only one card is supported. Each card needs user confirmation. Never use a /portal path."
+        : "After completing requested read queries and the user-facing answer, propose allowlisted Crater user destinations as final confirmation cards. For multiple requested pages, call this tool once per destination in the requested order; do not skip intermediate pages or claim only one card is supported. Each card needs user confirmation. Never use an /admin path.",
     inputSchema: z.object({
       path: z.enum(paths),
       label: z.string().min(1).max(80),
@@ -87,7 +87,7 @@ function createNavigationTool(identity: AgentIdentity) {
 
 const navigateToJobDetailTool = tool({
   description:
-    "After completing the user-facing answer, propose opening the detail page for one exact Crater job as the final response item. Use the jobName returned by an authorized job query. The browser selects the administrator or user route from the current identity; never use navigate_to_page for a job detail.",
+    "After completing the user-facing answer, propose opening the detail page for one exact Crater job among the final confirmation cards. For multiple requested destinations, keep the requested order. Use the jobName returned by an authorized job query. The browser selects the administrator or user route from the current identity; never use navigate_to_page for a job detail.",
   inputSchema: z.object({
     jobName: z
       .string()
