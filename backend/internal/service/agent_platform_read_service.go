@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	podresource "k8s.io/component-helpers/resource"
+	batch "volcano.sh/apis/pkg/apis/batch/v1alpha1"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/bizerr"
@@ -25,6 +26,8 @@ const (
 	agentMaximumJobPageSize = 50
 	agentMaximumJobSearch   = 128
 	agentMaximumUsername    = 64
+	AgentJobScopeActive     = "active"
+	AgentJobScopeAll        = "all"
 )
 
 type AgentPlatformReadService struct {
@@ -39,6 +42,7 @@ type AgentJobListOptions struct {
 	Search       string
 	Username     string
 	Statuses     []string
+	Scope        string
 	Identity     AgentIdentity
 	UserID       uint
 	AccountID    uint
@@ -54,8 +58,8 @@ type AgentJobSummary struct {
 	Nodes       []string          `json:"nodes,omitempty"`
 	Resources   map[string]string `json:"resources,omitempty"`
 	CreatedAt   time.Time         `json:"createdAt"`
-	StartedAt   time.Time         `json:"startedAt,omitempty"`
-	CompletedAt time.Time         `json:"completedAt,omitempty"`
+	StartedAt   *time.Time        `json:"startedAt,omitempty"`
+	CompletedAt *time.Time        `json:"completedAt,omitempty"`
 }
 
 type AgentJobListPage struct {
@@ -64,6 +68,8 @@ type AgentJobListPage struct {
 	HasMore  bool              `json:"hasMore"`
 	Page     int               `json:"page"`
 	PageSize int               `json:"pageSize"`
+	Scope    string            `json:"scope"`
+	Statuses []string          `json:"statuses,omitempty"`
 }
 
 type AgentNodeCapacity struct {
@@ -135,12 +141,21 @@ func (s *AgentPlatformReadService) ListJobs(
 		jobs = jobs[:options.PageSize]
 	}
 	items := agentJobSummaries(jobs, options.Identity)
-	return &AgentJobListPage{Items: items, Total: total, HasMore: hasMore, Page: options.Page, PageSize: options.PageSize}, nil
+	return &AgentJobListPage{
+		Items: items, Total: total, HasMore: hasMore, Page: options.Page, PageSize: options.PageSize,
+		Scope: options.Scope, Statuses: options.Statuses,
+	}, nil
 }
 
 func normalizeAgentJobListOptions(options *AgentJobListOptions) error {
 	if options == nil || options.Page > 10000 {
 		return bizerr.BadRequest.ParameterError.New("invalid Agent job pagination")
+	}
+	if options.Scope == "" {
+		options.Scope = AgentJobScopeAll
+	}
+	if options.Scope != AgentJobScopeAll && options.Scope != AgentJobScopeActive {
+		return bizerr.BadRequest.ParameterError.New("unsupported Agent job scope")
 	}
 	if options.Page < 1 {
 		options.Page = 1
@@ -209,6 +224,12 @@ func (s *AgentPlatformReadService) authorizedAgentJobQuery(
 }
 
 func filterAgentJobs(query *gorm.DB, options *AgentJobListOptions) (*gorm.DB, error) {
+	if options.Scope == AgentJobScopeActive {
+		query = query.Where("status NOT IN ?", []string{
+			string(batch.Completed), string(batch.Failed), string(batch.Aborted), string(batch.Terminated),
+			string(model.Deleted), string(model.Freed), "Cancelled", //nolint:misspell // Historical platform phase.
+		})
+	}
 	if options.Search != "" {
 		pattern := "%" + strings.ToLower(options.Search) + "%"
 		query = query.Where("LOWER(name) LIKE ? OR LOWER(job_name) LIKE ?", pattern, pattern)
@@ -229,15 +250,19 @@ func agentJobSummaries(jobs []model.Job, identity AgentIdentity) []AgentJobSumma
 	for index := range jobs {
 		job := &jobs[index]
 		item := AgentJobSummary{
-			Name:        job.Name,
-			JobName:     job.JobName,
-			JobType:     string(job.JobType),
-			Status:      string(job.Status),
-			Nodes:       job.Nodes.Data(),
-			Resources:   utils.ToStringMap(job.Resources.Data()),
-			CreatedAt:   job.CreationTimestamp,
-			StartedAt:   job.RunningTimestamp,
-			CompletedAt: job.CompletedTimestamp,
+			Name:      job.Name,
+			JobName:   job.JobName,
+			JobType:   string(job.JobType),
+			Status:    string(job.Status),
+			Nodes:     job.Nodes.Data(),
+			Resources: utils.ToStringMap(job.Resources.Data()),
+			CreatedAt: job.CreationTimestamp,
+		}
+		if !job.RunningTimestamp.IsZero() {
+			item.StartedAt = &job.RunningTimestamp
+		}
+		if !job.CompletedTimestamp.IsZero() {
+			item.CompletedAt = &job.CompletedTimestamp
 		}
 		if identity == AgentIdentityAdmin {
 			item.Username = job.User.Name

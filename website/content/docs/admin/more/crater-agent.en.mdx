@@ -11,6 +11,12 @@ The platform default is available to every user. After a user saves a complete p
 
 API keys are encrypted at rest and the complete value is not displayed again. Updating a model configuration affects subsequent requests and does not rewrite existing conversation messages.
 
+## Configuration change audit
+
+Operation Logs records saves and removals of personal model configurations, and saves and resets of the platform default. Filter by **Save model configuration** or **Remove model configuration**. Entries include the operator, time, scope, outcome, and the owner user ID for personal configurations. Save entries also indicate whether a new key was submitted; reusing the stored key is recorded as no. Failed changes are recorded too; viewing settings or testing a connection alone is not a configuration change.
+
+Only allowlisted metadata is retained: no key plaintext, prefixes, suffixes, ciphertext, endpoint URLs, model names, request bodies, or raw errors. Audit-write failures are logged on the server and do not undo a successful configuration save. These logs are not configuration backups.
+
 ## Conversation review
 
 **Intelligent Operations / Agent Conversations** first groups records by user and identity, showing only users with recorded conversations. Filter by username, nickname, user ID, or identity; select a user to browse their conversations, then open one to inspect messages and read-only tool records.

@@ -13,6 +13,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/bizerr"
@@ -552,10 +553,14 @@ func (s *AgentConversationService) CompleteRun(
 	identity AgentIdentity,
 	runID string,
 	completion AgentRunCompletion,
-) error {
+) (err error) {
 	if _, err := uuid.Parse(runID); err != nil {
 		return bizerr.BadRequest.ParameterError.New("run id is invalid")
 	}
+	// Closing a failed completion must not depend on the request's canceled context.
+	defer func() {
+		s.finalizeFailedCompletion(ctx, userID, identity, runID, completion, err)
+	}()
 	if !isTerminalRunStatus(completion.Status) {
 		return bizerr.BadRequest.ParameterError.New("run status is invalid")
 	}
@@ -601,6 +606,18 @@ func (s *AgentConversationService) CompleteRun(
 		}
 		return nil
 	})
+}
+
+func (s *AgentConversationService) finalizeFailedCompletion(
+	ctx context.Context, userID uint, identity AgentIdentity, runID string,
+	completion AgentRunCompletion, completionErr error,
+) {
+	if completionErr == nil || (completion.Message == nil && completion.Status == AgentRunStatusFailed) {
+		return
+	}
+	if err := s.FailRun(ctx, userID, identity, runID, completionErr); err != nil {
+		klog.ErrorS(err, "Failed to close Agent run after completion failure", "runID", runID)
+	}
 }
 
 func (s *AgentConversationService) FailRun(
@@ -692,18 +709,26 @@ func prepareAgentContinuationTransaction(
 
 func hasAcceptedAgentFormNavigation(parts []byte) bool {
 	var values []struct {
-		Type   string `json:"type"`
-		State  string `json:"state"`
-		Output struct {
-			Status string `json:"status"`
-		} `json:"output"`
+		Type   string          `json:"type"`
+		State  string          `json:"state"`
+		Output json.RawMessage `json:"output"`
+		Input  json.RawMessage `json:"input"`
 	}
 	if json.Unmarshal(parts, &values) != nil {
 		return false
 	}
 	for _, part := range values {
-		if part.Type == "tool-navigate_to_page" && part.State == agentToolStateAvailable &&
-			part.Output.Status == "accepted" {
+		if part.Type != "tool-navigate_to_page" || part.State != agentToolStateAvailable {
+			continue
+		}
+		var output struct {
+			Status string `json:"status"`
+		}
+		var input struct {
+			AssistForm bool `json:"assistForm"`
+		}
+		if json.Unmarshal(part.Input, &input) == nil && input.AssistForm &&
+			json.Unmarshal(part.Output, &output) == nil && output.Status == "accepted" {
 			return true
 		}
 	}

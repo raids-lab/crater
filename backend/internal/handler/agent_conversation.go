@@ -229,11 +229,13 @@ func (mgr *AgentMgr) CompleteAgentRun(c *gin.Context) {
 	}
 	body, err := readLimitedBody(c.Request.Body, agentChatBodyLimit)
 	if err != nil {
+		mgr.failAgentRun(c, claims.UserID, claims.IdentityScope, c.Param("id"), err)
 		resputil.HandleError(c, err)
 		return
 	}
 	var completion service.AgentRunCompletion
 	if err := json.Unmarshal(body, &completion); err != nil {
+		mgr.failAgentRun(c, claims.UserID, claims.IdentityScope, c.Param("id"), err)
 		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid Agent run completion"))
 		return
 	}

@@ -2,12 +2,17 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+
+	"github.com/raids-lab/crater/dao/model"
 )
 
 //nolint:gocyclo // The table-driven cases intentionally cover all authorization and paging branches.
@@ -162,5 +167,51 @@ func TestAgentNodeEstimatesIncludeInitAndOverhead(t *testing.T) {
 	mustAgentTestNoError(t, err)
 	if cluster.SchedulableNodes != 0 || cluster.Accelerators["nvidia.com/gpu"] != "4" {
 		t.Fatalf("physical capacity was confused with schedulable capacity: %+v", cluster)
+	}
+}
+
+func TestAgentActiveJobsIncludeAllUnfinishedPhases(t *testing.T) {
+	db := newAgentConversationTestDB(t)
+	mustAgentTestNoError(t, db.Exec(`CREATE TABLE jobs (id INTEGER PRIMARY KEY, user_id INTEGER,
+		account_id INTEGER, job_name TEXT, name TEXT, status TEXT, job_type TEXT, nodes TEXT, resources TEXT,
+		creation_timestamp DATETIME, running_timestamp DATETIME, completed_timestamp DATETIME, deleted_at DATETIME)`).Error)
+	active := []string{"", "Prequeue", "Pending", "Running", "Restarting", "Aborting", "Completing", "Terminating"}
+	terminal := []string{"Completed", "Failed", "Aborted", "Terminated", "Deleted", "Freed", "Cancelled"} //nolint:misspell // Platform phase.
+	for index, status := range append(append([]string{}, active...), terminal...) {
+		mustAgentTestNoError(t, db.Exec(`INSERT INTO jobs (id,user_id,account_id,job_name,status)
+			VALUES (?,1,1,?,?)`, index+1, status, status).Error)
+	}
+	s := NewAgentPlatformReadService(db, nil)
+	options := AgentJobListOptions{Identity: AgentIdentityUser, UserID: 1, AccountID: 1, Scope: AgentJobScopeActive}
+	page, err := s.ListJobs(context.Background(), &options)
+	mustAgentTestNoError(t, err)
+	if len(page.Items) != len(active) || page.Scope != AgentJobScopeActive || page.HasMore {
+		t.Fatalf("unexpected active scope: %+v", page)
+	}
+	options.Statuses = []string{"Failed"}
+	page, err = s.ListJobs(context.Background(), &options)
+	mustAgentTestNoError(t, err)
+	if len(page.Items) != 0 || page.HasMore {
+		t.Fatal("explicit status filter escaped the active scope")
+	}
+	options.Scope = AgentJobScopeAll
+	page, err = s.ListJobs(context.Background(), &options)
+	mustAgentTestNoError(t, err)
+	if len(page.Items) != 1 || page.Items[0].Status != "Failed" {
+		t.Fatal("explicit history filter did not return the failed job")
+	}
+}
+
+func TestAgentJobSummaryOmitsAbsentTimes(t *testing.T) {
+	t.Parallel()
+	now := time.Now()
+	items := agentJobSummaries([]model.Job{{}, {RunningTimestamp: now, CompletedTimestamp: now}}, AgentIdentityUser)
+	data, err := json.Marshal(items[0])
+	mustAgentTestNoError(t, err)
+	if strings.Contains(string(data), "startedAt") || strings.Contains(string(data), "completedAt") {
+		t.Fatalf("zero timestamps were exposed: %s", data)
+	}
+	if items[1].StartedAt == nil || !items[1].StartedAt.Equal(now) || items[1].CompletedAt == nil {
+		t.Fatal("valid timestamps were lost")
 	}
 }

@@ -110,7 +110,7 @@ func TestAgentContinuationRequiresAcceptedNavigation(t *testing.T) {
 	mustAgentTestNoError(t, err)
 	assistant := &AgentUIMessage{
 		ID: "assistant-nav", Role: "assistant",
-		Parts: json.RawMessage(`[{"type":"text","text":"我会打开表单"},{"type":"tool-navigate_to_page","toolCallId":"nav-1","state":"input-available","input":{"path":"/portal/jobs/new/jupyter-job"}}]`),
+		Parts: json.RawMessage(`[{"type":"text","text":"我会打开表单"},{"type":"tool-list_nodes","toolCallId":"nodes-1","state":"output-available","output":[{"name":"worker"}]},{"type":"tool-navigate_to_page","toolCallId":"nav-1","state":"input-available","input":{"path":"/portal/jobs/new/jupyter-job","assistForm":true}}]`),
 	}
 	mustAgentTestNoError(t, service.CompleteRun(ctx, 1, AgentIdentityUser, run.RunID, AgentRunCompletion{
 		Status: AgentRunStatusCompleted, Message: assistant,
@@ -164,6 +164,76 @@ func TestTrimAgentContextBoundsMessageCountAndPayload(t *testing.T) {
 	trimmed = trimAgentContext(large)
 	mustAgentTestLength(t, len(trimmed), 1)
 	mustAgentTestEqual(t, trimmed[0].ID, "latest")
+}
+
+func TestAgentAcceptedNavigationIgnoresOtherOutputShapes(t *testing.T) {
+	t.Parallel()
+	for _, output := range []string{`[]`, `[{"name":"worker"}]`, `null`, `42`, `"text"`} {
+		parts := []byte(`[{"type":"tool-list_nodes","output":` + output + `},
+			{"type":"tool-navigate_to_page","state":"output-available",
+			"input":{"assistForm":true},"output":{"status":"accepted"}}]`)
+		if !hasAcceptedAgentFormNavigation(parts) {
+			t.Fatalf("unrelated output %s prevented continuation", output)
+		}
+	}
+	for _, input := range []string{`{}`, `{"assistForm":false}`} {
+		parts := []byte(`[{"type":"tool-navigate_to_page","state":"output-available",
+			"input":` + input + `,"output":{"status":"accepted"}}]`)
+		if hasAcceptedAgentFormNavigation(parts) {
+			t.Fatal("navigation-only action must not trigger form generation")
+		}
+	}
+}
+
+func TestAgentOversizedCompletionClosesRunWithCanceledContext(t *testing.T) {
+	t.Parallel()
+	db := newAgentConversationTestDB(t)
+	s := NewAgentConversationService(db)
+	ctx := context.Background()
+	conversationID := uuid.NewString()
+	user := testAgentMessage("oversized-user", "user", "列出节点")
+	run, err := s.PrepareRun(ctx, 1, AgentIdentityUser, conversationID, nil, AgentRunModeAppend, &user)
+	mustAgentTestNoError(t, err)
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	err = s.CompleteRun(canceled, 1, AgentIdentityUser, run.RunID, AgentRunCompletion{
+		Status:  AgentRunStatusCompleted,
+		Message: testAgentAssistantPointer("oversized-answer", strings.Repeat("x", agentMaximumMessagePartsBytes)),
+	})
+	mustAgentTestError(t, err)
+	var stored model.AgentRun
+	mustAgentTestNoError(t, db.First(&stored, "id = ?", run.RunID).Error)
+	if stored.Status != AgentRunStatusFailed || stored.FinishedAt == nil {
+		t.Fatalf("oversized completion left the run open: %+v", stored)
+	}
+	next := testAgentMessage("after-oversized", "user", "你好")
+	_, err = s.PrepareRun(ctx, 1, AgentIdentityUser, conversationID, &user.ID, AgentRunModeAppend, &next)
+	mustAgentTestNoError(t, err)
+}
+
+func TestAgentMessageWriteFailureClosesRun(t *testing.T) {
+	t.Parallel()
+	db := newAgentConversationTestDB(t)
+	s := NewAgentConversationService(db)
+	ctx := context.Background()
+	conversationID := uuid.NewString()
+	user := testAgentMessage("write-failure-user", "user", "列出节点")
+	run, err := s.PrepareRun(ctx, 1, AgentIdentityUser, conversationID, nil, AgentRunModeAppend, &user)
+	mustAgentTestNoError(t, err)
+	mustAgentTestNoError(t, db.Exec(`CREATE TRIGGER fail_assistant_insert BEFORE INSERT ON agent_messages
+		WHEN NEW.role = 'assistant' BEGIN SELECT RAISE(FAIL, 'isolated message write failure'); END`).Error)
+	err = s.CompleteRun(ctx, 1, AgentIdentityUser, run.RunID, AgentRunCompletion{
+		Status: AgentRunStatusCompleted, Message: testAgentAssistantPointer("write-failure-answer", "answer"),
+	})
+	mustAgentTestError(t, err)
+	var stored model.AgentRun
+	mustAgentTestNoError(t, db.First(&stored, "id = ?", run.RunID).Error)
+	if stored.Status != AgentRunStatusFailed {
+		t.Fatal("message write failure left the run running")
+	}
+	next := testAgentMessage("after-write-failure", "user", "你好")
+	_, err = s.PrepareRun(ctx, 1, AgentIdentityUser, conversationID, &user.ID, AgentRunModeAppend, &next)
+	mustAgentTestNoError(t, err)
 }
 
 func TestAgentConversationTitleAndRunCompletionAreIdempotent(t *testing.T) {

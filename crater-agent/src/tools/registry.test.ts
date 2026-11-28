@@ -4,7 +4,7 @@ import { convertToModelMessages, type ToolExecutionOptions } from "ai";
 
 import { selectSkill } from "../skills/select.js";
 import { pageContextSchema } from "../page-context.js";
-import { selectSkillTools } from "./registry.js";
+import { boundToolResult, selectSkillTools } from "./registry.js";
 
 const config = {
   port: 8000,
@@ -42,6 +42,40 @@ void test("job lists skip exact counts unless requested", async (t) => {
   assert.ok(second);
   assert.equal(new URL(first).searchParams.has("includeTotal"), false);
   assert.equal(new URL(second).searchParams.get("includeTotal"), "true");
+  assert.equal(new URL(first).searchParams.get("scope"), "active");
+  await execute({ page: 1, pageSize: 5, statuses: ["Failed"] }, options);
+  const third = urls[2];
+  assert.ok(third);
+  assert.equal(new URL(third).searchParams.get("scope"), "all");
+  await execute({ page: 1, pageSize: 5, scope: "all" }, options);
+  const fourth = urls[3];
+  assert.ok(fourth);
+  assert.equal(new URL(fourth).searchParams.get("scope"), "all");
+});
+
+void test("oversized node arrays keep whole items and disclose omitted records", () => {
+  const nodes = Array.from({ length: 1_000 }, (_, index) => ({
+    name: `node-${String(index)}`,
+    capacity: { cpu: "128", example: "x".repeat(1_000) },
+  }));
+  const result = boundToolResult(nodes) as {
+    items: unknown[];
+    total: number;
+    omitted: number;
+    truncated: boolean;
+  };
+  assert.equal(result.truncated, true);
+  assert.ok(result.items.length > 0);
+  assert.equal(result.total, nodes.length);
+  assert.equal(result.omitted + result.items.length, nodes.length);
+  assert.deepEqual(result.items[0], nodes[0]);
+  assert.ok(Buffer.byteLength(JSON.stringify(result)) < 48 * 1_024);
+  assert.deepEqual(boundToolResult([{ name: "small" }]), [{ name: "small" }]);
+  assert.equal(
+    (boundToolResult({ huge: "x".repeat(100_000) }) as { truncated: boolean })
+      .truncated,
+    true,
+  );
 });
 
 void test("all entry points share read tools; navigation stays role scoped", async () => {

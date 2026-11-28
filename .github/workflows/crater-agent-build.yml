@@ -50,6 +50,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm format:check
+      - run: make test
       - run: pnpm build
       - name: Build container image
         working-directory: .

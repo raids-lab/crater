@@ -75,6 +75,12 @@ function createNavigationTool(identity: AgentIdentity) {
       path: z.enum(paths),
       label: z.string().min(1).max(80),
       reason: z.string().min(1).max(300),
+      assistForm: z
+        .boolean()
+        .default(false)
+        .describe(
+          "True only when the user requests form filling/configuration after navigation. False for navigation only, explanations, or an explicit request not to fill the form.",
+        ),
     }),
   });
 }
@@ -133,14 +139,21 @@ function createReadToolRegistry(runtime: ToolRuntime): ToolSet {
         search: z.string().trim().max(128).optional(),
         username: z.string().trim().min(1).max(64).optional(),
         statuses: z.array(z.enum(jobStatuses)).max(20).optional(),
+        scope: z
+          .enum(["active", "all"])
+          .optional()
+          .describe(
+            "Use active for current/now jobs (all unfinished lifecycle phases). Use all for recent/history or explicit terminal statuses. Defaults to active unless statuses are supplied. A successful empty result is final; do not widen filters or query history to double-check it.",
+          ),
       }),
       execute: async (
-        { page, pageSize, includeTotal, search, username, statuses },
+        { page, pageSize, includeTotal, search, username, statuses, scope },
         { abortSignal },
       ) => {
         const query = new URLSearchParams({
           page: String(page),
           pageSize: String(pageSize),
+          scope: scope ?? (statuses?.length ? "all" : "active"),
         });
         if (includeTotal) query.set("includeTotal", "true");
         if (search) query.set("search", search);
@@ -300,5 +313,39 @@ async function requestBackend(
         `platform data request returned status ${String(response.status)}`,
     );
   }
-  return payload.data;
+  return boundToolResult(payload.data);
+}
+
+const maximumToolResultBytes = 48 * 1_024;
+
+export function boundToolResult(data: unknown): unknown {
+  if (
+    Buffer.byteLength(JSON.stringify(data), "utf8") <= maximumToolResultBytes
+  ) {
+    return data;
+  }
+  // Keep complete JSON items and disclose omissions instead of clipping raw JSON.
+  if (Array.isArray(data)) {
+    const items: unknown[] = [];
+    let bytes = 512;
+    for (const item of data) {
+      const size = Buffer.byteLength(JSON.stringify(item), "utf8") + 1;
+      if (bytes + size > maximumToolResultBytes) break;
+      items.push(item);
+      bytes += size;
+    }
+    return {
+      items,
+      total: data.length,
+      omitted: data.length - items.length,
+      truncated: true,
+      notice:
+        "Partial result only. Do not infer that omitted records do not exist. Query a specific object for details.",
+    };
+  }
+  return {
+    truncated: true,
+    notice:
+      "Result exceeds the tool budget. Narrow the query or request fewer records; no complete result is available.",
+  };
 }

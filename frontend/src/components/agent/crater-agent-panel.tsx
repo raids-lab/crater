@@ -47,11 +47,18 @@ import type {
   AgentPageContext,
   AgentResourceContext,
 } from '@/components/agent/agent-context'
+import { AgentProgressCard } from '@/components/agent/agent-progress-card'
+import {
+  type AgentResponseOutcome,
+  type AgentResponseProgress,
+  getAgentResponseProgress,
+} from '@/components/agent/agent-response-progress'
 import {
   AgentToolCard,
   AgentToolGroup,
   type AgentToolPart,
 } from '@/components/agent/agent-tool-card'
+import { AgentWelcome } from '@/components/agent/agent-welcome'
 import { ConversationSidebar } from '@/components/agent/conversation-sidebar'
 import {
   isAgentFormDestination,
@@ -254,6 +261,7 @@ type ChatMessageProps = {
   message: UIMessage
   user?: { name: string; avatar?: string }
   busy: boolean
+  progress?: AgentResponseProgress
   editing: boolean
   editingText: string
   onEditingTextChange: (text: string) => void
@@ -322,6 +330,7 @@ function ChatMessage({
   message,
   user,
   busy,
+  progress,
   editing,
   editingText,
   onEditingTextChange,
@@ -346,7 +355,7 @@ function ChatMessage({
   const confirmationToolParts = toolParts.filter(isConfirmationToolPart)
   const fromUser = message.role === 'user'
   const displayText = fromUser ? text : text || confirmationLeadText(confirmationToolParts)
-  if (!displayText && toolParts.length === 0) return null
+  if (!displayText && toolParts.length === 0 && !progress) return null
 
   if (editing) {
     return (
@@ -399,8 +408,9 @@ function ChatMessage({
             fromUser ? 'bg-primary text-primary-foreground' : 'bg-muted'
           )}
         >
+          {!fromUser && progress && <AgentProgressCard progress={progress} />}
           {!fromUser && automaticToolPartGroups.length > 0 && (
-            <div className="space-y-1.5">
+            <div className={cn('space-y-1.5', progress && 'mt-3')}>
               {automaticToolPartGroups.map((group) => {
                 const firstPart = group.parts[0]
                 if (!firstPart) return null
@@ -446,7 +456,7 @@ function ChatMessage({
             <div
               className={cn(
                 'max-w-full min-w-0 wrap-anywhere [&_a]:break-all [&_pre]:max-w-full',
-                automaticToolPartGroups.length > 0 && 'mt-3'
+                (progress || automaticToolPartGroups.length > 0) && 'mt-3'
               )}
             >
               <MarkdownRenderer components={agentMarkdownComponents}>
@@ -497,6 +507,7 @@ function ChatMessage({
             size="icon"
             className="size-8"
             aria-label={t('craterAgent.copy')}
+            disabled={!displayText}
             onClick={() => onCopy(displayText)}
           >
             <CopyIcon className="size-4" />
@@ -532,6 +543,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   const available = availabilityQuery.data?.data.enabled === true
   const identityCacheKey = `${userID ?? 0}:${identity}`
   const [cancelled, setCancelled] = useState(false)
+  const [responseOutcome, setResponseOutcome] = useState<AgentResponseOutcome>()
   const [editingMessageID, setEditingMessageID] = useState<string>()
   const [editingText, setEditingText] = useState('')
   const [panelWidth, setPanelWidth] = useState(initialPanelWidth)
@@ -653,6 +665,8 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
           return (
             toolPart.type === 'tool-navigate_to_page' &&
             toolPart.state === 'output-available' &&
+            isRecord(toolPart.input) &&
+            toolPart.input.assistForm === true &&
             isRecord(toolPart.output) &&
             toolPart.output.status === 'accepted' &&
             !continuedNavigationRef.current.has(`${last.id}:${toolPart.toolCallId}`)
@@ -666,6 +680,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
         const request = activeRequestRef.current
         if (!request || request.finalizing) return
         request.finalizing = true
+        setResponseOutcome(isAbort ? 'stopped' : isError ? 'failed' : 'complete')
         if (isAbort || isError) {
           if (pendingTitleRef.current?.conversationID === request.conversationID) {
             pendingTitleRef.current = undefined
@@ -674,10 +689,11 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
         const assistantResponseExpected =
           messageText(message).trim().length > 0 ||
           message.parts.some((part) => part.type.startsWith('tool-'))
-        const cancellation = isAbort
-          ? (request.cancelPromise ??
-            cancelActiveRun(request.conversationID, request.userMessageID))
-          : Promise.resolve()
+        const cancellation =
+          isAbort || isError
+            ? (request.cancelPromise ??
+              cancelActiveRun(request.conversationID, request.userMessageID))
+            : Promise.resolve()
         void cancellation
           .catch((cancelError: Error) => toast.error(cancelError.message))
           .then(() =>
@@ -706,6 +722,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
         const request = activeRequestRef.current
         if (!request || request.finalizing) return
         request.finalizing = true
+        setResponseOutcome('failed')
         if (pendingTitleRef.current?.conversationID === request.conversationID) {
           pendingTitleRef.current = undefined
         }
@@ -715,7 +732,12 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
             : chatError.message
         )
         const conflict = chatError instanceof AgentRequestError && chatError.status === 409
-        void (request.cancelPromise ?? Promise.resolve())
+        void (
+          request.cancelPromise ??
+          (conflict
+            ? Promise.resolve()
+            : cancelActiveRun(request.conversationID, request.userMessageID))
+        )
           .catch((cancelError: Error) => toast.error(cancelError.message))
           .then(() => synchronizeConversationRef.current(request.conversationID))
           .then(() => {
@@ -787,6 +809,11 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
   }
   synchronizeConversationRef.current = synchronizeConversation
   const generating = status === 'submitted' || status === 'streaming'
+  const responseProgress = getAgentResponseProgress(
+    messages,
+    status,
+    cancelled ? 'stopped' : responseOutcome
+  )
   const historyLoading = open && historyLoadedIdentity !== identityCacheKey
   const busy = generating || synchronizing || requestLocked || historyLoading || toolExecuting
   const awaitingConfirmation = messages.some((message) =>
@@ -827,6 +854,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
         setMessages(loadedMessages)
         setInput('')
         setCancelled(false)
+        setResponseOutcome(undefined)
         setEditingMessageID(undefined)
         setEditingText('')
         setHistoryLoadedIdentity(identityCacheKey)
@@ -900,6 +928,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     setMessages(nextMessages)
     setInput('')
     setCancelled(false)
+    setResponseOutcome(undefined)
     setEditingMessageID(undefined)
     setEditingText('')
     clearError()
@@ -941,9 +970,8 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     })
   }
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    const text = input.trim()
+  const sendPrompt = (prompt: string) => {
+    const text = prompt.trim()
     if (!text || busy || awaitingConfirmation || interactionLockedRef.current) return
     interactionLockedRef.current = true
     setRequestLocked(true)
@@ -956,9 +984,15 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     stickToBottomRef.current = true
     clearError()
     setCancelled(false)
+    setResponseOutcome(undefined)
     setInput('')
     sendModeRef.current = 'append'
     void sendMessage({ text })
+  }
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    sendPrompt(input)
   }
 
   const resendEditedMessage = (event: FormEvent) => {
@@ -988,6 +1022,7 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
     stickToBottomRef.current = true
     clearError()
     setCancelled(false)
+    setResponseOutcome(undefined)
     sendModeRef.current = 'replace'
     setMessages(messages.slice(0, messageIndex))
     setEditingMessageID(undefined)
@@ -1215,11 +1250,14 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
             >
               <div className="w-full max-w-full min-w-0 space-y-3 overflow-x-hidden pr-2">
                 {messages.length === 0 && (
-                  <div className="flex items-start gap-2.5">
+                  <div className="flex min-w-0 items-start gap-2.5">
                     <AgentAvatar />
-                    <div className="bg-muted rounded-2xl p-4 text-sm leading-6">
-                      {t('craterAgent.welcome')}
-                    </div>
+                    <AgentWelcome
+                      key={`${identityCacheKey}:${activeConversationID}`}
+                      identity={identity}
+                      disabled={busy || awaitingConfirmation}
+                      onSelectExample={sendPrompt}
+                    />
                   </div>
                 )}
                 {messages.map((message) => (
@@ -1229,6 +1267,9 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
                     message={message}
                     user={user}
                     busy={busy}
+                    progress={
+                      responseProgress?.messageID === message.id ? responseProgress : undefined
+                    }
                     editing={message.id === editingMessageID}
                     editingText={editingText}
                     onEditingTextChange={setEditingText}
@@ -1249,14 +1290,13 @@ export function CraterAgentPanel({ identity }: CraterAgentPanelProps) {
                     onReject={rejectTool}
                   />
                 ))}
-                {status === 'submitted' && (
-                  <div className="flex items-center gap-2.5">
+                {responseProgress && !responseProgress.messageID && (
+                  <div className="flex min-w-0 items-start gap-2.5">
                     <AgentAvatar />
-                    <p className="text-muted-foreground text-sm">{t('craterAgent.thinking')}</p>
+                    <div className="min-w-0 flex-1">
+                      <AgentProgressCard progress={responseProgress} />
+                    </div>
                   </div>
-                )}
-                {cancelled && (
-                  <p className="text-muted-foreground text-sm">{t('craterAgent.cancelled')}</p>
                 )}
                 {error && <p className="text-destructive text-sm">{error.message}</p>}
               </div>

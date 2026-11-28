@@ -2,7 +2,253 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { UIMessage } from "ai";
 
-import { createChatRoutes } from "./chat.js";
+import { boundRunCompletion, createChatRoutes } from "./chat.js";
+
+void test("whole-message budgeting preserves the answer and navigation but not oversized read evidence", () => {
+  const message: UIMessage = {
+    id: "large-answer",
+    role: "assistant",
+    parts: [
+      { type: "text", text: "Node summary." },
+      ...Array.from({ length: 8 }, (_, index) => ({
+        type: "tool-list_nodes" as const,
+        toolCallId: `nodes-${String(index)}`,
+        state: "output-available" as const,
+        input: {},
+        output: [{ name: "worker", data: "x".repeat(48 * 1_024) }],
+      })),
+      {
+        type: "tool-navigate_to_page",
+        toolCallId: "nav",
+        state: "input-available",
+        input: { path: "/portal/jobs/new/jupyter-job", assistForm: true },
+      },
+    ],
+  };
+  const result = boundRunCompletion({ status: "completed", message });
+  assert.equal(result.status, "completed");
+  assert.deepEqual(result.message?.parts[0], message.parts[0]);
+  assert.deepEqual(result.message?.parts.at(-1), message.parts.at(-1));
+  assert.match(JSON.stringify(result), /truncated/);
+  assert.ok(
+    Buffer.byteLength(JSON.stringify(result.message?.parts)) < 240 * 1_024,
+  );
+  const failed = boundRunCompletion({
+    status: "completed",
+    message: {
+      ...message,
+      parts: [{ type: "text", text: "x".repeat(300_000) }],
+    },
+  });
+  assert.equal(failed.status, "failed");
+  assert.equal(failed.message, undefined);
+});
+
+for (const scenario of ["save-error", "too-large"] as const) {
+  void test(`${scenario}: completion problems are reported in the stream`, async (t) => {
+    const config = {
+      port: 8000,
+      backendInternalURL: "http://backend.invalid",
+      internalToken: "isolated-test-internal-token-value",
+    };
+    let completionCalls = 0;
+    t.mock.method(
+      globalThis,
+      "fetch",
+      (input: string | URL | Request, init?: RequestInit) => {
+        const url = input instanceof Request ? input.url : input.toString();
+        if (url.endsWith("/complete")) {
+          completionCalls++;
+          if (scenario === "save-error")
+            return Promise.resolve(Response.json({ code: 1 }, { status: 400 }));
+          assert.ok(init && typeof init.body === "string");
+          const body = JSON.parse(init.body) as {
+            status: string;
+            message?: unknown;
+          };
+          assert.equal(body.status, "failed");
+          assert.equal(body.message, undefined);
+          return Promise.resolve(Response.json({ code: 0 }));
+        }
+        assert.ok(url.endsWith("/llm/chat/completions"));
+        return Promise.resolve(
+          new Response(
+            `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: scenario === "save-error" ? "Answer." : "x".repeat(300_000) }, finish_reason: null }] })}\n\n` +
+              `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n` +
+              "data: [DONE]\n\n",
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+        );
+      },
+    );
+    const response = await createChatRoutes(config).request("/chat", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.internalToken}`,
+        "X-Crater-Agent-Context": "signed-test-context",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        runId: "9ed49cd2-c1be-4f55-8985-032cd72b4865",
+        identityScope: "user",
+        messages: [
+          {
+            id: "user",
+            role: "user",
+            parts: [{ type: "text", text: "Hello" }],
+          },
+        ],
+      }),
+    });
+    assert.equal(response.status, 200);
+    const stream = await response.text();
+    assert.match(stream, /"type":"error"/);
+    assert.match(
+      stream,
+      scenario === "save-error" ? /回答保存失败/ : /回答过长/,
+    );
+    assert.equal(completionCalls, 1);
+  });
+}
+
+void test("empty form proposals succeed; navigation-only confirmations do not force form proposals", async (t) => {
+  const config = {
+    port: 8000,
+    backendInternalURL: "http://backend.invalid",
+    internalToken: "isolated-test-internal-token-value",
+  };
+  let proposalCalls = 0;
+  let regularCalls = 0;
+  const completions: { status: string; message: UIMessage }[] = [];
+  t.mock.method(
+    globalThis,
+    "fetch",
+    (input: string | URL | Request, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      assert.ok(init && typeof init.body === "string");
+      if (url.endsWith("/complete")) {
+        completions.push(
+          JSON.parse(init.body) as { status: string; message: UIMessage },
+        );
+        return Promise.resolve(Response.json({ code: 0 }));
+      }
+      assert.ok(url.endsWith("/llm/chat/completions"));
+      const body = JSON.parse(init.body) as { stream?: boolean };
+      if (body.stream) {
+        regularCalls++;
+        return Promise.resolve(
+          new Response(
+            `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: "Navigation only." }, finish_reason: null }] })}\n\n` +
+              `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n` +
+              "data: [DONE]\n\n",
+            { headers: { "Content-Type": "text/event-stream" } },
+          ),
+        );
+      }
+      proposalCalls++;
+      return Promise.resolve(
+        Response.json({
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: JSON.stringify({
+                  text: "No matching image; unchanged.",
+                  summary: "No changes",
+                  patches: [],
+                }),
+              },
+              finish_reason: "stop",
+            },
+          ],
+        }),
+      );
+    },
+  );
+  for (const assistForm of [true, false]) {
+    const response = await createChatRoutes(config).request("/chat", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.internalToken}`,
+        "X-Crater-Agent-Context": "signed-test-context",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        runId: "9ed49cd2-c1be-4f55-8985-032cd72b4865",
+        identityScope: "user",
+        messages: [
+          {
+            id: "user",
+            role: "user",
+            parts: [
+              {
+                type: "text",
+                text: assistForm
+                  ? "Use the missing image, leave everything else unchanged."
+                  : "Open Jupyter; do not fill it.",
+              },
+            ],
+          },
+          {
+            id: "assistant",
+            role: "assistant",
+            parts: [
+              {
+                type: "tool-list_nodes",
+                toolCallId: "nodes",
+                state: "output-available",
+                input: {},
+                output: [{ name: "worker" }],
+              },
+              {
+                type: "tool-navigate_to_page",
+                toolCallId: "nav",
+                state: "output-available",
+                input: { path: "/portal/jobs/new/jupyter-job", assistForm },
+                output: {
+                  status: "accepted",
+                  path: "/portal/jobs/new/jupyter-job",
+                },
+              },
+            ],
+          },
+        ],
+        pageContext: {
+          route: "/portal/jobs/new/jupyter-job",
+          action: "assist-form",
+          title: "Jupyter",
+          prompt: "Help",
+          form: {
+            instanceId: "9ed49cd2-c1be-4f55-8985-032cd72b4865",
+            capabilityId: "jupyter",
+            schemaVersion: 1,
+            title: "Jupyter",
+            fields: [
+              {
+                path: "task.image.imageLink",
+                label: "Image",
+                valueType: "string",
+              },
+            ],
+            currentValues: {},
+            options: {},
+          },
+        },
+      }),
+    });
+    assert.equal(response.status, 200);
+    const stream = await response.text();
+    assert.match(stream, assistForm ? /No matching image/ : /Navigation only/);
+    assert.doesNotMatch(stream, /propose_form_patch/);
+  }
+  assert.equal(proposalCalls, 1);
+  assert.equal(regularCalls, 1);
+  assert.equal(completions.length, 2);
+  assert.ok(
+    completions.every((completion) => completion.status === "completed"),
+  );
+});
 
 void test("an explicit Jupyter creation request can use the navigation tool", async (t) => {
   const config = {
@@ -444,7 +690,7 @@ void test("a confirmed form navigation requests suggestions in the user's langua
         type: "tool-navigate_to_page",
         toolCallId: "nav-1",
         state: "output-available",
-        input: { path: "/portal/jobs/new/jupyter-job" },
+        input: { path: "/portal/jobs/new/jupyter-job", assistForm: true },
         output: { status: "accepted", path: "/portal/jobs/new/jupyter-job" },
       },
     ],

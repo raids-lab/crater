@@ -20,6 +20,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/constants"
 )
 
 const (
@@ -198,6 +199,7 @@ func (mgr *AgentMgr) UserGetPersonalLLMConfig(c *gin.Context) {
 func (mgr *AgentMgr) UserUpdatePersonalLLMConfig(c *gin.Context) {
 	req, ok := bindPersonalLLMConfig(c)
 	if !ok {
+		recordLLMConfigOperation(c, constants.OpTypeUpdateLLMConfig, llmConfigScopePersonal, false, false)
 		return
 	}
 	err := mgr.service.SavePersonalConfig(
@@ -206,6 +208,8 @@ func (mgr *AgentMgr) UserUpdatePersonalLLMConfig(c *gin.Context) {
 		toServiceLLMConfig(req),
 		req.Validate,
 	)
+	recordLLMConfigOperation(c, constants.OpTypeUpdateLLMConfig, llmConfigScopePersonal,
+		hasSubmittedLLMKey(strings.TrimSpace(req.APIKey), service.MaskedAPIKeyPlaceholder), err == nil)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -222,9 +226,11 @@ func (mgr *AgentMgr) UserUpdatePersonalLLMConfig(c *gin.Context) {
 //	@Success		200	{object}	resputil.Response[string]
 //	@Router			/v1/agent/llm-config [delete]
 func (mgr *AgentMgr) UserDeletePersonalLLMConfig(c *gin.Context) {
-	if err := mgr.service.DeletePersonalConfig(
+	err := mgr.service.DeletePersonalConfig(
 		c.Request.Context(), util.GetToken(c).UserID,
-	); err != nil {
+	)
+	recordLLMConfigOperation(c, constants.OpTypeResetLLMConfig, llmConfigScopePersonal, false, err == nil)
+	if err != nil {
 		resputil.HandleError(c, err)
 		return
 	}

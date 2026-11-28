@@ -9,13 +9,19 @@ Crater-Agent provides platform guidance, authorized job lists and diagnostics, a
 
 The Crater-Agent launcher appears in the lower-right corner by default. The side panel supports creating, renaming, deleting, and stopping conversations.
 
+The welcome message lists available features and randomly shows three examples from a pool of 20 topics under “You might want to ask”. A new conversation draws a fresh selection, which stays unchanged while you type. Selecting an example sends the question immediately. Admin examples do not direct you to portal job-creation pages.
+
 Turning off the floating launcher in personal settings hides this button without disabling Agent entry points provided by other pages.
 
 ## Queries and confirmations
 
 Ask, for example, “Analyze only my five latest failed jobs” or “How many GPUs does this node have?” Automatic queries appear as collapsed tool entries above the answer. Cards after the answer request confirmation for navigation or form changes; they never submit a form. Confirm or cancel pending cards before sending another message.
 
-When you request a new job from another page, the side panel stays open after you confirm navigation and continues with a proposal based on the new form's loaded GPU and image options. If you did not specify an image, it may suggest a suitable basic Python image from those options. Form assistance changes only allowlisted fields on the current form; reopening a form requires a new proposal. Available resources are point-in-time estimates based on requests, not live utilization or a scheduling guarantee. Historical failures must be interpreted using the evidence retained for that job.
+“What jobs do I have now?” defaults to unfinished jobs. Recent records or explicit failed/completed filters query the corresponding history. A successful empty result means no jobs match that scope; paginated or omitted results are not a complete list.
+
+Generation shows a non-expandable status for waiting, tool execution, or answer generation. It hides on completion and stops spinning on cancellation or failure. Internal model reasoning is not shown; tool cards remain expandable for results. Status is temporary page state and is not restored after a refresh or conversation switch.
+
+When you request a new job and configuration assistance from another page, the side panel stays open after navigation confirmation and continues with a proposal based on the loaded GPU and image options. Navigation-only requests do not automatically generate proposals. If you did not specify an image, it may suggest a suitable basic Python image. If nothing can be safely matched, it explains why without an empty patch card. Form assistance changes only allowlisted fields on the current form; reopening a form requires a new proposal. Available resources are point-in-time estimates based on requests, not live utilization or a scheduling guarantee. Historical failures must be interpreted using the evidence retained for that job.
 
 ## Configure a personal model
 
@@ -27,6 +33,8 @@ In **Personal LLM Configuration**, enter an OpenAI-compatible API base URL, mode
 - Removing the personal configuration restores the administrator-managed platform default.
 
 Personal endpoints must be publicly reachable over HTTPS. Do not configure an untrusted model service or send passwords, tokens, or other secrets in a conversation.
+
+Saving or removing a personal model configuration records an operation log available to administrators, including the operator, time, scope, and success or failure. Logs contain metadata such as whether a new key was submitted, not keys, endpoint URLs, model names, or raw requests and errors. Viewing settings or testing a connection alone does not produce a configuration-change log.
 
 ## Conversations and data
 

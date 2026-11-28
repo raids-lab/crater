@@ -177,7 +177,11 @@ run: prepare show-kubeconfig fmt docs imports ## Run a controller from your host
 	GIN_MODE="$(GIN_MODE)" KUBECONFIG="$(KUBECONFIG_PATH)" go run -ldflags="$(VERSION_LDFLAGS)" cmd/crater/main.go
 
 .PHONY: pre-commit-check
-pre-commit-check: lint docs test-agent-tools test-tensorboard-launcher test-job-sessions test-job-phases ## Run lint, docs, and isolated service tests.
+pre-commit-check: lint docs test-agent-tools test-llm-config-audit test-tensorboard-launcher test-job-sessions test-job-phases ## Run lint, docs, and isolated service tests.
+
+.PHONY: test-llm-config-audit
+test-llm-config-audit: ## Test secret-free LLM audit metadata without database initialization.
+	go test -race internal/handler/llm_config_audit.go internal/handler/llm_config_audit_test.go
 
 .PHONY: test-agent-tools
 test-agent-tools: ## Test Agent services without loading cluster configuration.

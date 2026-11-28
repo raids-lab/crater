@@ -17,6 +17,7 @@ type agentJobListQuery struct {
 	Search       string   `form:"search"`
 	Username     string   `form:"username"`
 	Statuses     []string `form:"status" binding:"omitempty,max=20,dive,required"`
+	Scope        string   `form:"scope" binding:"omitempty,oneof=active all"`
 }
 
 // getInternalAgentClaims verifies that a request came from the Agent runtime
@@ -84,6 +85,7 @@ func (mgr *AgentMgr) ListAgentJobs(c *gin.Context) {
 		Search:       request.Search,
 		Username:     request.Username,
 		Statuses:     request.Statuses,
+		Scope:        request.Scope,
 		Identity:     claims.IdentityScope,
 		UserID:       claims.UserID,
 		AccountID:    claims.AccountID,

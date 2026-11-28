@@ -18,6 +18,7 @@ import (
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/constants"
 	"github.com/raids-lab/crater/pkg/cronjob"
 )
 
@@ -240,6 +241,7 @@ func (mgr *SystemConfigMgr) GetLLMConfig(c *gin.Context) {
 func (mgr *SystemConfigMgr) UpdateLLMConfig(c *gin.Context) {
 	var req UpdateLLMConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		recordLLMConfigOperation(c, constants.OpTypeUpdateLLMConfig, llmConfigScopePlatform, false, false)
 		resputil.BadRequestError(c, err.Error())
 		return
 	}
@@ -252,6 +254,8 @@ func (mgr *SystemConfigMgr) UpdateLLMConfig(c *gin.Context) {
 
 	// Service 内部会判断：如果 Key == "********" 则不更新 DB 中的 Key
 	err := mgr.service.UpdateLLMConfig(c.Request.Context(), serviceCfg, req.Validate)
+	recordLLMConfigOperation(c, constants.OpTypeUpdateLLMConfig, llmConfigScopePlatform,
+		hasSubmittedLLMKey(req.APIKey, service.MaskedAPIKeyPlaceholder), err == nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "validation failed") {
 			resputil.HandleError(c, bizerr.Conflict.ResourceStatusError.New("LLM connection check failed. Please verify your settings."))
@@ -275,6 +279,7 @@ func (mgr *SystemConfigMgr) UpdateLLMConfig(c *gin.Context) {
 // @Router			/v1/admin/system-config/llm [delete]
 func (mgr *SystemConfigMgr) ResetLLMConfig(c *gin.Context) {
 	err := mgr.service.ResetLLMConfig(c.Request.Context())
+	recordLLMConfigOperation(c, constants.OpTypeResetLLMConfig, llmConfigScopePlatform, false, err == nil)
 	if err != nil {
 		resputil.Error(c, err.Error(), resputil.ServiceError)
 		return
