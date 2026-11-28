@@ -33,6 +33,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import { FileSelectDialog } from '@/components/file/file-select-dialog'
 import FormLabelMust from '@/components/form/form-label-must'
 import { TagsInput } from '@/components/form/tags-input'
@@ -66,6 +72,50 @@ export const dataFormSchema = z.object({
 
 export type DataFormSchema = z.infer<typeof dataFormSchema>
 
+const sharedFileAgentFields = defineAgentFormFields<DataFormSchema>()([
+  {
+    path: 'datasetName',
+    label: 'craterAgent.formFields.resourceName',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'describe',
+    label: 'craterAgent.formFields.resourceDescription',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'url',
+    label: 'craterAgent.formFields.filePath',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+])
+
+const agentFields = defineAgentFormFields<DataFormSchema>()([
+  ...sharedFileAgentFields,
+  {
+    path: 'weburl',
+    label: 'craterAgent.formFields.sourceURL',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'tags', label: 'craterAgent.formFields.tags', valueType: 'option-array' },
+  {
+    path: 'ispublic',
+    label: 'craterAgent.formFields.publicResource',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'readOnly',
+    label: 'craterAgent.formFields.readOnly',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+])
+
 export interface DataCreateFormProps extends React.HTMLAttributes<HTMLDivElement> {
   closeSheet: () => void
   type?: 'dataset' | 'model' | 'sharefile'
@@ -94,8 +144,8 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
         type: type ?? 'dataset',
         tags: values.tags?.map((item) => item.value) ?? [],
         weburl: values.weburl,
-        ispublic: values.ispublic,
-        editable: !values.readOnly,
+        ispublic: type === 'sharefile' ? false : values.ispublic,
+        editable: type === 'sharefile' ? true : !values.readOnly,
       }),
     onSuccess: async (_, { datasetName }) => {
       await queryClient.invalidateQueries({
@@ -120,6 +170,17 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
       readOnly: true,
     },
   })
+  const capability =
+    type === 'model'
+      ? agentFormCapabilities.modelCreate
+      : type === 'sharefile'
+        ? agentFormCapabilities.sharedFileCreate
+        : agentFormCapabilities.datasetCreate
+  useAgentFormCapability({
+    capability,
+    fields: type === 'sharefile' ? sharedFileAgentFields : agentFields,
+    form,
+  })
   useEffect(() => {
     if (type === 'sharefile') {
       form.setValue('ispublic', false)
@@ -137,7 +198,22 @@ export function DataCreateForm({ closeSheet, type }: DataCreateFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
-        <SandwichLayout footer={<Button type="submit">提交{dataTypeLabel}</Button>}>
+        <SandwichLayout
+          footer={
+            <div className="flex gap-2">
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: `${dataTypeLabel}辅助填写`,
+                  prompt: `说明${dataTypeLabel}的位置、用途和共享要求，Agent 将生成可确认的表单建议。`,
+                  route: capability.route,
+                  capabilityId: capability.id,
+                }}
+              />
+              <Button type="submit">提交{dataTypeLabel}</Button>
+            </div>
+          }
+        >
           <FormField
             control={form.control}
             name="datasetName"

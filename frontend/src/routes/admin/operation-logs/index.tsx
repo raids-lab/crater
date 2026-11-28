@@ -36,6 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { getLLMConfigAuditRows } from '@/components/agent/llm-config-audit'
 import LoadingCircleIcon from '@/components/icon/loading-circle-icon'
 import PageTitle from '@/components/layout/page-title'
 import { DataTableColumnHeader } from '@/components/query-table/column-header'
@@ -94,6 +95,8 @@ const OPERATION_TYPE_KEYS = [
   'CancelUnschedulable',
   'DrainNode',
   'UpdateVPA',
+  'UpdateLLMConfig',
+  'ResetLLMConfig',
 ] as const
 
 const OPERATION_LOG_TIME_RANGE_OPTIONS: Array<{
@@ -146,6 +149,8 @@ const OPERATION_TYPE_BADGE_STYLES: Record<string, string> = {
   CancelUnschedulable: 'text-highlight-orange bg-highlight-orange/20',
   DrainNode: 'text-highlight-red bg-highlight-red/20',
   UpdateVPA: 'text-highlight-blue bg-highlight-blue/20',
+  UpdateLLMConfig: 'text-highlight-blue bg-highlight-blue/20',
+  ResetLLMConfig: 'text-highlight-orange bg-highlight-orange/20',
 }
 
 const DEFAULT_OPERATION_TYPE_BADGE_STYLE = 'text-highlight-slate bg-highlight-slate/20'
@@ -527,6 +532,26 @@ const DeleteJobDetailsView = ({ details }: { details?: JsonObject }) => {
   )
 }
 
+const LLMConfigDetailsView = ({ details }: { details: JsonObject }) => {
+  const { t } = useTranslation()
+  const rows = getLLMConfigAuditRows(details, t)
+  return (
+    <Card className="bg-muted/30">
+      <CardContent className="space-y-3 py-4">
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {rows.map(({ key, label, value }) => (
+            <div key={key} className="min-w-0 space-y-1 text-sm">
+              <dt className="text-muted-foreground font-medium">{label}</dt>
+              <dd className="wrap-anywhere">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="text-muted-foreground text-xs">{t('operationLog.details.llm.noSecrets')}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
 export const Route = createFileRoute('/admin/operation-logs/')({
   component: OperationLogsPage,
 })
@@ -768,6 +793,8 @@ function OperationLogsPage() {
       }),
       DrainNode: t('operationLog.type.DrainNode', { defaultValue: '驱逐节点' }),
       UpdateVPA: t('operationLog.type.UpdateVPA', { defaultValue: '更新 VPA' }),
+      UpdateLLMConfig: t('operationLog.type.UpdateLLMConfig'),
+      ResetLLMConfig: t('operationLog.type.ResetLLMConfig'),
     }),
     [t]
   )
@@ -1185,6 +1212,9 @@ function OperationLogsPage() {
                     <VpaResourceDiff details={selectedLog.details} />
                   ) : selectedLog.operation_type === 'DeleteJob' ? (
                     <DeleteJobDetailsView details={selectedLog.details} />
+                  ) : selectedLog.operation_type === 'UpdateLLMConfig' ||
+                    selectedLog.operation_type === 'ResetLLMConfig' ? (
+                    <LLMConfigDetailsView details={selectedLog.details} />
                   ) : (
                     <ResourceChangeView changes={selectedLog.details} />
                   ))}

@@ -15,10 +15,12 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
+	"github.com/raids-lab/crater/dao/query"
 	"github.com/raids-lab/crater/internal/bizerr"
 	"github.com/raids-lab/crater/internal/resputil"
 	"github.com/raids-lab/crater/internal/service"
 	"github.com/raids-lab/crater/internal/util"
+	"github.com/raids-lab/crater/pkg/constants"
 )
 
 const (
@@ -47,6 +49,8 @@ type AgentMgr struct {
 	available         bool
 	llmRateMu         sync.Mutex
 	llmRateByUser     map[uint]*agentLLMRateState
+	diagnostics       *service.AgentJobDiagnosticService
+	platformRead      *service.AgentPlatformReadService
 }
 
 func NewAgentMgr(conf *RegisterConfig) Manager {
@@ -64,6 +68,8 @@ func NewAgentMgr(conf *RegisterConfig) Manager {
 		available: runtimeErr == nil && len(internalToken) >= 32 && len(contextSigningKey) >= 32 &&
 			internalToken != contextSigningKey,
 		llmRateByUser: make(map[uint]*agentLLMRateState),
+		diagnostics:   service.NewAgentJobDiagnosticService(query.GetDB(), conf.KubeClient),
+		platformRead:  service.NewAgentPlatformReadService(query.GetDB(), conf.KubeClient),
 	}
 }
 
@@ -72,6 +78,12 @@ func (mgr *AgentMgr) GetName() string { return mgr.name }
 func (mgr *AgentMgr) RegisterPublic(g *gin.RouterGroup) {
 	g.POST("/llm/chat/completions", mgr.ProxyLLMChatCompletion)
 	g.POST("/runs/:id/complete", mgr.CompleteAgentRun)
+	g.GET("/jobs/:name/diagnostic", mgr.GetAgentJobDiagnostic)
+	g.GET("/jobs/:name/scheduling-diagnosis", mgr.GetAgentJobSchedulingDiagnosis)
+	g.GET("/jobs", mgr.ListAgentJobs)
+	g.GET("/nodes", mgr.ListAgentNodes)
+	g.GET("/nodes/:name/capacity", mgr.GetAgentNodeCapacity)
+	g.GET("/capacity", mgr.GetAgentClusterCapacity)
 }
 
 func (mgr *AgentMgr) RegisterProtected(g *gin.RouterGroup) {
@@ -90,8 +102,14 @@ func (mgr *AgentMgr) registerAgentConfigRoutes(g *gin.RouterGroup) {
 func (mgr *AgentMgr) registerAgentConversationRoutes(g *gin.RouterGroup) {
 	g.POST("/chat", mgr.UserChat)
 	g.POST("/title", mgr.UserGenerateTitle)
+	mgr.registerConversationRoutes(g)
+}
+
+func (mgr *AgentMgr) registerConversationRoutes(g *gin.RouterGroup) {
 	g.GET("/conversations", mgr.UserListAgentConversations)
 	g.GET("/conversations/:id/messages", mgr.UserGetAgentConversationMessages)
+	g.POST("/conversations/:id/cancel", mgr.UserCancelAgentConversationRun)
+	g.POST("/conversations/:id/tool-output", mgr.UserSaveAgentToolOutput)
 	g.PUT("/conversations/:id", mgr.UserRenameAgentConversation)
 	g.DELETE("/conversations/:id", mgr.UserDeleteAgentConversation)
 }
@@ -102,6 +120,7 @@ func (mgr *AgentMgr) UserGetAgentAvailability(c *gin.Context) {
 }
 
 func (mgr *AgentMgr) RegisterAdmin(g *gin.RouterGroup) {
+	g.GET("/subjects", mgr.AdminListAgentSubjects)
 	g.GET("/conversations", mgr.AdminListAgentConversations)
 	g.GET("/conversations/:id/messages", mgr.AdminGetAgentConversationMessages)
 }
@@ -180,6 +199,7 @@ func (mgr *AgentMgr) UserGetPersonalLLMConfig(c *gin.Context) {
 func (mgr *AgentMgr) UserUpdatePersonalLLMConfig(c *gin.Context) {
 	req, ok := bindPersonalLLMConfig(c)
 	if !ok {
+		recordLLMConfigOperation(c, constants.OpTypeUpdateLLMConfig, llmConfigScopePersonal, false, false)
 		return
 	}
 	err := mgr.service.SavePersonalConfig(
@@ -188,6 +208,8 @@ func (mgr *AgentMgr) UserUpdatePersonalLLMConfig(c *gin.Context) {
 		toServiceLLMConfig(req),
 		req.Validate,
 	)
+	recordLLMConfigOperation(c, constants.OpTypeUpdateLLMConfig, llmConfigScopePersonal,
+		hasSubmittedLLMKey(strings.TrimSpace(req.APIKey), service.MaskedAPIKeyPlaceholder), err == nil)
 	if err != nil {
 		resputil.HandleError(c, err)
 		return
@@ -204,9 +226,11 @@ func (mgr *AgentMgr) UserUpdatePersonalLLMConfig(c *gin.Context) {
 //	@Success		200	{object}	resputil.Response[string]
 //	@Router			/v1/agent/llm-config [delete]
 func (mgr *AgentMgr) UserDeletePersonalLLMConfig(c *gin.Context) {
-	if err := mgr.service.DeletePersonalConfig(
+	err := mgr.service.DeletePersonalConfig(
 		c.Request.Context(), util.GetToken(c).UserID,
-	); err != nil {
+	)
+	recordLLMConfigOperation(c, constants.OpTypeResetLLMConfig, llmConfigScopePersonal, false, err == nil)
+	if err != nil {
 		resputil.HandleError(c, err)
 		return
 	}
@@ -277,6 +301,10 @@ func (mgr *AgentMgr) UserChat(c *gin.Context) {
 		resputil.HandleError(c, bizerr.BadRequest.InvalidRequest.Wrap(err, "invalid Agent chat request"))
 		return
 	}
+	if err := service.ValidateAgentPageContext(req.PageContext, identity); err != nil {
+		resputil.HandleError(c, err)
+		return
+	}
 	userID := util.GetToken(c).UserID
 	prepared, err := mgr.conversations.PrepareRun(
 		c.Request.Context(), userID, identity, req.ConversationID, req.ParentMessageID, req.Mode, req.Message,
@@ -290,6 +318,8 @@ func (mgr *AgentMgr) UserChat(c *gin.Context) {
 		resputil.HandleError(c, err)
 		return
 	}
+	prepared.IdentityScope = identity
+	prepared.PageContext = req.PageContext
 	body, err = json.Marshal(prepared)
 	if err != nil {
 		mgr.failAgentRun(c, userID, identity, prepared.RunID, err)
@@ -318,10 +348,11 @@ func (mgr *AgentMgr) failAgentRun(c *gin.Context, userID uint, identity service.
 }
 
 type agentChatReq struct {
-	ConversationID  string                  `json:"conversationId"`
-	ParentMessageID *string                 `json:"parentMessageId"`
-	Mode            string                  `json:"mode"`
-	Message         *service.AgentUIMessage `json:"message"`
+	ConversationID  string                    `json:"conversationId"`
+	ParentMessageID *string                   `json:"parentMessageId"`
+	Mode            string                    `json:"mode"`
+	Message         *service.AgentUIMessage   `json:"message"`
+	PageContext     *service.AgentPageContext `json:"pageContext,omitempty"`
 }
 
 type generateAgentTitleReq struct {
@@ -412,7 +443,8 @@ func (mgr *AgentMgr) requestAgentRuntime(
 	body []byte,
 	endpoint string,
 ) (*http.Response, error) {
-	contextToken, err := service.SignAgentContext(util.GetToken(c).UserID, identity, mgr.contextSigningKey)
+	token := util.GetToken(c)
+	contextToken, err := service.SignAgentContext(token.UserID, token.AccountID, identity, mgr.contextSigningKey)
 	if err != nil {
 		return nil, err
 	}

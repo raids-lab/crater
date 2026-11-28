@@ -62,6 +62,9 @@ jobs:
       - name: Test TensorBoard launcher
         run: make test-tensorboard-launcher
 
+      - name: Test Agent services and configuration audit
+        run: make test-agent-tools test-llm-config-audit
+
       - name: Test job session and browser compatibility
         run: make test-job-sessions
       - name: Test job phases

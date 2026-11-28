@@ -10,6 +10,8 @@ const (
 	OpTypeUpdateVPA           = "UpdateVPA"
 	OpTypeDeleteJob           = "DeleteJob"
 	OpTypeSetStorageQuota     = "SetStorageQuota"
+	OpTypeUpdateLLMConfig     = "UpdateLLMConfig"
+	OpTypeResetLLMConfig      = "ResetLLMConfig"
 
 	// Execution Status
 	OpStatusSuccess = "Success"

@@ -112,7 +112,7 @@ lint: ## 🔍 Run ESLint and TypeScript checks
 	pnpm eslint .
 
 .PHONY: pre-commit-check
-pre-commit-check: test-model-download test-tensorboard-templates test-job-phases ## Run pre-commit checks (download tests, lint and lint-staged).
+pre-commit-check: test-model-download test-tensorboard-templates test-job-phases test-agent-assistant ## Run pre-commit checks (tests, lint and lint-staged).
 	@echo "$(BLUE)Checking translation file format...$(RESET)"
 	@if [ -z "$(PYTHON)" ]; then \
 		echo "$(RED)❌ Python interpreter not found (python3/python).$(RESET)"; \
@@ -138,6 +138,10 @@ pre-commit-check: test-model-download test-tensorboard-templates test-job-phases
 		echo "$(RED)❌ Frontend lint-staged failed!$(RESET)"; \
 		exit 1; \
 	fi
+
+.PHONY: test-agent-assistant
+test-agent-assistant: ## Check Agent guidance, progress and navigation behavior.
+	node --test hack/agent_assistant.test.mjs hack/agent_navigation.test.mjs
 
 .PHONY: lint-fix
 lint-fix: ## 🔧 Fix ESLint issues automatically

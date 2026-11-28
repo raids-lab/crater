@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { PackageIcon } from 'lucide-react'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
 import DocsButton from '@/components/button/docs-button'
 import { getNewJobLink } from '@/components/job/new-job-button'
 import TooltipLink from '@/components/label/tooltip-link'
@@ -99,6 +100,15 @@ function RouteComponent() {
       }}
       actionArea={
         <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
+          <AgentActionButton
+            context={{
+              action: 'choose-template',
+              title: '选择作业模板',
+              prompt: '说明作业目标，Agent 将解释模板选择原则；具体模板仍以当前页面列表为准。',
+              route: '/portal/templates',
+            }}
+            label="AI 帮我选择模板"
+          />
           <DocsButton title={'作业模板文档'} url="quick-start/jobtemplate" />
         </div>
       }

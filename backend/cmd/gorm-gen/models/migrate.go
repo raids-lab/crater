@@ -142,38 +142,6 @@ func modelDownloadSubmissionMigration() *gormigrate.Migration {
 	}
 }
 
-func agentFoundationMigration() *gormigrate.Migration {
-	return &gormigrate.Migration{
-		ID: "202610291500",
-		Migrate: func(tx *gorm.DB) error {
-			for _, value := range []any{
-				&model.UserLLMConfig{},
-				&model.AgentConversation{},
-				&model.AgentRun{},
-				&model.AgentMessage{},
-			} {
-				if err := createTableIfMissing(tx, value); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
-		Rollback: func(tx *gorm.DB) error {
-			for _, value := range []any{
-				&model.AgentMessage{},
-				&model.AgentRun{},
-				&model.AgentConversation{},
-				&model.UserLLMConfig{},
-			} {
-				if err := dropTableIfPresent(tx, value); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
-	}
-}
-
 func createTableIfMissing(db *gorm.DB, value any) error {
 	if db.Migrator().HasTable(value) {
 		return nil
@@ -1721,7 +1689,33 @@ func main() {
 			},
 		},
 		userContainerSysAdminMigration(),
-		agentFoundationMigration(),
+		{
+			ID: "202610291500",
+			Migrate: func(tx *gorm.DB) error {
+				if err := createTableIfMissing(tx, &model.UserLLMConfig{}); err != nil {
+					return err
+				}
+				if err := createTableIfMissing(tx, &model.AgentConversation{}); err != nil {
+					return err
+				}
+				if err := createTableIfMissing(tx, &model.AgentRun{}); err != nil {
+					return err
+				}
+				return createTableIfMissing(tx, &model.AgentMessage{})
+			},
+			Rollback: func(tx *gorm.DB) error {
+				if err := dropTableIfPresent(tx, &model.AgentMessage{}); err != nil {
+					return err
+				}
+				if err := dropTableIfPresent(tx, &model.AgentRun{}); err != nil {
+					return err
+				}
+				if err := dropTableIfPresent(tx, &model.AgentConversation{}); err != nil {
+					return err
+				}
+				return dropTableIfPresent(tx, &model.UserLLMConfig{})
+			},
+		},
 		approvalOrderReviewerMigration(),
 		{
 			ID: "202611220001",

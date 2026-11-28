@@ -13,6 +13,7 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"k8s.io/klog/v2"
 
 	"github.com/raids-lab/crater/dao/model"
 	"github.com/raids-lab/crater/internal/bizerr"
@@ -32,8 +33,13 @@ const (
 	AgentRunStatusCanceled  = "canceled"
 	AgentRunStatusFailed    = "failed"
 
-	AgentRunModeAppend  = "append"
-	AgentRunModeReplace = "replace"
+	AgentRunModeAppend   = "append"
+	AgentRunModeReplace  = "replace"
+	AgentRunModeContinue = "continue"
+
+	agentRoleUser           = "user"
+	agentRoleAssistant      = "assistant"
+	agentToolStateAvailable = "output-available"
 )
 
 type AgentConversationService struct {
@@ -62,6 +68,7 @@ type AdminAgentConversationQuery struct {
 	PageSize      int
 	Search        string
 	IdentityScope AgentIdentity
+	UserID        uint
 }
 
 type AdminAgentConversationPage struct {
@@ -69,6 +76,30 @@ type AdminAgentConversationPage struct {
 	Total    int64                           `json:"total"`
 	Page     int                             `json:"page"`
 	PageSize int                             `json:"pageSize"`
+}
+
+type AdminAgentSubjectSummary struct {
+	UserID            uint          `json:"userId"`
+	Username          string        `json:"username"`
+	Nickname          string        `json:"nickname"`
+	IdentityScope     AgentIdentity `json:"identityScope"`
+	ConversationCount int64         `json:"conversationCount"`
+	MessageCount      int64         `json:"messageCount"`
+	UpdatedAt         int64         `json:"updatedAt"`
+}
+
+type AdminAgentSubjectQuery struct {
+	Page          int
+	PageSize      int
+	Search        string
+	IdentityScope AgentIdentity
+}
+
+type AdminAgentSubjectPage struct {
+	Items    []AdminAgentSubjectSummary `json:"items"`
+	Total    int64                      `json:"total"`
+	Page     int                        `json:"page"`
+	PageSize int                        `json:"pageSize"`
 }
 
 // AgentUIMessage is the versioned wire representation stored by Crater. Parts
@@ -82,8 +113,10 @@ type AgentUIMessage struct {
 }
 
 type PreparedAgentRun struct {
-	RunID    string           `json:"runId"`
-	Messages []AgentUIMessage `json:"messages"`
+	RunID         string            `json:"runId"`
+	Messages      []AgentUIMessage  `json:"messages"`
+	IdentityScope AgentIdentity     `json:"identityScope"`
+	PageContext   *AgentPageContext `json:"pageContext,omitempty"`
 }
 
 type AgentRunCompletion struct {
@@ -94,6 +127,115 @@ type AgentRunCompletion struct {
 
 func NewAgentConversationService(db *gorm.DB) *AgentConversationService {
 	return &AgentConversationService{db: db}
+}
+
+func normalizeAdminAgentPage(page, pageSize int) (normalizedPage, normalizedPageSize int) {
+	const (
+		defaultPageSize = 20
+		maximumPageSize = 100
+	)
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = defaultPageSize
+	} else if pageSize > maximumPageSize {
+		pageSize = maximumPageSize
+	}
+	return page, pageSize
+}
+
+func (s *AgentConversationService) ListAdminSubjects(
+	ctx context.Context,
+	options AdminAgentSubjectQuery,
+) (*AdminAgentSubjectPage, error) {
+	options.Page, options.PageSize = normalizeAdminAgentPage(options.Page, options.PageSize)
+	if options.IdentityScope != "" {
+		if _, err := ParseAgentIdentity(string(options.IdentityScope)); err != nil {
+			return nil, err
+		}
+	}
+
+	baseQuery := func() *gorm.DB {
+		query := s.db.WithContext(ctx).
+			Table("agent_conversations AS conversation").
+			Joins("JOIN users ON users.id = conversation.user_id").
+			Where("conversation.deleted_at IS NULL")
+		if search := strings.TrimSpace(options.Search); search != "" {
+			pattern := "%" + search + "%"
+			query = query.Where(
+				`LOWER(users.name) LIKE LOWER(?) OR LOWER(users.nickname) LIKE LOWER(?)
+					OR CAST(conversation.user_id AS TEXT) LIKE ?`,
+				pattern, pattern, pattern,
+			)
+		}
+		if options.IdentityScope != "" {
+			query = query.Where("conversation.identity_scope = ?", options.IdentityScope)
+		}
+		return query
+	}
+
+	groupedSubjects := baseQuery().
+		Select("conversation.user_id, conversation.identity_scope").
+		Group("conversation.user_id, conversation.identity_scope")
+	var total int64
+	if err := s.db.WithContext(ctx).Table("(?) AS subject", groupedSubjects).Count(&total).Error; err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to count Agent users for administrators")
+	}
+
+	type adminSubjectRecord struct {
+		UserID            uint
+		Username          string
+		Nickname          string
+		IdentityScope     string
+		ConversationCount int64
+		MessageCount      int64
+		UpdatedAt         time.Time
+	}
+	var records []adminSubjectRecord
+	aggregated := baseQuery().
+		Select(`conversation.user_id AS user_id, users.name AS username, users.nickname AS nickname,
+			conversation.identity_scope AS identity_scope,
+			COUNT(DISTINCT conversation.id) AS conversation_count,
+			COUNT(message.id) AS message_count`).
+		Joins(`LEFT JOIN agent_messages AS message ON message.conversation_id = conversation.id
+			AND message.superseded_at IS NULL`).
+		Group("conversation.user_id, conversation.identity_scope, users.id")
+	// Select a real timestamp column, rather than relying on a database driver's
+	// type inference for MAX(timestamp), which differs between PostgreSQL and SQLite.
+	err := s.db.WithContext(ctx).Table("(?) AS subject", aggregated).
+		Select("subject.*, latest.updated_at AS updated_at").
+		Joins(`JOIN agent_conversations AS latest ON latest.id = (
+			SELECT recent.id FROM agent_conversations AS recent
+			WHERE recent.user_id = subject.user_id AND recent.identity_scope = subject.identity_scope
+			AND recent.deleted_at IS NULL ORDER BY recent.updated_at DESC, recent.id DESC LIMIT 1
+		)`).
+		Order("latest.updated_at DESC").
+		Order("subject.user_id ASC").
+		Order("subject.identity_scope ASC").
+		Offset((options.Page - 1) * options.PageSize).
+		Limit(options.PageSize).
+		Scan(&records).Error
+	if err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to list Agent users for administrators")
+	}
+
+	items := make([]AdminAgentSubjectSummary, 0, len(records))
+	for index := range records {
+		record := &records[index]
+		items = append(items, AdminAgentSubjectSummary{
+			UserID:            record.UserID,
+			Username:          record.Username,
+			Nickname:          record.Nickname,
+			IdentityScope:     AgentIdentity(record.IdentityScope),
+			ConversationCount: record.ConversationCount,
+			MessageCount:      record.MessageCount,
+			UpdatedAt:         record.UpdatedAt.UnixMilli(),
+		})
+	}
+	return &AdminAgentSubjectPage{
+		Items: items, Total: total, Page: options.Page, PageSize: options.PageSize,
+	}, nil
 }
 
 func (s *AgentConversationService) ListConversations(
@@ -119,18 +261,7 @@ func (s *AgentConversationService) ListAllConversations(
 	ctx context.Context,
 	options AdminAgentConversationQuery,
 ) (*AdminAgentConversationPage, error) {
-	const (
-		defaultPageSize = 20
-		maximumPageSize = 100
-	)
-	if options.Page < 1 {
-		options.Page = 1
-	}
-	if options.PageSize < 1 {
-		options.PageSize = defaultPageSize
-	} else if options.PageSize > maximumPageSize {
-		options.PageSize = maximumPageSize
-	}
+	options.Page, options.PageSize = normalizeAdminAgentPage(options.Page, options.PageSize)
 	if options.IdentityScope != "" {
 		if _, err := ParseAgentIdentity(string(options.IdentityScope)); err != nil {
 			return nil, err
@@ -159,6 +290,9 @@ func (s *AgentConversationService) ListAllConversations(
 		if options.IdentityScope != "" {
 			query = query.Where("conversation.identity_scope = ?", options.IdentityScope)
 		}
+		if options.UserID != 0 {
+			query = query.Where("conversation.user_id = ?", options.UserID)
+		}
 		return query
 	}
 
@@ -175,6 +309,7 @@ func (s *AgentConversationService) ListAllConversations(
 			AND message.superseded_at IS NULL`).
 		Group("conversation.id, users.id").
 		Order("conversation.updated_at DESC").
+		Order("conversation.id ASC").
 		Offset((options.Page - 1) * options.PageSize).
 		Limit(options.PageSize).
 		Scan(&records).Error
@@ -331,6 +466,44 @@ func (s *AgentConversationService) DeleteConversation(
 	})
 }
 
+func (s *AgentConversationService) CancelActiveRun(
+	ctx context.Context,
+	userID uint,
+	identity AgentIdentity,
+	conversationID string,
+	triggerMessageID string,
+) (bool, error) {
+	if err := validateConversationID(conversationID); err != nil {
+		return false, err
+	}
+	if triggerMessageID == "" || len(triggerMessageID) > agentMaximumMessageIDLength {
+		return false, bizerr.BadRequest.ParameterError.New("Agent trigger message is required")
+	}
+	canceled := false
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.ensureOwnedConversation(ctx, tx, userID, identity, conversationID); err != nil {
+			return err
+		}
+		now := time.Now()
+		result := tx.Model(&model.AgentRun{}).
+			Where(
+				"conversation_id = ? AND user_id = ? AND identity_scope = ? AND status = ? AND trigger_message_id = ?",
+				conversationID, userID, identity, AgentRunStatusRunning, triggerMessageID,
+			).
+			Updates(map[string]any{
+				"status":        AgentRunStatusCanceled,
+				"finished_at":   now,
+				"error_message": "Agent response canceled by user",
+			})
+		if result.Error != nil {
+			return bizerr.Internal.DatabaseError.Wrap(result.Error, "failed to cancel Agent response")
+		}
+		canceled = result.RowsAffected > 0
+		return nil
+	})
+	return canceled, err
+}
+
 func (s *AgentConversationService) PrepareRun(
 	ctx context.Context,
 	userID uint,
@@ -343,18 +516,27 @@ func (s *AgentConversationService) PrepareRun(
 	if err := validateConversationID(conversationID); err != nil {
 		return nil, err
 	}
-	if mode != AgentRunModeAppend && mode != AgentRunModeReplace {
+	if mode != AgentRunModeAppend && mode != AgentRunModeReplace && mode != AgentRunModeContinue {
 		return nil, bizerr.BadRequest.ParameterError.New("Agent run mode is invalid")
 	}
 	if candidate == nil {
 		return nil, bizerr.BadRequest.MissingParameter.New("message is required")
 	}
-	if err := validateAgentUIMessage(candidate, "user"); err != nil {
+	expectedRole := agentRoleUser
+	if mode == AgentRunModeContinue {
+		expectedRole = agentRoleAssistant
+	}
+	if err := validateAgentUIMessage(candidate, expectedRole); err != nil {
 		return nil, err
 	}
 
 	prepared := &PreparedAgentRun{}
 	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if mode == AgentRunModeContinue {
+			return prepareAgentContinuationTransaction(
+				ctx, tx, userID, identity, conversationID, parentMessageID, candidate, prepared,
+			)
+		}
 		return prepareAgentRunTransaction(
 			ctx, tx, userID, identity, conversationID, parentMessageID, mode, candidate, prepared,
 		)
@@ -371,15 +553,19 @@ func (s *AgentConversationService) CompleteRun(
 	identity AgentIdentity,
 	runID string,
 	completion AgentRunCompletion,
-) error {
+) (err error) {
 	if _, err := uuid.Parse(runID); err != nil {
 		return bizerr.BadRequest.ParameterError.New("run id is invalid")
 	}
+	// Closing a failed completion must not depend on the request's canceled context.
+	defer func() {
+		s.finalizeFailedCompletion(ctx, userID, identity, runID, completion, err)
+	}()
 	if !isTerminalRunStatus(completion.Status) {
 		return bizerr.BadRequest.ParameterError.New("run status is invalid")
 	}
 	if completion.Message != nil && hasAgentMessageParts(completion.Message.Parts) {
-		if err := validateAgentUIMessage(completion.Message, "assistant"); err != nil {
+		if err := validateAgentUIMessage(completion.Message, agentRoleAssistant); err != nil {
 			return err
 		}
 	} else {
@@ -422,6 +608,18 @@ func (s *AgentConversationService) CompleteRun(
 	})
 }
 
+func (s *AgentConversationService) finalizeFailedCompletion(
+	ctx context.Context, userID uint, identity AgentIdentity, runID string,
+	completion AgentRunCompletion, completionErr error,
+) {
+	if completionErr == nil || (completion.Message == nil && completion.Status == AgentRunStatusFailed) {
+		return
+	}
+	if err := s.FailRun(ctx, userID, identity, runID, completionErr); err != nil {
+		klog.ErrorS(err, "Failed to close Agent run after completion failure", "runID", runID)
+	}
+}
+
 func (s *AgentConversationService) FailRun(
 	ctx context.Context,
 	userID uint,
@@ -446,6 +644,96 @@ const (
 	agentMaximumContextMessages = 100
 	agentMaximumContextBytes    = 256 << 10
 )
+
+func prepareAgentContinuationTransaction(
+	ctx context.Context,
+	tx *gorm.DB,
+	userID uint,
+	identity AgentIdentity,
+	conversationID string,
+	parentMessageID *string,
+	candidate *AgentUIMessage,
+	prepared *PreparedAgentRun,
+) error {
+	conversation, err := findOrCreateAgentConversation(ctx, tx, userID, identity, conversationID)
+	if err != nil {
+		return err
+	}
+	if err := ensureNoRunningAgentRun(ctx, tx, conversationID); err != nil {
+		return err
+	}
+	active, err := activeAgentMessages(ctx, tx, conversationID)
+	if err != nil {
+		return err
+	}
+	if len(active) == 0 || parentMessageID == nil || *parentMessageID != candidate.ID ||
+		active[len(active)-1].ID != candidate.ID || active[len(active)-1].Role != agentRoleAssistant ||
+		!hasAcceptedAgentFormNavigation(active[len(active)-1].Parts) {
+		return agentConversationChanged()
+	}
+	var priorRuns int64
+	if err := tx.WithContext(ctx).Model(&model.AgentRun{}).
+		Where("conversation_id = ? AND trigger_message_id = ?", conversationID, candidate.ID).
+		Count(&priorRuns).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "failed to check Agent continuation")
+	}
+	if priorRuns > 0 {
+		return agentConversationChanged()
+	}
+
+	runID := uuid.NewString()
+	now := time.Now()
+	run := model.AgentRun{
+		ID:               runID,
+		ConversationID:   conversationID,
+		UserID:           userID,
+		IdentityScope:    string(identity),
+		TriggerMessageID: candidate.ID,
+		Status:           AgentRunStatusRunning,
+		StartedAt:        now,
+	}
+	if err := tx.Create(&run).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "failed to create Agent continuation")
+	}
+	if err := tx.Model(conversation).Update("updated_at", now).Error; err != nil {
+		return bizerr.Internal.DatabaseError.Wrap(err, "failed to update Agent conversation")
+	}
+	contextRecords, err := excludeFailedAgentTurns(tx, conversationID, trimAgentContext(active))
+	if err != nil {
+		return err
+	}
+	prepared.RunID = runID
+	prepared.Messages = messageRecordsToDTO(contextRecords)
+	return nil
+}
+
+func hasAcceptedAgentFormNavigation(parts []byte) bool {
+	var values []struct {
+		Type   string          `json:"type"`
+		State  string          `json:"state"`
+		Output json.RawMessage `json:"output"`
+		Input  json.RawMessage `json:"input"`
+	}
+	if json.Unmarshal(parts, &values) != nil {
+		return false
+	}
+	for _, part := range values {
+		if part.Type != "tool-navigate_to_page" || part.State != agentToolStateAvailable {
+			continue
+		}
+		var output struct {
+			Status string `json:"status"`
+		}
+		var input struct {
+			AssistForm bool `json:"assistForm"`
+		}
+		if json.Unmarshal(part.Input, &input) == nil && input.AssistForm &&
+			json.Unmarshal(part.Output, &output) == nil && output.Status == "accepted" {
+			return true
+		}
+	}
+	return false
+}
 
 func prepareAgentRunTransaction(
 	ctx context.Context,
@@ -495,7 +783,7 @@ func prepareAgentRunTransaction(
 		ConversationID:  conversationID,
 		ParentMessageID: parentID,
 		Sequence:        sequence,
-		Role:            "user",
+		Role:            agentRoleUser,
 		Status:          AgentRunStatusCompleted,
 		SchemaVersion:   agentMessageSchemaVersion,
 		Parts:           datatypes.JSON(cloneJSON(candidate.Parts)),
@@ -524,9 +812,49 @@ func prepareAgentRunTransaction(
 
 	contextRecords := append(append([]model.AgentMessage{}, active[:prefixLength]...), userMessage)
 	contextRecords = trimAgentContext(contextRecords)
+	contextRecords, err = excludeFailedAgentTurns(tx, conversationID, contextRecords)
+	if err != nil {
+		return err
+	}
 	prepared.RunID = runID
 	prepared.Messages = messageRecordsToDTO(contextRecords)
 	return nil
+}
+
+func excludeFailedAgentTurns(tx *gorm.DB, conversationID string, records []model.AgentMessage) ([]model.AgentMessage, error) {
+	messageIDs := make([]string, 0, len(records))
+	runIDs := make([]string, 0, len(records))
+	for index := range records {
+		record := &records[index]
+		messageIDs = append(messageIDs, record.ID)
+		if record.RunID != nil {
+			runIDs = append(runIDs, *record.RunID)
+		}
+	}
+	var runs []model.AgentRun
+	if err := tx.Select("id", "trigger_message_id").
+		Where("conversation_id = ? AND status IN ? AND (trigger_message_id IN ? OR id IN ?)",
+			conversationID, []string{AgentRunStatusFailed, AgentRunStatusCanceled}, messageIDs, runIDs).
+		Find(&runs).Error; err != nil {
+		return nil, bizerr.Internal.DatabaseError.Wrap(err, "failed to load unsuccessful Agent runs")
+	}
+	failedMessages := make(map[string]bool, len(runs))
+	failedRuns := make(map[string]bool, len(runs))
+	for index := range runs {
+		run := &runs[index]
+		failedMessages[run.TriggerMessageID] = true
+		failedRuns[run.ID] = true
+	}
+	filtered := make([]model.AgentMessage, 0, len(records))
+	for index := range records {
+		record := &records[index]
+		if (record.Role == agentRoleUser && failedMessages[record.ID]) ||
+			(record.RunID != nil && failedRuns[*record.RunID]) {
+			continue
+		}
+		filtered = append(filtered, *record)
+	}
+	return filtered, nil
 }
 
 func trimAgentContext(records []model.AgentMessage) []model.AgentMessage {
@@ -733,6 +1061,29 @@ func saveAssistantMessage(
 	message *AgentUIMessage,
 	status string,
 ) error {
+	var trigger model.AgentMessage
+	result := tx.WithContext(ctx).Where(
+		"id = ? AND conversation_id = ? AND role = ? AND superseded_at IS NULL",
+		run.TriggerMessageID, run.ConversationID, agentRoleAssistant,
+	).Limit(1).Find(&trigger)
+	if result.Error != nil {
+		return bizerr.Internal.DatabaseError.Wrap(result.Error, "failed to load Agent continuation message")
+	}
+	if result.RowsAffected > 0 {
+		if status != AgentRunStatusCompleted {
+			return nil
+		}
+		if message.ID != trigger.ID {
+			return bizerr.Conflict.ResourceStatusError.New("Agent continuation message id changed")
+		}
+		if err := tx.WithContext(ctx).Model(&trigger).Updates(map[string]any{
+			"parts":    datatypes.JSON(cloneJSON(message.Parts)),
+			"metadata": datatypes.JSON(cloneJSON(message.Metadata)),
+		}).Error; err != nil {
+			return bizerr.Internal.DatabaseError.Wrap(err, "failed to save Agent continuation")
+		}
+		return nil
+	}
 	messageID := strings.TrimSpace(message.ID)
 	if messageID == "" {
 		messageID = uuid.NewString()
@@ -756,7 +1107,7 @@ func saveAssistantMessage(
 		RunID:           &runID,
 		ParentMessageID: &parentID,
 		Sequence:        sequence,
-		Role:            "assistant",
+		Role:            agentRoleAssistant,
 		Status:          status,
 		SchemaVersion:   agentMessageSchemaVersion,
 		Parts:           datatypes.JSON(cloneJSON(message.Parts)),
@@ -778,7 +1129,7 @@ func saveAssistantMessage(
 
 func validateAgentUIMessage(message *AgentUIMessage, expectedRole string) error {
 	message.ID = strings.TrimSpace(message.ID)
-	if (message.ID == "" && expectedRole != "assistant") || len(message.ID) > agentMaximumMessageIDLength ||
+	if (message.ID == "" && expectedRole != agentRoleAssistant) || len(message.ID) > agentMaximumMessageIDLength ||
 		strings.ContainsAny(message.ID, "\x00\r\n") {
 		return bizerr.BadRequest.ParameterError.New("message id is invalid")
 	}
@@ -811,10 +1162,10 @@ func validateAgentMessageParts(parts []agentMessagePart, expectedRole string) er
 		if strings.TrimSpace(part.Type) == "" {
 			return bizerr.BadRequest.ParameterError.New("message part type is required")
 		}
-		if expectedRole == "user" && part.Type != "text" {
+		if expectedRole == agentRoleUser && part.Type != "text" {
 			return bizerr.BadRequest.ParameterError.New("user messages only support text parts")
 		}
-		if expectedRole == "user" && strings.TrimSpace(part.Text) == "" {
+		if expectedRole == agentRoleUser && strings.TrimSpace(part.Text) == "" {
 			return bizerr.BadRequest.ParameterError.New("user message text is required")
 		}
 	}

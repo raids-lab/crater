@@ -34,6 +34,12 @@ import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
+import { agentFormCapabilities } from '@/components/agent/form-capabilities'
+import {
+  defineAgentFormFields,
+  useAgentFormCapability,
+} from '@/components/agent/use-agent-form-capability'
 import LoadableButton from '@/components/button/loadable-button'
 import Combobox from '@/components/form/combobox'
 import FormExportButton from '@/components/form/form-export-button'
@@ -157,6 +163,64 @@ const envdFormSchema = z.object({
 
 export type EnvdFormValues = z.infer<typeof envdFormSchema>
 
+const agentFields = defineAgentFormFields<EnvdFormValues>()([
+  {
+    path: 'python',
+    label: 'craterAgent.formFields.pythonVersion',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'base',
+    label: 'craterAgent.formFields.baseImage',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'aptPackages',
+    label: 'craterAgent.formFields.aptPackages',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'requirements',
+    label: 'craterAgent.formFields.pythonDependencies',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'enableJupyter',
+    label: 'craterAgent.formFields.enableJupyter',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'enableZsh',
+    label: 'craterAgent.formFields.enableZsh',
+    valueType: 'boolean',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'description',
+    label: 'craterAgent.formFields.imageDescription',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'imageName',
+    label: 'craterAgent.formFields.imageName',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  {
+    path: 'imageTag',
+    label: 'craterAgent.formFields.imageTag',
+    valueType: 'string',
+    includeCurrentValue: true,
+  },
+  { path: 'tags', label: 'craterAgent.formFields.tags', valueType: 'option-array' },
+])
+
 interface EnvdSheetContentProps {
   closeSheet: () => void
   imagePackName: string
@@ -177,6 +241,8 @@ function EnvdSheetContent({ closeSheet, imagePackName, setImagePackName }: EnvdS
       enableZsh: true,
     },
   })
+
+  useAgentFormCapability({ capability: agentFormCapabilities.imageEnvd, fields: agentFields, form })
 
   const { mutate: submitDockerfileSheet, isPending } = useMutation({
     mutationFn: (values: EnvdFormValues) =>
@@ -253,6 +319,15 @@ function EnvdSheetContent({ closeSheet, imagePackName, setImagePackName }: EnvdS
         <SandwichLayout
           footer={
             <>
+              <AgentActionButton
+                context={{
+                  action: 'assist-form',
+                  title: 'envd 镜像辅助填写',
+                  prompt: '说明基础环境和依赖需求，Agent 将生成可确认的镜像构建表单建议。',
+                  route: agentFormCapabilities.imageEnvd.route,
+                  capabilityId: agentFormCapabilities.imageEnvd.id,
+                }}
+              />
               <FormImportButton metadata={MetadataFormEnvdAdvanced} form={form} />
               <FormExportButton metadata={MetadataFormEnvdAdvanced} form={form} />
               <LoadableButton isLoading={isPending} isLoadingText="正在提交" type="submit">

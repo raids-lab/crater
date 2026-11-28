@@ -16,6 +16,11 @@ import (
 
 const unknownOperatorValue = "unknown"
 
+func recordLLMConfigOperation(c *gin.Context, opType, scope string, keySubmitted, success bool) {
+	event := newLLMConfigAuditEvent(opType, scope, util.GetToken(c).UserID, keySubmitted, success)
+	RecordOperationLog(c, opType, event.Target, event.Status, event.Message, event.Details)
+}
+
 // RecordOperationLog 记录操作日志的辅助函数
 func RecordOperationLog(c *gin.Context, opType, target, status, message string, details map[string]any) {
 	operator, role := GetOperatorInfo(c)

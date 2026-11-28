@@ -1,4 +1,4 @@
-.PHONY: install dev build lint format pre-commit-check
+.PHONY: install dev build lint format test pre-commit-check
 
 install:
 	pnpm install
@@ -13,7 +13,10 @@ lint:
 	pnpm lint
 	pnpm format:check
 
-pre-commit-check: lint build
+test:
+	node --import tsx --test src/tools/registry.test.ts src/routes/chat.test.ts
+
+pre-commit-check: lint test build
 
 format:
 	pnpm format

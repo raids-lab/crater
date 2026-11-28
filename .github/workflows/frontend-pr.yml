@@ -60,6 +60,9 @@ jobs:
       - name: Test job phases
         run: make test-job-phases
 
+      - name: Test Agent assistant
+        run: make test-agent-assistant
+
   frontend-build-check:
     runs-on: ubuntu-latest
     needs: frontend-lint-check

@@ -24,11 +24,12 @@ const (
 
 type AgentContextClaims struct {
 	UserID        uint          `json:"userId"`
+	AccountID     uint          `json:"accountId"`
 	IdentityScope AgentIdentity `json:"identityScope"`
 	jwt.RegisteredClaims
 }
 
-func SignAgentContext(userID uint, identity AgentIdentity, secret string) (string, error) {
+func SignAgentContext(userID, accountID uint, identity AgentIdentity, secret string) (string, error) {
 	secret = strings.TrimSpace(secret)
 	if err := validateAgentSecret(secret, AgentContextSigningKeyEnv); err != nil {
 		return "", err
@@ -36,6 +37,7 @@ func SignAgentContext(userID uint, identity AgentIdentity, secret string) (strin
 	now := time.Now()
 	claims := AgentContextClaims{
 		UserID:        userID,
+		AccountID:     accountID,
 		IdentityScope: identity,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    "crater-backend",

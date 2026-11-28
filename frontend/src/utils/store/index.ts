@@ -16,6 +16,12 @@
 import { atom } from 'jotai'
 import { atomWithStorage, useResetAtom } from 'jotai/utils'
 
+import type {
+  AgentActionContext,
+  AgentFormRuntime,
+  AgentResourceContext,
+} from '@/components/agent/agent-context'
+
 import { IUserAttributes } from '@/services/api/admin/user'
 import { IBackendVersionInfo, IUserContext } from '@/services/api/auth'
 
@@ -61,6 +67,9 @@ export const atomBackendVersion = atom<IBackendVersionInfo>()
  * different users on the same browser remain isolated.
  */
 export const atomAgentPanelOpen = atom(false)
+export const atomAgentActionContext = atom<AgentActionContext>()
+export const atomAgentFormRuntime = atom<AgentFormRuntime>()
+export const atomAgentPageResourceContext = atom<AgentResourceContext>()
 const atomAgentFloatingButtonPreferences = atomWithStorage<Record<string, boolean>>(
   AGENT_FLOATING_BUTTON_PREFERENCES_KEY,
   {},

@@ -47,6 +47,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 
+import { AgentActionButton } from '@/components/agent/agent-action-button'
 import VisibilityBadge, { Visibility, visibilityTypes } from '@/components/badge/visibility-badge'
 import { TimeDistance } from '@/components/custom/time-distance'
 import ImageLabel from '@/components/label/image-label'
@@ -418,14 +419,25 @@ export const ImageListTable: FC<ImageListTableProps> = ({
           </DialogContent>
         </Dialog>
         {!isAdminMode ? (
-          <Button
-            variant="default"
-            className="flex items-center gap-2"
-            onClick={() => setOpenUploadSheet(true)}
-          >
-            <ImportIcon />
-            导入镜像
-          </Button>
+          <div className="flex gap-2">
+            <AgentActionButton
+              context={{
+                action: 'assist-form',
+                title: '镜像导入助手',
+                prompt: '说明镜像地址和用途，Agent 将指导导入并可在表单中提出填写建议。',
+                route: '/portal/env/images',
+              }}
+              label="AI 辅助导入"
+            />
+            <Button
+              variant="default"
+              className="flex items-center gap-2"
+              onClick={() => setOpenUploadSheet(true)}
+            >
+              <ImportIcon />
+              导入镜像
+            </Button>
+          </div>
         ) : null}
       </DataTable>
       <ImageUploadForm
